@@ -20,7 +20,7 @@ describe("viaAereaVigente", () => {
   it("una extubacion programada deja la via natural", () => {
     const ev = unEvento<Extract<EventoClinico, { tipo: "EXTUBACION_PROGRAMADA" }>>({
       tipo: "EXTUBACION_PROGRAMADA",
-      dispositivoSalida: "CNAF"
+      dispositivo: "CNAF"
     });
     expect(viaAereaVigente("TET", [ev])).toBe("NATURAL");
   });
@@ -28,7 +28,7 @@ describe("viaAereaVigente", () => {
   it("una autoextubacion tambien deja la via natural", () => {
     const ev = unEvento<Extract<EventoClinico, { tipo: "AUTOEXTUBACION" }>>({
       tipo: "AUTOEXTUBACION",
-      dispositivoSalida: "VMNI"
+      dispositivo: "VMNI"
     });
     expect(viaAereaVigente("TET", [ev])).toBe("NATURAL");
   });
@@ -36,7 +36,7 @@ describe("viaAereaVigente", () => {
   it("aplica los eventos en orden cronologico: extubacion y luego reintubacion", () => {
     const extub = unEvento<Extract<EventoClinico, { tipo: "AUTOEXTUBACION" }>>({
       tipo: "AUTOEXTUBACION",
-      dispositivoSalida: "CNAF",
+      dispositivo: "CNAF",
       ...EN("2026-11-04T14:00:00.000Z")
     });
     const reint = unEvento<Extract<EventoClinico, { tipo: "REINTUBACION" }>>({
@@ -209,7 +209,7 @@ describe("eventosDeRiesgo", () => {
   it("selecciona solo los eventos que disparan gestion de riesgo", () => {
     const autoext = unEvento<Extract<EventoClinico, { tipo: "AUTOEXTUBACION" }>>({
       tipo: "AUTOEXTUBACION",
-      dispositivoSalida: "CNAF"
+      dispositivo: "CNAF"
     });
     const cultivo = unEvento<Extract<EventoClinico, { tipo: "TOMA_CULTIVO" }>>({
       tipo: "TOMA_CULTIVO",

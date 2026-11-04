@@ -1,118 +1,198 @@
 import { describe, expect, it } from "vitest";
 import {
+  bandaProteccion,
   calcularDerivados,
   calcularGlasgow,
   calcularPam,
   calcularPbw,
   calcularPpc,
-  semaforoPcf
+  indiceRox,
+  indiceTobin,
+  mlPorKg,
+  opcionesVolumenObjetivo,
+  relacionIE,
+  semaforoPcf,
+  volumenMinuto,
+  volumenObjetivoMl
 } from "./fisiologia";
-import { unControl, unEsfuerzo, unSoporte } from "./fixtures";
+import { OBJETIVOS_VT_ML_KG } from "./catalogos";
+import { unControl, unaVentilacion } from "./fixtures";
 
-describe("calcularPbw (Devine)", () => {
-  it("calcula el peso predicho de un hombre de 172 cm", () => {
-    expect(calcularPbw(172, "M")).toBe(67.8);
-  });
-
-  it("usa la base femenina (45.5) para mujeres", () => {
-    expect(calcularPbw(162, "F")).toBe(54.2);
-  });
-
-  it("aplica piso de seguridad: una talla mal tipeada no produce Vt/kg absurdo", () => {
+describe("peso ideal (Devine)", () => {
+  it("hombre de 172 cm", () => expect(calcularPbw(172, "M")).toBe(67.8));
+  it("mujer de 162 cm usa la base femenina", () => expect(calcularPbw(162, "F")).toBe(54.2));
+  it("una talla mal tipeada no produce un ml/kg absurdo (piso de 30 kg)", () => {
     expect(calcularPbw(20, "M")).toBe(30);
   });
 });
 
+/** El ejemplo de la unidad: hombre de 180 cm, peso ideal 75 kg. */
+describe("guía de protección pulmonar", () => {
+  const pbw = calcularPbw(180, "M");
+
+  it("180 cm da un peso ideal de 75.1 kg", () => expect(pbw).toBe(75.1));
+
+  it("6, 7 y 8 ml/kg son 450, 525 y 600 ml", () => {
+    expect(volumenObjetivoMl(pbw, 6)).toBe(450);
+    expect(volumenObjetivoMl(pbw, 7)).toBe(525);
+    expect(volumenObjetivoMl(pbw, 8)).toBe(600);
+  });
+
+  it("ofrece las tres opciones que muestra la franja del teclado", () => {
+    expect(opcionesVolumenObjetivo(pbw, OBJETIVOS_VT_ML_KG)).toEqual([
+      { mlKg: 6, ml: 450 },
+      { mlKg: 7, ml: 525 },
+      { mlKg: 8, ml: 600 }
+    ]);
+  });
+
+  it("600 ml son 8.0 ml/kg de peso ideal", () => expect(mlPorKg(600, pbw)).toBe(8));
+
+  it("menor a 6 es ultraprotector; de 6 a 8 protector; mayor a 8 sobre la meta", () => {
+    expect(bandaProteccion(5.9)).toBe("ULTRAPROTECTOR");
+    expect(bandaProteccion(6)).toBe("PROTECTOR");
+    expect(bandaProteccion(8)).toBe("PROTECTOR");
+    expect(bandaProteccion(8.1)).toBe("SOBRE_META");
+    expect(bandaProteccion(null)).toBeNull();
+  });
+
+  it("sin volumen no hay ml/kg", () => expect(mlPorKg(null, pbw)).toBeNull());
+});
+
 describe("presiones", () => {
-  it("calcula PAM = PAD + (PAS-PAD)/3", () => {
-    expect(calcularPam(120, 60)).toBe(80);
-  });
-
-  it("devuelve null si falta un componente", () => {
+  it("PAM = PAD + (PAS-PAD)/3", () => expect(calcularPam(120, 60)).toBe(80));
+  it("falta un componente o PA incoherente → null", () => {
     expect(calcularPam(null, 60)).toBeNull();
-    expect(calcularPam(120, null)).toBeNull();
-  });
-
-  it("devuelve null ante una PA incoherente (sistolica <= diastolica)", () => {
     expect(calcularPam(60, 90)).toBeNull();
   });
-
-  it("calcula PPC solo si hay neuromonitoreo", () => {
+  it("PPC solo con neuromonitoreo", () => {
     expect(calcularPpc(90, 19)).toBe(71);
     expect(calcularPpc(90, null)).toBeNull();
   });
 });
 
-describe("calcularGlasgow condicionado por via aerea", () => {
-  it("con via aerea artificial reporta verbal NT y total sobre 11T", () => {
-    const g = calcularGlasgow({ ocular: 3, verbal: 1, motora: 5 }, "TET");
-    expect(g.intubado).toBe(true);
-    expect(g.verbal).toBe("NT");
-    expect(g.total).toBe(9);
-    expect(g.display).toBe("9T");
-    expect(g.completo).toBe("9T/11T (O3 V:NT M5)");
+describe("volumen minuto: volumen ESPIRADO por la frecuencia TOTAL", () => {
+  it("590 ml a 20 rpm son 11.8 L/min", () => expect(volumenMinuto(590, 20)).toBe(11.8));
+  it("sin alguno de los dos no se calcula", () => {
+    expect(volumenMinuto(null, 20)).toBeNull();
+    expect(volumenMinuto(590, null)).toBeNull();
   });
-
-  it("ignora el verbal registrado cuando el paciente esta intubado", () => {
-    // Un verbal 5 en un paciente con TET es un error metodologico: no debe sumar.
-    const conVerbalAlto = calcularGlasgow({ ocular: 3, verbal: 5, motora: 5 }, "TQT");
-    expect(conVerbalAlto.total).toBe(9);
-  });
-
-  it("con via aerea natural usa el verbal real y total sobre 15", () => {
-    const g = calcularGlasgow({ ocular: 4, verbal: 5, motora: 6 }, "NATURAL");
-    expect(g.verbal).toBe(5);
-    expect(g.total).toBe(15);
-    expect(g.completo).toBe("15/15 (O4 V5 M6)");
+  it("usa la frecuencia del paciente, no la programada", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ frProgramada: 16, frTotal: 24, vtEspirado: 500 }) });
+    expect(calcularDerivados(c, 67.8).volumenMinuto).toBe(12);
   });
 });
 
-describe("calcularDerivados", () => {
-  const pbw = calcularPbw(172, "M");
+describe("relación I:E resultante", () => {
+  it("TI 1 s a 20 rpm (ciclo de 3 s) → 1:2", () => expect(relacionIE(1, 20)).toBe("1:2"));
+  it("TI 1.2 s a 22 rpm → 1:1.3", () => expect(relacionIE(1.2, 22)).toBe("1:1.3"));
+  it("un TI mayor que el ciclo no produce una relación absurda", () => expect(relacionIE(4, 20)).toBeNull());
+  it("falta un dato → null", () => {
+    expect(relacionIE(null, 20)).toBeNull();
+    expect(relacionIE(1, null)).toBeNull();
+  });
+});
 
-  it("calcula driving pressure, compliance y Vt/kg en VMI sincronica", () => {
-    const d = calcularDerivados(unControl(), pbw);
-    expect(d.drivingPressure).toBe(10); // 20 - 10
-    expect(d.compliance).toBe(43); // 430 / 10
-    expect(d.vtPorKg).toBe(6.3); // 430 / 67.8
+describe("Tobin: SOLO modalidades espontáneas", () => {
+  it("se calcula en CPAP+PS", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", presion: 7, frTotal: 18, vtEspirado: 460 }) });
+    expect(calcularDerivados(c, 67.8).tobin).toBe(39);
   });
 
-  it("calcula el indice de Tobin en VMI", () => {
-    const d = calcularDerivados(unControl(), pbw);
-    expect(d.tobin).toBe(47); // 20 / 0.43
+  it("NO se calcula en ACVC ni PCV aunque haya datos (no es correcto en controladas)", () => {
+    for (const modalidad of ["ACVC", "PCV"] as const) {
+      const c = unControl({ ventilacion: unaVentilacion({ modalidad, frTotal: 20, vtEspirado: 430 }) });
+      expect(calcularDerivados(c, 67.8).tobin).toBeNull();
+    }
   });
 
-  it("no calcula ROX en VMI (es un indice de soporte no invasivo)", () => {
-    expect(calcularDerivados(unControl(), pbw).rox).toBeNull();
-  });
+  it("la función pura sigue siendo FR / Vt en litros", () => expect(indiceTobin(20, 430)).toBe(47));
+});
 
-  it("calcula ROX en CNAF", () => {
-    const c = unControl({
+describe("ROX: solo CNAF", () => {
+  it("(SpO2/FiO2)/FR", () => expect(indiceRox(94, 40, 24)).toBe(9.79));
+
+  it("se calcula en CNAF y no en ventilación invasiva", () => {
+    const cnaf = unControl({
       spo2: 94,
-      soporte: unSoporte({ tipo: "CNAF", modoVMI: null, fio2: 40, fr: 24, flujo: 50 })
+      ventilacion: unaVentilacion({ modalidad: "CNAF", fio2: 40, frTotal: 24, flujo: 50, vtEspirado: null, peep: null })
     });
-    // (94 / 0.40) / 24 = 9.79
-    expect(calcularDerivados(c, pbw).rox).toBe(9.79);
+    expect(calcularDerivados(cnaf, 67.8).rox).toBe(9.79);
+    expect(calcularDerivados(unControl(), 67.8).rox).toBeNull();
   });
 
-  it("no calcula mecanica estatica si no hay plateau registrado", () => {
-    const c = unControl({ soporte: unSoporte({ pPlateau: null }) });
+  it("en CNAF no hay volumen minuto ni banda de protección pulmonar", () => {
+    const cnaf = unControl({ ventilacion: unaVentilacion({ modalidad: "CNAF", vtEspirado: null }) });
+    const d = calcularDerivados(cnaf, 67.8);
+    expect(d.volumenMinuto).toBeNull();
+    expect(d.bandaGuia).toBeNull();
+  });
+});
+
+describe("mecánica y derivados por modalidad", () => {
+  const pbw = 67.8;
+
+  it("ACVC sincrónico: ΔP, compliance con el volumen ESPIRADO, ml/kg", () => {
+    const d = calcularDerivados(unControl(), pbw);
+    expect(d.drivingPressure).toBe(10);
+    expect(d.compliance).toBe(43);
+    expect(d.vtEspiradoPorKg).toBe(6.3);
+    expect(d.relacionIE).toBe("1:2");
+  });
+
+  it("la compliance usa el espirado, no el programado", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ vtProgramado: 600, vtEspirado: 500, pPlateau: 20, peep: 10 }) });
+    expect(calcularDerivados(c, pbw).compliance).toBe(50);
+  });
+
+  it("la guía de titulación es el programado en ACVC y el espirado en PCV", () => {
+    const acvc = unControl({ ventilacion: unaVentilacion({ vtProgramado: 540, vtEspirado: 500 }) });
+    expect(calcularDerivados(acvc, 67.8).mlKgGuia).toBe(8);
+    const pcv = unControl({ ventilacion: unaVentilacion({ modalidad: "PCV", vtProgramado: null, presion: 15, vtEspirado: 500 }) });
+    expect(calcularDerivados(pcv, 67.8).mlKgGuia).toBe(7.4);
+  });
+
+  it("ACVC: avisa posible fuga si programado y espirado difieren más de 10 %", () => {
+    const fuga = unControl({ ventilacion: unaVentilacion({ vtProgramado: 600, vtEspirado: 500 }) });
+    const ok = unControl({ ventilacion: unaVentilacion({ vtProgramado: 600, vtEspirado: 560 }) });
+    expect(calcularDerivados(fuga, pbw).posibleFuga).toBe(true);
+    expect(calcularDerivados(ok, pbw).posibleFuga).toBe(false);
+  });
+
+  it("sin plateau no hay mecánica estática", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ pPlateau: null }) });
     const d = calcularDerivados(c, pbw);
     expect(d.drivingPressure).toBeNull();
     expect(d.compliance).toBeNull();
   });
+
+  it("CPAP+PS no calcula ΔP ni compliance", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", presion: 7, pPlateau: 18 }) });
+    const d = calcularDerivados(c, pbw);
+    expect(d.drivingPressure).toBeNull();
+    expect(d.relacionIE).toBeNull();
+  });
 });
 
-describe("semaforoPcf (flujo pico de tos)", () => {
-  it("clasifica segun el corte institucional de exito de extubacion", () => {
+describe("Glasgow condicionado por vía aérea", () => {
+  it("con vía artificial: verbal NT, total sobre 11T", () => {
+    const g = calcularGlasgow({ ocular: 3, verbal: 1, motora: 5 }, "TET");
+    expect(g.verbal).toBe("NT");
+    expect(g.completo).toBe("9T/11T (O3 V:NT M5)");
+  });
+  it("ignora un verbal alto registrado en un paciente intubado", () => {
+    expect(calcularGlasgow({ ocular: 3, verbal: 5, motora: 5 }, "TQT").total).toBe(9);
+  });
+  it("con vía natural: total sobre 15", () => {
+    expect(calcularGlasgow({ ocular: 4, verbal: 5, motora: 6 }, "NATURAL").completo).toBe("15/15 (O4 V5 M6)");
+  });
+});
+
+describe("flujo pico de tos", () => {
+  it("clasifica según el corte institucional", () => {
     expect(semaforoPcf(null)).toBe("SIN_DATO");
     expect(semaforoPcf(40)).toBe("INSUFICIENTE");
     expect(semaforoPcf(57)).toBe("LIMITE");
     expect(semaforoPcf(70)).toBe("OPTIMO");
-  });
-
-  it("se expone a traves de los derivados del control", () => {
-    const c = unControl({ esfuerzo: unEsfuerzo({ pcf: 80 }) });
-    expect(calcularDerivados(c, 67.9).semaforoPcf).toBe("OPTIMO");
   });
 });

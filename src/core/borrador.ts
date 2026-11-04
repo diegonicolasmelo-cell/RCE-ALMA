@@ -1,205 +1,120 @@
 /**
- * Borrador de control: estado del formulario y regla anti-sesgo.
+ * Borrador de control: estado del formulario, regla anti-sesgo y validacion.
  *
- * REGLA 3.A DEL INFORME, Y UN CONFLICTO QUE SE RESUELVE AQUI
- * El informe exige que al abrir "+ Nueva Atencion" las variables dinamicas
- * (FC, PAS, PAD, FR, Vt, P.Pico, P.Plateau, SpO2) nazcan vacias, para forzar la
- * lectura fresca del monitor y del ventilador.
+ * REGLA ANTI-SESGO (informe 3.A)
+ * Lo que se lee de un monitor o del ventilador NACE EN BLANCO en cada control:
+ * signos vitales, y lo que el paciente realmente hace (FR total, Vt espirado,
+ * presiones). Lo que es un AJUSTE que el kinesiologo cambia deliberadamente
+ * (modalidad, FR/Vt/flujo/TI/presion programados, PEEP, FiO2) y las infusiones
+ * en curso se HEREDAN, para no tipear de nuevo.
  *
- * El prototipo original hacia lo contrario: las heredaba del ultimo control
- * (`fc: ult.fc`, `pas: ult.pas`, ...), que es precisamente el sesgo de arrastre
- * que se queria eliminar. Se implementa la regla del informe: en blanco.
+ * La escala de conciencia (SAS o vigilia) es una evaluacion, no un ajuste: nace
+ * en blanco, como la kine y la terapia fisica.
  *
- * El criterio de que hereda y que no tiene logica clinica: lo que cambia minuto
- * a minuto y se lee de una pantalla se pide fresco; lo que es un ESTADO que el
- * kinesiologo cambia deliberadamente (infusiones continuas, modo ventilatorio)
- * se hereda y se suspende con un toque.
- *
- * El borrador usa `string` y no `number | null` porque "" (campo vacio sin tocar)
- * y 0 (valor medido igual a cero) son clinicamente distintos y no deben colapsar.
+ * El borrador usa `string` porque "" (campo sin tocar) y 0 (valor medido igual
+ * a cero) son clinicamente distintos y no deben colapsar.
  */
 
+import { CAMPOS_POR_MODALIDAD, INFUSIONES } from "./catalogos";
 import { esViaAereaArtificial } from "./fisiologia";
+import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
+import { kineRespiratoriaPermitida } from "./apk";
+import { CAMPOS_VENT } from "./tipos";
 import type {
+  Aspiracion,
+  AspectoSecreciones,
+  CampoVent,
   CantidadSecreciones,
   Control,
   Episodio,
+  EstadoTerapiaFisica,
   EstadoVigilia,
+  IdInfusion,
+  Infusiones,
   Medicion,
-  ModoVMI,
-  Sedacion,
-  TipoAspiracion,
-  TipoSecreciones,
-  TipoVentilacion,
+  Modalidad,
+  ReologiaSecreciones,
   Uuid,
+  ValidacionApk,
   ValorSas,
+  Ventilacion,
   ViaAerea
 } from "./tipos";
 
-/**
- * Campos que SIEMPRE nacen vacios en un control nuevo.
- * Lista explicita y exportada para que un test la verifique: si alguien agrega
- * herencia sobre uno de estos campos, el test falla antes del deploy.
- */
-export const CAMPOS_DINAMICOS_EN_BLANCO = [
-  "fc",
-  "pas",
-  "pad",
-  "fr",
-  "vt",
+export const CAMPOS_VITALES = ["fc", "spo2", "pas", "pad"] as const;
+export type CampoVital = (typeof CAMPOS_VITALES)[number];
+
+/** Ajustes del ventilador: se heredan del control anterior. */
+export const CAMPOS_VENT_PROGRAMADOS: readonly CampoVent[] = [
+  "frProgramada",
+  "vtProgramado",
+  "flujo",
+  "ti",
+  "presion",
+  "peep",
+  "fio2"
+];
+
+/** Lo que hace el paciente: nace en blanco, se lee del monitor. */
+export const CAMPOS_VENT_OBSERVADOS: readonly CampoVent[] = [
+  "frTotal",
+  "vtEspirado",
   "pPico",
   "pPlateau",
-  "spo2"
-] as const;
+  "pMedia"
+];
 
-export type CampoDinamico = (typeof CAMPOS_DINAMICOS_EN_BLANCO)[number];
+export interface BorradorInfusion {
+  activa: boolean;
+  /** Escalon 1-6 como texto, o "" */
+  escalon: string;
+  dosis: string;
+  /** Dosis libre en lugar de escalon. Siempre true si el farmaco no tiene escalones. */
+  libre: boolean;
+}
 
 export interface BorradorControl {
-  readonly episodioId: Uuid;
-  readonly rutAutor: string;
-  readonly esControlApoyo: boolean;
-  /** Observada, no editable en rutina: proviene del episodio. */
-  readonly viaAerea: ViaAerea;
+  episodioId: Uuid;
+  rutAutor: string;
+  esControlApoyo: boolean;
 
-  // --- dinamicas: nacen "" ---
   fc: string;
+  spo2: string;
   pas: string;
   pad: string;
-  fr: string;
-  vt: string;
-  pPico: string;
-  pPlateau: string;
-  spo2: string;
 
-  // --- estado heredable ---
-  pic: string;
-  tienePic: boolean;
-  noradrenalina: string;
-  adrenalina: string;
-  vasopresina: string;
-  tipoVentilacion: TipoVentilacion;
-  modoVMI: ModoVMI | null;
-  fio2: string;
-  peep: string;
-  presionSoporte: string;
-  flujo: string;
-  presionCuff: string;
+  modalidad: Modalidad;
   asincronico: boolean;
-  sedacionActiva: boolean;
-  sedacion: Sedacion;
-  bnmActivo: boolean;
+  vent: Record<CampoVent, string>;
 
-  // --- conciencia ---
-  gcsOcular: 1 | 2 | 3 | 4;
-  gcsVerbal: 1 | 2 | 3 | 4 | 5;
-  gcsMotora: 1 | 2 | 3 | 4 | 5 | 6;
+  infusiones: Record<IdInfusion, BorradorInfusion>;
   sas: ValorSas | null;
   vigilia: EstadoVigilia | null;
 
-  // --- esfuerzo / destete (panel condicional) ---
-  p01: string;
-  nif: string;
-  pOcc: string;
-  pMus: string;
-  pmi: string;
-  pim: string;
-  pcf: string;
+  kineRealizada: boolean | null;
+  aspiracion: Aspiracion;
+  aspecto: AspectoSecreciones | null;
+  reologia: ReologiaSecreciones | null;
+  cantidad: CantidadSecreciones | null;
 
-  // --- intervencion kinesica: SIEMPRE limpia ---
-  secrecionesCantidad: CantidadSecreciones | null;
-  secrecionesTipo: TipoSecreciones | null;
-  respiratoriaRealizada: boolean;
-  aspiracion: TipoAspiracion;
-  motoraContraindicada: boolean;
+  terapiaFisica: EstadoTerapiaFisica | null;
+  actividades: string[];
+  ims: string;
   motivoContraindicacion: string | null;
-  actividadesMotoras: string[];
-  ims: number | null;
+
   observaciones: string;
 }
 
-/**
- * Crea el borrador de un control nuevo.
- *
- * `ultimo` es el control previo del episodio, si existe. De el se hereda SOLO
- * el estado continuo; nunca una variable dinamica ni una intervencion kinesica.
- */
-export function crearBorradorNuevoControl(
-  episodio: Episodio,
-  ultimo: Control | null,
-  rutAutor: string
-): BorradorControl {
-  const esMio = episodio.rutTitular === rutAutor;
-  const via = episodio.viaAereaActual;
-  const artificial = esViaAereaArtificial(via);
-
-  return {
-    episodioId: episodio.id,
-    rutAutor,
-    esControlApoyo: !esMio,
-    viaAerea: via,
-
-    // Regla 3.A: en blanco, sin excepcion.
-    fc: "",
-    pas: "",
-    pad: "",
-    fr: "",
-    vt: "",
-    pPico: "",
-    pPlateau: "",
-    spo2: "",
-
-    // Estado continuo heredado (ahorro de tipeo sin riesgo de sesgo).
-    pic: textoDe(ultimo?.pic ?? null),
-    tienePic: ultimo?.pic !== null && ultimo?.pic !== undefined,
-    noradrenalina: textoDe(ultimo?.dva.noradrenalina ?? null),
-    adrenalina: textoDe(ultimo?.dva.adrenalina ?? null),
-    vasopresina: textoDe(ultimo?.dva.vasopresina ?? null),
-    tipoVentilacion: ultimo?.soporte.tipo ?? (artificial ? "VMI" : "AIRE_AMBIENTAL"),
-    modoVMI: ultimo?.soporte.modoVMI ?? (artificial ? "PSV" : null),
-    fio2: textoDe(ultimo?.soporte.fio2 ?? null),
-    peep: textoDe(ultimo?.soporte.peep ?? null),
-    presionSoporte: textoDe(ultimo?.soporte.presionSoporte ?? null),
-    flujo: textoDe(ultimo?.soporte.flujo ?? null),
-    presionCuff: textoDe(ultimo?.soporte.presionCuff ?? null),
-    // La asincronia es una observacion del momento: no se hereda.
-    asincronico: false,
-    sedacionActiva: ultimo?.sedacionActiva ?? false,
-    sedacion: { ...(ultimo?.sedacion ?? {}) },
-    bnmActivo: ultimo?.bnmActivo ?? false,
-
-    gcsOcular: ultimo?.glasgow.ocular ?? 4,
-    gcsVerbal: artificial ? 1 : (ultimo?.glasgow.verbal ?? 5),
-    gcsMotora: ultimo?.glasgow.motora ?? 6,
-    sas: ultimo?.sedacionActiva ? (ultimo.sas ?? null) : null,
-    vigilia: ultimo?.sedacionActiva === false ? (ultimo.vigilia ?? null) : null,
-
-    // Mediciones de esfuerzo: siempre frescas.
-    p01: "",
-    nif: "",
-    pOcc: "",
-    pMus: "",
-    pmi: "",
-    pim: "",
-    pcf: "",
-
-    // Intervencion kinesica y eventos: 100% limpios, sin herencia.
-    secrecionesCantidad: null,
-    secrecionesTipo: null,
-    respiratoriaRealizada: false,
-    aspiracion: "NO_REQUIERE",
-    motoraContraindicada: false,
-    motivoContraindicacion: null,
-    actividadesMotoras: [],
-    ims: null,
-    observaciones: ""
-  };
+export function infusionVacia(id: IdInfusion): BorradorInfusion {
+  const def = INFUSIONES.find((i) => i.id === id);
+  return { activa: false, escalon: "", dosis: "", libre: def ? def.escalones === null : true };
 }
 
-function textoDe(v: Medicion): string {
-  return v === null ? "" : String(v);
+function textoDe(v: Medicion | undefined): string {
+  return v === null || v === undefined ? "" : String(v);
 }
 
-/** "" -> null. Un 0 escrito a proposito se conserva como 0. */
+/** "" -> null. Un 0 escrito a proposito se conserva como 0. Acepta coma decimal. */
 export function medicionDe(texto: string): Medicion {
   const t = texto.trim();
   if (t === "") return null;
@@ -207,30 +122,227 @@ export function medicionDe(texto: string): Medicion {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Crea el borrador de un control nuevo. De `ultimo` se hereda SOLO el estado
+ * continuo (ajustes del ventilador, infusiones); nunca una lectura de monitor
+ * ni una evaluacion.
+ */
+export function crearBorradorNuevoControl(
+  episodio: Episodio,
+  ultimo: Control | null,
+  rutAutor: string
+): BorradorControl {
+  const artificial = esViaAereaArtificial(episodio.viaAereaActual);
+  const modalidad: Modalidad = ultimo?.ventilacion.modalidad ?? (artificial ? "CPAP_PS" : "CNAF");
+
+  const vent = Object.fromEntries(CAMPOS_VENT.map((c) => [c, ""])) as Record<CampoVent, string>;
+  if (ultimo) {
+    for (const c of CAMPOS_VENT_PROGRAMADOS) vent[c] = textoDe(ultimo.ventilacion[c]);
+  }
+
+  const infusiones = Object.fromEntries(
+    INFUSIONES.map((def) => {
+      const previa = ultimo?.infusiones[def.id];
+      const b: BorradorInfusion =
+        previa && previa.dosis > 0
+          ? {
+              activa: true,
+              escalon: previa.escalon === null ? "" : String(previa.escalon),
+              dosis: String(previa.dosis),
+              libre: previa.escalon === null
+            }
+          : infusionVacia(def.id);
+      return [def.id, b];
+    })
+  ) as Record<IdInfusion, BorradorInfusion>;
+
+  return {
+    episodioId: episodio.id,
+    rutAutor,
+    esControlApoyo: episodio.rutTitular !== rutAutor,
+
+    fc: "",
+    spo2: "",
+    pas: "",
+    pad: "",
+
+    modalidad,
+    // La asincronia es una observacion del momento: no se hereda.
+    asincronico: false,
+    vent,
+
+    infusiones,
+    sas: null,
+    vigilia: null,
+
+    kineRealizada: null,
+    aspiracion: "NO",
+    aspecto: null,
+    reologia: null,
+    cantidad: null,
+
+    terapiaFisica: null,
+    actividades: [],
+    ims: "",
+    motivoContraindicacion: null,
+
+    observaciones: ""
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Transformaciones puras del borrador
+// ---------------------------------------------------------------------------
+
+export function cambiarModalidad(b: BorradorControl, modalidad: Modalidad): BorradorControl {
+  return { ...b, modalidad, asincronico: modalidad === "CNAF" ? false : b.asincronico };
+}
+
+export function iniciarInfusion(b: BorradorControl, id: IdInfusion): BorradorControl {
+  return { ...b, infusiones: { ...b.infusiones, [id]: { ...b.infusiones[id], activa: true } } };
+}
+
+export function suspenderInfusion(b: BorradorControl, id: IdInfusion): BorradorControl {
+  const libre = infusionVacia(id).libre;
+  return { ...b, infusiones: { ...b.infusiones, [id]: { activa: false, escalon: "", dosis: "", libre } } };
+}
+
+export function alternarDosisLibre(b: BorradorControl, id: IdInfusion): BorradorControl {
+  const x = b.infusiones[id];
+  // Sin escalones definidos, la dosis libre es la unica opcion.
+  if (infusionVacia(id).libre) return b;
+  return { ...b, infusiones: { ...b.infusiones, [id]: { ...x, libre: !x.libre, escalon: "", dosis: "" } } };
+}
+
+/** Dosis efectiva de una infusion del borrador: del escalon o libre. `null` si falta. */
+export function dosisEfectiva(id: IdInfusion, x: BorradorInfusion): number | null {
+  if (x.libre) return medicionDe(x.dosis);
+  const esc = medicionDe(x.escalon);
+  return esc === null ? null : dosisDeEscalon(id, esc);
+}
+
+// ---------------------------------------------------------------------------
+// Validacion
+// ---------------------------------------------------------------------------
+
+export interface ProblemaBorrador {
+  /** Identificador del campo o bloque con el problema. */
+  readonly campo: string;
+  readonly mensaje: string;
+}
+
+export interface ContextoValidacion {
+  /** APK vigente del turno para este episodio, o null si no hay. */
+  readonly apkVigente: ValidacionApk | null;
+}
+
+const ETIQUETA_VITAL: Readonly<Record<CampoVital, string>> = {
+  fc: "FC",
+  spo2: "SpO₂",
+  pas: "PAS",
+  pad: "PAD"
+};
+
+/** Lista lo que falta para poder guardar. Vacia = se puede guardar. */
+export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): readonly ProblemaBorrador[] {
+  const problemas: ProblemaBorrador[] = [];
+  const falta = (campo: string, mensaje: string): void => {
+    problemas.push({ campo, mensaje });
+  };
+
+  for (const c of CAMPOS_VITALES) {
+    if (medicionDe(b[c]) === null) falta(c, ETIQUETA_VITAL[c]);
+  }
+  if (medicionDe(b.vent.frTotal) === null) falta("frTotal", "FR total");
+
+  const sedada = sedoanalgesiaActivaEnBorrador(b);
+  if (sedada && b.sas === null) falta("sas", "SAS");
+  if (!sedada && b.vigilia === null) falta("vigilia", "estado de vigilia");
+
+  for (const def of INFUSIONES) {
+    const x = b.infusiones[def.id];
+    if (x.activa && dosisEfectiva(def.id, x) === null) {
+      falta(`infusion:${def.id}`, `${def.nombre}: ${x.libre ? "dosis" : "escalón"}`);
+    }
+  }
+
+  if (b.kineRealizada === null) falta("kine", "kine respiratoria sí/no");
+  if (b.terapiaFisica === null) falta("terapiaFisica", "terapia física");
+
+  if (b.kineRealizada === true) {
+    if (!kineRespiratoriaPermitida(ctx.apkVigente)) {
+      falta("apk", "la APK de este turno no cumple: la kine respiratoria queda diferida");
+    } else if (ctx.apkVigente === null) {
+      falta("apk", "firmar la APK de este turno");
+    }
+  }
+
+  return problemas;
+}
+
+/** Sedoanalgesia activa segun lo que hay en el borrador (para decidir SAS vs vigilia). */
+export function sedoanalgesiaActivaEnBorrador(b: BorradorControl): boolean {
+  const sedantes: Infusiones = Object.fromEntries(
+    INFUSIONES.filter((d) => d.grupo === "SEDANTE" && b.infusiones[d.id].activa).map((d) => [d.id, { dosis: 1, escalon: null }])
+  );
+  return sedoanalgesiaActiva(sedantes);
+}
+
+// ---------------------------------------------------------------------------
+// Materializacion
+// ---------------------------------------------------------------------------
+
 export interface DatosMaterializacion {
   readonly id: Uuid;
   readonly numero: number;
   readonly ahora: Date;
+  /** Via aerea vigente del episodio. El control la observa; no es editable en rutina. */
+  readonly viaAerea: ViaAerea;
   readonly corrige?: Uuid | null;
 }
 
-/** Convierte el borrador en un Control inmutable listo para persistir. */
-export function materializarControl(
-  b: BorradorControl,
-  datos: DatosMaterializacion
-): Control {
-  const esVMI = b.tipoVentilacion === "VMI";
-  const hayEsfuerzo = [b.p01, b.nif, b.pOcc, b.pMus, b.pmi, b.pim, b.pcf].some(
-    (v) => v.trim() !== ""
-  );
+/** Convierte el borrador en un Control inmutable. Asume que `validarBorrador` no reporta problemas. */
+export function materializarControl(b: BorradorControl, datos: DatosMaterializacion): Control {
+  const aplica = new Set(CAMPOS_POR_MODALIDAD[b.modalidad].map((d) => d.campo));
+  const campo = (c: CampoVent): Medicion => (aplica.has(c) ? medicionDe(b.vent[c]) : null);
+
+  const ventilacion: Ventilacion = {
+    modalidad: b.modalidad,
+    asincronico: b.modalidad === "CNAF" ? false : b.asincronico,
+    frProgramada: campo("frProgramada"),
+    vtProgramado: campo("vtProgramado"),
+    flujo: campo("flujo"),
+    ti: campo("ti"),
+    presion: campo("presion"),
+    peep: campo("peep"),
+    fio2: campo("fio2"),
+    frTotal: campo("frTotal"),
+    vtEspirado: campo("vtEspirado"),
+    pPico: campo("pPico"),
+    pPlateau: campo("pPlateau"),
+    pMedia: campo("pMedia")
+  };
+
+  const infusiones: Record<string, { dosis: number; escalon: number | null }> = {};
+  for (const def of INFUSIONES) {
+    const x = b.infusiones[def.id];
+    if (!x.activa) continue;
+    const dosis = dosisEfectiva(def.id, x);
+    if (dosis === null) continue;
+    infusiones[def.id] = { dosis, escalon: x.libre ? null : medicionDe(x.escalon) };
+  }
+
+  const sedada = sedoanalgesiaActivaEnBorrador(b);
+  const kine = b.kineRealizada === true;
+  const tf = b.terapiaFisica ?? "NO";
+
+  const hora = `${String(datos.ahora.getHours()).padStart(2, "0")}:${String(datos.ahora.getMinutes()).padStart(2, "0")}`;
 
   return {
     id: datos.id,
     episodioId: b.episodioId,
     numero: datos.numero,
-    hora: `${String(datos.ahora.getHours()).padStart(2, "0")}:${String(
-      datos.ahora.getMinutes()
-    ).padStart(2, "0")}`,
+    hora,
     registradoEn: datos.ahora.toISOString(),
     rutAutor: b.rutAutor,
     esControlApoyo: b.esControlApoyo,
@@ -240,59 +352,29 @@ export function materializarControl(
     pas: medicionDe(b.pas),
     pad: medicionDe(b.pad),
     spo2: medicionDe(b.spo2),
-    pic: b.tienePic ? medicionDe(b.pic) : null,
+    pic: null,
 
-    dva: {
-      noradrenalina: medicionDe(b.noradrenalina),
-      adrenalina: medicionDe(b.adrenalina),
-      vasopresina: medicionDe(b.vasopresina)
+    viaAerea: datos.viaAerea,
+    ventilacion,
+    esfuerzo: null,
+
+    infusiones,
+    sas: sedada ? b.sas : null,
+    vigilia: sedada ? null : b.vigilia,
+    glasgow: null,
+
+    kineResp: {
+      realizada: kine,
+      aspiracion: kine ? b.aspiracion : "NO",
+      aspecto: kine ? b.aspecto : null,
+      reologia: kine ? b.reologia : null,
+      cantidad: kine ? b.cantidad : null
     },
-
-    viaAerea: b.viaAerea,
-    soporte: {
-      tipo: b.tipoVentilacion,
-      modoVMI: esVMI ? b.modoVMI : null,
-      fio2: medicionDe(b.fio2),
-      peep: medicionDe(b.peep),
-      vt: medicionDe(b.vt),
-      fr: medicionDe(b.fr),
-      presionSoporte: medicionDe(b.presionSoporte),
-      pPico: medicionDe(b.pPico),
-      pPlateau: medicionDe(b.pPlateau),
-      flujo: medicionDe(b.flujo),
-      presionCuff: medicionDe(b.presionCuff),
-      asincronico: b.asincronico
-    },
-    esfuerzo: hayEsfuerzo
-      ? {
-          p01: medicionDe(b.p01),
-          nif: medicionDe(b.nif),
-          pOcc: medicionDe(b.pOcc),
-          pMus: medicionDe(b.pMus),
-          pmi: medicionDe(b.pmi),
-          pim: medicionDe(b.pim),
-          pcf: medicionDe(b.pcf)
-        }
-      : null,
-
-    glasgow: { ocular: b.gcsOcular, verbal: b.gcsVerbal, motora: b.gcsMotora },
-    sedacionActiva: b.sedacionActiva,
-    // Conciencia condicional (regla 3.E): SAS solo con sedacion, vigilia solo sin ella.
-    sas: b.sedacionActiva ? b.sas : null,
-    vigilia: b.sedacionActiva ? null : b.vigilia,
-    sedacion: b.sedacionActiva ? b.sedacion : {},
-    bnmActivo: b.bnmActivo,
-
-    secrecionesCantidad: b.secrecionesCantidad,
-    secrecionesTipo: b.secrecionesTipo,
-
-    intervencion: {
-      respiratoriaRealizada: b.respiratoriaRealizada,
-      aspiracion: b.aspiracion,
-      motoraContraindicada: b.motoraContraindicada,
-      motivoContraindicacion: b.motoraContraindicada ? b.motivoContraindicacion : null,
-      actividadesMotoras: b.motoraContraindicada ? [] : [...b.actividadesMotoras],
-      ims: b.motoraContraindicada ? null : b.ims
+    terapiaFisica: {
+      estado: tf,
+      actividades: tf === "REALIZADA" ? [...b.actividades] : [],
+      ims: tf === "REALIZADA" ? medicionDe(b.ims) : null,
+      motivoContraindicacion: tf === "CONTRAINDICADA" ? b.motivoContraindicacion : null
     },
     observaciones: b.observaciones.trim()
   };

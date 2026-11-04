@@ -1,23 +1,30 @@
 /**
- * Generador de evolucion clinica para HIS ALMA (TrakCare).
+ * Generador de evolucion clinica para HIS ALMA (TrakCare) y campos discretos.
  *
  * Es la pieza con mas valor clinico por linea de codigo: resuelve el principal
- * cuello de botella operativo (transcripcion manual). Por eso es una funcion
- * pura y va con tests sobre casos reales.
+ * cuello de botella operativo (la transcripcion manual). Por eso es una funcion
+ * pura y va con tests.
  *
- * Respeta el candado de mecanica: si la asincronia en modo controlado invalida
- * el plateau, la nota NO reporta driving pressure ni compliance, y dice por que.
- * Una sola fuente de verdad con la pantalla (src/core/validez.ts).
+ * Respeta el candado de mecanica: si la asincronia en modalidad controlada
+ * invalida el plateau, la nota NO reporta driving pressure ni compliance y dice
+ * por que. Una sola fuente de verdad con la pantalla (src/core/validez.ts).
  */
 
 import { buscarProfesional } from "./dotacion";
+import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD } from "./catalogos";
+import { apkVigente } from "./apk";
 import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiologia";
-import { describirDva } from "./dva";
-import { describirSedacion } from "./sedacion";
-import { ESCALA_SAS, ESTADOS_VIGILIA } from "./catalogos";
+import { describirCardiovasculares, describirInfusiones, sedoanalgesiaActiva } from "./infusiones";
 import { estadoProno, eventosDeRiesgo } from "./eventos";
 import { resumirTurno } from "./rem28";
-import type { Control, Episodio, EventoClinico, ValidacionApk } from "./tipos";
+import { esModalidadControlada, mecanicaBloqueadaPorAsincronia } from "./validez";
+import type {
+  Control,
+  Episodio,
+  EventoClinico,
+  Modalidad,
+  ValidacionApk
+} from "./tipos";
 
 export type ModoNota = "TURNO_COMPLETO" | "ULTIMA_ATENCION";
 
@@ -30,6 +37,8 @@ export interface EntradaNota {
   readonly ahora: Date;
 }
 
+const fmt = (v: number | null): string => (v === null ? "--" : String(v));
+
 function nombreDe(rut: string): string {
   const p = buscarProfesional(rut);
   return p ? `Klgo. ${p.nombre}` : `RUT ${rut}`;
@@ -39,122 +48,86 @@ function ordenados(controles: readonly Control[]): readonly Control[] {
   return [...controles].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
 }
 
-function etiquetaVia(e: Episodio): string {
-  return esViaAereaArtificial(e.viaAereaActual)
-    ? `${e.viaAereaActual}${e.calibreVia ? ` ${e.calibreVia}` : ""}${
-        e.fijacionCm ? ` (fijacion ${e.fijacionCm})` : ""
-      }`
-    : "via aerea natural";
+function capitalizar(s: string): string {
+  return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
 }
 
-function etiquetaConciencia(c: Control): string {
-  if (c.sedacionActiva) {
+function etiquetaVia(e: Episodio): string {
+  if (!esViaAereaArtificial(e.viaAereaActual)) return "vía aérea natural";
+  const fij = e.fijacionCm ? ` (fijación ${e.fijacionCm}${/\d/.test(e.fijacionCm) ? " cm" : ""})` : "";
+  return `${e.viaAereaActual}${e.calibreVia ? ` ${e.calibreVia}` : ""}${fij}`;
+}
+
+function textoConciencia(c: Control): string {
+  if (sedoanalgesiaActiva(c.infusiones)) {
     const sas = ESCALA_SAS.find((s) => s.val === c.sas);
-    return sas ? `SAS ${sas.label.replace("· ", "")}` : "SAS no consignado";
+    return `${sas ? `SAS ${sas.val} (${sas.label})` : "SAS no consignado"}, ${describirInfusiones(c.infusiones, "SEDANTE")}`;
   }
   const v = ESTADOS_VIGILIA.find((e) => e.val === c.vigilia);
-  return v ? `estado de vigilia ${v.label.toLowerCase()}` : "estado de vigilia no consignado";
+  return `sin sedoanalgesia, estado de vigilia ${v ? v.label.toLowerCase() : "no consignado"}`;
 }
 
-/** Bloque respiratorio de un control, con el candado de mecanica aplicado. */
+const ASPIRACION: Readonly<Record<Control["kineResp"]["aspiracion"], string>> = {
+  NO: "",
+  TRACHCARE: "TrachCare",
+  SET: "set"
+};
+
+function textoSecreciones(c: Control): string {
+  const k = c.kineResp;
+  if (!k.realizada || (!k.aspecto && !k.reologia && !k.cantidad)) return "";
+  const partes = [k.cantidad, k.aspecto, k.reologia].filter((x): x is NonNullable<typeof x> => x !== null);
+  return `Secreciones ${partes.join(", ").toLowerCase()}`;
+}
+
+function textoKine(c: Control): string {
+  const k = c.kineResp;
+  if (!k.realizada) return "Kinesiterapia respiratoria no realizada.";
+  const asp = k.aspiracion !== "NO" ? ` con aspiración (${ASPIRACION[k.aspiracion]})` : "";
+  return `Kinesiterapia respiratoria realizada${asp}.`;
+}
+
+function textoTerapiaFisica(c: Control): string {
+  const t = c.terapiaFisica;
+  if (t.estado === "CONTRAINDICADA") {
+    return `Terapia física contraindicada${t.motivoContraindicacion ? ` (${t.motivoContraindicacion})` : ""}`;
+  }
+  if (t.estado === "NO") return "Sin terapia física";
+  const acts = t.actividades.length > 0 ? t.actividades.join(" + ") : "Terapia física realizada";
+  return `${acts}${t.ims !== null ? ` (IMS ${t.ims})` : ""}`;
+}
+
+/** Bloque respiratorio de un control: programado, paciente y resultantes segun modalidad. */
 function bloqueRespiratorio(c: Control, pbw: number): string {
+  const v = c.ventilacion;
   const d = calcularDerivados(c, pbw);
-  const s = c.soporte;
 
-  if (s.tipo === "VMI") {
-    const partes = [
-      `VMI ${s.modoVMI ?? "modo no consignado"}`,
-      `FiO2 ${fmt(s.fio2)}%`,
-      `PEEP ${fmt(s.peep)} cmH2O`,
-      `Vt ${fmt(s.vt)} ml${d.vtPorKg !== null ? ` (${d.vtPorKg} ml/kg PBW)` : ""}`,
-      `FR ${fmt(s.fr)} rpm`,
-      `P.pico ${fmt(s.pPico)} cmH2O`
-    ];
-
-    if (d.drivingPressure !== null) {
-      partes.push(
-        `P.plateau ${fmt(s.pPlateau)} cmH2O`,
-        `driving pressure ${d.drivingPressure} cmH2O`,
-        `compliance estatica ${d.compliance ?? "--"} ml/cmH2O`
-      );
-    } else if (s.asincronico) {
-      // No se reporta un dato contaminado por esfuerzo muscular activo.
-      partes.push(
-        `mecanica estatica no valorable (asincronia paciente-ventilador en modo controlado)`
-      );
-    }
-
-    if (d.tobin !== null) partes.push(`indice de Tobin ${d.tobin}`);
-    if (s.presionCuff !== null) partes.push(`presion de cuff ${s.presionCuff} cmH2O`);
-    return partes.join(", ");
+  if (v.modalidad === "CNAF") {
+    const p = [`CNAF flujo ${fmt(v.flujo)} L/min`, `FiO2 ${fmt(v.fio2)}%`, `FR ${fmt(v.frTotal)} rpm`];
+    if (d.rox !== null) p.push(`índice ROX ${d.rox}`);
+    return p.join(", ");
   }
 
-  const partes = [etiquetaSoporteNoInvasivo(c), `FiO2 ${fmt(s.fio2)}%`];
-  if (s.flujo !== null) partes.push(`flujo ${s.flujo} L/min`);
-  if (s.fr !== null) partes.push(`FR ${s.fr} rpm`);
-  if (d.rox !== null) partes.push(`indice ROX ${d.rox}`);
-  return partes.join(", ");
-}
-
-function etiquetaSoporteNoInvasivo(c: Control): string {
-  switch (c.soporte.tipo) {
-    case "VMNI":
-      return "VMNI";
-    case "CNAF":
-      return "CNAF";
-    case "O2_CONVENCIONAL":
-      return "oxigenoterapia convencional";
-    case "AIRE_AMBIENTAL":
-      return "aire ambiental";
-    case "VMI":
-      return "VMI";
-    default:
-      return "soporte no consignado";
+  const controlada = esModalidadControlada(v.modalidad);
+  const p = [`VMI ${ETIQUETA_MODALIDAD[v.modalidad]}`, `FiO2 ${fmt(v.fio2)}%`, `PEEP ${fmt(v.peep)}`];
+  if (v.presion !== null) p.push(`${v.modalidad === "PCV" ? "P. control" : "P. soporte"} ${v.presion}`);
+  if (v.modalidad === "ACVC") {
+    p.push(`Vt programado ${fmt(v.vtProgramado)} ml (${fmt(d.vtProgramadoPorKg)} ml/kg PI)`);
   }
-}
+  p.push(`Vt espirado ${fmt(v.vtEspirado)} ml (${fmt(d.vtEspiradoPorKg)} ml/kg PI)`);
+  p.push(controlada ? `FR programada ${fmt(v.frProgramada)} / total ${fmt(v.frTotal)} rpm` : `FR ${fmt(v.frTotal)} rpm`);
+  if (d.volumenMinuto !== null) p.push(`volumen minuto ${d.volumenMinuto} L/min`);
+  if (controlada && v.ti !== null) p.push(`TI ${v.ti} s${d.relacionIE ? ` (I:E ${d.relacionIE})` : ""}`);
+  p.push(`P.pico ${fmt(v.pPico)}`);
 
-function fmt(v: number | null): string {
-  return v === null ? "--" : String(v);
-}
-
-function bloqueEsfuerzo(c: Control, pbw: number): string | null {
-  if (c.esfuerzo === null) return null;
-  const e = c.esfuerzo;
-  const d = calcularDerivados(c, pbw);
-  const partes: string[] = [];
-  if (e.p01 !== null) partes.push(`P0.1 ${e.p01} cmH2O`);
-  if (e.nif !== null) partes.push(`NIF ${e.nif} cmH2O`);
-  if (e.pOcc !== null) partes.push(`P.occ ${e.pOcc} cmH2O`);
-  if (e.pMus !== null) partes.push(`P.mus ${e.pMus} cmH2O`);
-  if (e.pmi !== null) partes.push(`PMI ${e.pmi} cmH2O`);
-  if (e.pim !== null) partes.push(`PIM ${e.pim} cmH2O`);
-  if (e.pcf !== null) {
-    const semaforo =
-      d.semaforoPcf === "OPTIMO"
-        ? "sobre corte de exito"
-        : d.semaforoPcf === "LIMITE"
-          ? "en rango limite"
-          : "bajo corte de exito";
-    partes.push(`flujo pico de tos ${e.pcf} L/min (${semaforo})`);
+  if (d.drivingPressure !== null) {
+    p.push(`P.plateau ${fmt(v.pPlateau)}`, `driving pressure ${d.drivingPressure}`, `compliance estática ${fmt(d.compliance)}`);
+  } else if (mecanicaBloqueadaPorAsincronia(v)) {
+    // No se reporta un dato contaminado por esfuerzo muscular activo.
+    p.push("mecánica estática no valorable (asincronía paciente-ventilador en modalidad controlada)");
   }
-  return partes.length > 0 ? partes.join(", ") : null;
-}
-
-function bloqueMotor(c: Control): string {
-  const i = c.intervencion;
-  if (i.motoraContraindicada) {
-    return `Kinesiterapia motora contraindicada por: ${
-      i.motivoContraindicacion ?? "motivo no consignado"
-    }.`;
-  }
-  if (i.actividadesMotoras.length === 0) {
-    return `Kinesiterapia motora sin actividades consignadas${
-      i.ims !== null ? ` (IMS ${i.ims})` : ""
-    }.`;
-  }
-  return `Kinesiterapia motora realizada: ${i.actividadesMotoras.join(", ").toLowerCase()}${
-    i.ims !== null ? ` (nivel IMS ${i.ims})` : ""
-  }.`;
+  if (d.tobin !== null) p.push(`índice de Tobin ${d.tobin}`);
+  return p.join(", ");
 }
 
 function describirEvento(ev: EventoClinico): string {
@@ -164,37 +137,37 @@ function describirEvento(ev: EventoClinico): string {
     case "FIN_PVE":
       return `Fin de PVE: ${ev.exitosa ? "tolerada" : "no tolerada"}`;
     case "EXTUBACION_PROGRAMADA":
-      return `Extubacion programada, queda en ${ev.dispositivoSalida}`;
+      return `Extubación programada, queda en ${ev.dispositivo}`;
     case "AUTOEXTUBACION":
-      return `AUTOEXTUBACION NO PLANIFICADA, queda en ${ev.dispositivoSalida}`;
+      return `AUTOEXTUBACIÓN NO PLANIFICADA, queda en ${ev.dispositivo}`;
     case "REINTUBACION":
-      return `Reintubacion ${ev.via} calibre ${ev.calibre}, fijacion ${ev.fijacionCm}`;
+      return `Reintubación ${ev.via} calibre ${ev.calibre}, fijación ${ev.fijacionCm} cm`;
     case "TRAQUEOSTOMIA":
-      return `Traqueostomia calibre ${ev.calibre}`;
+      return `Traqueostomía calibre ${ev.calibre}`;
     case "AJUSTE_TUBO":
-      return `Ajuste de fijacion a ${ev.fijacionCm} cm (${
-        ev.motivo === "DESPLAZAMIENTO_SUPERFICIAL"
-          ? "desplazamiento superficial"
-          : "control radiologico"
-      })`;
+      return `Ajuste de fijación a ${ev.fijacionCm} cm (${ev.motivo === "DESPLAZAMIENTO_SUPERFICIAL" ? "desplazamiento superficial" : "control radiológico"})`;
     case "INICIO_PRONO":
       return "Inicio de ciclo de prono";
     case "SUPINACION":
-      return "Supinacion";
+      return "Supinación";
     case "INICIO_BNM":
       return `Inicio de bloqueo neuromuscular (${ev.farmaco})`;
     case "FIN_BNM":
-      return "Suspension de bloqueo neuromuscular";
+      return "Suspensión de bloqueo neuromuscular";
     case "PCR":
-      return `Evento PCR, reanimacion ${ev.duracionReanimacionMin} min`;
+      return `Paro cardiorrespiratorio, reanimación ${ev.duracionReanimacionMin} min`;
     case "EVENTO_CENTINELA":
       return `Evento centinela: ${ev.descripcion}`;
+    case "ASISTENCIA_FBC":
+      return "Asistencia en fibrobroncoscopía";
     case "ASISTENCIA_PROCEDIMIENTO":
-      return `Asistencia en ${ev.procedimiento}`;
+      return `Asistencia en ${ev.procedimiento.toLowerCase()}`;
     case "TOMA_CULTIVO":
       return `Toma de cultivo (${ev.muestra})`;
     case "TRASLADO_IMAGEN":
       return `Traslado a ${ev.destino}`;
+    case "CAMBIO_HMEF":
+      return "Cambio de filtro HMEF";
     default: {
       const _exhaustivo: never = ev;
       return String(_exhaustivo);
@@ -202,230 +175,167 @@ function describirEvento(ev: EventoClinico): string {
   }
 }
 
-/** Nota de una sola atencion, para controles intermedios. */
 function notaUltimaAtencion(entrada: EntradaNota, pbw: number): string {
   const { episodio } = entrada;
-  const lista = ordenados(entrada.controles);
-  const u = lista[lista.length - 1];
+  const u = ordenados(entrada.controles).at(-1);
   if (!u) return `[SIN CONTROLES REGISTRADOS PARA ${episodio.cama}]`;
-
   const d = calcularDerivados(u, pbw);
-  const esfuerzo = bloqueEsfuerzo(u, pbw);
+  const sec = textoSecreciones(u);
 
-  const lineas = [
-    `[CONTROL KINESIOLOGIA UPC · ${episodio.cama} · ATENCION #${u.numero} (${u.hora} hrs)]`,
+  return [
+    `[CONTROL KINESIOLOGÍA UPC · ${episodio.cama} · ATENCIÓN #${u.numero} (${u.hora} hrs)]`,
     `Profesional: ${nombreDe(u.rutAutor)}${u.esControlApoyo ? " (control de apoyo)" : ""}.`,
     ``,
-    `1. HEMODINAMIA: FC ${fmt(u.fc)} lpm, PA ${fmt(u.pas)}/${fmt(u.pad)} mmHg (PAM ${fmt(
-      d.pam
-    )} mmHg). ${capitalizar(describirDva(u.dva))}.${
-      u.pic !== null ? ` PIC ${u.pic} mmHg (PPC ${fmt(d.ppc)} mmHg).` : ""
-    }`,
-    `2. CONCIENCIA Y SEDACION: Glasgow ${d.glasgow.completo}, ${etiquetaConciencia(u)}. ${
-      u.sedacionActiva ? `Sedoanalgesia: ${describirSedacion(u.sedacion)}.` : "Sin sedoanalgesia."
-    }${u.bnmActivo ? " Con bloqueo neuromuscular activo." : ""}`,
-    `3. RESPIRATORIO Y VIA AEREA: ${etiquetaVia(episodio)} en ${bloqueRespiratorio(u, pbw)}. ` +
-      `SpO2 ${fmt(u.spo2)}%.${
-        u.secrecionesCantidad
-          ? ` Secreciones ${u.secrecionesCantidad.toLowerCase()}${
-              u.secrecionesTipo ? ` ${u.secrecionesTipo.toLowerCase()}` : ""
-            }${u.intervencion.aspiracion !== "NO_REQUIERE" ? ", aspiradas" : ""}.`
-          : ""
-      }`,
-    ...(esfuerzo ? [`4. ESFUERZO RESPIRATORIO: ${esfuerzo}.`] : []),
-    `${esfuerzo ? "5" : "4"}. KINESITERAPIA: ${
-      u.intervencion.respiratoriaRealizada
-        ? "Kinesiterapia respiratoria realizada. "
-        : ""
-    }${bloqueMotor(u)}`,
-    ...(u.observaciones ? [``, `Observacion: ${u.observaciones}`] : [])
-  ];
-
-  return lineas.join("\n");
+    `1. HEMODINAMIA: FC ${fmt(u.fc)} lpm, PA ${fmt(u.pas)}/${fmt(u.pad)} mmHg (PAM ${fmt(d.pam)} mmHg). ${capitalizar(describirCardiovasculares(u.infusiones))}.`,
+    `2. CONCIENCIA Y SEDACIÓN: ${capitalizar(textoConciencia(u))}.`,
+    `3. RESPIRATORIO Y VÍA AÉREA: ${etiquetaVia(episodio)} en ${bloqueRespiratorio(u, pbw)}. SpO2 ${fmt(u.spo2)}%.${sec ? ` ${sec}.` : ""}`,
+    `4. KINESITERAPIA: ${textoKine(u)} ${textoTerapiaFisica(u)}.`,
+    ...(u.observaciones ? [``, `Observación: ${u.observaciones}`] : [])
+  ].join("\n");
 }
 
-function capitalizar(s: string): string {
-  return s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1);
-}
-
-/** Nota de resumen de turno: la que se pega en ALMA al cierre. */
 function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
-  const { episodio, eventos, apk } = entrada;
+  const { episodio, eventos, apk, ahora } = entrada;
   const lista = ordenados(entrada.controles);
   const primero = lista[0];
-  const ultimo = lista[lista.length - 1];
+  const ultimo = lista.at(-1);
+  if (!primero || !ultimo) return `[SIN CONTROLES REGISTRADOS EN EL TURNO PARA ${episodio.cama}]`;
 
-  if (!primero || !ultimo) {
-    return `[SIN CONTROLES REGISTRADOS EN EL TURNO PARA ${episodio.cama}]`;
-  }
-
-  const dPrimero = calcularDerivados(primero, pbw);
-  const dUltimo = calcularDerivados(ultimo, pbw);
+  const dP = calcularDerivados(primero, pbw);
+  const dU = calcularDerivados(ultimo, pbw);
   const stats = resumirTurno(lista, eventos, apk);
-  const prono = estadoProno(eventos, entrada.ahora);
+  const prono = estadoProno(eventos, ahora);
   const riesgos = eventosDeRiesgo(eventos);
+  const apkTurno = apkVigente(apk, episodio.id, ahora);
 
   const cronologia = lista
     .map((c) => {
-      const evs = eventos
-        .filter((e) => e.hora === c.hora)
-        .map(describirEvento);
-      const hitos = evs.length > 0 ? ` | Hitos: ${evs.join("; ")}` : "";
-      return `  · [#${c.numero} · ${c.hora} hrs${
-        c.esControlApoyo ? " · apoyo" : ""
-      }] ${bloqueMotor(c)}${hitos}${c.observaciones ? ` ${c.observaciones}` : ""}`;
+      const evs = eventos.filter((e) => e.hora === c.hora).map(describirEvento);
+      const sec = textoSecreciones(c);
+      return `  · [#${c.numero} · ${c.hora} hrs${c.esControlApoyo ? " · apoyo" : ""}] ${textoTerapiaFisica(c)}${sec ? ` | ${sec}` : ""}${evs.length ? ` | Hitos: ${evs.join("; ")}` : ""}${c.observaciones ? ` ${c.observaciones}` : ""}`;
     })
     .join("\n");
 
-  const eventosFueraDeControl = eventos
+  const aparte = eventos
     .filter((e) => !lista.some((c) => c.hora === e.hora))
     .map((e) => `  · [${e.hora} hrs] ${describirEvento(e)}${e.comentario ? `. ${e.comentario}` : ""}`)
     .join("\n");
 
-  const bloques = [
-    `[EVOLUCION KINESIOLOGIA UPC · RESUMEN DE TURNO · ${episodio.cama}]`,
-    `Diagnostico: ${episodio.diagnostico} | Edad ${episodio.edad} a | PBW ${pbw} kg | Dias de VM: ${episodio.diasVM}`,
+  return [
+    `[EVOLUCIÓN KINESIOLOGÍA UPC · RESUMEN DE TURNO · ${episodio.cama}]`,
+    `Diagnóstico: ${episodio.diagnostico} | ${episodio.edad} a | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${episodio.diasVM}`,
     ``,
-    `1. HEMODINAMIA Y PERFUSION`,
-    `Inicia turno (${primero.hora} hrs) con PAM ${fmt(dPrimero.pam)} mmHg y cierra (${
-      ultimo.hora
-    } hrs) con FC ${fmt(ultimo.fc)} lpm, PA ${fmt(ultimo.pas)}/${fmt(ultimo.pad)} mmHg (PAM ${fmt(
-      dUltimo.pam
-    )} mmHg). ${capitalizar(describirDva(ultimo.dva))}.${
-      ultimo.pic !== null ? ` PIC ${ultimo.pic} mmHg con PPC ${fmt(dUltimo.ppc)} mmHg.` : ""
-    }`,
+    `1. HEMODINAMIA Y PERFUSIÓN`,
+    `Inicia (${primero.hora} hrs) con PAM ${fmt(dP.pam)} mmHg y cierra (${ultimo.hora} hrs) con FC ${fmt(ultimo.fc)} lpm, PA ${fmt(ultimo.pas)}/${fmt(ultimo.pad)} mmHg (PAM ${fmt(dU.pam)} mmHg). ${capitalizar(describirCardiovasculares(ultimo.infusiones))}.`,
     ``,
-    `2. CONCIENCIA Y SEDACION`,
-    `Evoluciona desde Glasgow ${dPrimero.glasgow.display} hacia Glasgow ${
-      dUltimo.glasgow.completo
-    }, ${etiquetaConciencia(ultimo)}. ${
-      ultimo.sedacionActiva
-        ? `Sedoanalgesia al cierre: ${describirSedacion(ultimo.sedacion)}.`
-        : "Sin sedoanalgesia al cierre."
-    }${ultimo.bnmActivo ? " Mantiene bloqueo neuromuscular." : ""}`,
+    `2. CONCIENCIA Y SEDACIÓN`,
+    `${capitalizar(textoConciencia(primero))} → ${textoConciencia(ultimo)}.`,
     ``,
     `3. SOPORTE VENTILATORIO AL CIERRE`,
-    `${capitalizar(etiquetaVia(episodio))} en ${bloqueRespiratorio(ultimo, pbw)}. SpO2 ${fmt(
-      ultimo.spo2
-    )}%.`,
-    ...(bloqueEsfuerzo(ultimo, pbw)
-      ? [`Esfuerzo respiratorio: ${bloqueEsfuerzo(ultimo, pbw)}.`]
-      : []),
+    `${capitalizar(etiquetaVia(episodio))} en ${bloqueRespiratorio(ultimo, pbw)}. SpO2 ${fmt(ultimo.spo2)}%.`,
     ...(prono.ciclosCompletados > 0 || prono.enProno
-      ? [
-          `Prono: ${prono.ciclosCompletados} ciclo(s) completado(s), ${prono.horasAcumuladas} h acumuladas${
-            prono.enProno ? " (en prono al cierre)" : ""
-          }.`
-        ]
+      ? [`Prono: ${prono.ciclosCompletados} ciclo(s) completado(s), ${prono.horasAcumuladas} h acumuladas${prono.enProno ? " (en prono al cierre)" : ""}.`]
       : []),
     ``,
-    `4. PRODUCCION KINESICA DEL TURNO (${stats.totalControles} controles)`,
+    `4. PRODUCCIÓN KINÉSICA DEL TURNO (${stats.totalControles} controles)`,
     `  · Kinesiterapia respiratoria: ${stats.kineRespiratoria} | Aspiraciones: ${stats.aspiraciones}`,
-    `  · Kinesiterapia motora realizada: ${stats.kineMotoraRealizada} (contraindicada: ${stats.kineMotoraContraindicada}) | IMS al cierre: ${
-      ultimo.intervencion.ims ?? "--"
-    }`,
-    `  · Movilizacion por nivel: N1 ${stats.movilizacionPorNivel[1]} · N2 ${stats.movilizacionPorNivel[2]} · N3 ${stats.movilizacionPorNivel[3]} · N4 ${stats.movilizacionPorNivel[4]}`,
-    `  · Pautas APK validadas: ${stats.apkCumple} (no cumple: ${stats.apkNoCumple})`,
-    `  · Hitos: PVE ${stats.pve} | cultivos ${stats.cultivos} | asistencia a procedimientos ${stats.asistenciaProcedimientos} | traslados ${stats.traslados} | reintubaciones ${stats.reintubaciones}`,
+    `  · Terapia física realizada: ${stats.terapiaFisicaRealizada} (contraindicada: ${stats.terapiaFisicaContraindicada}) | IMS al cierre: ${fmt(ultimo.terapiaFisica.ims)}`,
+    `  · Movilización por nivel: N1 ${stats.movilizacionPorNivel[1]} · N2 ${stats.movilizacionPorNivel[2]} · N3 ${stats.movilizacionPorNivel[3]} · N4 ${stats.movilizacionPorNivel[4]}`,
+    `  · APK de este turno: ${apkTurno ? `${apkTurno.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkTurno.hora}` : "no registrada"}`,
+    `  · Hitos: PVE ${stats.pve} | FBC ${stats.asistenciasFbc} | cultivos ${stats.cultivos} | procedimientos ${stats.asistenciaProcedimientos} | traslados ${stats.traslados} | reintubaciones ${stats.reintubaciones}`,
     ``,
-    `5. CRONOLOGIA DE ATENCIONES`,
+    `5. CRONOLOGÍA DE ATENCIONES`,
     cronologia,
-    ...(eventosFueraDeControl ? [``, `Eventos clinicos adicionales:`, eventosFueraDeControl] : []),
+    ...(aparte ? [``, `Eventos clínicos adicionales:`, aparte] : []),
     ...(riesgos.length > 0
-      ? [
-          ``,
-          `6. EVENTOS DE SEGURIDAD DEL PACIENTE`,
-          ...riesgos.map(
-            (e) => `  · [${e.hora} hrs] ${describirEvento(e)}. Notificado para gestion de riesgo.`
-          )
-        ]
+      ? [``, `6. EVENTOS DE SEGURIDAD DEL PACIENTE`, ...riesgos.map((e) => `  · [${e.hora} hrs] ${describirEvento(e)}. Notificado para gestión de riesgo.`)]
       : []),
     ``,
     `PLAN / ENTREGA DE TURNO: ${episodio.pendienteEntrega || "sin pendientes consignados"}`
-  ];
-
-  return bloques.join("\n");
+  ].join("\n");
 }
 
 /** Punto de entrada unico del generador. */
 export function componerNotaAlma(entrada: EntradaNota): string {
   const pbw = calcularPbw(entrada.episodio.tallaCm, entrada.episodio.sexo);
-  return entrada.modo === "ULTIMA_ATENCION"
-    ? notaUltimaAtencion(entrada, pbw)
-    : notaTurnoCompleto(entrada, pbw);
+  return entrada.modo === "ULTIMA_ATENCION" ? notaUltimaAtencion(entrada, pbw) : notaTurnoCompleto(entrada, pbw);
 }
 
 // ---------------------------------------------------------------------------
-// Casillas discretas
+// Campos discretos de ALMA
 // ---------------------------------------------------------------------------
 
-export interface CasillaAlma {
-  readonly id: string;
-  readonly label: string;
-  /** `false` para parametros que en ALMA llena enfermeria, no kinesiologia. */
-  readonly deKine: boolean;
-  readonly valor: string;
+export interface CampoAlma {
+  readonly etiqueta: string;
+  /** `null` = en blanco. */
+  readonly valor: string | null;
 }
+
+type ClaseAlma = "ac" | "pc" | "ps";
+
+/** La modalidad decide en que campo de ALMA va cada valor (idea de la propuesta de la unidad). */
+export function claseModoAlma(m: Modalidad): ClaseAlma | null {
+  switch (m) {
+    case "ACVC":
+      return "ac";
+    case "PCV":
+      return "pc";
+    case "CPAP_PS":
+      return "ps";
+    case "CNAF":
+      return null;
+  }
+}
+
+const texto = (v: number | null): string | null => (v === null ? null : String(v));
 
 /**
- * ALMA tiene campos discretos, no solo una caja de notas. Estas son las
- * casillas para copiar de a una, en el orden del formulario.
+ * Valores en el orden del formulario de ventilacion mecanica de ALMA, para
+ * tipearlos uno a uno (un registro por control). Es un esquema, no la pantalla real.
  */
-export function casillasAlma(control: Control, pbw: number): readonly CasillaAlma[] {
+export function camposAlma(control: Control, pbw: number): readonly CampoAlma[] {
+  const v = control.ventilacion;
   const d = calcularDerivados(control, pbw);
-  const s = control.soporte;
-  const bloqueada = d.leyendaMecanica ?? "No valorable";
-
-  return [
-    { id: "via", label: "Via aerea", deKine: true, valor: control.viaAerea },
-    { id: "soporte", label: "Soporte respiratorio", deKine: true, valor: etiquetaSoporteNoInvasivo(control) },
-    { id: "modoVMI", label: "Modalidad VMI", deKine: true, valor: s.modoVMI ?? "--" },
-    { id: "fio2", label: "FiO2 (%)", deKine: true, valor: fmt(s.fio2) },
-    { id: "peep", label: "PEEP / CPAP (cmH2O)", deKine: true, valor: fmt(s.peep) },
-    { id: "vt", label: "Vt espirado (ml)", deKine: true, valor: fmt(s.vt) },
-    { id: "vtKg", label: "Vt / kg PBW (ml/kg)", deKine: true, valor: fmt(d.vtPorKg) },
-    { id: "ps", label: "Presion soporte (cmH2O)", deKine: true, valor: fmt(s.presionSoporte) },
-    { id: "fr", label: "Frecuencia respiratoria (rpm)", deKine: true, valor: fmt(s.fr) },
-    { id: "ppico", label: "Presion pico (cmH2O)", deKine: true, valor: fmt(s.pPico) },
-    {
-      id: "pplat",
-      label: "Presion plateau (cmH2O)",
-      deKine: true,
-      valor: d.drivingPressure !== null ? fmt(s.pPlateau) : bloqueada
-    },
-    {
-      id: "dp",
-      label: "Driving pressure (cmH2O)",
-      deKine: true,
-      valor: d.drivingPressure !== null ? String(d.drivingPressure) : bloqueada
-    },
-    {
-      id: "crs",
-      label: "Compliance estatica (ml/cmH2O)",
-      deKine: true,
-      valor: d.compliance !== null ? String(d.compliance) : bloqueada
-    },
-    { id: "tobin", label: "Indice Tobin (RSBI)", deKine: true, valor: fmt(d.tobin) },
-    { id: "flujo", label: "Flujo CNAF (L/min)", deKine: true, valor: fmt(s.flujo) },
-    { id: "rox", label: "Indice ROX", deKine: true, valor: fmt(d.rox) },
-    { id: "cuff", label: "Presion cuff (cmH2O)", deKine: true, valor: fmt(s.presionCuff) },
-    { id: "spo2", label: "SpO2 (%)", deKine: true, valor: fmt(control.spo2) },
-    { id: "pcf", label: "Flujo pico de tos (L/min)", deKine: true, valor: fmt(control.esfuerzo?.pcf ?? null) },
-    { id: "glasgow", label: "Glasgow (O-V-M)", deKine: true, valor: d.glasgow.completo },
-    {
-      id: "conciencia",
-      label: control.sedacionActiva ? "Escala SAS" : "Estado de vigilia",
-      deKine: true,
-      valor: etiquetaConciencia(control)
-    },
-    { id: "ims", label: "Nivel IMS", deKine: true, valor: String(control.intervencion.ims ?? "--") },
-    { id: "fc", label: "Frecuencia cardiaca (lpm)", deKine: false, valor: fmt(control.fc) },
-    {
-      id: "pa",
-      label: "Presion arterial (PAM)",
-      deKine: false,
-      valor: `${fmt(control.pas)}/${fmt(control.pad)} (${fmt(d.pam)})`
-    },
-    { id: "dva", label: "Drogas vasoactivas", deKine: false, valor: describirDva(control.dva) }
+  const k = claseModoAlma(v.modalidad);
+  const campos: CampoAlma[] = [
+    { etiqueta: "SAS", valor: sedoanalgesiaActiva(control.infusiones) ? texto(control.sas) : "—" },
+    { etiqueta: "Modo", valor: ETIQUETA_MODALIDAD[v.modalidad] }
   ];
+
+  if (k === "ps") campos.push({ etiqueta: "FR total", valor: texto(v.frTotal) });
+  else if (k) campos.push({ etiqueta: "FR programada", valor: texto(v.frProgramada) });
+
+  if (k === "ac") campos.push({ etiqueta: "Vol. Corriente Programado", valor: texto(v.vtProgramado) });
+  else if (k) campos.push({ etiqueta: "Espirado", valor: texto(v.vtEspirado) });
+
+  campos.push(
+    { etiqueta: "Vol. Minuto", valor: texto(d.volumenMinuto) },
+    { etiqueta: "P. Pico", valor: texto(v.pPico) },
+    { etiqueta: "Meseta (Pº Media)", valor: texto(v.pMedia) }
+  );
+
+  if (k === "ps") campos.push({ etiqueta: "Soporte", valor: texto(v.presion) });
+  else if (k === "pc") campos.push({ etiqueta: "Control", valor: texto(v.presion) });
+
+  const comentarios = [
+    v.frTotal !== null && k !== "ps" ? `FR total ${v.frTotal}` : "",
+    k === "ac" && v.vtEspirado !== null ? `Vt espirado ${v.vtEspirado}` : "",
+    v.flujo !== null ? `Flujo ${v.flujo} L/min` : "",
+    d.drivingPressure !== null && v.pPlateau !== null ? `P. Plateau ${v.pPlateau}` : "",
+    d.drivingPressure !== null ? `P. Distensión ${d.drivingPressure}` : ""
+  ].filter((x) => x !== "");
+
+  campos.push(
+    { etiqueta: "PEEP Programado", valor: texto(v.peep) },
+    { etiqueta: "FiO2 Programado", valor: texto(v.fio2) },
+    { etiqueta: "I:E", valor: d.relacionIE },
+    {
+      etiqueta: "Compliance Estática",
+      valor: mecanicaBloqueadaPorAsincronia(v) ? "no valorable (asincronía)" : texto(d.compliance)
+    },
+    { etiqueta: "Auto PEEP", valor: null },
+    { etiqueta: "SpO2", valor: texto(control.spo2) },
+    { etiqueta: "Comentarios", valor: comentarios.length > 0 ? comentarios.join(" · ") : null }
+  );
+  return campos;
 }

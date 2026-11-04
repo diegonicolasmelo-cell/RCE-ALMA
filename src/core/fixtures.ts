@@ -5,13 +5,11 @@
 
 import type {
   Control,
-  Dva,
   Episodio,
-  EsfuerzoRespiratorio,
   EventoClinico,
-  Glasgow,
-  IntervencionKinesica,
-  SoporteVentilatorio
+  KineRespiratoria,
+  TerapiaFisica,
+  Ventilacion
 } from "./tipos";
 
 export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
@@ -21,7 +19,8 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
     edad: 64,
     sexo: "M",
     tallaCm: 172,
-    diagnostico: "Shock septico foco pulmonar / SDRA en resolucion",
+    tallaOrigen: "ESTIMADA",
+    diagnostico: "Shock séptico foco pulmonar / SDRA en resolución",
     viaAereaActual: "TET",
     calibreVia: "8.0",
     fijacionCm: "22",
@@ -29,56 +28,47 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
     rutTitular: "16.452.891-K",
     transcritoAlma: false,
     horaTranscripcion: null,
-    pendienteEntrega: "Candidato a extubacion si supera PVE vespertina.",
+    pendienteEntrega: "Candidato a extubación si supera PVE vespertina.",
     activo: true,
     ...over
   };
 }
 
-const SOPORTE_VMI: SoporteVentilatorio = {
-  tipo: "VMI",
-  modoVMI: "VCV",
-  fio2: 45,
-  peep: 10,
-  vt: 430,
-  fr: 20,
-  presionSoporte: null,
-  pPico: 25,
-  pPlateau: 20,
-  flujo: null,
-  presionCuff: 28,
-  asincronico: false
-};
-
-const DVA_SIN: Dva = { noradrenalina: null, adrenalina: null, vasopresina: null };
-
-const GLASGOW_BASE: Glasgow = { ocular: 3, verbal: 1, motora: 5 };
-
-const INTERVENCION_BASE: IntervencionKinesica = {
-  respiratoriaRealizada: true,
-  aspiracion: "CIRCUITO_CERRADO",
-  motoraContraindicada: false,
-  motivoContraindicacion: null,
-  actividadesMotoras: ["Giros en cama / posicionamiento"],
-  ims: 1
-};
-
-export function unSoporte(over: Partial<SoporteVentilatorio> = {}): SoporteVentilatorio {
-  return { ...SOPORTE_VMI, ...over };
-}
-
-export function unEsfuerzo(over: Partial<EsfuerzoRespiratorio> = {}): EsfuerzoRespiratorio {
+/** ACVC sincronico con valores coherentes (PI 67.8 kg: 430 ml son 6.3 ml/kg). */
+export function unaVentilacion(over: Partial<Ventilacion> = {}): Ventilacion {
   return {
-    p01: null,
-    nif: null,
-    pOcc: null,
-    pMus: null,
-    pmi: null,
-    pim: null,
-    pcf: null,
+    modalidad: "ACVC",
+    asincronico: false,
+    frProgramada: 18,
+    vtProgramado: 430,
+    flujo: 50,
+    ti: 1.0,
+    presion: null,
+    peep: 10,
+    fio2: 45,
+    frTotal: 20,
+    vtEspirado: 430,
+    pPico: 25,
+    pPlateau: 20,
+    pMedia: 12,
     ...over
   };
 }
+
+const KINE_BASE: KineRespiratoria = {
+  realizada: true,
+  aspiracion: "TRACHCARE",
+  aspecto: "MUCOPURULENTA",
+  reologia: "ESPESA",
+  cantidad: "MODERADA"
+};
+
+const TF_BASE: TerapiaFisica = {
+  estado: "REALIZADA",
+  actividades: ["Giros en cama / posicionamiento"],
+  ims: 1,
+  motivoContraindicacion: null
+};
 
 export function unControl(over: Partial<Control> = {}): Control {
   return {
@@ -95,25 +85,29 @@ export function unControl(over: Partial<Control> = {}): Control {
     pad: 62,
     spo2: 95,
     pic: null,
-    dva: DVA_SIN,
     viaAerea: "TET",
-    soporte: SOPORTE_VMI,
+    ventilacion: unaVentilacion(),
     esfuerzo: null,
-    glasgow: GLASGOW_BASE,
-    sedacionActiva: true,
+    infusiones: { fentanilo: { dosis: 1.2, escalon: 2 } },
     sas: 3,
     vigilia: null,
-    sedacion: { fentanilo: { escalon: 2, dosis: 1.2 } },
-    bnmActivo: false,
-    secrecionesCantidad: "MODERADAS",
-    secrecionesTipo: "MUCOPURULENTAS",
-    intervencion: INTERVENCION_BASE,
+    glasgow: null,
+    kineResp: KINE_BASE,
+    terapiaFisica: TF_BASE,
     observaciones: "Queda acoplado a VMI protectora.",
     ...over
   };
 }
 
 let seq = 0;
+type BaseEvento = {
+  id: string;
+  episodioId: string;
+  hora: string;
+  registradoEn: string;
+  rutAutor: string;
+  comentario: string;
+};
 
 /** Evento con los campos base rellenos; `tipo` y su carga util vienen del caller. */
 export function unEvento<T extends EventoClinico>(
@@ -130,12 +124,3 @@ export function unEvento<T extends EventoClinico>(
     ...especifico
   } as T;
 }
-
-type BaseEvento = {
-  id: string;
-  episodioId: string;
-  hora: string;
-  registradoEn: string;
-  rutAutor: string;
-  comentario: string;
-};

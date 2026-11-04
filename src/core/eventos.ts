@@ -67,6 +67,8 @@ export function viaAereaVigente(
       case "FIN_BNM":
       case "PCR":
       case "EVENTO_CENTINELA":
+      case "ASISTENCIA_FBC":
+      case "CAMBIO_HMEF":
       case "ASISTENCIA_PROCEDIMIENTO":
       case "TOMA_CULTIVO":
       case "TRASLADO_IMAGEN":

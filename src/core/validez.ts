@@ -1,20 +1,20 @@
 /**
  * Candado de mecanica ventilatoria.
  *
- * Regla clinica (informe seccion 3.G): si el ventilador esta en modo controlado
- * (VCV o PCV) y el paciente esta asincronico, la presion plateau esta contaminada
- * por esfuerzo muscular activo. En ese caso plateau, driving pressure y compliance
- * estatica NO son datos imperfectos: son datos falsos.
+ * Si la modalidad es controlada (ACVC o PCV) y el paciente esta asincronico, la
+ * presion plateau esta contaminada por esfuerzo muscular activo. En ese caso
+ * plateau, driving pressure y compliance estatica NO son datos imperfectos: son
+ * datos falsos.
  *
- * Esta es la UNICA fuente de verdad de esa regla. La consumen la UI, el generador
- * de nota para ALMA y el consolidado REM 28, de modo que es imposible que la
- * pantalla muestre una compliance que la nota oficial contradiga.
+ * Esta es la UNICA fuente de verdad de esa regla. La consumen la UI, la nota
+ * para ALMA y el REM 28, de modo que la pantalla no puede mostrar una compliance
+ * que la nota oficial contradiga.
  */
 
-import { MODOS_CONTROLADOS } from "./tipos";
-import type { SoporteVentilatorio } from "./tipos";
+import { MODALIDADES_CONTROLADAS } from "./tipos";
+import type { Modalidad, Ventilacion } from "./tipos";
 
-export type MotivoInvalidez = "NO_ES_VMI" | "ASINCRONIA_EN_MODO_CONTROLADO" | "SIN_DATO";
+export type MotivoInvalidez = "NO_APLICA" | "ASINCRONIA_EN_MODO_CONTROLADO" | "SIN_DATO";
 
 export interface Validez {
   readonly valido: boolean;
@@ -23,41 +23,33 @@ export interface Validez {
   readonly leyenda: string | null;
 }
 
-const VALIDO: Validez = { valido: true, motivo: null, leyenda: null };
-
-export function esModoControlado(soporte: SoporteVentilatorio): boolean {
-  return soporte.modoVMI !== null && MODOS_CONTROLADOS.includes(soporte.modoVMI);
+export function esModalidadControlada(m: Modalidad): boolean {
+  return MODALIDADES_CONTROLADAS.includes(m);
 }
 
-/**
- * Determina si la mecanica estatica (plateau, driving pressure, compliance)
- * es interpretable para este soporte ventilatorio.
- */
-export function validezMecanicaEstatica(soporte: SoporteVentilatorio): Validez {
-  if (soporte.tipo !== "VMI") {
-    return {
-      valido: false,
-      motivo: "NO_ES_VMI",
-      leyenda: "No aplica (sin VMI)"
-    };
+export function validezMecanicaEstatica(v: Ventilacion): Validez {
+  if (!esModalidadControlada(v.modalidad)) {
+    return { valido: false, motivo: "NO_APLICA", leyenda: "No aplica en esta modalidad" };
   }
-
-  if (soporte.asincronico && esModoControlado(soporte)) {
+  if (v.asincronico) {
     return {
       valido: false,
       motivo: "ASINCRONIA_EN_MODO_CONTROLADO",
-      leyenda: "Invalidado por asincronia en modo controlado"
+      leyenda: "Invalidado por asincronía en modalidad controlada"
     };
   }
-
-  if (soporte.pPlateau === null || soporte.peep === null) {
+  if (v.pPlateau === null || v.peep === null) {
     return { valido: false, motivo: "SIN_DATO", leyenda: "Sin registro" };
   }
-
-  return VALIDO;
+  return { valido: true, motivo: null, leyenda: null };
 }
 
 /** Atajo booleano para la UI. */
-export function plateauEsValido(soporte: SoporteVentilatorio): boolean {
-  return validezMecanicaEstatica(soporte).valido;
+export function plateauEsValido(v: Ventilacion): boolean {
+  return validezMecanicaEstatica(v).valido;
+}
+
+/** Verdadero si la mecanica se bloquea POR asincronia (no por falta de dato). */
+export function mecanicaBloqueadaPorAsincronia(v: Ventilacion): boolean {
+  return validezMecanicaEstatica(v).motivo === "ASINCRONIA_EN_MODO_CONTROLADO";
 }

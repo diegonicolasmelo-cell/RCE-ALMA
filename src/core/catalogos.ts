@@ -1,11 +1,10 @@
 /** Catalogos clinicos y protocolos UPC. Datos, sin logica. */
 
 import type {
-  CantidadSecreciones,
+  CampoVent,
   EstadoVigilia,
-  IdSedante,
-  TipoAspiracion,
-  TipoSecreciones,
+  IdInfusion,
+  Modalidad,
   ValorSas
 } from "./tipos";
 
@@ -16,13 +15,13 @@ export interface OpcionEscala<T> {
 }
 
 export const ESCALA_SAS: readonly OpcionEscala<ValorSas>[] = [
-  { val: 1, label: "1 · No despertable", desc: "Sin respuesta a estimulos" },
-  { val: 2, label: "2 · Muy sedado", desc: "Despierta al estimulo fisico, no sigue ordenes" },
-  { val: 3, label: "3 · Sedado", desc: "Despierta al llamado suave, obedece ordenes" },
-  { val: 4, label: "4 · Calmado y cooperador", desc: "Despierto, tranquilo y coopera (meta)" },
-  { val: 5, label: "5 · Agitado", desc: "Inquieto, se calma con la voz" },
-  { val: 6, label: "6 · Muy agitado", desc: "Muerde TET, requiere contencion" },
-  { val: 7, label: "7 · Agitacion peligrosa", desc: "Tracciona TET o cateteres" }
+  { val: 1, label: "No despertable", desc: "Sin respuesta a estímulos" },
+  { val: 2, label: "Muy sedado", desc: "Despierta al estímulo físico, no sigue órdenes" },
+  { val: 3, label: "Sedado", desc: "Despierta al llamado suave, obedece órdenes" },
+  { val: 4, label: "Calmado y cooperador", desc: "Despierto, tranquilo y coopera (meta)" },
+  { val: 5, label: "Agitado", desc: "Inquieto, se calma con la voz" },
+  { val: 6, label: "Muy agitado", desc: "Muerde TET, requiere contención" },
+  { val: 7, label: "Agitación peligrosa", desc: "Tracciona TET o catéteres" }
 ];
 
 export const ESTADOS_VIGILIA: readonly OpcionEscala<EstadoVigilia>[] = [
@@ -32,74 +31,173 @@ export const ESTADOS_VIGILIA: readonly OpcionEscala<EstadoVigilia>[] = [
   { val: "COMA", label: "Coma" }
 ];
 
-export const GCS_OCULAR: readonly OpcionEscala<1 | 2 | 3 | 4>[] = [
-  { val: 4, label: "4 · Espontanea" },
-  { val: 3, label: "3 · Al llamado" },
-  { val: 2, label: "2 · Al dolor" },
-  { val: 1, label: "1 · Ninguna" }
-];
-
-export const GCS_VERBAL: readonly OpcionEscala<1 | 2 | 3 | 4 | 5>[] = [
-  { val: 5, label: "5 · Orientado" },
-  { val: 4, label: "4 · Confuso" },
-  { val: 3, label: "3 · Palabras inapropiadas" },
-  { val: 2, label: "2 · Sonidos incomprensibles" },
-  { val: 1, label: "1 · Ninguna" }
-];
-
-export const GCS_MOTORA: readonly OpcionEscala<1 | 2 | 3 | 4 | 5 | 6>[] = [
-  { val: 6, label: "6 · Obedece ordenes" },
-  { val: 5, label: "5 · Localiza el dolor" },
-  { val: 4, label: "4 · Retirada al dolor" },
-  { val: 3, label: "3 · Flexion anormal" },
-  { val: 2, label: "2 · Extension" },
-  { val: 1, label: "1 · Ninguna" }
-];
-
 /** ICU Mobility Scale (0-10). */
 export const ESCALA_IMS: readonly OpcionEscala<number>[] = [
-  { val: 0, label: "0 · Pasivo en cama" },
-  { val: 1, label: "1 · Giros / activo en cama" },
-  { val: 2, label: "2 · Transferencia pasiva a sillon" },
-  { val: 3, label: "3 · Sedestacion borde de cama (SBC)" },
-  { val: 4, label: "4 · Bipedestacion con asistencia" },
-  { val: 5, label: "5 · Transferencia cama-silla dando pasos" },
-  { val: 6, label: "6 · Marcha en el lugar" },
-  { val: 7, label: "7 · Marcha >= 5 m con 2+ personas" },
-  { val: 8, label: "8 · Marcha >= 5 m con 1 persona" },
-  { val: 9, label: "9 · Marcha independiente con ayuda tecnica" },
-  { val: 10, label: "10 · Marcha independiente" }
+  { val: 0, label: "Pasivo en cama" },
+  { val: 1, label: "Giros / activo en cama" },
+  { val: 2, label: "Transferencia pasiva a sillón" },
+  { val: 3, label: "Sedestación borde de cama (SBC)" },
+  { val: 4, label: "Bipedestación con asistencia" },
+  { val: 5, label: "Transferencia cama-silla dando pasos" },
+  { val: 6, label: "Marcha en el lugar" },
+  { val: 7, label: "Marcha ≥ 5 m con 2+ personas" },
+  { val: 8, label: "Marcha ≥ 5 m con 1 persona" },
+  { val: 9, label: "Marcha independiente con ayuda técnica" },
+  { val: 10, label: "Marcha independiente" }
 ];
 
-export interface DefinicionSedante {
-  readonly id: IdSedante;
-  readonly label: string;
+// ---------------------------------------------------------------------------
+// Modalidades ventilatorias: que se registra en cada una
+// ---------------------------------------------------------------------------
+
+export const ETIQUETA_MODALIDAD: Readonly<Record<Modalidad, string>> = {
+  ACVC: "ACVC",
+  PCV: "PCV",
+  CPAP_PS: "CPAP+PS",
+  CNAF: "CNAF"
+};
+
+export interface CampoVentDef {
+  readonly campo: CampoVent;
+  readonly etiqueta: string;
   readonly unidad: string;
-  /** Dosis del escalon 1 y del escalon 6. Los intermedios se interpolan. */
-  readonly escalon1: number;
-  readonly escalon6: number;
+  /** PROGRAMADO: ajuste del ventilador. OBSERVADO: lo que hace el paciente. */
+  readonly grupo: "PROGRAMADO" | "OBSERVADO";
 }
 
-/** Titulacion por escalones 1-6 (protocolo UPC HSPC). */
-export const SEDANTES: readonly DefinicionSedante[] = [
-  { id: "fentanilo", label: "Fentanilo", unidad: "mcg/kg/h", escalon1: 0.6, escalon6: 3.6 },
-  { id: "propofol", label: "Propofol", unidad: "mg/kg/h", escalon1: 0.5, escalon6: 3.0 },
-  { id: "precedex", label: "Precedex", unidad: "mcg/kg/h", escalon1: 0.2, escalon6: 1.5 },
-  { id: "midazolam", label: "Midazolam", unidad: "mg/kg/h", escalon1: 0.01, escalon6: 0.06 },
-  { id: "lorazepam", label: "Lorazepam", unidad: "mg/h", escalon1: 0.5, escalon6: 4.0 }
+const p = (campo: CampoVent, etiqueta: string, unidad: string): CampoVentDef => ({
+  campo,
+  etiqueta,
+  unidad,
+  grupo: "PROGRAMADO"
+});
+const o = (campo: CampoVent, etiqueta: string, unidad: string): CampoVentDef => ({
+  campo,
+  etiqueta,
+  unidad,
+  grupo: "OBSERVADO"
+});
+
+/**
+ * Una cosa es lo programado y otra lo que el paciente realmente hace.
+ * El orden es el del formulario (y el de "Sig." en el celular).
+ *
+ * POR CONFIRMAR con la lectura clinica: TI y flujo en ACVC; TI en PCV.
+ */
+export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVentDef[]>> = {
+  ACVC: [
+    p("frProgramada", "FR programada", "rpm"),
+    p("vtProgramado", "Vt programado", "ml"),
+    p("flujo", "Flujo", "L/min"),
+    p("ti", "TI", "s"),
+    p("peep", "PEEP", "cmH₂O"),
+    p("fio2", "FiO₂", "%"),
+    o("frTotal", "FR total", "rpm"),
+    o("vtEspirado", "Vt espirado", "ml"),
+    o("pPico", "P. pico", "cmH₂O"),
+    o("pPlateau", "P. plateau", "cmH₂O"),
+    o("pMedia", "P. media", "cmH₂O")
+  ],
+  PCV: [
+    p("frProgramada", "FR programada", "rpm"),
+    p("presion", "P. control", "cmH₂O"),
+    p("ti", "TI", "s"),
+    p("peep", "PEEP", "cmH₂O"),
+    p("fio2", "FiO₂", "%"),
+    o("frTotal", "FR total", "rpm"),
+    o("vtEspirado", "Vt espirado", "ml"),
+    o("pPico", "P. pico", "cmH₂O"),
+    o("pPlateau", "P. plateau", "cmH₂O"),
+    o("pMedia", "P. media", "cmH₂O")
+  ],
+  CPAP_PS: [
+    p("presion", "P. soporte", "cmH₂O"),
+    p("peep", "PEEP", "cmH₂O"),
+    p("fio2", "FiO₂", "%"),
+    o("frTotal", "FR total", "rpm"),
+    o("vtEspirado", "Vt espirado", "ml"),
+    o("pPico", "P. pico", "cmH₂O"),
+    o("pMedia", "P. media", "cmH₂O")
+  ],
+  CNAF: [p("flujo", "Flujo", "L/min"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")]
+};
+
+/** Valores rapidos para la franja del teclado. Por confirmar con la unidad. */
+export const VALORES_RAPIDOS: Readonly<Partial<Record<CampoVent, readonly number[]>>> = {
+  peep: [5, 6, 8, 10, 12, 14],
+  fio2: [30, 35, 40, 50, 60, 100],
+  presion: [5, 6, 7, 8, 10, 12],
+  flujo: [20, 30, 40, 50, 60]
+};
+
+// ---------------------------------------------------------------------------
+// Proteccion pulmonar
+// ---------------------------------------------------------------------------
+
+/** Objetivos de volumen corriente en ml/kg de peso ideal que ofrece la franja. */
+export const OBJETIVOS_VT_ML_KG: readonly number[] = [6, 7, 8];
+/** Menor a 6: ultraprotector. De 6 a 8: protector. Mayor a 8: sobre la meta. */
+export const CORTE_ULTRAPROTECTOR = 6;
+export const CORTE_PROTECTOR_MAX = 8;
+/** Diferencia programado/espirado sobre la cual se sospecha fuga en el circuito. */
+export const CORTE_FUGA = 0.1;
+
+// ---------------------------------------------------------------------------
+// Infusiones: sedoanalgesia y cardiovasculares
+// ---------------------------------------------------------------------------
+
+export type GrupoInfusion = "SEDANTE" | "DVA" | "INOTROPO";
+
+export interface DefinicionInfusion {
+  readonly id: IdInfusion;
+  readonly nombre: string;
+  readonly unidad: string;
+  readonly grupo: GrupoInfusion;
+  /**
+   * Extremos del protocolo por escalones (1 y 6). `null` = sin escalones
+   * definidos: solo dosis libre.
+   */
+  readonly escalones: { readonly primero: number; readonly sexto: number; readonly decimales: number } | null;
+  /** Semaforo de riesgo hemodinamico (noradrenalina y adrenalina). */
+  readonly semaforo: boolean;
+  readonly rapidos: readonly number[];
+}
+
+/**
+ * Los escalones 2 a 5 se INTERPOLAN linealmente entre los extremos 1 y 6, que
+ * son los unicos que da el protocolo. Falta la tabla real; hasta entonces las
+ * dosis intermedias son aproximadas. Lorazepam no tiene escalones definidos.
+ */
+export const TABLA_ESCALONES_CONFIRMADA = false;
+
+export const INFUSIONES: readonly DefinicionInfusion[] = [
+  { id: "fentanilo", nombre: "Fentanilo", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.6, sexto: 3.6, decimales: 2 }, semaforo: false, rapidos: [] },
+  { id: "propofol", nombre: "Propofol", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.5, sexto: 3.0, decimales: 2 }, semaforo: false, rapidos: [] },
+  { id: "midazolam", nombre: "Midazolam", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.01, sexto: 0.06, decimales: 3 }, semaforo: false, rapidos: [] },
+  { id: "dexmedetomidina", nombre: "Precedex", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.2, sexto: 1.5, decimales: 2 }, semaforo: false, rapidos: [] },
+  { id: "lorazepam", nombre: "Lorazepam", unidad: "mg/h", grupo: "SEDANTE", escalones: null, semaforo: false, rapidos: [] },
+  { id: "noradrenalina", nombre: "Noradrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
+  { id: "adrenalina", nombre: "Adrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
+  /** Unidad segun el informe de la unidad: UI/min. */
+  { id: "vasopresina", nombre: "Vasopresina", unidad: "UI/min", grupo: "DVA", escalones: null, semaforo: false, rapidos: [0.01, 0.02, 0.03] },
+  { id: "dobutamina", nombre: "Dobutamina", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, rapidos: [] },
+  { id: "milrinona", nombre: "Milrinona", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, rapidos: [] }
 ];
+
+/** Antiarritmicos: lista y unidades por definir. */
 
 export const FARMACOS_BNM: readonly string[] = ["Atracurio", "Rocuronio", "Vecuronio"];
 
-/** Botones de seleccion rapida para vasopresina (UI/min). */
-export const VASOPRESINA_RAPIDA: readonly number[] = [0.01, 0.02, 0.03];
+// ---------------------------------------------------------------------------
+// Kinesiterapia
+// ---------------------------------------------------------------------------
 
 export const MOTIVOS_CONTRAINDICACION_MOTORA: readonly string[] = [
-  "Inestabilidad hemodinamica grave / DVA en ascenso",
-  "Hipertension endocraneana / PIC fuera de meta (>20 mmHg)",
-  "Inestabilidad quirurgica u ortopedica aguda / torax abierto",
+  "Inestabilidad hemodinámica / DVA en ascenso",
+  "PIC fuera de meta",
+  "Inestabilidad quirúrgica u ortopédica",
   "Sangrado activo o procedimiento invasivo en curso",
-  "Reposo medico absoluto estricto / sedacion profunda SAS 1-2"
+  "Reposo absoluto / sedación profunda"
 ];
 
 export interface NivelMotor {
@@ -108,67 +206,50 @@ export interface NivelMotor {
   readonly items: readonly string[];
 }
 
-/** Niveles de movilizacion precoz 1-4 (base del conteo REM 28). */
-export const NIVELES_KINE_MOTORA: readonly NivelMotor[] = [
+/** Niveles de movilizacion 1-4 (base del conteo REM 28). */
+export const NIVELES_TERAPIA_FISICA: readonly NivelMotor[] = [
   {
     nivel: 1,
     titulo: "Nivel 1 · En cama",
     items: [
       "Giros en cama / posicionamiento",
-      "Movilizacion pasiva / activo-asistida",
-      "EMS (electroestimulacion neuromuscular)",
-      "IMT (entrenamiento muscular inspiratorio)"
+      "Movilización pasiva / activo-asistida",
+      "IMT (entrenamiento muscular inspiratorio)",
+      "EMS (electroestimulación neuromuscular)"
     ]
   },
   {
     nivel: 2,
-    titulo: "Nivel 2 · Analitico y sedestacion",
-    items: ["Entrenamiento muscular analitico", "Sedestacion al borde de cama (SBC)"]
+    titulo: "Nivel 2 · Analítico y sedestación",
+    items: ["Entrenamiento muscular analítico", "Sedestación al borde de cama"]
   },
   {
     nivel: 3,
-    titulo: "Nivel 3 · Verticalizacion",
-    items: ["Bipedestacion asistida", "Transferencia activa cama a sillon"]
+    titulo: "Nivel 3 · Verticalización",
+    items: ["Bipedestación asistida", "Transferencia activa cama a sillón"]
   },
-  {
-    nivel: 4,
-    titulo: "Nivel 4 · Marcha",
-    items: ["Marcha asistida en el box / pasillo UPC"]
-  }
+  { nivel: 4, titulo: "Nivel 4 · Marcha", items: ["Marcha asistida en el box"] }
 ];
 
-/** Indice inverso actividad -> nivel, para el consolidado REM 28. */
 export const NIVEL_POR_ACTIVIDAD: ReadonlyMap<string, 1 | 2 | 3 | 4> = new Map(
-  NIVELES_KINE_MOTORA.flatMap((n) => n.items.map((i) => [i, n.nivel] as const))
+  NIVELES_TERAPIA_FISICA.flatMap((n) => n.items.map((i) => [i, n.nivel] as const))
 );
 
 export const PROCEDIMIENTOS_MEDICOS: readonly string[] = [
-  "Fibrobroncoscopia (FBC) + lavado broncoalveolar",
-  "Puncion lumbar (PL) / posicionamiento LCR",
-  "Intubacion orotraqueal (IOT) de urgencia",
-  "Traqueostomia percutanea en box",
-  "Instalacion CVC / linea arterial / Swan-Ganz"
+  "Punción lumbar",
+  "Traqueostomía percutánea en box",
+  "Instalación CVC / línea arterial",
+  "IOT de urgencia"
 ];
 
-export const CANTIDAD_SECRECIONES: readonly OpcionEscala<CantidadSecreciones>[] = [
-  { val: "AUSENTES", label: "Ausentes" },
-  { val: "ESCASAS", label: "Escasas" },
-  { val: "MODERADAS", label: "Moderadas" },
-  { val: "ABUNDANTES", label: "Abundantes" }
+export const MUESTRAS_CULTIVO: readonly string[] = [
+  "Aspirado traqueal",
+  "Hemocultivos",
+  "Urocultivo",
+  "Otro"
 ];
 
-export const TIPO_SECRECIONES: readonly OpcionEscala<TipoSecreciones>[] = [
-  { val: "MUCOSAS", label: "Mucosas" },
-  { val: "MUCOPURULENTAS", label: "Mucopurulentas" },
-  { val: "PURULENTAS", label: "Purulentas" },
-  { val: "HEMATICAS", label: "Hematicas" }
-];
-
-export const TIPOS_ASPIRACION: readonly OpcionEscala<TipoAspiracion>[] = [
-  { val: "NO_REQUIERE", label: "No requiere" },
-  { val: "CIRCUITO_CERRADO", label: "Circuito cerrado (TrachCare)" },
-  { val: "SONDA_ABIERTA", label: "Set + sonda abierta" }
-];
+export const DESTINOS_IMAGEN: readonly string[] = ["Scanner", "Resonancia", "Otro"];
 
 /** Corte institucional de flujo pico de tos para exito de extubacion (L/min). */
 export const PCF_CORTE_EXITO = 55;

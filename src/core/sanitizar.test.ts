@@ -35,8 +35,9 @@ describe("serializacion hacia la nube", () => {
   it("conserva la fisiologia completa: minimizar identidad no es perder datos clinicos", () => {
     const payload = serializarControlParaNube(unControl()) as Record<string, unknown>;
     expect(payload.fc).toBe(96);
-    expect(payload.soporte).toMatchObject({ peep: 10, vt: 430 });
-    expect(payload.glasgow).toMatchObject({ ocular: 3, motora: 5 });
+    expect(payload.ventilacion).toMatchObject({ peep: 10, vtEspirado: 430, vtProgramado: 430 });
+    expect(payload.infusiones).toMatchObject({ fentanilo: { dosis: 1.2, escalon: 2 } });
+    expect(payload.kineResp).toMatchObject({ realizada: true, aspiracion: "TRACHCARE" });
   });
 
   it("marca el texto libre para revision: es el unico vector real de fuga", () => {

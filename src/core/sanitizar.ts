@@ -60,6 +60,7 @@ export interface EpisodioNube {
   readonly edad: number;
   readonly sexo: string;
   readonly tallaCm: number;
+  readonly tallaOrigen: string;
   readonly diagnostico: string;
   readonly viaAereaActual: string;
   readonly calibreVia: string | null;
@@ -108,6 +109,7 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     edad: e.edad,
     sexo: e.sexo,
     tallaCm: e.tallaCm,
+    tallaOrigen: e.tallaOrigen,
     diagnostico: e.diagnostico,
     viaAereaActual: e.viaAereaActual,
     calibreVia: e.calibreVia,
@@ -143,22 +145,15 @@ export function serializarControlParaNube(c: Control): Record<string, unknown> {
     pad: c.pad,
     spo2: c.spo2,
     pic: c.pic,
-    dva: { ...c.dva },
     viaAerea: c.viaAerea,
-    soporte: { ...c.soporte },
+    ventilacion: { ...c.ventilacion },
     esfuerzo: c.esfuerzo === null ? null : { ...c.esfuerzo },
-    glasgow: { ...c.glasgow },
-    sedacionActiva: c.sedacionActiva,
+    infusiones: Object.fromEntries(Object.entries(c.infusiones).map(([k, v]) => [k, { ...v }])),
     sas: c.sas,
     vigilia: c.vigilia,
-    sedacion: { ...c.sedacion },
-    bnmActivo: c.bnmActivo,
-    secrecionesCantidad: c.secrecionesCantidad,
-    secrecionesTipo: c.secrecionesTipo,
-    intervencion: {
-      ...c.intervencion,
-      actividadesMotoras: [...c.intervencion.actividadesMotoras]
-    },
+    glasgow: c.glasgow === null ? null : { ...c.glasgow },
+    kineResp: { ...c.kineResp },
+    terapiaFisica: { ...c.terapiaFisica, actividades: [...c.terapiaFisica.actividades] },
     observaciones: c.observaciones,
     textoLibreRevisado: false
   };

@@ -169,6 +169,8 @@ export interface DefinicionInfusion {
   /** false = la unidad aun no esta confirmada por la unidad clinica. */
   readonly unidadConfirmada: boolean;
   readonly rapidos: readonly number[];
+  /** Cuanto sube o baja cada toque de ▲ / ▼ en la dosis libre. */
+  readonly paso?: number;
 }
 
 /**
@@ -183,19 +185,19 @@ export const INFUSIONES: readonly DefinicionInfusion[] = [
   { id: "propofol", nombre: "Propofol", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.5, sexto: 3.0, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
   { id: "midazolam", nombre: "Midazolam", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.01, sexto: 0.06, decimales: 3 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
   { id: "dexmedetomidina", nombre: "Precedex", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.2, sexto: 1.5, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
-  { id: "lorazepam", nombre: "Lorazepam", unidad: "mg/h", grupo: "SEDANTE", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
-  { id: "noradrenalina", nombre: "Noradrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
-  { id: "adrenalina", nombre: "Adrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
+  { id: "lorazepam", nombre: "Lorazepam", unidad: "mg/h", grupo: "SEDANTE", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [], paso: 0.5 },
+  { id: "noradrenalina", nombre: "Noradrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3], paso: 0.01 },
+  { id: "adrenalina", nombre: "Adrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3], paso: 0.01 },
   /** Unidad segun el informe de la unidad: UI/min. */
-  { id: "vasopresina", nombre: "Vasopresina", unidad: "UI/min", grupo: "DVA", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [0.01, 0.02, 0.03] },
-  { id: "dobutamina", nombre: "Dobutamina", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
-  { id: "milrinona", nombre: "Milrinona", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "vasopresina", nombre: "Vasopresina", unidad: "UI/min", grupo: "DVA", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [0.01, 0.02, 0.03], paso: 0.01 },
+  { id: "dobutamina", nombre: "Dobutamina", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [], paso: 0.5 },
+  { id: "milrinona", nombre: "Milrinona", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [], paso: 0.125 },
   /** La unidad (mg/h) es una suposicion: la unidad clinica aun no la confirma. */
-  { id: "amiodarona", nombre: "Amiodarona", unidad: "mg/h", grupo: "ANTIARRITMICO", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] },
+  { id: "amiodarona", nombre: "Amiodarona", unidad: "mg/h", grupo: "ANTIARRITMICO", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [], paso: 5 },
   /** Bloqueo neuromuscular en infusion. Unidades habituales, POR CONFIRMAR con la unidad. */
-  { id: "rocuronio", nombre: "Rocuronio", unidad: "mg/kg/h", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] },
-  { id: "vecuronio", nombre: "Vecuronio", unidad: "mcg/kg/min", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] },
-  { id: "atracurio", nombre: "Atracurio", unidad: "mg/kg/h", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] }
+  { id: "rocuronio", nombre: "Rocuronio", unidad: "mg/kg/h", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [], paso: 0.1 },
+  { id: "vecuronio", nombre: "Vecuronio", unidad: "mcg/kg/min", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [], paso: 0.1 },
+  { id: "atracurio", nombre: "Atracurio", unidad: "mg/kg/h", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [], paso: 0.1 }
 ];
 
 // ---------------------------------------------------------------------------

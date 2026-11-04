@@ -102,6 +102,18 @@ export function sedoanalgesiaActiva(infusiones: Infusiones): boolean {
   return infusionesActivas(infusiones, "SEDANTE").length > 0;
 }
 
+/**
+ * Sube o baja una dosis libre un paso (▲ / ▼). Nunca baja de 0 y redondea a los
+ * decimales del paso para no arrastrar errores de punto flotante (0.1 + 0.2).
+ */
+export function titularDosis(actual: string, paso: number, sentido: 1 | -1): string {
+  const n = Number(actual.replace(",", "."));
+  const base = Number.isFinite(n) && actual.trim() !== "" ? n : 0;
+  const decimales = (String(paso).split(".")[1] ?? "").length;
+  const nuevo = Math.max(0, base + sentido * paso);
+  return String(Number(nuevo.toFixed(decimales)));
+}
+
 /** Bloqueo neuromuscular en curso segun las infusiones del control. */
 export function bnmEnCurso(infusiones: Infusiones | undefined | null): boolean {
   return infusiones ? infusionesActivas(infusiones, "BNM").length > 0 : false;

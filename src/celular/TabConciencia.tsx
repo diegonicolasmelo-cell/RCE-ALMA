@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ESCALA_SAS,
   ESTADOS_VIGILIA,
   INFUSIONES,
   alternarDosisLibre,
@@ -131,10 +132,13 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
           {sedada ? (
             <section>
               <h3>Escala SAS</h3>
-              <div style={{ maxWidth: 160 }}>
+              <div className="row" style={{ alignItems: "end", gap: 12 }}>
+                <div style={{ maxWidth: 110 }}>
                 <CampoNum clave="sas" etiqueta="SAS" unidad="1 a 7" valor={b.sas === null ? "" : String(b.sas)}
                   onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }}
                   franja={franjaNum("SAS", [1, 2, 3, 4, 5, 6, 7], b.sas === null ? "" : String(b.sas), (v) => editar((x) => ({ ...x, sas: Number(v) as ValorSas })))} />
+              </div>
+                <div className="sas-desc" aria-live="polite">{b.sas === null ? "" : ESCALA_SAS.find((e) => e.val === b.sas)?.label ?? ""}</div>
               </div>
             </section>
           ) : (

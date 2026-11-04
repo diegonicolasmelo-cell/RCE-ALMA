@@ -247,3 +247,5 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .desplegable-lista{display:grid;gap:2px;padding:6px 4px}
 /* Mientras se escribe con el teclado: fuera la cabecera y el pie, todo el alto para el cuadro */
 .app-cel.teclado .cel-top,.app-cel.teclado .cel-cabeza,.app-cel.teclado .airway,.app-cel.teclado .ph-tabs,.app-cel.teclado .pasos,.app-cel.teclado .cel-pie{display:none !important}
+.sas-desc{padding-bottom:12px;font-weight:600;color:var(--ink-2)}
+.infu-row .f.inl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}

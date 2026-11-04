@@ -254,6 +254,7 @@ async function esperarServidor() {
 
     await prueba("guardar incompleto dice que falta y lleva a la pestana correcta", async () => {
       await cel.fill("#in-sas", "3");
+      assert.ok((await cel.textContent(".sas-desc")).length > 3, "al lado del numero aparece la descripcion del SAS");
       await cel.click('.franja .qchip:has-text("Listo")');
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /Falta:.*FC.*SpO₂/);
@@ -301,6 +302,10 @@ async function esperarServidor() {
       assert.equal(await cel.inputValue("#in-fc"), "");
       assert.equal(await cel.getAttribute("#in-fc", "placeholder"), "");
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03");
+      await cel.click('button[aria-label="Subir Noradrenalina"]');
+      assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.04", "▲ sube un paso");
+      await cel.click('button[aria-label="Bajar Noradrenalina"]');
+      assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03", "▼ baja un paso");
       await cel.click('[role=tab]:has-text("Kine")');
       assert.ok((await cel.locator(".notice.good").count()) >= 1, "la APK del turno sigue vigente");
     });

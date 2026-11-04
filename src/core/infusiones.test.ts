@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { titularDosis } from "./infusiones";
 import {
   describirCardiovasculares,
   describirInfusiones,
@@ -150,5 +151,20 @@ describe("semáforo de riesgo hemodinámico", () => {
     expect(semaforoDva(inf)).toBe("SIN_DVA");
     expect(usaSoporteCardiovascular(inf)).toBe(true);
     expect(usaSoporteCardiovascular({})).toBe(false);
+  });
+});
+
+describe("titular con ▲ / ▼", () => {
+  it("sube y baja un paso, sin errores de punto flotante", () => {
+    expect(titularDosis("0.1", 0.01, 1)).toBe("0.11");
+    expect(titularDosis("0.3", 0.1, 1)).toBe("0.4");
+    expect(titularDosis("0.07", 0.01, -1)).toBe("0.06");
+  });
+  it("vacío parte de 0 y nunca baja de 0", () => {
+    expect(titularDosis("", 0.01, 1)).toBe("0.01");
+    expect(titularDosis("0", 0.01, -1)).toBe("0");
+  });
+  it("acepta coma decimal", () => {
+    expect(titularDosis("0,05", 0.01, 1)).toBe("0.06");
   });
 });

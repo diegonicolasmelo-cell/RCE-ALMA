@@ -6,8 +6,8 @@
  * Iniciar -> titular -> suspender.
  */
 
-import { Pause, Play } from "lucide-react";
-import { dosisDeEscalon, escalonesDe, medicionDe, semaforoCatecolamina } from "@core/index";
+import { ChevronDown, ChevronUp, Pause, Play } from "lucide-react";
+import { dosisDeEscalon, escalonesDe, medicionDe, semaforoCatecolamina, titularDosis } from "@core/index";
 import type { BorradorInfusion, Control, DefinicionInfusion } from "@core/index";
 import { cx } from "../app/util";
 import { Pildora } from "./componentes";
@@ -99,12 +99,18 @@ export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspend
                 inputMode="decimal"
                 autoComplete="off"
                 value={usaEscalon ? x.escalon : x.dosis}
-                placeholder={usaEscalon ? "escalón" : "dosis"}
+                placeholder={usaEscalon ? "" : "dosis"}
                 aria-label={`${def.nombre} ${usaEscalon ? "escalón" : "dosis"}`}
                 onFocus={() => f.abrir(clave)}
                 onChange={(e) => onCambio(usaEscalon ? { escalon: e.target.value } : { dosis: e.target.value })}
               />
-              <span className="small muted">{usaEscalon ? "escalón 1 a 6" : def.unidad}</span>
+              {!usaEscalon && (
+                <>
+                  <button type="button" className="btn sm" aria-label={`Bajar ${def.nombre}`} onClick={() => onCambio({ dosis: titularDosis(x.dosis, def.paso ?? 0.01, -1) })}><ChevronDown size={16} aria-hidden /></button>
+                  <button type="button" className="btn sm" aria-label={`Subir ${def.nombre}`} onClick={() => onCambio({ dosis: titularDosis(x.dosis, def.paso ?? 0.01, 1) })}><ChevronUp size={16} aria-hidden /></button>
+                  <span className="small muted">{def.unidad}</span>
+                </>
+              )}
             </div>
             <button type="button" className="btn sm stop" onClick={onSuspender}>
               <Pause size={12} aria-hidden /> Suspender

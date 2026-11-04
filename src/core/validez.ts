@@ -27,6 +27,30 @@ export function esModalidadControlada(m: Modalidad): boolean {
   return MODALIDADES_CONTROLADAS.includes(m);
 }
 
+export type OrigenPresion = "PLATEAU" | "PICO";
+
+export interface PresionParaDriving {
+  readonly valor: number;
+  readonly origen: OrigenPresion;
+}
+
+/**
+ * Presion con la que se calcula la driving pressure.
+ *
+ * ACVC: solo plateau (meseta). PCV: algunos ventiladores miden plateau y otros
+ * no lo permiten; en ese caso se usa la presion pico (ΔP = P. pico - PEEP).
+ */
+export function presionParaDriving(v: Ventilacion): PresionParaDriving | null {
+  if (v.modalidad === "ACVC") {
+    return v.pPlateau !== null ? { valor: v.pPlateau, origen: "PLATEAU" } : null;
+  }
+  if (v.modalidad === "PCV") {
+    if (v.pPlateau !== null) return { valor: v.pPlateau, origen: "PLATEAU" };
+    if (v.pPico !== null) return { valor: v.pPico, origen: "PICO" };
+  }
+  return null;
+}
+
 export function validezMecanicaEstatica(v: Ventilacion): Validez {
   if (!esModalidadControlada(v.modalidad)) {
     return { valido: false, motivo: "NO_APLICA", leyenda: "No aplica en esta modalidad" };
@@ -38,7 +62,7 @@ export function validezMecanicaEstatica(v: Ventilacion): Validez {
       leyenda: "Invalidado por asincronía en modalidad controlada"
     };
   }
-  if (v.pPlateau === null || v.peep === null) {
+  if (presionParaDriving(v) === null || v.peep === null) {
     return { valido: false, motivo: "SIN_DATO", leyenda: "Sin registro" };
   }
   return { valido: true, motivo: null, leyenda: null };

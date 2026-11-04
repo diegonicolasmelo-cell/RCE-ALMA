@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { turnoDe } from "./turnos";
+import { turnoAnterior, turnoDe } from "./turnos";
 
 /** Fechas con componentes locales: el turno depende de la hora local. */
 const f = (y: number, m: number, d: number, h: number, min = 0) => new Date(y, m - 1, d, h, min);
@@ -34,5 +34,17 @@ describe("turnoDe", () => {
 
   it("dos controles del mismo turno comparten clave", () => {
     expect(turnoDe(f(2026, 11, 4, 21, 0)).clave).toBe(turnoDe(f(2026, 11, 5, 3, 0)).clave);
+  });
+});
+
+describe("turnoAnterior", () => {
+  it("el anterior a un Día es la Noche del día previo", () => {
+    expect(turnoAnterior(f(2026, 11, 4, 10)).clave).toBe("2026-11-03:NOCHE");
+  });
+  it("el anterior a una Noche es el Día de esa misma fecha", () => {
+    expect(turnoAnterior(f(2026, 11, 4, 22)).clave).toBe("2026-11-04:DIA");
+  });
+  it("el anterior a la madrugada (Noche iniciada ayer) es el Día de ayer", () => {
+    expect(turnoAnterior(f(2026, 11, 5, 3)).clave).toBe("2026-11-04:DIA");
   });
 });

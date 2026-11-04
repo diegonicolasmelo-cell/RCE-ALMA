@@ -196,3 +196,80 @@ describe("flujo pico de tos", () => {
     expect(semaforoPcf(70)).toBe("OPTIMO");
   });
 });
+
+describe("PCV: ΔP con presión pico si el ventilador no permite medir plateau", () => {
+  const pbw = 67.8;
+  const pcv = (over: Parameters<typeof unaVentilacion>[0]) =>
+    unControl({ ventilacion: unaVentilacion({ modalidad: "PCV", vtProgramado: null, presion: 15, peep: 8, vtEspirado: 450, ...over }) });
+
+  it("con plateau medido usa el plateau", () => {
+    const d = calcularDerivados(pcv({ pPlateau: 20, pPico: 24 }), pbw);
+    expect(d.drivingPressure).toBe(12);
+    expect(d.origenDriving).toBe("PLATEAU");
+  });
+
+  it("sin plateau usa la presión pico y lo declara", () => {
+    const d = calcularDerivados(pcv({ pPlateau: null, pPico: 24 }), pbw);
+    expect(d.drivingPressure).toBe(16);
+    expect(d.origenDriving).toBe("PICO");
+    expect(d.compliance).toBe(28.1);
+  });
+
+  it("sin plateau ni pico no hay ΔP", () => {
+    expect(calcularDerivados(pcv({ pPlateau: null, pPico: null }), pbw).drivingPressure).toBeNull();
+  });
+
+  it("la asincronía sigue invalidando aunque se use la presión pico", () => {
+    const d = calcularDerivados(pcv({ pPlateau: null, pPico: 24, asincronico: true }), pbw);
+    expect(d.drivingPressure).toBeNull();
+    expect(d.leyendaMecanica).toContain("asincronía");
+  });
+
+  it("en ACVC la presión pico NO sustituye al plateau", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "ACVC", pPlateau: null, pPico: 25 }) });
+    expect(calcularDerivados(c, pbw).drivingPressure).toBeNull();
+  });
+});
+
+describe("volumen minuto: calculado por defecto y editable", () => {
+  it("sin edición se calcula del espirado y la frecuencia total", () => {
+    const d = calcularDerivados(unControl(), 67.8);
+    expect(d.volumenMinuto).toBe(8.6);
+    expect(d.volumenMinutoOrigen).toBe("CALCULADO");
+  });
+
+  it("si se escribe el que muestra el ventilador, ese vale", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) });
+    const d = calcularDerivados(c, 67.8);
+    expect(d.volumenMinuto).toBe(9.1);
+    expect(d.volumenMinutoOrigen).toBe("EDITADO");
+  });
+
+  it("en CNAF no hay volumen minuto aunque quede un valor escrito", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CNAF", volMinuto: 9.1 }) });
+    expect(calcularDerivados(c, 67.8).volumenMinuto).toBeNull();
+  });
+});
+
+describe("neuromonitoreo y Glasgow bajo sedación", () => {
+  it("el PPC sale de la PAM del mismo control y la PIC", () => {
+    const c = unControl({ pas: 120, pad: 60, neuro: { etco2: 35, pic: 15, dveAlturaCmH2O: 15, dveAbierta: true } });
+    expect(calcularDerivados(c, 67.8).ppc).toBe(65);
+  });
+
+  it("sin neuromonitoreo no hay PPC", () => {
+    expect(calcularDerivados(unControl(), 67.8).ppc).toBeNull();
+  });
+
+  it("el Glasgow con sedación en curso se avisa como bajo sedación", () => {
+    const c = unControl({ glasgow: { ocular: 3, verbal: 1, motora: 5 } });
+    const d = calcularDerivados(c, 67.8);
+    expect(d.glasgow?.completo).toBe("9T/11T (O3 V:NT M5)");
+    expect(d.glasgowBajoSedacion).toBe(true);
+  });
+
+  it("sin sedación no se avisa", () => {
+    const c = unControl({ infusiones: {}, sas: null, vigilia: "VIGIL_ALERTA", glasgow: { ocular: 4, verbal: 1, motora: 6 } });
+    expect(calcularDerivados(c, 67.8).glasgowBajoSedacion).toBe(false);
+  });
+});

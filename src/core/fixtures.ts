@@ -25,6 +25,8 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
     calibreVia: "8.0",
     fijacionCm: "22",
     diasVM: 4,
+    equipos: [{ tipo: "VENTILADOR", modelo: "Savina", numero: 1, enUso: true }],
+    monitoreo: { capnografia: false, pic: false, dve: false },
     rutTitular: "16.452.891-K",
     transcritoAlma: false,
     horaTranscripcion: null,
@@ -51,6 +53,7 @@ export function unaVentilacion(over: Partial<Ventilacion> = {}): Ventilacion {
     pPico: 25,
     pPlateau: 20,
     pMedia: 12,
+    volMinuto: null,
     ...over
   };
 }
@@ -84,10 +87,10 @@ export function unControl(over: Partial<Control> = {}): Control {
     pas: 112,
     pad: 62,
     spo2: 95,
-    pic: null,
     viaAerea: "TET",
     ventilacion: unaVentilacion(),
     esfuerzo: null,
+    neuro: null,
     infusiones: { fentanilo: { dosis: 1.2, escalon: 2 } },
     sas: 3,
     vigilia: null,

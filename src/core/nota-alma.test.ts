@@ -214,3 +214,91 @@ describe("camposAlma: orden de ALMA y regla por modalidad", () => {
     expect(valor(camposAlma(unControl({ infusiones: {}, sas: null, vigilia: "COMA" }), pbw), "SAS")).toBe("—");
   });
 });
+
+describe("novedades: PCV con presión pico, Glasgow, neuromonitoreo y equipos", () => {
+  const pcvSinPlateau = unControl({
+    ventilacion: unaVentilacion({ modalidad: "PCV", vtProgramado: null, flujo: null, presion: 15, peep: 8, pPlateau: null, pPico: 24, vtEspirado: 450 })
+  });
+
+  it("PCV sin plateau reporta la ΔP y la compliance declarando que usan la presión pico", () => {
+    const n = nota({ controles: [pcvSinPlateau] });
+    expect(n).toContain("driving pressure 16 (con P. pico)");
+    expect(n).toContain("compliance 28.1 (con P. pico)");
+    expect(n).not.toContain("P.plateau");
+    expect(n).toContain("P. control 15");
+  });
+
+  it("el Glasgow registrado bajo sedación lo dice", () => {
+    const n = nota({ controles: [unControl({ glasgow: { ocular: 3, verbal: 1, motora: 5 } })] });
+    expect(n).toContain("Glasgow 9T/11T (O3 V:NT M5) (registrado bajo sedación)");
+  });
+
+  it("incluye el neuromonitoreo con el PPC calculado", () => {
+    const c = unControl({ neuro: { etco2: 35, pic: 15, dveAlturaCmH2O: 12, dveAbierta: false } });
+    const n = nota({ controles: [c], modo: "ULTIMA_ATENCION" });
+    expect(n).toContain("EtCO₂ 35 mmHg");
+    expect(n).toContain("PIC 15 mmHg (PPC 64 mmHg)");
+    expect(n).toContain("DVE a 12 cmH₂O cerrada");
+  });
+
+  it("el volumen minuto leído del ventilador se declara", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) });
+    expect(nota({ controles: [c] })).toContain("volumen minuto 9.1 L/min (leído del ventilador)");
+  });
+
+  it("la nota de turno lista los equipos de la sala", () => {
+    expect(nota()).toContain("Equipos: Savina 1 (en uso)");
+  });
+
+  it("un cambio de equipos queda como evento", () => {
+    const e = unEvento<Extract<EventoClinico, { tipo: "CAMBIO_EQUIPOS" }>>({
+      tipo: "CAMBIO_EQUIPOS",
+      equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true }],
+      hora: "12:00"
+    });
+    expect(nota({ eventos: [e] })).toContain("Cambio de equipos: Vela 8 (en uso)");
+  });
+
+  it("camposAlma incluye Modelo Ventilador y Tipo de Humidificación según los equipos", () => {
+    const equipos = [
+      { tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true },
+      { tipo: "HUMIDIFICADOR", modelo: "Humidificador MR850", numero: 2, enUso: true }
+    ] as const;
+    const c = camposAlma(unControl(), 67.8, equipos);
+    expect(c.find((x) => x.etiqueta === "Modelo Ventilador")?.valor).toBe("Vela 8");
+    expect(c.find((x) => x.etiqueta === "Tipo de Humidificación")?.valor).toBe("Humidificador MR850 2");
+  });
+
+  it("PCV sin plateau: el comentario de ALMA dice que la P. Distensión usa la presión pico", () => {
+    const c = camposAlma(pcvSinPlateau, 67.8);
+    expect(c.find((x) => x.etiqueta === "Comentarios")?.valor).toContain("P. Distensión 16 (con P. pico)");
+  });
+});
+
+describe("catálogo de modalidades", () => {
+  it("en CPAP+PS importa la presión pico y no la media", async () => {
+    const { CAMPOS_POR_MODALIDAD } = await import("./catalogos");
+    const campos = CAMPOS_POR_MODALIDAD.CPAP_PS.map((c) => c.campo);
+    expect(campos).toContain("pPico");
+    expect(campos).not.toContain("pMedia");
+  });
+
+  it("en PCV solo van TI y presión de control (sin flujo ni volumen programado); en ACVC TI y flujo van separados", async () => {
+    const { CAMPOS_POR_MODALIDAD } = await import("./catalogos");
+    const pcv = CAMPOS_POR_MODALIDAD.PCV.map((c) => c.campo);
+    expect(pcv).toContain("ti");
+    expect(pcv).not.toContain("flujo");
+    expect(pcv).not.toContain("vtProgramado");
+    const acvc = CAMPOS_POR_MODALIDAD.ACVC.map((c) => c.campo);
+    expect(acvc).toContain("ti");
+    expect(acvc).toContain("flujo");
+  });
+
+  it("amiodarona está como antiarrítmico y su unidad figura sin confirmar", async () => {
+    const { INFUSIONES } = await import("./catalogos");
+    const a = INFUSIONES.find((i) => i.id === "amiodarona");
+    expect(a?.grupo).toBe("ANTIARRITMICO");
+    expect(a?.unidadConfirmada).toBe(false);
+    expect(INFUSIONES.filter((i) => i.unidadConfirmada === false).map((i) => i.id)).toEqual(["amiodarona"]);
+  });
+});

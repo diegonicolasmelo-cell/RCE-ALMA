@@ -48,3 +48,14 @@ export function turnoDe(ahora: Date): TurnoGuardia {
 export function etiquetaTurno(t: TurnoGuardia): string {
   return t.tipo === "DIA" ? "Turno día" : "Turno noche";
 }
+
+/** El turno inmediatamente anterior (Dia <-> Noche), para mostrar la APK del colega previo. */
+export function turnoAnterior(ahora: Date): TurnoGuardia {
+  const t = turnoDe(ahora);
+  const [y, m, d] = t.fecha.split("-").map(Number) as [number, number, number];
+  if (t.tipo === "DIA") {
+    const antes = new Date(y, m - 1, d - 1, HORA_INICIO_NOCHE, 0);
+    return turnoDe(antes);
+  }
+  return turnoDe(new Date(y, m - 1, d, HORA_INICIO_DIA, 0));
+}

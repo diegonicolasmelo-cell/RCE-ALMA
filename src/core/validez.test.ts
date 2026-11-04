@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mecanicaBloqueadaPorAsincronia, plateauEsValido, validezMecanicaEstatica } from "./validez";
+import { mecanicaBloqueadaPorAsincronia, plateauEsValido, presionParaDriving, validezMecanicaEstatica } from "./validez";
 import { calcularDerivados } from "./fisiologia";
 import { unControl, unaVentilacion } from "./fixtures";
 
@@ -50,5 +50,22 @@ describe("candado de mecánica estática", () => {
     const d = calcularDerivados(c, 67.8);
     expect(d.vtEspiradoPorKg).toBe(6.3);
     expect(d.volumenMinuto).toBe(8.6);
+  });
+});
+
+describe("presionParaDriving", () => {
+  it("ACVC: solo plateau", () => {
+    expect(presionParaDriving(unaVentilacion({ modalidad: "ACVC", pPlateau: 20 }))).toEqual({ valor: 20, origen: "PLATEAU" });
+    expect(presionParaDriving(unaVentilacion({ modalidad: "ACVC", pPlateau: null, pPico: 25 }))).toBeNull();
+  });
+
+  it("PCV: plateau si se mide; si no, la presión pico", () => {
+    expect(presionParaDriving(unaVentilacion({ modalidad: "PCV", pPlateau: 20, pPico: 25 }))?.origen).toBe("PLATEAU");
+    expect(presionParaDriving(unaVentilacion({ modalidad: "PCV", pPlateau: null, pPico: 25 }))).toEqual({ valor: 25, origen: "PICO" });
+  });
+
+  it("CPAP+PS y CNAF no tienen ΔP", () => {
+    expect(presionParaDriving(unaVentilacion({ modalidad: "CPAP_PS" }))).toBeNull();
+    expect(presionParaDriving(unaVentilacion({ modalidad: "CNAF" }))).toBeNull();
   });
 });

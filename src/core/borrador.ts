@@ -26,13 +26,17 @@ import type {
   CampoVent,
   CantidadSecreciones,
   Control,
+  EquipoEnSala,
   Episodio,
   EstadoTerapiaFisica,
   EstadoVigilia,
   IdInfusion,
+  Glasgow,
   Infusiones,
   Medicion,
   Modalidad,
+  MonitoreoEpisodio,
+  Neuromonitoreo,
   ReologiaSecreciones,
   Uuid,
   ValidacionApk,
@@ -61,7 +65,8 @@ export const CAMPOS_VENT_OBSERVADOS: readonly CampoVent[] = [
   "vtEspirado",
   "pPico",
   "pPlateau",
-  "pMedia"
+  "pMedia",
+  "volMinuto"
 ];
 
 export interface BorradorInfusion {
@@ -90,6 +95,13 @@ export interface BorradorControl {
   infusiones: Record<IdInfusion, BorradorInfusion>;
   sas: ValorSas | null;
   vigilia: EstadoVigilia | null;
+  /** Se registra aunque haya sedacion. Los tres componentes o ninguno. */
+  glasgow: { ocular: Glasgow["ocular"] | null; verbal: Glasgow["verbal"] | null; motora: Glasgow["motora"] | null };
+
+  /** Neuromonitoreo: solo lo que el episodio tiene activo. Nace en blanco. */
+  neuro: { etco2: string; pic: string; dveAltura: string; dveAbierta: boolean | null };
+  /** Equipos de la sala: se heredan del episodio; un cambio genera un evento. */
+  equipos: readonly EquipoEnSala[];
 
   kineRealizada: boolean | null;
   aspiracion: Aspiracion;
@@ -174,6 +186,9 @@ export function crearBorradorNuevoControl(
     infusiones,
     sas: null,
     vigilia: null,
+    glasgow: { ocular: null, verbal: null, motora: null },
+    neuro: { etco2: "", pic: "", dveAltura: "", dveAbierta: null },
+    equipos: episodio.equipos,
 
     kineRealizada: null,
     aspiracion: "NO",
@@ -266,6 +281,10 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
     }
   }
 
+  const g = b.glasgow;
+  const nGlasgow = [g.ocular, g.verbal, g.motora].filter((x) => x !== null).length;
+  if (nGlasgow > 0 && nGlasgow < 3) falta("glasgow", "Glasgow completo (O, V y M)");
+
   if (b.kineRealizada === null) falta("kine", "kine respiratoria sí/no");
   if (b.terapiaFisica === null) falta("terapiaFisica", "terapia física");
 
@@ -298,6 +317,8 @@ export interface DatosMaterializacion {
   readonly ahora: Date;
   /** Via aerea vigente del episodio. El control la observa; no es editable en rutina. */
   readonly viaAerea: ViaAerea;
+  /** Monitoreo activo del episodio: define que campos de neuromonitoreo se guardan. */
+  readonly monitoreo: MonitoreoEpisodio;
   readonly corrige?: Uuid | null;
 }
 
@@ -320,8 +341,25 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     vtEspirado: campo("vtEspirado"),
     pPico: campo("pPico"),
     pPlateau: campo("pPlateau"),
-    pMedia: campo("pMedia")
+    pMedia: campo("pMedia"),
+    // Volumen minuto editable: vacio = se calcula; escrito = lo leido del ventilador.
+    volMinuto: b.modalidad === "CNAF" ? null : medicionDe(b.vent.volMinuto)
   };
+
+  const m = datos.monitoreo;
+  const neuro: Neuromonitoreo | null =
+    m.capnografia || m.pic || m.dve
+      ? {
+          etco2: m.capnografia ? medicionDe(b.neuro.etco2) : null,
+          pic: m.pic ? medicionDe(b.neuro.pic) : null,
+          dveAlturaCmH2O: m.dve ? medicionDe(b.neuro.dveAltura) : null,
+          dveAbierta: m.dve ? b.neuro.dveAbierta : null
+        }
+      : null;
+  const glasgow: Glasgow | null =
+    b.glasgow.ocular !== null && b.glasgow.verbal !== null && b.glasgow.motora !== null
+      ? { ocular: b.glasgow.ocular, verbal: b.glasgow.verbal, motora: b.glasgow.motora }
+      : null;
 
   const infusiones: Record<string, { dosis: number; escalon: number | null }> = {};
   for (const def of INFUSIONES) {
@@ -352,16 +390,16 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     pas: medicionDe(b.pas),
     pad: medicionDe(b.pad),
     spo2: medicionDe(b.spo2),
-    pic: null,
 
     viaAerea: datos.viaAerea,
     ventilacion,
     esfuerzo: null,
+    neuro,
 
     infusiones,
     sas: sedada ? b.sas : null,
     vigilia: sedada ? null : b.vigilia,
-    glasgow: null,
+    glasgow,
 
     kineResp: {
       realizada: kine,

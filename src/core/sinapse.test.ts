@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enlaceSinapse, formatearRut, normalizarRut, validarRut } from "./sinapse";
+import { construirRut, enlaceSinapse, formatearRut, normalizarRut, validarRut } from "./sinapse";
 
 describe("RUT", () => {
   it("normaliza puntos, guion y mayusculas", () => {
@@ -43,5 +43,13 @@ describe("enlaceSinapse", () => {
   it("no genera enlace sin RUT o sin plantilla", () => {
     expect(enlaceSinapse(null, plantilla)).toBeNull();
     expect(enlaceSinapse("12345678-5", "  ")).toBeNull();
+  });
+});
+
+describe("construirRut", () => {
+  it("arma RUT con dígito verificador válido", () => {
+    expect(construirRut(12345678)).toBe("12345678-5");
+    expect(validarRut(construirRut(16452891))).toBe(true);
+    expect(construirRut(16452891)).toBe("16452891-K");
   });
 });

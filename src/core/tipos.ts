@@ -46,7 +46,9 @@ export type CampoVent =
   | "vtEspirado"
   | "pPico"
   | "pPlateau"
-  | "pMedia";
+  | "pMedia"
+  /** Volumen minuto leido del ventilador. Opcional: por defecto se calcula (Vt espirado x FR total). */
+  | "volMinuto";
 
 export const CAMPOS_VENT: readonly CampoVent[] = [
   "frProgramada",
@@ -60,7 +62,8 @@ export const CAMPOS_VENT: readonly CampoVent[] = [
   "vtEspirado",
   "pPico",
   "pPlateau",
-  "pMedia"
+  "pMedia",
+  "volMinuto"
 ];
 
 /**
@@ -96,7 +99,8 @@ export type IdCardiovascular =
   | "adrenalina"
   | "vasopresina"
   | "dobutamina"
-  | "milrinona";
+  | "milrinona"
+  | "amiodarona";
 export type IdInfusion = IdSedante | IdCardiovascular;
 
 /** Una infusion en curso. Si un farmaco no esta en el mapa, esta suspendido. */
@@ -153,6 +157,43 @@ export interface TerapiaFisica {
 }
 
 // ---------------------------------------------------------------------------
+// Monitoreo y equipos
+// ---------------------------------------------------------------------------
+
+/** Monitoreo del episodio: se define una vez; el control solo pide lo que esta activo. */
+export interface MonitoreoEpisodio {
+  readonly capnografia: boolean;
+  readonly pic: boolean;
+  /** Derivacion ventricular externa. */
+  readonly dve: boolean;
+}
+
+export interface Neuromonitoreo {
+  /** Capnografia: CO2 espirado (mmHg). */
+  readonly etco2: Medicion;
+  readonly pic: Medicion;
+  /** Altura de la DVE (cmH2O). */
+  readonly dveAlturaCmH2O: Medicion;
+  readonly dveAbierta: boolean | null;
+}
+
+export type TipoEquipo = "VENTILADOR" | "VMNI" | "ALTO_FLUJO" | "HUMIDIFICADOR" | "NEBULIZADOR";
+
+/**
+ * Equipo en la sala de un paciente. Se identifica por modelo y numero ("Savina 1",
+ * "Vela 8"); el numero asocia el nombre a un numero de serie. A veces conviven
+ * ventilador pesado, liviano, humidificador y alto flujo en una misma unidad.
+ */
+export interface EquipoEnSala {
+  readonly tipo: TipoEquipo;
+  readonly modelo: string;
+  /** `null` si el modelo es unico en la unidad (Servo U). */
+  readonly numero: number | null;
+  /** Equipo que da el soporte respiratorio ahora (los demas estan en la sala sin uso). */
+  readonly enUso: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Episodio
 // ---------------------------------------------------------------------------
 
@@ -174,6 +215,8 @@ export interface Episodio {
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
   readonly diasVM: number;
+  readonly equipos: readonly EquipoEnSala[];
+  readonly monitoreo: MonitoreoEpisodio;
   readonly rutTitular: string;
   readonly transcritoAlma: boolean;
   readonly horaTranscripcion: HoraHHMM | null;
@@ -212,18 +255,18 @@ export interface Control {
   readonly pas: Medicion;
   readonly pad: Medicion;
   readonly spo2: Medicion;
-  /** Neuromonitoreo: por definir. */
-  readonly pic: Medicion;
 
   /** Via aerea observada. Se copia del episodio y no es editable en rutina. */
   readonly viaAerea: ViaAerea;
   readonly ventilacion: Ventilacion;
   readonly esfuerzo: EsfuerzoRespiratorio | null;
+  /** Solo si el episodio tiene capnografia, PIC o DVE. */
+  readonly neuro: Neuromonitoreo | null;
 
   readonly infusiones: Infusiones;
   readonly sas: ValorSas | null;
   readonly vigilia: EstadoVigilia | null;
-  /** Glasgow: ubicacion en el formulario por definir. */
+  /** Se registra aunque haya sedacion; la nota lo marca "bajo sedacion". */
   readonly glasgow: Glasgow | null;
 
   readonly kineResp: KineRespiratoria;
@@ -266,7 +309,9 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "ASISTENCIA_PROCEDIMIENTO"; readonly procedimiento: string })
   | (EventoBase & { readonly tipo: "TOMA_CULTIVO"; readonly muestra: string })
   | (EventoBase & { readonly tipo: "TRASLADO_IMAGEN"; readonly destino: string })
-  | (EventoBase & { readonly tipo: "CAMBIO_HMEF" });
+  | (EventoBase & { readonly tipo: "CAMBIO_HMEF" })
+  /** Cambio en los equipos de la sala (rastreo de la ubicacion de ventiladores). */
+  | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[] });
 
 export type TipoEvento = EventoClinico["tipo"];
 

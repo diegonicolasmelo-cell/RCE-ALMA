@@ -59,7 +59,7 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   });
 
   it("cubre exactamente lo observado", () => {
-    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["frTotal", "pMedia", "pPico", "pPlateau", "vtEspirado"]);
+    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["frTotal", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
   });
 
   it("la asincronía es del momento: no se hereda", () => {
@@ -205,7 +205,7 @@ describe("validarBorrador", () => {
 });
 
 describe("materializarControl", () => {
-  const datos = { id: "ct-2", numero: 2, ahora: AHORA, viaAerea: "TET" as const };
+  const datos = { id: "ct-2", numero: 2, ahora: AHORA, viaAerea: "TET" as const, monitoreo: { capnografia: false, pic: false, dve: false } };
 
   it("campos vacíos son null, no cero", () => {
     const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
@@ -285,5 +285,56 @@ describe("materializarControl", () => {
     const c = materializarControl(completo({ terapiaFisica: "REALIZADA", actividades: ["IMT (entrenamiento muscular inspiratorio)"], ims: "3" }), datos);
     expect(c.terapiaFisica.ims).toBe(3);
     expect(c.terapiaFisica.actividades).toHaveLength(1);
+  });
+});
+
+describe("neuromonitoreo, Glasgow, volumen minuto y equipos", () => {
+  const datosNeuro = { id: "ct-3", numero: 3, ahora: AHORA, viaAerea: "TET" as const };
+  const todo = { capnografia: true, pic: true, dve: true };
+
+  it("el neuromonitoreo y el Glasgow nacen en blanco (son lecturas y evaluaciones)", () => {
+    const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
+    expect(b.neuro).toEqual({ etco2: "", pic: "", dveAltura: "", dveAbierta: null });
+    expect(b.glasgow).toEqual({ ocular: null, verbal: null, motora: null });
+  });
+
+  it("el volumen minuto nace vacío (se calcula) y se puede escribir", () => {
+    const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
+    expect(b.vent.volMinuto).toBe("");
+    const conVm = completo({ vent: { ...completo().vent, volMinuto: "9,1" } });
+    expect(materializarControl(conVm, { ...datosNeuro, monitoreo: todo }).ventilacion.volMinuto).toBe(9.1);
+  });
+
+  it("el volumen minuto no se guarda en CNAF", () => {
+    const b = cambiarModalidad(completo({ vent: { ...completo().vent, volMinuto: "9" } }), "CNAF");
+    expect(materializarControl(b, { ...datosNeuro, monitoreo: todo }).ventilacion.volMinuto).toBeNull();
+  });
+
+  it("guarda solo el neuromonitoreo que el episodio tiene activo", () => {
+    const b = completo({ neuro: { etco2: "35", pic: "15", dveAltura: "12", dveAbierta: true } });
+    const c = materializarControl(b, { ...datosNeuro, monitoreo: { capnografia: true, pic: false, dve: true } });
+    expect(c.neuro).toEqual({ etco2: 35, pic: null, dveAlturaCmH2O: 12, dveAbierta: true });
+  });
+
+  it("sin monitoreo activo no hay bloque de neuromonitoreo", () => {
+    const c = materializarControl(completo(), { ...datosNeuro, monitoreo: { capnografia: false, pic: false, dve: false } });
+    expect(c.neuro).toBeNull();
+  });
+
+  it("el Glasgow se guarda completo o no se guarda", () => {
+    const c = materializarControl(completo({ glasgow: { ocular: 3, verbal: 1, motora: 5 } }), { ...datosNeuro, monitoreo: todo });
+    expect(c.glasgow).toEqual({ ocular: 3, verbal: 1, motora: 5 });
+    const parcial = materializarControl(completo({ glasgow: { ocular: 3, verbal: null, motora: null } }), { ...datosNeuro, monitoreo: todo });
+    expect(parcial.glasgow).toBeNull();
+  });
+
+  it("un Glasgow a medias impide guardar", () => {
+    const b = completo({ glasgow: { ocular: 3, verbal: null, motora: 5 } });
+    expect(validarBorrador(b, { apkVigente: apkOk() }).map((p) => p.campo)).toContain("glasgow");
+  });
+
+  it("los equipos se heredan del episodio", () => {
+    const ep = unEpisodio({ equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true }] });
+    expect(crearBorradorNuevoControl(ep, null, "x").equipos).toEqual(ep.equipos);
   });
 });

@@ -5,6 +5,7 @@ import type {
   EstadoVigilia,
   IdInfusion,
   Modalidad,
+  TipoEquipo,
   ValorSas
 } from "./tipos";
 
@@ -95,7 +96,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("frTotal", "FR total", "rpm"),
     o("vtEspirado", "Vt espirado", "ml"),
     o("pPico", "P. pico", "cmH₂O"),
-    o("pPlateau", "P. plateau", "cmH₂O"),
+    o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
     o("pMedia", "P. media", "cmH₂O")
   ],
   PCV: [
@@ -107,17 +108,17 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("frTotal", "FR total", "rpm"),
     o("vtEspirado", "Vt espirado", "ml"),
     o("pPico", "P. pico", "cmH₂O"),
-    o("pPlateau", "P. plateau", "cmH₂O"),
+    o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
     o("pMedia", "P. media", "cmH₂O")
   ],
+  // En espontaneas importa la presion pico, no la media.
   CPAP_PS: [
     p("presion", "P. soporte", "cmH₂O"),
     p("peep", "PEEP", "cmH₂O"),
     p("fio2", "FiO₂", "%"),
     o("frTotal", "FR total", "rpm"),
     o("vtEspirado", "Vt espirado", "ml"),
-    o("pPico", "P. pico", "cmH₂O"),
-    o("pMedia", "P. media", "cmH₂O")
+    o("pPico", "P. pico", "cmH₂O")
   ],
   CNAF: [p("flujo", "Flujo", "L/min"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")]
 };
@@ -146,7 +147,7 @@ export const CORTE_FUGA = 0.1;
 // Infusiones: sedoanalgesia y cardiovasculares
 // ---------------------------------------------------------------------------
 
-export type GrupoInfusion = "SEDANTE" | "DVA" | "INOTROPO";
+export type GrupoInfusion = "SEDANTE" | "DVA" | "INOTROPO" | "ANTIARRITMICO";
 
 export interface DefinicionInfusion {
   readonly id: IdInfusion;
@@ -160,6 +161,8 @@ export interface DefinicionInfusion {
   readonly escalones: { readonly primero: number; readonly sexto: number; readonly decimales: number } | null;
   /** Semaforo de riesgo hemodinamico (noradrenalina y adrenalina). */
   readonly semaforo: boolean;
+  /** false = la unidad aun no esta confirmada por la unidad clinica. */
+  readonly unidadConfirmada: boolean;
   readonly rapidos: readonly number[];
 }
 
@@ -171,20 +174,53 @@ export interface DefinicionInfusion {
 export const TABLA_ESCALONES_CONFIRMADA = false;
 
 export const INFUSIONES: readonly DefinicionInfusion[] = [
-  { id: "fentanilo", nombre: "Fentanilo", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.6, sexto: 3.6, decimales: 2 }, semaforo: false, rapidos: [] },
-  { id: "propofol", nombre: "Propofol", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.5, sexto: 3.0, decimales: 2 }, semaforo: false, rapidos: [] },
-  { id: "midazolam", nombre: "Midazolam", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.01, sexto: 0.06, decimales: 3 }, semaforo: false, rapidos: [] },
-  { id: "dexmedetomidina", nombre: "Precedex", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.2, sexto: 1.5, decimales: 2 }, semaforo: false, rapidos: [] },
-  { id: "lorazepam", nombre: "Lorazepam", unidad: "mg/h", grupo: "SEDANTE", escalones: null, semaforo: false, rapidos: [] },
-  { id: "noradrenalina", nombre: "Noradrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
-  { id: "adrenalina", nombre: "Adrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
+  { id: "fentanilo", nombre: "Fentanilo", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.6, sexto: 3.6, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "propofol", nombre: "Propofol", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.5, sexto: 3.0, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "midazolam", nombre: "Midazolam", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.01, sexto: 0.06, decimales: 3 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "dexmedetomidina", nombre: "Precedex", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.2, sexto: 1.5, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "lorazepam", nombre: "Lorazepam", unidad: "mg/h", grupo: "SEDANTE", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "noradrenalina", nombre: "Noradrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
+  { id: "adrenalina", nombre: "Adrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3] },
   /** Unidad segun el informe de la unidad: UI/min. */
-  { id: "vasopresina", nombre: "Vasopresina", unidad: "UI/min", grupo: "DVA", escalones: null, semaforo: false, rapidos: [0.01, 0.02, 0.03] },
-  { id: "dobutamina", nombre: "Dobutamina", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, rapidos: [] },
-  { id: "milrinona", nombre: "Milrinona", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, rapidos: [] }
+  { id: "vasopresina", nombre: "Vasopresina", unidad: "UI/min", grupo: "DVA", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [0.01, 0.02, 0.03] },
+  { id: "dobutamina", nombre: "Dobutamina", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "milrinona", nombre: "Milrinona", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  /** La unidad (mg/h) es una suposicion: la unidad clinica aun no la confirma. */
+  { id: "amiodarona", nombre: "Amiodarona", unidad: "mg/h", grupo: "ANTIARRITMICO", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] }
 ];
 
-/** Antiarritmicos: lista y unidades por definir. */
+// ---------------------------------------------------------------------------
+// Equipos de la sala
+// ---------------------------------------------------------------------------
+
+export interface DefinicionEquipo {
+  readonly modelo: string;
+  readonly tipo: TipoEquipo;
+  /** false = hay una sola unidad (Servo U): no lleva numero. */
+  readonly numerado: boolean;
+}
+
+/** Equipos de la unidad. "Savina 1", "Vela 8", "Meckis 3": nombre asociado a un numero de serie. */
+export const CATALOGO_EQUIPOS: readonly DefinicionEquipo[] = [
+  { modelo: "Servo U", tipo: "VENTILADOR", numerado: false },
+  { modelo: "Savina", tipo: "VENTILADOR", numerado: true },
+  { modelo: "Vela", tipo: "VENTILADOR", numerado: true },
+  { modelo: "Avea", tipo: "VENTILADOR", numerado: true },
+  { modelo: "Meckis", tipo: "VENTILADOR", numerado: true },
+  { modelo: "PB 840", tipo: "VENTILADOR", numerado: true },
+  { modelo: "PB 980", tipo: "VENTILADOR", numerado: true },
+  { modelo: "B60", tipo: "VMNI", numerado: true },
+  { modelo: "Humidificador MR850", tipo: "HUMIDIFICADOR", numerado: true },
+  { modelo: "NBZ Aerogen", tipo: "NEBULIZADOR", numerado: true }
+];
+
+export const ETIQUETA_TIPO_EQUIPO: Readonly<Record<TipoEquipo, string>> = {
+  VENTILADOR: "Ventilador",
+  VMNI: "VMNI",
+  ALTO_FLUJO: "Alto flujo",
+  HUMIDIFICADOR: "Humidificador",
+  NEBULIZADOR: "Nebulizador"
+};
 
 export const FARMACOS_BNM: readonly string[] = ["Atracurio", "Rocuronio", "Vecuronio"];
 

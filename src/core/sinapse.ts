@@ -67,3 +67,9 @@ export function enlaceSinapse(rut: string | null, plantilla: string): string | n
     encodeURIComponent(reemplazos[k] ?? "")
   );
 }
+
+/** Arma un RUT valido ("12345678-5") a partir del cuerpo numerico. Util para datos de ejemplo. */
+export function construirRut(cuerpo: number): string {
+  const c = String(Math.trunc(cuerpo));
+  return `${c}-${digitoVerificador(c)}`;
+}

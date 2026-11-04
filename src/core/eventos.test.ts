@@ -5,9 +5,10 @@ import {
   estadoProno,
   estadoPve,
   eventosDeRiesgo,
-  viaAereaVigente
+  viaAereaVigente,
+  aplicarEventoAEpisodio
 } from "./eventos";
-import { unEvento } from "./fixtures";
+import { unEpisodio, unEvento } from "./fixtures";
 import type { EventoClinico } from "./tipos";
 
 const EN = (iso: string) => ({ registradoEn: iso });
@@ -218,5 +219,34 @@ describe("eventosDeRiesgo", () => {
     const riesgos = eventosDeRiesgo([autoext, cultivo]);
     expect(riesgos).toHaveLength(1);
     expect(riesgos[0]?.tipo).toBe("AUTOEXTUBACION");
+  });
+});
+
+describe("aplicarEventoAEpisodio", () => {
+  const ep = unEpisodio({ viaAereaActual: "TET", calibreVia: "8.0", fijacionCm: "22" });
+
+  it("la autoextubación deja la vía natural y borra calibre y fijación", () => {
+    const n = aplicarEventoAEpisodio(ep, unEvento<Extract<EventoClinico, { tipo: "AUTOEXTUBACION" }>>({ tipo: "AUTOEXTUBACION", dispositivo: "CNAF" }));
+    expect(n).toMatchObject({ viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null });
+  });
+
+  it("la reintubación fija vía, calibre y fijación", () => {
+    const natural = { ...ep, viaAereaActual: "NATURAL" as const, calibreVia: null, fijacionCm: null };
+    const n = aplicarEventoAEpisodio(natural, unEvento<Extract<EventoClinico, { tipo: "REINTUBACION" }>>({ tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "21" }));
+    expect(n).toMatchObject({ viaAereaActual: "TET", calibreVia: "7.5", fijacionCm: "21" });
+  });
+
+  it("la traqueostomía deja TQT con collarín", () => {
+    const n = aplicarEventoAEpisodio(ep, unEvento<Extract<EventoClinico, { tipo: "TRAQUEOSTOMIA" }>>({ tipo: "TRAQUEOSTOMIA", calibre: "8.0" }));
+    expect(n).toMatchObject({ viaAereaActual: "TQT", fijacionCm: "Collarín" });
+  });
+
+  it("un ajuste de tubo cambia solo los centímetros, no la vía", () => {
+    const n = aplicarEventoAEpisodio(ep, unEvento<Extract<EventoClinico, { tipo: "AJUSTE_TUBO" }>>({ tipo: "AJUSTE_TUBO", fijacionCm: "23", motivo: "CONTROL_RADIOLOGICO" }));
+    expect(n).toMatchObject({ viaAereaActual: "TET", fijacionCm: "23" });
+  });
+
+  it("un evento que no toca la vía devuelve el mismo objeto (sin versión nueva)", () => {
+    expect(aplicarEventoAEpisodio(ep, unEvento<Extract<EventoClinico, { tipo: "CAMBIO_HMEF" }>>({ tipo: "CAMBIO_HMEF" }))).toBe(ep);
   });
 });

@@ -13,7 +13,9 @@ import {
   PCF_CORTE_EXITO,
   PCF_CORTE_OPTIMO
 } from "./catalogos";
-import { esModalidadControlada, validezMecanicaEstatica } from "./validez";
+import { sedoanalgesiaActiva } from "./infusiones";
+import { esModalidadControlada, presionParaDriving, validezMecanicaEstatica } from "./validez";
+import type { OrigenPresion } from "./validez";
 import type { Control, Glasgow, Medicion, Sexo, ViaAerea } from "./tipos";
 
 export function esViaAereaArtificial(via: ViaAerea): boolean {
@@ -158,10 +160,14 @@ export interface DerivadosControl {
   readonly bandaGuia: BandaProteccion | null;
   /** Programado y espirado difieren mas de 10 %: posible fuga (solo ACVC). */
   readonly posibleFuga: boolean;
+  /** Calculado por defecto (Vt espirado x FR total); si se edita, vale lo leido del ventilador. */
   readonly volumenMinuto: number | null;
+  readonly volumenMinutoOrigen: "CALCULADO" | "EDITADO" | null;
   readonly relacionIE: string | null;
   /** Driving pressure. `null` si el candado de mecanica la invalida. */
   readonly drivingPressure: number | null;
+  /** Con que presion se calculo: plateau, o pico en PCV si no se mide plateau. */
+  readonly origenDriving: OrigenPresion | null;
   /** Compliance estatica. `null` si el candado de mecanica la invalida. */
   readonly compliance: number | null;
   /** Solo CPAP+PS. */
@@ -169,6 +175,8 @@ export interface DerivadosControl {
   /** Solo CNAF. */
   readonly rox: number | null;
   readonly glasgow: GlasgowCalculado | null;
+  /** El Glasgow se registra aunque haya sedacion, pero asi no es lo correcto: se avisa. */
+  readonly glasgowBajoSedacion: boolean;
   readonly semaforoPcf: SemaforoPcf;
   readonly leyendaMecanica: string | null;
 }
@@ -187,10 +195,13 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
 
   let drivingPressure: number | null = null;
   let compliance: number | null = null;
-  if (validez.valido && v.pPlateau !== null && v.peep !== null) {
-    const dp = v.pPlateau - v.peep;
+  let origenDriving: OrigenPresion | null = null;
+  const pd = presionParaDriving(v);
+  if (validez.valido && pd !== null && v.peep !== null) {
+    const dp = pd.valor - v.peep;
     if (dp > 0) {
       drivingPressure = redondear(dp, 1);
+      origenDriving = pd.origen;
       if (v.vtEspirado !== null && v.vtEspirado > 0) compliance = redondear(v.vtEspirado / dp, 1);
     }
   }
@@ -206,22 +217,28 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     v.vtEspirado !== null &&
     Math.abs(v.vtEspirado - v.vtProgramado) / v.vtProgramado > CORTE_FUGA;
 
+  const vmCalculado = esVMI ? volumenMinuto(v.vtEspirado, v.frTotal) : null;
+  const vmEditado = esVMI && v.volMinuto !== null ? v.volMinuto : null;
+
   return {
     pbw,
     pam,
-    ppc: calcularPpc(pam, control.pic),
+    ppc: calcularPpc(pam, control.neuro?.pic ?? null),
     vtProgramadoPorKg,
     vtEspiradoPorKg,
     mlKgGuia,
     bandaGuia: esVMI ? bandaProteccion(mlKgGuia) : null,
     posibleFuga,
-    volumenMinuto: esVMI ? volumenMinuto(v.vtEspirado, v.frTotal) : null,
+    volumenMinuto: vmEditado ?? vmCalculado,
+    volumenMinutoOrigen: vmEditado !== null ? "EDITADO" : vmCalculado !== null ? "CALCULADO" : null,
     relacionIE: controlada ? relacionIE(v.ti, v.frTotal) : null,
     drivingPressure,
+    origenDriving,
     compliance,
     tobin: v.modalidad === "CPAP_PS" ? indiceTobin(v.frTotal, v.vtEspirado) : null,
     rox: v.modalidad === "CNAF" ? indiceRox(control.spo2, v.fio2, v.frTotal) : null,
     glasgow: control.glasgow ? calcularGlasgow(control.glasgow, control.viaAerea) : null,
+    glasgowBajoSedacion: control.glasgow !== null && sedoanalgesiaActiva(control.infusiones),
     semaforoPcf: semaforoPcf(control.esfuerzo?.pcf ?? null),
     leyendaMecanica: validez.motivo === "ASINCRONIA_EN_MODO_CONTROLADO" ? validez.leyenda : null
   };

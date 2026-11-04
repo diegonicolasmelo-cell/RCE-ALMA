@@ -7,7 +7,7 @@
  * hace imposible que el contador de prono quede desincronizado de los hechos.
  */
 
-import type { EventoClinico, TipoEvento, ViaAerea } from "./tipos";
+import type { Episodio, EventoClinico, TipoEvento, ViaAerea } from "./tipos";
 import { EVENTOS_DE_RIESGO } from "./tipos";
 
 /** Duracion de protocolo de una prueba de ventilacion espontanea. */
@@ -69,6 +69,7 @@ export function viaAereaVigente(
       case "EVENTO_CENTINELA":
       case "ASISTENCIA_FBC":
       case "CAMBIO_HMEF":
+      case "CAMBIO_EQUIPOS":
       case "ASISTENCIA_PROCEDIMIENTO":
       case "TOMA_CULTIVO":
       case "TRASLADO_IMAGEN":
@@ -225,4 +226,31 @@ export function eventosDeRiesgo(
   eventos: readonly EventoClinico[]
 ): readonly EventoClinico[] {
   return ordenCronologico(eventos.filter((e) => esEventoDeRiesgo(e.tipo)));
+}
+
+// ---------------------------------------------------------------------------
+// Efecto de un evento sobre el episodio
+// ---------------------------------------------------------------------------
+
+/**
+ * Estado del episodio tras un evento. La via aerea (y su calibre y fijacion)
+ * solo cambian por eventos: un control de rutina nunca la modifica.
+ * Un AJUSTE_TUBO cambia los centimetros pero no es una intubacion.
+ */
+export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodio {
+  switch (ev.tipo) {
+    case "EXTUBACION_PROGRAMADA":
+    case "AUTOEXTUBACION":
+      return { ...ep, viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null };
+    case "REINTUBACION":
+      return { ...ep, viaAereaActual: ev.via, calibreVia: ev.calibre, fijacionCm: ev.fijacionCm };
+    case "TRAQUEOSTOMIA":
+      return { ...ep, viaAereaActual: "TQT", calibreVia: ev.calibre, fijacionCm: "Collarín" };
+    case "AJUSTE_TUBO":
+      return { ...ep, fijacionCm: ev.fijacionCm };
+    case "CAMBIO_EQUIPOS":
+      return { ...ep, equipos: ev.equipos };
+    default:
+      return ep;
+  }
 }

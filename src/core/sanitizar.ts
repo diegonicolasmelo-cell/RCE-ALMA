@@ -66,6 +66,8 @@ export interface EpisodioNube {
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
   readonly diasVM: number;
+  readonly equipos: readonly { tipo: string; modelo: string; numero: number | null; enUso: boolean }[];
+  readonly monitoreo: { capnografia: boolean; pic: boolean; dve: boolean };
   readonly rutTitular: string;
   readonly transcritoAlma: boolean;
   readonly horaTranscripcion: string | null;
@@ -115,6 +117,8 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     calibreVia: e.calibreVia,
     fijacionCm: e.fijacionCm,
     diasVM: e.diasVM,
+    equipos: e.equipos.map((q) => ({ ...q })),
+    monitoreo: { ...e.monitoreo },
     rutTitular: e.rutTitular,
     transcritoAlma: e.transcritoAlma,
     horaTranscripcion: e.horaTranscripcion,
@@ -144,10 +148,10 @@ export function serializarControlParaNube(c: Control): Record<string, unknown> {
     pas: c.pas,
     pad: c.pad,
     spo2: c.spo2,
-    pic: c.pic,
     viaAerea: c.viaAerea,
     ventilacion: { ...c.ventilacion },
     esfuerzo: c.esfuerzo === null ? null : { ...c.esfuerzo },
+    neuro: c.neuro === null ? null : { ...c.neuro },
     infusiones: Object.fromEntries(Object.entries(c.infusiones).map(([k, v]) => [k, { ...v }])),
     sas: c.sas,
     vigilia: c.vigilia,

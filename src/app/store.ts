@@ -43,6 +43,8 @@ interface EstadoApp {
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
+  /** Cuando se edito por ultima vez cada borrador (ms). */
+  editados: Record<string, number>;
   editar: (episodioId: string, base: BorradorControl, fn: (b: BorradorControl) => BorradorControl) => void;
   descartar: (episodioId: string) => void;
 
@@ -50,6 +52,9 @@ interface EstadoApp {
   avisar: (texto: string, deshacer?: () => void) => void;
   cerrarAviso: () => void;
 }
+
+/** Un control a medio llenar se retoma solo si se toco hace menos de esto (una interrupcion). */
+export const RETOMAR_BORRADOR_MS = 20 * 60 * 1000;
 
 let contadorAvisos = 0;
 
@@ -66,11 +71,27 @@ export const useApp = create<EstadoApp>((set) => ({
   vista: "camas",
   misCamas: null,
   setMisCamas: (misCamas) => set({ misCamas }),
-  irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "control", segPedido: null } : { vista, camaId: s.camaId })),
+  irA: (vista, camaId) =>
+    set((s) => {
+      if (!camaId) return { vista, camaId: s.camaId };
+      // Un control nuevo parte en blanco. Solo se retoma lo que se dejo a medio llenar hace poco
+      // (una interrupcion), nunca lo de un control anterior.
+      const reciente = (s.editados[camaId] ?? 0) > Date.now() - RETOMAR_BORRADOR_MS;
+      if (reciente || vista !== "cama") return { vista, camaId, tab: "control", segPedido: null };
+      const { [camaId]: _b, ...borradores } = s.borradores;
+      const { [camaId]: _e, ...editados } = s.editados;
+      void _b;
+      void _e;
+      return { vista, camaId, tab: "control", segPedido: null, borradores, editados };
+    }),
 
   borradores: {},
+  editados: {},
   editar: (episodioId, base, fn) =>
-    set((s) => ({ borradores: { ...s.borradores, [episodioId]: fn(s.borradores[episodioId] ?? base) } })),
+    set((s) => ({
+      borradores: { ...s.borradores, [episodioId]: fn(s.borradores[episodioId] ?? base) },
+      editados: { ...s.editados, [episodioId]: Date.now() }
+    })),
   descartar: (episodioId) =>
     set((s) => {
       const { [episodioId]: _quitado, ...resto } = s.borradores;

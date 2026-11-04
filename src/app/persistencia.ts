@@ -17,6 +17,7 @@ export const VIGENCIA_BORRADOR_MS = 12 * 3600 * 1000;
 export interface BorradoresGuardados {
   readonly guardadoEn: number;
   readonly borradores: Readonly<Record<string, BorradorControl>>;
+  readonly editados?: Readonly<Record<string, number>>;
 }
 
 /** Los borradores aun vigentes, o vacio si estan vencidos o no hay. */
@@ -32,7 +33,7 @@ export function borradoresVigentes(
 export async function restaurarBorradores(db: BaseLocal): Promise<void> {
   const g = await leerMeta<BorradoresGuardados>(db, CLAVE_BORRADORES);
   const vigentes = borradoresVigentes(g, Date.now());
-  if (Object.keys(vigentes).length > 0) useApp.setState({ borradores: vigentes });
+  if (Object.keys(vigentes).length > 0) useApp.setState({ borradores: vigentes, editados: { ...(g?.editados ?? {}) } });
 }
 
 /** Guarda los borradores cada vez que cambian (con una pequena espera). Devuelve como dejar de hacerlo. */
@@ -42,7 +43,7 @@ export function persistirBorradores(db: BaseLocal): () => void {
     if (estado.borradores === previo.borradores) return;
     clearTimeout(temporizador);
     temporizador = setTimeout(() => {
-      void guardarMeta(db, CLAVE_BORRADORES, { guardadoEn: Date.now(), borradores: useApp.getState().borradores } satisfies BorradoresGuardados);
+      void guardarMeta(db, CLAVE_BORRADORES, { guardadoEn: Date.now(), borradores: useApp.getState().borradores, editados: useApp.getState().editados } satisfies BorradoresGuardados);
     }, 400);
   });
   return () => {

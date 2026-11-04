@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "e2e": "node e2e/flujo.cjs",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "artefacto": "vite build -c vite.artefacto.config.ts && node scripts/armar-artefacto.cjs"
   },
   "dependencies": {
     "dexie": "4.0.11",

@@ -161,7 +161,7 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
   return p.join(", ");
 }
 
-function describirEvento(ev: EventoClinico): string {
+export function describirEvento(ev: EventoClinico): string {
   switch (ev.tipo) {
     case "INICIO_PVE":
       return `Inicio de PVE (protocolo ${ev.duracionMin} min)`;

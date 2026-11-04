@@ -6,6 +6,7 @@
  * Apps Script. Ver docs/PLAN-MAESTRO.md cap. 1 y 9.
  */
 
+import { normalizarRut } from "./sinapse";
 import type { IdTurno, Profesional } from "./tipos";
 
 export const DOTACION: readonly Profesional[] = [
@@ -41,10 +42,13 @@ export const NOMBRE_TURNO: Readonly<Record<IdTurno, string>> = {
   REEMPLAZO: "Reemplazos"
 };
 
-const PORRUT: ReadonlyMap<string, Profesional> = new Map(DOTACION.map((p) => [p.rut, p]));
+/** Indexado por RUT normalizado: se acepta con o sin puntos, con guion o sin el, k o K. */
+const PORRUT: ReadonlyMap<string, Profesional> = new Map(
+  DOTACION.map((p) => [normalizarRut(p.rut) ?? p.rut, p] as const)
+);
 
 export function buscarProfesional(rut: string): Profesional | undefined {
-  return PORRUT.get(rut.trim().toUpperCase());
+  return PORRUT.get(normalizarRut(rut) ?? rut.trim().toUpperCase());
 }
 
 /** Tratamiento profesional para la nota clinica. */

@@ -19,5 +19,6 @@ export * from "./apk";
 export * from "./borrador";
 export * from "./rem28";
 export * from "./nota-alma";
+export * from "./riesgo";
 export * from "./sanitizar";
 export * from "./sinapse";

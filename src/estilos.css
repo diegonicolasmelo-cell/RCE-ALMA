@@ -278,3 +278,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .hoja-ctl .infu{padding:6px 10px}
 .hoja-ctl .infu.off{padding:4px 10px}
 .hoja-ctl .stack{gap:4px!important}
+/* Pestanas del celular en una sola fila deslizable: no se comen dos lineas de pantalla */
+.ph-tabs{display:flex!important;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.ph-tabs::-webkit-scrollbar{display:none}
+.ph-tabs button{flex:1 0 auto;white-space:nowrap;padding:9px 12px}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOTACION, buscarProfesional, tituloProfesional } from "./dotacion";
+import { DOTACION, buscarProfesional, buscarUsuario, tituloProfesional } from "./dotacion";
 
 describe("dotación", () => {
   it("son los 16 profesionales de los cuatro turnos, la coordinación y los reemplazos", () => {
@@ -21,5 +21,20 @@ describe("dotación", () => {
 
   it("el título profesional para la nota", () => {
     expect(tituloProfesional(buscarProfesional("16452891-K")!)).toBe("Klgo. Diego Melo");
+  });
+});
+
+describe("usuario por nombre o RUT", () => {
+  it("encuentra por nombre sin importar tildes ni mayúsculas", () => {
+    expect(buscarUsuario("diego melo")?.rut).toBe("16.452.891-K");
+    expect(buscarUsuario("  María  José Vega ")?.nombre).toBe("Maria Jose Vega");
+  });
+  it("también por RUT", () => {
+    expect(buscarUsuario("16452891k")?.nombre).toBe("Diego Melo");
+  });
+  it("no adivina si es ambiguo o no existe", () => {
+    expect(buscarUsuario("Gonzalez")).toBeUndefined();
+    expect(buscarUsuario("Nadie Aqui")).toBeUndefined();
+    expect(buscarUsuario("")).toBeUndefined();
   });
 });

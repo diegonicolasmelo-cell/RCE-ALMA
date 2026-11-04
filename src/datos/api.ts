@@ -177,7 +177,7 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
 // ---------------------------------------------------------------------------
 
 /** PIN de la demostracion. En produccion cada profesional define el suyo. */
-export const PIN_DEMO = "0000";
+export const PIN_DEMO = "Kine";
 
 export function crearApiLocal(): ClienteApi {
   const identidades = new Map<string, IdentidadPaciente>();
@@ -185,7 +185,7 @@ export function crearApiLocal(): ClienteApi {
     local: true,
     async login(rut, pin) {
       if (!buscarProfesional(rut)) return { ok: false, error: "USUARIO_NO_ENCONTRADO" };
-      return pin === PIN_DEMO ? { ok: true, rut } : { ok: false, error: "PIN_INCORRECTO" };
+      return pin.trim().toLowerCase() === PIN_DEMO.toLowerCase() ? { ok: true, rut } : { ok: false, error: "PIN_INCORRECTO" };
     },
     async definirPin() {
       return { ok: true };

@@ -15,6 +15,7 @@ import {
 import type { BorradorControl } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta, useOnline } from "../app/hooks";
+import { leerMeta } from "../datos/db";
 import { useApp } from "../app/store";
 import type { TabCelular } from "../app/store";
 import { nuevoId } from "../app/util";
@@ -24,6 +25,7 @@ import { EVENTO_FIN_PESTANA, enfocarPrimero, useFranja } from "./franja";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
 import { TabEventos } from "./TabEventos";
+import { ElegirCamas, claveMisCamas } from "./ElegirCamas";
 import { Evaluaciones } from "./Evaluaciones";
 import { ListaCamas } from "./ListaCamas";
 import { TabKine } from "./TabKine";
@@ -50,11 +52,13 @@ function pestanaDe(campo: string): TabCelular {
 }
 
 export function Celular() {
-  const { repo, sync } = useServicios();
+  const { repo, sync, db } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
   const camaId = useApp((s) => s.camaId);
   const setCama = useApp((s) => s.setCama);
   const vista = useApp((s) => s.vista);
+  const misCamas = useApp((s) => s.misCamas);
+  const setMisCamas = useApp((s) => s.setMisCamas);
   const irA = useApp((s) => s.irA);
   const tab = useApp((s) => s.tab);
   const setTab = useApp((s) => s.setTab);
@@ -66,7 +70,17 @@ export function Celular() {
   const ahora = useAhora(1000);
 
   const episodios = useConsulta(() => repo.episodiosActivos(), [repo], []);
-  const mias = episodios.filter((e) => e.rutTitular === sesion.rut);
+  const esMia = (e: { cama: string; rutTitular: string }): boolean => (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
+  const mias = episodios.filter(esMia);
+
+  // Sesion restaurada: recuperar las camas de hoy; si nunca las eligio, preguntarlas.
+  useEffect(() => {
+    if (misCamas !== null) return;
+    void leerMeta<string[]>(db, claveMisCamas(sesion.rut)).then((g) => {
+      if (g) setMisCamas(g);
+      else useApp.setState({ vista: "elegir" });
+    });
+  }, [db, sesion.rut, misCamas, setMisCamas]);
   const ep = episodios.find((e) => e.id === camaId) ?? mias[0] ?? episodios[0] ?? null;
 
   const controles = useConsulta(() => (ep ? repo.controlesDe(ep.id) : []), [repo, ep?.id], []);
@@ -76,10 +90,10 @@ export function Celular() {
 
   const ultimo = controles.at(-1) ?? null;
   const base = useMemo<BorradorControl | null>(
-    () => (ep ? crearBorradorNuevoControl(ep, ultimo, sesion.rut) : null),
+    () => (ep ? { ...crearBorradorNuevoControl(ep, ultimo, sesion.rut), esControlApoyo: !esMia(ep) } : null),
     // La base se recalcula solo si cambia la cama o el ultimo control; las ediciones viven en el store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ep?.id, ultimo?.id, sesion.rut]
+    [ep?.id, ultimo?.id, sesion.rut, misCamas]
   );
 
   // "Sig." al final de Monitoreo sigue en Ventilacion, como seguiria el papel.
@@ -149,6 +163,15 @@ export function Celular() {
       </div>
   );
 
+  if (vista === "elegir") {
+    return (
+      <div className="app-cel">
+        {cabecera}
+        <ElegirCamas />
+      </div>
+    );
+  }
+
   if (vista === "camas") {
     return (
       <div className="app-cel">
@@ -192,7 +215,7 @@ export function Celular() {
       <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
         {volver}
         <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
-        {ep.rutTitular !== sesion.rut && <Pildora>control de apoyo</Pildora>}
+        {!esMia(ep) && <Pildora>control de apoyo</Pildora>}
       </div>
       <div className="airway">
         <Lock size={14} aria-label="Vía aérea fija: solo la cambia un evento" />
@@ -221,7 +244,7 @@ export function Celular() {
         </div>
         <nav className="cel-camas" aria-label="Camas">
           {episodios.map((e) => (
-            <button key={e.id} type="button" className={`chip ${e.rutTitular === sesion.rut ? "" : "apoyo"}`} aria-pressed={e.id === ep.id} title={e.rutTitular === sesion.rut ? "Cama asignada" : "Cama de apoyo"} onClick={() => { franja.cerrar(); setCama(e.id); }}>
+            <button key={e.id} type="button" className={`chip ${esMia(e) ? "" : "apoyo"}`} aria-pressed={e.id === ep.id} title={esMia(e) ? "Cama asignada" : "Cama de apoyo"} onClick={() => { franja.cerrar(); setCama(e.id); }}>
               {e.cama.slice(-2)}
             </button>
           ))}

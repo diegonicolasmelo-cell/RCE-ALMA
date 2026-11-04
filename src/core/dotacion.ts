@@ -51,6 +51,24 @@ export function buscarProfesional(rut: string): Profesional | undefined {
   return PORRUT.get(normalizarRut(rut) ?? rut.trim().toUpperCase());
 }
 
+const sinTildes = (t: string): string =>
+  t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * Usuario por RUT o por nombre ("Diego Melo", sin importar tildes ni mayusculas).
+ * Por nombre debe haber UNA sola coincidencia; si es ambiguo no adivina.
+ */
+export function buscarUsuario(texto: string): Profesional | undefined {
+  const porRut = buscarProfesional(texto);
+  if (porRut) return porRut;
+  const q = sinTildes(texto);
+  if (q === "") return undefined;
+  const exactos = DOTACION.filter((p) => sinTildes(p.nombre) === q);
+  if (exactos.length === 1) return exactos[0];
+  const parciales = DOTACION.filter((p) => q.split(" ").every((t) => sinTildes(p.nombre).split(" ").some((n) => n.startsWith(t))));
+  return parciales.length === 1 ? parciales[0] : undefined;
+}
+
 /** Tratamiento profesional para la nota clinica. */
 export function tituloProfesional(p: Profesional): string {
   return `Klgo. ${p.nombre}`;

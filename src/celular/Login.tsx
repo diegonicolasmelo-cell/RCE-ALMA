@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { buscarProfesional, formatearRut, normalizarRut } from "@core/index";
+import { buscarUsuario } from "@core/index";
 import { PIN_DEMO } from "../datos/api";
 import { guardarMeta } from "../datos/db";
 import { useServicios } from "../app/contexto";
@@ -29,26 +29,28 @@ export function Login() {
 
   const entrar = async (): Promise<void> => {
     setError(null);
-    const prof = buscarProfesional(rut);
-    if (!prof) return setError("Ese RUT no está en la dotación de la unidad.");
+    const prof = buscarUsuario(rut);
+    if (!prof) return setError("Ese usuario no está en la dotación de la unidad.");
     setCargando(true);
     const r = await api.login(prof.rut, pin);
     setCargando(false);
     if (r.ok) {
       await guardarMeta(db, CLAVE_SESION, { rut: prof.rut, desde: Date.now() } satisfies SesionGuardada);
       setSesion({ rut: prof.rut, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
+      // Cada ingreso pregunta cuales son hoy tus camas.
+      useApp.setState({ vista: "elegir" });
       return;
     }
     if (r.error === "PIN_NO_DEFINIDO") return setFase("definir");
     setError(
-      r.error === "PIN_INCORRECTO" ? "PIN incorrecto."
+      r.error === "PIN_INCORRECTO" ? "Contraseña incorrecta."
       : r.error === "SIN_CONEXION" ? "Sin conexión: el primer ingreso del día necesita red."
       : "No se pudo ingresar."
     );
   };
 
   const definir = async (): Promise<void> => {
-    const prof = buscarProfesional(rut);
+    const prof = buscarUsuario(rut);
     if (!prof) return;
     if (nuevoPin.length < 4) return setError("El PIN debe tener al menos 4 dígitos.");
     setCargando(true);
@@ -76,21 +78,21 @@ export function Login() {
       {fase === "ingreso" ? (
         <>
           <div className="f">
-            <label htmlFor="rut">RUT</label>
+            <label htmlFor="rut">Usuario</label>
             <input
               id="rut"
               inputMode="text"
               autoComplete="username"
+              autoCapitalize="words"
               value={rut}
-              placeholder="12.345.678-5"
+              placeholder="Nombre o RUT"
               onChange={(e) => setRut(e.target.value)}
-              onBlur={() => normalizarRut(rut) && setRut(formatearRut(rut))}
               style={{ textAlign: "left", fontFamily: "var(--font-ui)" }}
             />
           </div>
           <div className="f">
-            <label htmlFor="pin">PIN</label>
-            <input id="pin" type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} style={{ textAlign: "left" }} />
+            <label htmlFor="pin">Contraseña</label>
+            <input id="pin" type="password" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} />
           </div>
         </>
       ) : (
@@ -107,7 +109,7 @@ export function Login() {
       <button type="submit" className="btn primary grande" disabled={cargando}>
         {fase === "ingreso" ? "Ingresar" : "Definir PIN"}
       </button>
-      {local && <div className="notice new small">Modo demostración (sin servidor): ingresa con cualquier RUT de la dotación y el PIN <b className="mono">{PIN_DEMO}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
+      {local && <div className="notice new small">Modo demostración (sin servidor): usuario <b>Diego Melo</b> (o cualquier nombre o RUT de la dotación) y contraseña <b className="mono">{PIN_DEMO}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
     </form>
   );
 }

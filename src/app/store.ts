@@ -8,7 +8,7 @@ import type { BorradorControl } from "@core/index";
 
 export type TabCelular = "monitoreo" | "ventilacion" | "kine" | "pve" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. */
-export type VistaCelular = "camas" | "cama" | "evaluacion";
+export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion";
 
 export interface Sesion {
   readonly rut: string;
@@ -31,6 +31,9 @@ interface EstadoApp {
   tab: TabCelular;
   setTab: (t: TabCelular) => void;
   vista: VistaCelular;
+  /** Camas (UCI-01...) que este usuario atiende hoy. `null` = aun no lo ha dicho. */
+  misCamas: readonly string[] | null;
+  setMisCamas: (c: readonly string[] | null) => void;
   /** Abre una cama en la vista indicada (o vuelve a las tarjetas). */
   irA: (vista: VistaCelular, camaId?: string) => void;
 
@@ -55,6 +58,8 @@ export const useApp = create<EstadoApp>((set) => ({
   tab: "monitoreo",
   setTab: (tab) => set({ tab }),
   vista: "camas",
+  misCamas: null,
+  setMisCamas: (misCamas) => set({ misCamas }),
   irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "monitoreo" } : { vista, camaId: s.camaId })),
 
   borradores: {},

@@ -18,11 +18,11 @@ async function sembrada() {
 }
 
 describe("datos de demostración", () => {
-  it("crea ocho camas y es idempotente", async () => {
+  it("crea las 18 camas y es idempotente", async () => {
     const { db, repo, ahora } = await sembrada();
-    expect(await db.episodios.count()).toBe(8);
+    expect(await db.episodios.count()).toBe(18);
     expect(await sembrarSiVacia(db, repo, ahora)).toBe(false);
-    expect(await db.episodios.count()).toBe(8);
+    expect(await db.episodios.count()).toBe(18);
   });
 
   it("todos los controles se pueden evaluar sin romper el cálculo clínico", async () => {
@@ -41,7 +41,7 @@ describe("datos de demostración", () => {
   it("la identidad vive solo en su propia tabla, con RUT de dígito verificador válido", async () => {
     const { db } = await sembrada();
     const ids = await db.identidades.toArray();
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(18);
     expect(ids.every((i) => i.rut !== null && validarRut(i.rut))).toBe(true);
     const episodio = JSON.stringify(await db.episodios.toArray());
     expect(episodio).not.toContain("Prueba");

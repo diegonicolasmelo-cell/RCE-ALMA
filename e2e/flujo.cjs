@@ -55,7 +55,7 @@ async function esperarServidor() {
     const aviso = () => cel.textContent(".toast-app");
     const parada = () => cel.evaluate(() => document.activeElement?.dataset?.stop);
     const franja = () => cel.locator(".franja-opciones .qchip").allTextContents();
-    const entrar = async (rut = "16.452.891-K", pin = "0000") => {
+    const entrar = async (rut = "Diego Melo", pin = "Kine") => {
       await cel.fill("#rut", rut);
       await cel.fill("#pin", pin);
       await cel.click("button[type=submit]");
@@ -66,20 +66,35 @@ async function esperarServidor() {
     await cel.waitForSelector("#rut");
 
     await prueba("un PIN incorrecto no entra y un RUT fuera de la dotacion tampoco", async () => {
-      await entrar("16.452.891-K", "9999");
-      assert.match(await cel.textContent("[role=alert]"), /PIN incorrecto/);
-      await entrar("12.345.678-5", "0000");
+      await entrar("Diego Melo", "9999");
+      assert.match(await cel.textContent("[role=alert]"), /Contraseña incorrecta/);
+      await entrar("Nadie Aqui", "Kine");
       assert.match(await cel.textContent("[role=alert]"), /dotación/);
     });
 
-    await prueba("entra con el RUT con o sin puntos y ve sus camas", async () => {
-      await entrar("16452891k", "0000");
+    await prueba("entra con usuario y contraseña, elige sus camas y la portada las muestra primero", async () => {
+      await entrar("diego melo", "kine");
+      await cel.waitForSelector("text=¿Cuáles son tus camas hoy?");
+      assert.equal(await cel.locator('[aria-label="Camas"] .chip').count(), 18);
+      await cel.click('button:has-text("Ninguna")');
+      await cel.click('.chip:text-is("07–12")');
+      await cel.click('.chip:text-is("01–06")');
+      await cel.click('button:has-text("Ver camas")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
-      assert.equal(await cel.locator('article[aria-label^="Cama"]').count(), 8, "las camas salen como tarjetas");
-      assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Evaluación")').count()) === 1, "cada tarjeta ofrece Control y Evaluación");
-      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Control")');
+      const camas = await cel.locator('article[aria-label^="Cama"]').evaluateAll((l) => l.map((x) => x.getAttribute("aria-label")));
+      assert.equal(camas.length, 18, "todas las tarjetas son visibles");
+      assert.deepEqual(camas.slice(0, 12), Array.from({ length: 12 }, (_, i) => `Cama UCI-${String(i + 1).padStart(2, "0")}`), "las mias (01-12) van primero, en orden");
+      assert.match(await cel.textContent(".app-cel"), /Mis camas \(12\)/);
+      assert.match(await cel.textContent(".app-cel"), /Otras camas/);
+      assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")').count()) === 1);
+      // dejar solo 01-06 como "mias" para el resto del recorrido
+      await cel.click('button:has-text("Cambiar mis camas")');
+      await cel.click('.chip:text-is("07–12")');
+      await cel.click('button:has-text("Ver camas")');
+      await cel.waitForSelector("text=Mis camas (6)");
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
       await cel.waitForSelector("#cuerpo");
-      assert.equal((await cel.locator(".cel-camas .chip").count()), 8);
+      assert.equal((await cel.locator(".cel-camas .chip").count()), 18);
       assert.match(await cel.textContent(".app-cel b.mono"), /UCI-01/);
     });
 
@@ -272,7 +287,7 @@ async function esperarServidor() {
     await pc.waitForSelector(".cama");
 
     await prueba("el tablero muestra la unidad con identidad, y la alerta llega desde el celular sin recargar", async () => {
-      assert.equal(await pc.locator(".cama").count(), 8);
+      assert.equal(await pc.locator(".cama").count(), 18);
       assert.match(await pc.locator(".cama .nm").first().textContent(), /Paciente Prueba/);
       await pc.waitForSelector(".cama.alerta", { timeout: 5000 });
       assert.match(await pc.locator(".cama.alerta .pill.crit").first().textContent(), /Autoextubación/);
@@ -320,7 +335,7 @@ async function esperarServidor() {
     await prueba("ingresar un paciente valida el RUT y crea la cama", async () => {
       await pc.click('[role=tab]:has-text("Tablero")');
       await pc.click('button:has-text("Ingresar paciente")');
-      await pc.fill("#in-cama", "UCI-09");
+      await pc.fill("#in-cama", "UCI-19");
       await pc.fill("#in-edad", "58");
       await pc.fill("#in-talla", "175");
       await pc.fill("#in-nombre", "Paciente Prueba Nueve");
@@ -330,7 +345,7 @@ async function esperarServidor() {
       await pc.fill("#in-rut", "12345678-5");
       await pc.click('button[type=submit]:has-text("Ingresar")');
       await pc.waitForTimeout(600);
-      assert.equal(await pc.locator(".cama").count(), 9);
+      assert.equal(await pc.locator(".cama").count(), 19);
     });
 
     console.log("Sin conexion y en pantalla de celular");

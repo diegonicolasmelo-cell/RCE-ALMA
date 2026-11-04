@@ -18,6 +18,7 @@ import type { Repositorio } from "./repositorio";
 const MIN = 60_000;
 const RUT_DIEGO = "16.452.891-K";
 const RUT_KAREN = "33.333.333-3";
+const RUT_EDUARDO = "33.333.331-1";
 
 const hora = (d: Date): string => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -83,6 +84,20 @@ function control(d: DatosControl): Control {
   };
 }
 
+/** Camas 09 a 18 del demo: lo justo para ver la portada completa (18 camas, 3 kinesiologos). */
+const EXTRAS: readonly { edad: number; sexo: "M" | "F"; talla: number; dx: string; via: "TET" | "TQT" | "NATURAL"; dias: number }[] = [
+  { edad: 61, sexo: "M", talla: 169, dx: "Postoperatorio cardíaco", via: "TET", dias: 1 },
+  { edad: 49, sexo: "F", talla: 160, dx: "Pancreatitis grave", via: "TET", dias: 5 },
+  { edad: 73, sexo: "M", talla: 172, dx: "Neumonía por aspiración", via: "NATURAL", dias: 0 },
+  { edad: 35, sexo: "M", talla: 180, dx: "Politraumatizado", via: "TET", dias: 2 },
+  { edad: 82, sexo: "F", talla: 155, dx: "EPOC reagudizado, VMNI", via: "NATURAL", dias: 0 },
+  { edad: 56, sexo: "M", talla: 174, dx: "Sepsis abdominal", via: "TET", dias: 3 },
+  { edad: 68, sexo: "F", talla: 158, dx: "Insuficiencia respiratoria hipoxémica", via: "TQT", dias: 14 },
+  { edad: 44, sexo: "M", talla: 177, dx: "Cetoacidosis diabética", via: "NATURAL", dias: 0 },
+  { edad: 59, sexo: "M", talla: 171, dx: "Hemorragia digestiva alta", via: "TET", dias: 2 },
+  { edad: 66, sexo: "F", talla: 162, dx: "Postoperatorio neuroquirúrgico", via: "TET", dias: 1 }
+];
+
 const FENT = (esc: number, dosis: number): Infusiones => ({ fentanilo: { dosis, escalon: esc } });
 
 export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Date = new Date()): Promise<boolean> {
@@ -122,7 +137,16 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     ep("ep-06", { cama: "UCI-06", edad: 45, sexo: "M", tallaCm: 175, diagnostico: "Postoperatorio abdominal", diasVM: 1,
       equipos: [{ tipo: "VENTILADOR", modelo: "PB 980", numero: 2, enUso: true }] }),
     ep("ep-07", { cama: "UCI-07", edad: 67, sexo: "F", tallaCm: 160, diagnostico: "Insuficiencia cardiaca descompensada", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: RUT_KAREN }),
-    ep("ep-08", { cama: "UCI-08", edad: 77, sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: RUT_KAREN })
+    ep("ep-08", { cama: "UCI-08", edad: 77, sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: RUT_KAREN }),
+    ...EXTRAS.map((x, i) => {
+      const n = i + 9;
+      const natural = x.via === "NATURAL";
+      return ep(`ep-${String(n).padStart(2, "0")}`, {
+        cama: `UCI-${String(n).padStart(2, "0")}`, edad: x.edad, sexo: x.sexo, tallaCm: x.talla, diagnostico: x.dx,
+        viaAereaActual: x.via, calibreVia: natural ? null : "8.0", fijacionCm: natural ? null : x.via === "TQT" ? "Collarín" : "22", diasVM: natural ? 0 : x.dias,
+        rutTitular: n <= 12 ? RUT_KAREN : RUT_EDUARDO
+      });
+    })
   ];
 
   const c = (episodioId: string, numero: number, minutosAtras: number, over: Partial<Control>, autor?: string): Control =>
@@ -163,6 +187,21 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
       sas: null, vigilia: "VIGIL_ALERTA", kineResp: { realizada: false, aspiracion: "NO", aspecto: null, reologia: null, cantidad: null } }, RUT_KAREN)
   ];
 
+  EXTRAS.forEach((x, i) => {
+    const n = i + 9;
+    const id = `ep-${String(n).padStart(2, "0")}`;
+    const natural = x.via === "NATURAL";
+    controles.push(
+      c(id, 1, 40 + i * 17, {
+        fc: 78 + i * 3, pas: 120 + i, pad: 68, spo2: 95, viaAerea: x.via,
+        ventilacion: natural
+          ? vent({ modalidad: "CNAF", frProgramada: null, vtProgramado: null, ti: null, peep: null, flujo: 40, fio2: 40, frTotal: 20, vtEspirado: null, pPico: null, pPlateau: null, pMedia: null })
+          : vent({ vtProgramado: 420, vtEspirado: 420, frTotal: 19 }),
+        sas: natural ? null : 4, vigilia: natural ? "VIGIL_ALERTA" : null
+      }, n <= 12 ? RUT_KAREN : RUT_EDUARDO)
+    );
+  });
+
   const prono: EventoClinico = {
     id: "ep-04-ev1",
     episodioId: "ep-04",
@@ -188,7 +227,8 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     ["ep-05", "Paciente Prueba Cinco", 14000001],
     ["ep-06", "Paciente Prueba Seis", 17000002],
     ["ep-07", "Paciente Prueba Siete", 13000003],
-    ["ep-08", "Paciente Prueba Ocho", 16000004]
+    ["ep-08", "Paciente Prueba Ocho", 16000004],
+    ...EXTRAS.map((_, i): [string, string, number] => [`ep-${String(i + 9).padStart(2, "0")}`, `Paciente Prueba ${i + 9}`, 18000000 + i * 1111])
   ];
   const identidades: IdentidadPaciente[] = nombres.map(([episodioId, nombre, cuerpo]) => ({ episodioId, nombre, rut: construirRut(cuerpo), ficha: null }));
 

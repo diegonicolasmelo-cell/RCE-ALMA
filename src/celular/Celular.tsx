@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Wifi, WifiOff } from "lucide-react";
 import {
   apkVigente,
@@ -55,6 +55,8 @@ export function Celular() {
   const segPedido = useApp((s) => s.segPedido);
   const pedirSegmento = useApp((s) => s.pedirSegmento);
   const [segActual, setSegActual] = useState(0);
+  /** Mientras la pantalla se desplaza por un "Siguiente", el scroll no cambia el segmento marcado. */
+  const navegandoHasta = useRef(0);
   const borradores = useApp((s) => s.borradores);
   const avisar = useApp((s) => s.avisar);
   const setSesion = useApp((s) => s.setSesion);
@@ -100,6 +102,7 @@ export function Celular() {
     if (!el) return;
     franja.cerrar();
     marcar(i);
+    navegandoHasta.current = Date.now() + 700;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [segmentos, marcar, franja]);
 
@@ -121,6 +124,7 @@ export function Celular() {
     const cuerpo = document.getElementById("cuerpo");
     if (!cuerpo) return;
     const alScroll = (): void => {
+      if (Date.now() < navegandoHasta.current) return;
       const tope = cuerpo.getBoundingClientRect().top + 90;
       const lista = segmentos();
       let idx = 0;

@@ -232,7 +232,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 #cuerpo{scroll-snap-type:y proximity}
 .seg{flex:none;scroll-snap-align:start;scroll-margin-top:8px;display:grid;gap:16px;padding:12px;margin:0 0 14px;border:2px solid transparent;border-radius:14px;transition:border-color .15s,background .15s}
 .seg[data-activo="true"]{border-color:var(--accent);background:var(--accent-soft)}
-.seg-relleno{flex:none;height:55vh}
+.seg-relleno{flex:none;height:100vh}
 .pasos{border-bottom:1px solid var(--line);padding:6px 0 6px;background:var(--panel)}
 .pasos-lista{display:flex;gap:6px;overflow-x:auto;padding:0 14px;scrollbar-width:none}
 .pasos-lista::-webkit-scrollbar{display:none}

@@ -22,7 +22,7 @@ const prueba = async (nombre, fn) => {
     pasadas += 1;
     console.log(`  ok   ${nombre}`);
   } catch (e) {
-    console.log(`  FALLA ${nombre}\n       ${String(e.message).split("\n").slice(0, 4).join("\n       ")}`);
+    console.log(`  FALLA ${nombre}\n       ${String(e.message).split("\n").slice(0, 400).join("\n       ")}`);
     throw e;
   }
 };

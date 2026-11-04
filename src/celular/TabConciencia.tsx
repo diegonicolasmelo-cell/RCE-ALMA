@@ -23,8 +23,9 @@ import { opcionesNumericas } from "./franja";
 import type { DescriptorFranja } from "./franja";
 import { baseEvento } from "./eventos-ui";
 import { TarjetaInfusion } from "./TarjetaInfusion";
+import type { PasoId } from "./pasos";
 
-export function TabConciencia({ ctx }: { ctx: ContextoCama }) {
+export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
   const { ep, ultimo, b, editar, eventos } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
@@ -54,8 +55,8 @@ export function TabConciencia({ ctx }: { ctx: ContextoCama }) {
 
   return (
     <>
-      <Neuromonitoreo ctx={ctx} />
-
+      {paso === "neuro" && <Neuromonitoreo ctx={ctx} />}
+      {paso === "glasgow" && (
       <section>
         <h3>Glasgow</h3>
         <div className="stack" style={{ gap: 8 }}>
@@ -91,7 +92,8 @@ export function TabConciencia({ ctx }: { ctx: ContextoCama }) {
           </div>
         )}
       </section>
-
+      )}
+      {paso === "sas" && (
       <section>
         <h3>{sedada ? "Escala SAS" : "Estado de vigilia"}</h3>
         {sedada ? (
@@ -118,7 +120,9 @@ export function TabConciencia({ ctx }: { ctx: ContextoCama }) {
           </>
         )}
       </section>
-
+      )}
+      {paso === "sedacion" && (
+      <>
       <section>
         <h3>
           Sedoanalgesia <Pildora tipo={sedada ? "acc" : ""}>{sedada ? "Sí" : "No"}</Pildora>
@@ -158,6 +162,8 @@ export function TabConciencia({ ctx }: { ctx: ContextoCama }) {
           </div>
         )}
       </section>
+      </>
+      )}
     </>
   );
 }

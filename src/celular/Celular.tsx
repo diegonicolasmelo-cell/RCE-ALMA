@@ -22,6 +22,7 @@ import { nuevoId } from "../app/util";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { EVENTO_FIN_PESTANA, enfocarPrimero, useFranja } from "./franja";
+import { PASOS, pasoDeCampo } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
 import { TabEventos } from "./TabEventos";
@@ -32,24 +33,10 @@ import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 
 const TABS: readonly (readonly [TabCelular, string])[] = [
-  ["monitoreo", "Monitoreo"],
-  ["ventilacion", "Ventilación"],
-  ["kine", "Kine · APK"],
+  ["control", "Control"],
   ["pve", "PVE"],
   ["eventos", "Eventos"]
 ];
-
-/** A que pestana pertenece cada campo que falta, para llevar al usuario hasta el. */
-function pestanaDe(campo: string): TabCelular {
-  if (campo === "apk" || campo === "kine" || campo === "terapiaFisica") return "kine";
-  if (campo === "sas" || campo === "vigilia" || campo === "glasgow") return "monitoreo";
-  if (campo.startsWith("infusion:")) {
-    const sedantes = ["fentanilo", "propofol", "midazolam", "dexmedetomidina", "lorazepam"];
-    void sedantes;
-    return "monitoreo";
-  }
-  return campo === "frTotal" || campo === "spo2" ? "ventilacion" : "monitoreo";
-}
 
 export function Celular() {
   const { repo, sync, db } = useServicios();
@@ -62,6 +49,8 @@ export function Celular() {
   const irA = useApp((s) => s.irA);
   const tab = useApp((s) => s.tab);
   const setTab = useApp((s) => s.setTab);
+  const paso = useApp((s) => s.paso);
+  const setPaso = useApp((s) => s.setPaso);
   const borradores = useApp((s) => s.borradores);
   const avisar = useApp((s) => s.avisar);
   const setSesion = useApp((s) => s.setSesion);
@@ -96,19 +85,27 @@ export function Celular() {
     [ep?.id, ultimo?.id, sesion.rut, misCamas]
   );
 
-  // "Sig." al final de Monitoreo sigue en Ventilacion, como seguiria el papel.
+  useEffect(() => {
+    document.querySelector('.paso-chip[aria-current="step"]')?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [paso, vista]);
+
+  // "Sig." al terminar los casilleros de un bloque pasa al bloque siguiente (no salta ninguno).
   useEffect(() => {
     const alFin = (e: Event): void => {
       const st = useApp.getState();
-      if (st.vista === "cama" && st.tab === "monitoreo") {
-        e.preventDefault();
-        st.setTab("ventilacion");
-        setTimeout(enfocarPrimero, 80);
-      }
+      if (st.vista !== "cama" || st.tab !== "control") return;
+      const i = PASOS.findIndex((p) => p.id === st.paso);
+      const sig = PASOS[i + 1];
+      if (!sig) return;
+      e.preventDefault();
+      st.setPaso(sig.id);
+      setTimeout(() => {
+        if (!enfocarPrimero()) franja.cerrar();
+      }, 80);
     };
     window.addEventListener(EVENTO_FIN_PESTANA, alFin);
     return () => window.removeEventListener(EVENTO_FIN_PESTANA, alFin);
-  }, []);
+  }, [franja]);
 
   useEffect(() => {
     if (ep && camaId !== ep.id) useApp.setState({ camaId: ep.id });
@@ -130,7 +127,10 @@ export function Celular() {
     const problemas = validarBorrador(b, { apkVigente: apkVigente(apks, ep.id, new Date()) });
     if (problemas.length > 0) {
       const primero = problemas[0];
-      if (primero) setTab(pestanaDe(primero.campo));
+      if (primero) {
+        setTab("control");
+        setPaso(pasoDeCampo(primero.campo));
+      }
       avisar(`Falta: ${problemas.map((p) => p.mensaje).join(", ")}.`);
       return;
     }
@@ -139,17 +139,27 @@ export function Celular() {
     await repo.guardarControl(control);
     useApp.getState().descartar(ep.id);
     franja.cerrar();
-    setTab("monitoreo");
+    setTab("control");
+    setPaso("fc");
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.` : `Guardado ${ep.cama} ${control.hora}. Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
 
-  const cuerpo =
-    tab === "monitoreo" ? <TabControl ctx={ctx} parte="monitoreo" intermedio={<TabConciencia ctx={ctx} />} /> :
-    tab === "ventilacion" ? <TabControl ctx={ctx} parte="ventilacion" /> :
-    tab === "kine" ? <TabKine ctx={ctx} /> :
-    tab === "pve" ? <TabPve ctx={ctx} /> :
-    <TabEventos ctx={ctx} />;
+  const idxPaso = Math.max(0, PASOS.findIndex((p) => p.id === paso));
+  const defPaso = PASOS[idxPaso]!;
+  const ultimoPaso = idxPaso === PASOS.length - 1;
+  const irAPaso = (i: number): void => {
+    const p = PASOS[Math.min(PASOS.length - 1, Math.max(0, i))];
+    if (!p) return;
+    franja.cerrar();
+    setPaso(p.id);
+    document.getElementById("cuerpo")?.scrollTo({ top: 0 });
+  };
+  const cuerpoControl =
+    ["fc", "pa", "dva", "modo", "vent", "spo2"].includes(paso) ? <TabControl ctx={ctx} paso={paso} /> :
+    ["neuro", "glasgow", "sas", "sedacion"].includes(paso) ? <TabConciencia ctx={ctx} paso={paso} /> :
+    <TabKine ctx={ctx} paso={paso} />;
+  const cuerpo = tab === "control" ? cuerpoControl : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
 
   const cabecera = (
       <div className="cel-top">
@@ -234,13 +244,43 @@ export function Celular() {
         ))}
       </div>
 
+      {tab === "control" && (
+        <div className="pasos" role="navigation" aria-label="Bloques del control">
+          <div className="pasos-lista">
+            {PASOS.map((p, i) => (
+              <button key={p.id} type="button" className="paso-chip" aria-current={p.id === paso ? "step" : undefined} data-hecho={i < idxPaso} onClick={() => irAPaso(i)}>
+                {i + 1}·{p.corto}
+              </button>
+            ))}
+          </div>
+          <div className="row" style={{ justifyContent: "space-between", padding: "4px 14px 0" }}>
+            <b>{defPaso.titulo}</b>
+            <span className="small muted">Bloque {idxPaso + 1} de {PASOS.length}</span>
+          </div>
+        </div>
+      )}
+
       <div id="cuerpo" className="cel-cuerpo" style={{ paddingBottom: franja.activa ? 120 : undefined }}>
         {cuerpo}
       </div>
 
       <div className="cel-pie">
-        <div className="cel-guardar">
-          <button type="button" className="btn primary" onClick={() => void guardar()}>Guardar control</button>
+        <div className="cel-guardar" style={{ display: "flex", gap: 8 }}>
+          {tab === "control" ? (
+            <>
+              <button type="button" className="btn" disabled={idxPaso === 0} onClick={() => irAPaso(idxPaso - 1)}>‹ Atrás</button>
+              {ultimoPaso ? (
+                <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+              ) : (
+                <>
+                  <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => irAPaso(idxPaso + 1)}>Siguiente ›</button>
+                  <button type="button" className="btn" onClick={() => void guardar()}>Guardar control</button>
+                </>
+              )}
+            </>
+          ) : (
+            <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+          )}
         </div>
         <nav className="cel-camas" aria-label="Camas">
           {episodios.map((e) => (

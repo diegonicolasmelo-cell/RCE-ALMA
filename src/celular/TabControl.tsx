@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -32,6 +31,7 @@ import {
 import type { CampoVent, CampoVentDef, Modalidad } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
+import type { PasoId } from "./pasos";
 import { textoNum } from "../app/util";
 import { Aviso, CampoNum, Pildora, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
@@ -46,7 +46,7 @@ const BANDA = {
   SOBRE_META: { tipo: "warn" as const, t: "Sobre la meta" }
 };
 
-export function TabControl({ ctx, parte, intermedio }: { ctx: ContextoCama; parte: "monitoreo" | "ventilacion"; intermedio?: ReactNode }) {
+export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
   const { ep, ultimo, b, editar, pbw } = ctx;
   const { local } = useServicios();
   const f = useFranja();
@@ -140,47 +140,54 @@ export function TabControl({ ctx, parte, intermedio }: { ctx: ContextoCama; part
 
   const pam = calcularPam(medicionDe(b.pas), medicionDe(b.pad));
 
-  if (parte === "monitoreo") {
-    return (
-      <>
-        <section>
-          <h3>Frecuencia cardiaca</h3>
-          <div style={{ maxWidth: 160 }}>
-            <CampoNum clave="fc" etiqueta="FC" unidad="lpm" valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} placeholder={textoPrevio(ultimo?.fc)} />
-          </div>
-        </section>
-
-        <section>
-          <h3>Presión arterial</h3>
-          <div className="fgrid">
-            <CampoNum clave="pas" etiqueta="PAS" valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} placeholder={textoPrevio(ultimo?.pas)} />
-            <CampoNum clave="pad" etiqueta="PAD" valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} placeholder={textoPrevio(ultimo?.pad)} />
-            <div className="f">
-              <label>PAM</label>
-              <div className="pam mono" aria-live="polite">{textoNum(pam)}</div>
-            </div>
-          </div>
-        </section>
-
-        {intermedio}
-
-        <section>
-          <h3>DVA, inotrópicos y antiarrítmicos</h3>
-          <div className="stack" style={{ gap: 6 }}>
-            <div className="grpt">DVA</div>
-            {tarjetas("DVA")}
-            <div className="grpt">Inotrópicos</div>
-            {tarjetas("INOTROPO")}
-            <div className="grpt">Antiarrítmicos</div>
-            {tarjetas("ANTIARRITMICO")}
-          </div>
-        </section>
-      </>
-    );
-  }
-
   return (
     <>
+      {paso === "fc" && (
+        <>
+      <section>
+        <h3>Frecuencia cardiaca</h3>
+        <div style={{ maxWidth: 160 }}>
+          <CampoNum clave="fc" etiqueta="FC" unidad="lpm" valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} placeholder={textoPrevio(ultimo?.fc)} />
+        </div>
+      </section>
+
+      {local && (
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <span className="small muted">Modo demostración:</span>
+          <button type="button" className="btn sm" onClick={() => rellenarEjemplo(ctx)}>
+            Rellenar signos de ejemplo
+          </button>
+        </div>
+      )}
+        </>
+      )}
+      {paso === "pa" && (
+      <section>
+        <h3>Presión arterial</h3>
+        <div className="fgrid">
+          <CampoNum clave="pas" etiqueta="PAS" valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} placeholder={textoPrevio(ultimo?.pas)} />
+          <CampoNum clave="pad" etiqueta="PAD" valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} placeholder={textoPrevio(ultimo?.pad)} />
+          <div className="f">
+            <label>PAM</label>
+            <div className="pam mono" aria-live="polite">{textoNum(pam)}</div>
+          </div>
+        </div>
+      </section>
+      )}
+      {paso === "dva" && (
+      <section>
+        <h3>DVA, inotrópicos y antiarrítmicos</h3>
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="grpt">DVA</div>
+          {tarjetas("DVA")}
+          <div className="grpt">Inotrópicos</div>
+          {tarjetas("INOTROPO")}
+          <div className="grpt">Antiarrítmicos</div>
+          {tarjetas("ANTIARRITMICO")}
+        </div>
+      </section>
+      )}
+      {paso === "modo" && (
       <section>
         <h3>Ventilador</h3>
         <PesoIdeal ctx={ctx} />
@@ -215,7 +222,9 @@ export function TabControl({ ctx, parte, intermedio }: { ctx: ContextoCama; part
           </div>
         )}
       </section>
-
+      )}
+      {paso === "vent" && (
+        <>
       <section>
         <h3>Terapia ventilatoria · {ETIQUETA_MODALIDAD[b.modalidad]}</h3>
         <div className="subg">Programado</div>
@@ -225,21 +234,15 @@ export function TabControl({ ctx, parte, intermedio }: { ctx: ContextoCama; part
       </section>
 
       <Resultantes ctx={ctx} d={d} bloqueado={bloqueado} franjaVm={franjaVent({ campo: "volMinuto", etiqueta: "Vol. minuto", unidad: "L/min", grupo: "OBSERVADO" })} />
-
+        </>
+      )}
+      {paso === "spo2" && (
       <section>
         <h3>Saturación</h3>
         <div style={{ maxWidth: 160 }}>
           <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} placeholder={textoPrevio(ultimo?.spo2)} />
         </div>
       </section>
-
-      {local && (
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <span className="small muted">Modo demostración:</span>
-          <button type="button" className="btn sm" onClick={() => rellenarEjemplo(ctx)}>
-            Rellenar signos de ejemplo
-          </button>
-        </div>
       )}
     </>
   );

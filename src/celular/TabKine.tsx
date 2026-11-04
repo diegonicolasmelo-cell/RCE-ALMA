@@ -17,6 +17,7 @@ import {
 import type { MarcaApk } from "@core/index";
 import type { AspectoSecreciones, CantidadSecreciones, ReologiaSecreciones } from "@core/index";
 import { useApp } from "../app/store";
+import type { PasoId } from "./pasos";
 import { useServicios } from "../app/contexto";
 import { nuevoId } from "../app/util";
 import { Aviso, CampoNum, Fichas, Seg } from "./componentes";
@@ -29,7 +30,7 @@ const nombreProfesional = (rut: string): string => {
   return p ? `Klgo. ${p.nombre}` : `RUT ${rut}`;
 };
 
-export function TabKine({ ctx }: { ctx: ContextoCama }) {
+export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
   const { ep, b, editar, apks, ahora, rutAutor } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
@@ -65,6 +66,7 @@ export function TabKine({ ctx }: { ctx: ContextoCama }) {
 
   return (
     <>
+      {paso === "kine" && (
       <section>
         <h3>Kinesiterapia respiratoria</h3>
         <Seg ancho etiqueta="Kinesiterapia respiratoria" valor={b.kineRealizada} opciones={[{ valor: true, texto: "Sí", deshabilitada: noCumple }, { valor: false, texto: "No" }]}
@@ -85,7 +87,8 @@ export function TabKine({ ctx }: { ctx: ContextoCama }) {
           </div>
         )}
       </section>
-
+      )}
+      {paso === "apk" && (
       <section>
         <h3>Pauta APK <span className="small muted" style={{ textTransform: "none", letterSpacing: 0 }}>· cotejo previo a la KTR</span></h3>
         <p className="small ink2">Una por turno, dos al día, por profesionales distintos. Al firmar se llena una columna de la hoja de papel, con fecha y tus siglas, y queda archivada.</p>
@@ -124,7 +127,8 @@ export function TabKine({ ctx }: { ctx: ContextoCama }) {
         </div>
         {!esViaAereaArtificial(ep.viaAereaActual) && !apk && <p className="small muted mt">Vía aérea natural: las filas de lo invasivo y la alimentación parten en N/A; cámbialas si corresponde.</p>}
       </section>
-
+      )}
+      {paso === "tf" && (
       <section>
         <h3>
           Terapia física <span className="small muted" style={{ textTransform: "none", letterSpacing: 0 }}>· KTM + IMT</span>
@@ -157,6 +161,7 @@ export function TabKine({ ctx }: { ctx: ContextoCama }) {
           </div>
         )}
       </section>
+      )}
     </>
   );
 }

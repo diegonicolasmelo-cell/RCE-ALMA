@@ -157,10 +157,13 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
 - **PVE**: checklist de 8 criterios → control inicial (arranca el cronómetro) →
   control a los 30 min → fin → extubación → reevaluaciones a 0, 30, 60, 120 min y
   48 h → falla post extubación (sí/no, hipótesis, observaciones).
-- **Orden de la hoja diaria**: Monitoreo (FC, PA, PIC/PPC, Glasgow, S5Q, SAS,
-  sedación y bloqueo neuromuscular, DVA) y Ventilación (de Modo a FiO₂ y SpO₂),
-  igual que el papel. Auto PEEP solo en modalidades controladas. TrachCare y HEPA
-  duran 3 días, el HME 2: se anota solo el cambio.
+- **Control bloque por bloque**, en el orden de la hoja diaria: FC, presión arterial,
+  neuromonitoreo, Glasgow y S5Q, SAS, sedoanalgesia y bloqueo neuromuscular, DVA,
+  modo, terapia ventilatoria, SpO₂, kine, APK y terapia física. Cada bloque se muestra
+  solo y se pasa con «Siguiente» (o «Sig.» del teclado al terminar sus casilleros);
+  nunca se salta uno porque esté vacío. Elegir una opción de la franja no cambia de
+  bloque. Auto PEEP solo en modalidades controladas. TrachCare y HEPA duran 3 días,
+  el HME 2: se anota solo el cambio.
 - **Vía aérea fija por episodio:** solo la cambia un evento.
 
 ## Estructura

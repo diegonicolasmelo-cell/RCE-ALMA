@@ -5,8 +5,9 @@
 
 import { create } from "zustand";
 import type { BorradorControl } from "@core/index";
+import type { PasoId } from "../celular/pasos";
 
-export type TabCelular = "monitoreo" | "ventilacion" | "kine" | "pve" | "eventos";
+export type TabCelular = "control" | "pve" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. */
 export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion";
 
@@ -30,6 +31,9 @@ interface EstadoApp {
   setCama: (id: string) => void;
   tab: TabCelular;
   setTab: (t: TabCelular) => void;
+  /** Bloque del control que se esta llenando (ver celular/pasos.ts). */
+  paso: PasoId;
+  setPaso: (p: PasoId) => void;
   vista: VistaCelular;
   /** Camas (UCI-01...) que este usuario atiende hoy. `null` = aun no lo ha dicho. */
   misCamas: readonly string[] | null;
@@ -54,13 +58,15 @@ export const useApp = create<EstadoApp>((set) => ({
   setSesion: (sesion) => set({ sesion, vista: "camas" }),
 
   camaId: null,
-  setCama: (camaId) => set({ camaId, tab: "monitoreo" }),
-  tab: "monitoreo",
+  setCama: (camaId) => set({ camaId, tab: "control", paso: "fc" }),
+  tab: "control",
   setTab: (tab) => set({ tab }),
+  paso: "fc",
+  setPaso: (paso) => set({ paso }),
   vista: "camas",
   misCamas: null,
   setMisCamas: (misCamas) => set({ misCamas }),
-  irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "monitoreo" } : { vista, camaId: s.camaId })),
+  irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "control", paso: "fc" } : { vista, camaId: s.camaId })),
 
   borradores: {},
   editar: (episodioId, base, fn) =>

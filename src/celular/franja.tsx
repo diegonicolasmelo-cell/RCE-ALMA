@@ -37,7 +37,8 @@ interface CtxFranja {
   cerrar(): void;
   /** Cada casillero registra como construir su franja con el estado ACTUAL (no uno viejo). */
   registrar(clave: string, f: () => DescriptorFranja): void;
-  siguiente(clave: string): void;
+  /** `cruzar`: si no quedan casilleros en el bloque, pasar al bloque siguiente (solo con el boton "Sig."). */
+  siguiente(clave: string, cruzar?: boolean): void;
 }
 
 const Ctx = createContext<CtxFranja | null>(null);
@@ -52,8 +53,10 @@ export function useFranja(): CtxFranja {
 export const EVENTO_FIN_PESTANA = "franja-fin-pestana";
 
 /** Enfoca el primer casillero de la pantalla actual (tras cambiar de pestana). */
-export function enfocarPrimero(): void {
-  paradas()[0]?.focus();
+export function enfocarPrimero(): boolean {
+  const primero = paradas()[0];
+  primero?.focus();
+  return primero !== undefined;
 }
 
 /** Casilleros navegables, en el orden de la pantalla. */
@@ -78,11 +81,12 @@ export function ProveedorFranja({ children }: { children: ReactNode }) {
     registro.current.set(clave, f);
   }, []);
   const siguiente = useCallback(
-    (clave: string) => {
+    (clave: string, cruzar = true) => {
       const lista = paradas();
       const i = lista.findIndex((el) => el.dataset["stop"] === clave);
       const sig = lista[i + 1];
       if (!sig) {
+        if (!cruzar) return cerrar();
         // Fin de la pestana: quien la muestra puede pasar a la siguiente (Monitoreo -> Ventilacion).
         const manejado = !window.dispatchEvent(new CustomEvent(EVENTO_FIN_PESTANA, { cancelable: true }));
         if (!manejado) cerrar();
@@ -116,7 +120,7 @@ function BarraFranja({ registro }: { registro: Map<string, () => DescriptorFranj
   const elegir = (valor: string): void => {
     desc.onElegir(valor);
     // Si el cambio redibuja la pantalla (p. ej. nueva modalidad), esperar antes de avanzar.
-    setTimeout(() => siguiente(activa), 40);
+    setTimeout(() => siguiente(activa, false), 40);
   };
 
   return (

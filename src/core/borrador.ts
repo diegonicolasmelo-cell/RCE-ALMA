@@ -347,8 +347,7 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     pPlateau: campo("pPlateau"),
     pMedia: campo("pMedia"),
     autoPeep: campo("autoPeep"),
-    // Volumen minuto editable: vacio = se calcula; escrito = lo leido del ventilador.
-    volMinuto: b.modalidad === "CNAF" ? null : medicionDe(b.vent.volMinuto)
+    volMinuto: campo("volMinuto")
   };
 
   const m = datos.monitoreo;

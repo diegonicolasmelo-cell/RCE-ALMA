@@ -308,11 +308,16 @@ describe("neuromonitoreo, Glasgow, volumen minuto y equipos", () => {
     expect(b.glasgow).toEqual({ ocular: null, verbal: null, motora: null });
   });
 
-  it("el volumen minuto nace vacío (se calcula) y se puede escribir", () => {
+  it("el volumen minuto espirado nace vacío y se escribe", () => {
     const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
     expect(b.vent.volMinuto).toBe("");
     const conVm = completo({ vent: { ...completo().vent, volMinuto: "9,1" } });
     expect(materializarControl(conVm, { ...datosNeuro, monitoreo: todo }).ventilacion.volMinuto).toBe(9.1);
+  });
+
+  it("el volumen minuto espirado es un campo del formulario de las modalidades con ventilador", () => {
+    const tiene = (m: keyof typeof CAMPOS_POR_MODALIDAD): boolean => CAMPOS_POR_MODALIDAD[m].some((d) => d.campo === "volMinuto");
+    expect([tiene("ACVC"), tiene("PCV"), tiene("CPAP_PS"), tiene("CNAF")]).toEqual([true, true, true, false]);
   });
 
   it("el volumen minuto no se guarda en CNAF", () => {

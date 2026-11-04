@@ -162,7 +162,6 @@ export interface DerivadosControl {
   readonly posibleFuga: boolean;
   /** Calculado por defecto (Vt espirado x FR total); si se edita, vale lo leido del ventilador. */
   readonly volumenMinuto: number | null;
-  readonly volumenMinutoOrigen: "CALCULADO" | "EDITADO" | null;
   readonly relacionIE: string | null;
   /** Driving pressure. `null` si el candado de mecanica la invalida. */
   readonly drivingPressure: number | null;
@@ -217,8 +216,6 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     v.vtEspirado !== null &&
     Math.abs(v.vtEspirado - v.vtProgramado) / v.vtProgramado > CORTE_FUGA;
 
-  const vmCalculado = esVMI ? volumenMinuto(v.vtEspirado, v.frTotal) : null;
-  const vmEditado = esVMI && v.volMinuto !== null ? v.volMinuto : null;
 
   return {
     pbw,
@@ -229,8 +226,8 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     mlKgGuia,
     bandaGuia: esVMI ? bandaProteccion(mlKgGuia) : null,
     posibleFuga,
-    volumenMinuto: vmEditado ?? vmCalculado,
-    volumenMinutoOrigen: vmEditado !== null ? "EDITADO" : vmCalculado !== null ? "CALCULADO" : null,
+    // Se anota el volumen minuto espirado que muestra el ventilador; no se calcula.
+    volumenMinuto: esVMI ? v.volMinuto : null,
     relacionIE: controlada ? relacionIE(v.ti, v.frTotal) : null,
     drivingPressure,
     origenDriving,

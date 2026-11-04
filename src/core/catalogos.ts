@@ -95,6 +95,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     p("fio2", "FiO₂", "%"),
     o("frTotal", "FR total", "rpm"),
     o("vtEspirado", "Vt espirado", "ml"),
+    o("volMinuto", "Vol. minuto espirado", "L/min"),
     o("pPico", "P. pico", "cmH₂O"),
     o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
     o("pMedia", "P. media", "cmH₂O"),
@@ -108,6 +109,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     p("fio2", "FiO₂", "%"),
     o("frTotal", "FR total", "rpm"),
     o("vtEspirado", "Vt espirado", "ml"),
+    o("volMinuto", "Vol. minuto espirado", "L/min"),
     o("pPico", "P. pico", "cmH₂O"),
     o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
     o("pMedia", "P. media", "cmH₂O"),
@@ -120,6 +122,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     p("fio2", "FiO₂", "%"),
     o("frTotal", "FR total", "rpm"),
     o("vtEspirado", "Vt espirado", "ml"),
+    o("volMinuto", "Vol. minuto espirado", "L/min"),
     o("pPico", "P. pico", "cmH₂O")
   ],
   CNAF: [p("flujo", "Flujo", "L/min"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")]
@@ -223,6 +226,9 @@ export const ETIQUETA_TIPO_EQUIPO: Readonly<Record<TipoEquipo, string>> = {
   HUMIDIFICADOR: "Humidificador",
   NEBULIZADOR: "Nebulizador"
 };
+
+/** Corte del S5Q (0 a 5) para la lectura en el PC. POR CONFIRMAR con la unidad. */
+export const CORTE_S5Q = 3;
 
 export const FARMACOS_BNM: readonly string[] = ["Atracurio", "Rocuronio", "Vecuronio"];
 

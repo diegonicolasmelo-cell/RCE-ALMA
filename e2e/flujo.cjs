@@ -136,9 +136,8 @@ async function esperarServidor() {
       await cel.click("#in-modo, button.pickbtn");
       await cel.click('.franja .qchip:has-text("ACVC")');
       await cel.click('.franja .qchip:has-text("Listo")');
-      await cel.click('button:has-text("editar")');
       await cel.fill('input[aria-label="Talla en cm"]', "180");
-      await cel.click('button:has-text("Listo")');
+      await cel.press('input[aria-label="Talla en cm"]', "Enter");
       await cel.waitForTimeout(400);
       assert.match(await cel.textContent(".app-cel"), /Peso ideal\s*75\.1 kg/);
       await cel.click("#in-vent-vtProgramado");
@@ -185,9 +184,33 @@ async function esperarServidor() {
       assert.deepEqual(orden, ["fc", "pa", "neuro", "glasgow", "sas"]);
     });
 
+    await prueba("Glasgow en una fila (ocular, verbal, motora y total al final), S5Q numerico y bloqueo neuromuscular como tarjeta", async () => {
+      await cel.click('[role=tab]:has-text("Monitoreo")');
+      await cel.fill("#in-gcs-o", "3");
+      await cel.fill("#in-gcs-o", "9");
+      assert.equal(await cel.inputValue("#in-gcs-o"), "3", "un valor fuera de rango se ignora");
+      await cel.fill("#in-gcs-m", "5");
+      assert.match(await cel.textContent('.seg[data-seg="glasgow"]'), /9T/, "total al final, con la T de intubado");
+      assert.equal(await cel.locator("#in-gcs-v").count(), 0, "verbal es NT con via aerea artificial");
+      await cel.fill("#in-s5q", "4");
+      assert.equal(await cel.inputValue("#in-s5q"), "4");
+      assert.equal(await cel.locator('.seg[data-seg="glasgow"] .notice').count(), 0, "sin avisos ni interpretaciones en el celular");
+      assert.ok((await cel.locator('.infu:has(b:text-is("Bloqueo neuromuscular")) button:has-text("Iniciar")').count()) === 1);
+      await cel.click('[role=tab]:has-text("Ventilación")');
+      assert.ok((await cel.locator('label:has-text("Vol. minuto espirado")').count()) === 1, "el volumen minuto se anota, no se calcula");
+      assert.equal(await cel.locator('text=Editar volumen minuto').count(), 0);
+      assert.ok((await cel.locator('label:has-text("Peso ideal")').count()) === 1);
+      assert.equal(await cel.locator('text=estimada').count(), 0, "la talla no distingue medida/estimada");
+    });
+
     await prueba("sedantes plegados: Iniciar abre el escalon con su dosis, y Suspender se puede deshacer", async () => {
       await cel.click('[role=tab]:has-text("Monitoreo")');
       const tarjeta = cel.locator('.infu:has(b:text-is("Propofol"))');
+      assert.equal(await tarjeta.count(), 0, "lo que no esta en curso no ocupa lugar hasta agregarlo");
+      assert.equal(await cel.locator('.infu:has(b:text-is("Precedex"))').count(), 0);
+      await cel.click('button:has-text("+ Agregar sedoanalgesia")');
+      assert.equal(await tarjeta.count(), 1);
+      assert.equal(await cel.locator('.infu:has(b:text-is("Precedex"))').count(), 0, "Precedex y lorazepam van en el bundle de agitacion");
       await tarjeta.locator('button:has-text("Iniciar")').click();
       await cel.waitForTimeout(200);
       // Cada opcion une el escalon con su dosis: "3" + "1.5".
@@ -203,7 +226,7 @@ async function esperarServidor() {
     });
 
     await prueba("guardar incompleto dice que falta y lleva a la pestana correcta", async () => {
-      await cel.click('.sas .chip:has-text("3")');
+      await cel.fill("#in-sas", "3");
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /Falta:.*FC.*SpO₂/);
       await cel.waitForTimeout(500);

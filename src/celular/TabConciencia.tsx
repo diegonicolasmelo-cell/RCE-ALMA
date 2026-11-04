@@ -1,5 +1,5 @@
+import { useState } from "react";
 import {
-  ESCALA_SAS,
   ESTADOS_VIGILIA,
   FARMACOS_BNM,
   INFUSIONES,
@@ -17,7 +17,7 @@ import {
 import type { Glasgow, IdInfusion, ValorSas } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
-import { Aviso, CampoNum, Fichas, Pildora, Seg } from "./componentes";
+import { CampoNum, Pildora, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { opcionesNumericas } from "./franja";
 import type { DescriptorFranja } from "./franja";
@@ -43,124 +43,143 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
     );
   };
 
+  /** Acepta solo un digito dentro del rango; el resto se ignora al teclear. */
+  const digito = (v: string, min: number, max: number): number | null | undefined => {
+    if (v.trim() === "") return null;
+    const n = Number(v.trim().slice(-1));
+    return Number.isInteger(n) && n >= min && n <= max ? n : undefined;
+  };
   const setGlasgow = (parcial: Partial<typeof b.glasgow>): void =>
     editar((x) => {
       const g = { ...x.glasgow, ...parcial };
       // Con via artificial el verbal no es testeable (NT): queda fijo y no se pide.
       return { ...x, glasgow: artificial ? { ...g, verbal: 1 } : g };
     });
+  const franjaNum = (etiqueta: string, valores: readonly number[], actual: string, elegir: (v: string) => void) => (): DescriptorFranja => ({
+    etiqueta,
+    opciones: opcionesNumericas(valores, actual),
+    onElegir: elegir
+  });
 
   const completo = b.glasgow.ocular !== null && b.glasgow.motora !== null && b.glasgow.verbal !== null;
   const calculado = completo ? calcularGlasgow(b.glasgow as Glasgow, ep.viaAereaActual) : null;
+
+  // Sedoanalgesia: lo que esta en curso se ve siempre; el resto se agrega con "+".
+  const [abiertos, setAbiertos] = useState<{ sedacion: boolean; agitacion: boolean }>({ sedacion: false, agitacion: false });
+  const GRUPO_SEDACION: readonly IdInfusion[] = ["fentanilo", "propofol", "midazolam"];
+  const GRUPO_AGITACION: readonly IdInfusion[] = ["dexmedetomidina", "lorazepam"];
+  const [farmacoBnm, setFarmacoBnm] = useState(FARMACOS_BNM[0] ?? "");
+  const tarjeta = (id: IdInfusion): JSX.Element | null => {
+    const def = INFUSIONES.find((i) => i.id === id);
+    if (!def) return null;
+    return (
+      <TarjetaInfusion
+        key={def.id}
+        def={def}
+        x={b.infusiones[def.id]}
+        ultimo={ultimo}
+        onCambio={(p) => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [def.id]: { ...y.infusiones[def.id], ...p } } }))}
+        onIniciar={() => editar((y) => iniciarInfusion(y, def.id))}
+        onSuspender={() => suspender(def.id)}
+        onAlternarLibre={() => editar((y) => alternarDosisLibre(y, def.id))}
+      />
+    );
+  };
+  const visibles = (grupo: readonly IdInfusion[], abierto: boolean): IdInfusion[] => grupo.filter((id) => abierto || b.infusiones[id].activa);
 
   return (
     <>
       {paso === "neuro" && <Neuromonitoreo ctx={ctx} />}
       {paso === "glasgow" && (
-      <section>
-        <h3>Glasgow</h3>
-        <div className="stack" style={{ gap: 8 }}>
-          <div>
-            <div className="small ink2">Ocular</div>
-            <Fichas etiqueta="Ocular" valor={b.glasgow.ocular} opciones={[4, 3, 2, 1].map((n) => ({ valor: n as 1 | 2 | 3 | 4, texto: String(n) }))} onCambio={(v) => setGlasgow({ ocular: v })} />
-          </div>
-          <div>
-            <div className="small ink2">Verbal</div>
+        <section>
+          <h3>Glasgow</h3>
+          <div className="fgrid4">
+            <CampoNum clave="gcs-o" etiqueta="Ocular" unidad="1-4" valor={b.glasgow.ocular === null ? "" : String(b.glasgow.ocular)}
+              onCambio={(v) => { const n = digito(v, 1, 4); if (n !== undefined) setGlasgow({ ocular: n as Glasgow["ocular"] | null }); }}
+              franja={franjaNum("Ocular", [1, 2, 3, 4], b.glasgow.ocular === null ? "" : String(b.glasgow.ocular), (v) => setGlasgow({ ocular: Number(v) as Glasgow["ocular"] })) } />
             {artificial ? (
-              <Pildora>NT · vía aérea artificial</Pildora>
+              <div className="f"><label>Verbal</label><div className="pam mono">NT</div></div>
             ) : (
-              <Fichas etiqueta="Verbal" valor={b.glasgow.verbal} opciones={[5, 4, 3, 2, 1].map((n) => ({ valor: n as 1 | 2 | 3 | 4 | 5, texto: String(n) }))} onCambio={(v) => setGlasgow({ verbal: v })} />
+              <CampoNum clave="gcs-v" etiqueta="Verbal" unidad="1-5" valor={b.glasgow.verbal === null ? "" : String(b.glasgow.verbal)}
+                onCambio={(v) => { const n = digito(v, 1, 5); if (n !== undefined) setGlasgow({ verbal: n as Glasgow["verbal"] | null }); }}
+                franja={franjaNum("Verbal", [1, 2, 3, 4, 5], b.glasgow.verbal === null ? "" : String(b.glasgow.verbal), (v) => setGlasgow({ verbal: Number(v) as Glasgow["verbal"] })) } />
             )}
+            <CampoNum clave="gcs-m" etiqueta="Motora" unidad="1-6" valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)}
+              onCambio={(v) => { const n = digito(v, 1, 6); if (n !== undefined) setGlasgow({ motora: n as Glasgow["motora"] | null }); }}
+              franja={franjaNum("Motora", [1, 2, 3, 4, 5, 6], b.glasgow.motora === null ? "" : String(b.glasgow.motora), (v) => setGlasgow({ motora: Number(v) as Glasgow["motora"] })) } />
+            <div className="f">
+              <label>Glasgow{sedada && calculado ? " · bajo sedación" : ""}</label>
+              <div className="pam mono" aria-live="polite">{calculado ? calculado.display : "--"}</div>
+            </div>
           </div>
-          <div>
-            <div className="small ink2">Motora</div>
-            <Fichas etiqueta="Motora" valor={b.glasgow.motora} opciones={[6, 5, 4, 3, 2, 1].map((n) => ({ valor: n as 1 | 2 | 3 | 4 | 5 | 6, texto: String(n) }))} onCambio={(v) => setGlasgow({ motora: v })} />
+          <div className="fgrid4">
+            <CampoNum clave="s5q" etiqueta="S5Q" unidad="0 a 5" valor={b.s5q} onCambio={(v) => { const n = digito(v, 0, 5); if (n !== undefined) editar((x) => ({ ...x, s5q: n === null ? "" : String(n) })); }}
+              franja={franjaNum("S5Q", [0, 1, 2, 3, 4, 5], b.s5q, (v) => editar((x) => ({ ...x, s5q: v })))} />
           </div>
-        </div>
-        {calculado && (
-          <p className="small ink2 mt">
-            <b className="mono">{calculado.completo}</b>
-            {sedada && " · se registra bajo sedación"}
-          </p>
-        )}
-        <div className="mt" style={{ maxWidth: 160 }}>
-          <CampoNum clave="s5q" etiqueta="S5Q" unidad="0 a 5" valor={b.s5q} onCambio={(v) => editar((x) => ({ ...x, s5q: v }))} franja={() => ({ etiqueta: "S5Q", opciones: opcionesNumericas([0, 1, 2, 3, 4, 5], b.s5q), onElegir: (v) => editar((x) => ({ ...x, s5q: v })) })} />
-        </div>
-        {sedada && (
-          <div className="mt">
-            <Aviso tipo="warn" pequeno>El Glasgow con sedación en curso no es lo correcto, pero así se trabaja: la nota lo deja marcado "bajo sedación".</Aviso>
-          </div>
-        )}
-      </section>
+        </section>
       )}
       {paso === "sas" && (
         <>
-      <section>
-        <h3>{sedada ? "Escala SAS" : "Estado de vigilia"}</h3>
-        {sedada ? (
-          <>
-            <div className="sas">
-              {ESCALA_SAS.map((s) => (
-                <button key={s.val} type="button" className="chip" aria-pressed={b.sas === s.val} onClick={() => editar((x) => ({ ...x, sas: s.val as ValorSas }))}>
-                  {s.val}
-                </button>
-              ))}
-            </div>
-            <p className="small ink2 mt">{b.sas ? `${b.sas} · ${ESCALA_SAS.find((s) => s.val === b.sas)?.label}` : "Hay sedación en curso: se pide SAS."}</p>
-          </>
-        ) : (
-          <>
+          <section>
+            <h3>
+              Sedoanalgesia <Pildora tipo={sedada ? "acc" : ""}>{sedada ? "Sí" : "No"}</Pildora>
+            </h3>
             <div className="stack" style={{ gap: 6 }}>
-              {ESTADOS_VIGILIA.map((v) => (
-                <button key={v.val} type="button" className="chip" style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} aria-pressed={b.vigilia === v.val} onClick={() => editar((x) => ({ ...x, vigilia: v.val }))}>
-                  {v.label}
-                </button>
-              ))}
+              {visibles(GRUPO_SEDACION, abiertos.sedacion).map(tarjeta)}
+              {visibles(GRUPO_AGITACION, abiertos.agitacion).map(tarjeta)}
             </div>
-            <p className="small muted mt">Sin sedación en curso: se pide estado de vigilia.</p>
-          </>
-        )}
-      </section>
-      
-      <section>
-        <h3>
-          Sedoanalgesia <Pildora tipo={sedada ? "acc" : ""}>{sedada ? "Sí" : "No"}</Pildora>
-        </h3>
-        <div className="stack" style={{ gap: 6 }}>
-          {INFUSIONES.filter((i) => i.grupo === "SEDANTE").map((def) => (
-            <TarjetaInfusion
-              key={def.id}
-              def={def}
-              x={b.infusiones[def.id]}
-              ultimo={ultimo}
-              onCambio={(p) => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [def.id]: { ...y.infusiones[def.id], ...p } } }))}
-              onIniciar={() => editar((y) => iniciarInfusion(y, def.id))}
-              onSuspender={() => suspender(def.id)}
-              onAlternarLibre={() => editar((y) => alternarDosisLibre(y, def.id))}
-            />
-          ))}
-        </div>
-        <p className="small muted mt">Lo que estaba en curso se hereda. Iniciar abre el teclado para el escalón; Suspender lo deja en cero.</p>
-      </section>
+            <div className="row mt" style={{ flexWrap: "wrap" }}>
+              {!abiertos.sedacion && <button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, sedacion: true }))}>+ Agregar sedoanalgesia</button>}
+              {!abiertos.agitacion && <button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, agitacion: true }))}>+ Agregar manejo de agitación</button>}
+            </div>
+            <p className="small muted mt">Fentanilo, propofol y midazolam; Precedex y lorazepam son para el paciente agitado. Lo que estaba en curso se hereda y se ve siempre.</p>
+          </section>
 
-      <section>
-        <h3>Bloqueo neuromuscular {bnm ? <Pildora tipo="crit">En curso</Pildora> : <Pildora>No</Pildora>}</h3>
-        {bnm ? (
-          <div className="row">
-            <span className="small ink2">{bnm.tipo === "INICIO_BNM" ? bnm.farmaco : ""} desde las {bnm.hora}</span>
-            <button type="button" className="btn stop" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, ctx.rutAutor, new Date()), tipo: "FIN_BNM" }).then(() => avisar("Bloqueo neuromuscular suspendido."))}>Suspender</button>
-          </div>
-        ) : (
-          <div className="stack" style={{ gap: 6 }}>
-            <div className="small ink2">Iniciar con</div>
-            <div className="row">
-              {FARMACOS_BNM.map((f) => (
-                <button key={f} type="button" className="btn play" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, ctx.rutAutor, new Date()), tipo: "INICIO_BNM", farmaco: f }).then(() => avisar(`Bloqueo neuromuscular iniciado (${f}).`))}>{f}</button>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
+          {sedada ? (
+            <section>
+              <h3>Escala SAS</h3>
+              <div style={{ maxWidth: 160 }}>
+                <CampoNum clave="sas" etiqueta="SAS" unidad="1 a 7" valor={b.sas === null ? "" : String(b.sas)}
+                  onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }}
+                  franja={franjaNum("SAS", [1, 2, 3, 4, 5, 6, 7], b.sas === null ? "" : String(b.sas), (v) => editar((x) => ({ ...x, sas: Number(v) as ValorSas })))} />
+              </div>
+            </section>
+          ) : (
+            <section>
+              <h3>Estado de vigilia</h3>
+              <div className="stack" style={{ gap: 6 }}>
+                {ESTADOS_VIGILIA.map((v) => (
+                  <button key={v.val} type="button" className="chip" style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} aria-pressed={b.vigilia === v.val} onClick={() => editar((x) => ({ ...x, vigilia: v.val }))}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <h3>Bloqueo neuromuscular {bnm ? <Pildora tipo="crit">En curso</Pildora> : <Pildora>No</Pildora>}</h3>
+            {bnm ? (
+              <div className="infu">
+                <div className="infu-top">
+                  <div className="infu-name"><b>{bnm.tipo === "INICIO_BNM" ? bnm.farmaco : "Bloqueo"}</b><span className="small muted">desde las {bnm.hora}</span></div>
+                  <button type="button" className="btn sm stop" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, ctx.rutAutor, new Date()), tipo: "FIN_BNM" }).then(() => avisar("Bloqueo neuromuscular suspendido."))}>Suspender</button>
+                </div>
+              </div>
+            ) : (
+              <div className="infu off">
+                <div className="infu-top">
+                  <div className="infu-name">
+                    <b>Bloqueo neuromuscular</b>
+                    <select aria-label="Fármaco de bloqueo" value={farmacoBnm} onChange={(e) => setFarmacoBnm(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)", minHeight: 34, padding: "2px 6px" }}>
+                      {FARMACOS_BNM.map((f) => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                  <button type="button" className="btn sm play" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, ctx.rutAutor, new Date()), tipo: "INICIO_BNM", farmaco: farmacoBnm }).then(() => avisar(`Bloqueo neuromuscular iniciado (${farmacoBnm}).`))}>Iniciar</button>
+                </div>
+              </div>
+            )}
+          </section>
         </>
       )}
     </>

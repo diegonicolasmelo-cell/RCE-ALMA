@@ -58,7 +58,7 @@ describe("programado vs paciente, y resultantes por modalidad", () => {
     expect(n).toContain("Vt programado 430 ml (6.3 ml/kg PI)");
     expect(n).toContain("Vt espirado 430 ml (6.3 ml/kg PI)");
     expect(n).toContain("FR programada 18 / total 20 rpm");
-    expect(n).toContain("volumen minuto 8.6 L/min");
+    expect(n).toContain("volumen minuto espirado 8.6 L/min");
     expect(n).toContain("TI 1 s (I:E 1:2)");
   });
 
@@ -102,7 +102,7 @@ describe("candado de mecánica aplicado a la nota", () => {
   it("sigue reportando lo que sí es real bajo asincronía", () => {
     const n = nota({ controles: [unControl({ ventilacion: unaVentilacion({ asincronico: true }) })] });
     expect(n).toContain("Vt espirado 430 ml");
-    expect(n).toContain("volumen minuto 8.6");
+    expect(n).toContain("volumen minuto espirado 8.6");
   });
 });
 
@@ -241,9 +241,9 @@ describe("novedades: PCV con presión pico, Glasgow, neuromonitoreo y equipos", 
     expect(n).toContain("DVE a 12 cmH₂O cerrada");
   });
 
-  it("el volumen minuto leído del ventilador se declara", () => {
+  it("la nota declara el volumen minuto espirado anotado", () => {
     const c = unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) });
-    expect(nota({ controles: [c] })).toContain("volumen minuto 9.1 L/min (leído del ventilador)");
+    expect(nota({ controles: [c] })).toContain("volumen minuto espirado 9.1 L/min");
   });
 
   it("la nota de turno lista los equipos de la sala", () => {

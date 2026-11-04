@@ -239,7 +239,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         <div className="fgrid">{grupo("OBSERVADO")}</div>
       </section>
 
-      <Resultantes ctx={ctx} d={d} bloqueado={bloqueado} franjaVm={franjaVent({ campo: "volMinuto", etiqueta: "Vol. minuto", unidad: "L/min", grupo: "OBSERVADO" })} />
+      <Resultantes ctx={ctx} d={d} bloqueado={bloqueado} />
         </>
       )}
       {paso === "spo2" && (
@@ -271,7 +271,7 @@ function rellenarEjemplo({ b, editar }: ContextoCama): void {
 
 // ---------------------------------------------------------------------------
 
-function Resultantes({ ctx, d, bloqueado, franjaVm }: { ctx: ContextoCama; d: ReturnType<typeof calcularDerivados>; bloqueado: boolean; franjaVm: () => DescriptorFranja }) {
+function Resultantes({ ctx, d, bloqueado }: { ctx: ContextoCama; d: ReturnType<typeof calcularDerivados>; bloqueado: boolean }) {
   const { b, pbw, ep } = ctx;
   if (b.modalidad === "CNAF") {
     return (
@@ -310,7 +310,6 @@ function Resultantes({ ctx, d, bloqueado, franjaVm }: { ctx: ContextoCama; d: Re
       <h3 style={{ marginTop: 10 }}>Resultantes</h3>
       <div className="derived">
         <Celda valor={d.vtEspiradoPorKg} etiqueta="Vt/kg esp." />
-        <Celda valor={d.volumenMinuto} etiqueta={d.volumenMinutoOrigen === "EDITADO" ? "Vol. min (editado)" : "Vol. min"} />
         {esModalidadControlada(b.modalidad) ? (
           <>
             <Celda valor={d.drivingPressure} etiqueta={d.origenDriving === "PICO" ? "ΔP (con pico)" : "ΔP"} bloqueado={bloqueado} />
@@ -321,18 +320,6 @@ function Resultantes({ ctx, d, bloqueado, franjaVm }: { ctx: ContextoCama; d: Re
           <Celda valor={d.tobin} etiqueta="Tobin" />
         )}
       </div>
-      <div className="mt" style={{ maxWidth: 220 }}>
-        <CampoNum
-          clave="vent:volMinuto"
-          etiqueta="Editar volumen minuto"
-          unidad="L/min"
-          valor={b.vent.volMinuto}
-          onCambio={(v) => ctx.editar((x) => ({ ...x, vent: { ...x.vent, volMinuto: v } }))}
-          franja={franjaVm}
-          placeholder={d.volumenMinutoOrigen === "CALCULADO" && d.volumenMinuto !== null ? `calculado ${d.volumenMinuto}` : "calculado"}
-        />
-      </div>
-      <div className="small muted">Se calcula con el volumen espirado y la FR total. Si el ventilador muestra otro valor, escríbelo aquí.</div>
     </section>
   );
 }
@@ -351,40 +338,25 @@ function Celda({ valor, etiqueta, bloqueado }: { valor: number | string | null; 
 function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
   const { ep, pbw } = ctx;
   const { repo } = useServicios();
-  const [editando, setEditando] = useState(false);
   const [talla, setTalla] = useState(String(ep.tallaCm));
-  const [origen, setOrigen] = useState(ep.tallaOrigen);
-  useEffect(() => {
-    if (!editando) {
-      setTalla(String(ep.tallaCm));
-      setOrigen(ep.tallaOrigen);
-    }
-  }, [ep.tallaCm, ep.tallaOrigen, editando]);
+  useEffect(() => setTalla(String(ep.tallaCm)), [ep.tallaCm]);
 
   const guardar = async (): Promise<void> => {
     const t = medicionDe(talla);
-    if (t !== null && t >= 100 && t <= 230) await repo.guardarEpisodio({ ...ep, tallaCm: t, tallaOrigen: origen });
-    setEditando(false);
+    if (t !== null && t >= 100 && t <= 230 && t !== ep.tallaCm) await repo.guardarEpisodio({ ...ep, tallaCm: t });
+    else setTalla(String(ep.tallaCm));
   };
 
-  if (!editando) {
-    return (
-      <div className="small ink2">
-        Peso ideal <b className="mono">{pbw} kg</b> · talla {ep.tallaCm} cm ({ep.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}){" "}
-        <button type="button" className="linkbtn" style={{ padding: "0 0 0 6px" }} onClick={() => setEditando(true)}>editar</button>
-      </div>
-    );
-  }
   return (
-    <div className="card stack" style={{ padding: 10, gap: 8 }}>
-      <div className="small ink2">Talla para el peso ideal</div>
-      <div className="row">
-        <div className="f inl" style={{ marginLeft: 0 }}>
-          <input inputMode="numeric" value={talla} aria-label="Talla en cm" onChange={(e) => setTalla(e.target.value)} />
-          <span className="small muted">cm</span>
-        </div>
-        <Seg etiqueta="Origen de la talla" valor={origen} opciones={[{ valor: "ESTIMADA", texto: "Estimada" }, { valor: "MEDIDA", texto: "Medida" }]} onCambio={setOrigen} />
-        <button type="button" className="btn sm primary" onClick={() => void guardar()}>Listo</button>
+    <div className="fgrid2">
+      <div className="f">
+        <label htmlFor="in-talla-cm">Talla <span className="muted">cm</span></label>
+        <input id="in-talla-cm" aria-label="Talla en cm" inputMode="numeric" autoComplete="off" value={talla}
+          onChange={(e) => setTalla(e.target.value)} onBlur={() => void guardar()} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+      </div>
+      <div className="f">
+        <label>Peso ideal</label>
+        <div className="pam mono" aria-live="polite">{pbw} kg</div>
       </div>
     </div>
   );

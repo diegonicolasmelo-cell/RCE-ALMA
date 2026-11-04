@@ -239,3 +239,4 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .paso-chip{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;min-height:34px}
 .paso-chip[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .cel-guardar .btn{white-space:nowrap}
+.fgrid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}

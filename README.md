@@ -48,7 +48,9 @@ punta hay que hacerlo con datos ficticios.
 
 - **Tabla real de escalones de sedación.** Hoy se interpolan entre los extremos 1 y
   6; lorazepam solo admite dosis libre.
-- **Unidad de la amiodarona** (hoy `mg/h`, marcada “por confirmar”).
+- **Unidad de la amiodarona** (hoy `mg/h`, marcada “por confirmar”: la ficha técnica
+  la expresa en mg/min y muchas unidades en mg/h). La milrinona va en mcg/kg/min.
+- **Corte del S5Q** para la lectura en el PC (hoy ≥ 3, por confirmar).
 - **Turnos**: se asumen Día 08–20 y Noche 20–08 (`src/core/turnos.ts`).
 - **TI, flujo e I:E** por modalidad (`src/core/catalogos.ts`), y los valores
   rápidos de la franja del teclado.

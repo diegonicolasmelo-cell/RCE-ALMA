@@ -77,10 +77,6 @@ describe("volumen minuto: volumen ESPIRADO por la frecuencia TOTAL", () => {
     expect(volumenMinuto(null, 20)).toBeNull();
     expect(volumenMinuto(590, null)).toBeNull();
   });
-  it("usa la frecuencia del paciente, no la programada", () => {
-    const c = unControl({ ventilacion: unaVentilacion({ frProgramada: 16, frTotal: 24, vtEspirado: 500 }) });
-    expect(calcularDerivados(c, 67.8).volumenMinuto).toBe(12);
-  });
 });
 
 describe("relación I:E resultante", () => {
@@ -231,18 +227,15 @@ describe("PCV: ΔP con presión pico si el ventilador no permite medir plateau",
   });
 });
 
-describe("volumen minuto: calculado por defecto y editable", () => {
-  it("sin edición se calcula del espirado y la frecuencia total", () => {
-    const d = calcularDerivados(unControl(), 67.8);
-    expect(d.volumenMinuto).toBe(8.6);
-    expect(d.volumenMinutoOrigen).toBe("CALCULADO");
+describe("volumen minuto: se anota el ESPIRADO que muestra el ventilador (no se calcula)", () => {
+  it("vale lo que se escribió", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) });
+    expect(calcularDerivados(c, 67.8).volumenMinuto).toBe(9.1);
   });
 
-  it("si se escribe el que muestra el ventilador, ese vale", () => {
-    const c = unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) });
-    const d = calcularDerivados(c, 67.8);
-    expect(d.volumenMinuto).toBe(9.1);
-    expect(d.volumenMinutoOrigen).toBe("EDITADO");
+  it("sin dato no se inventa uno a partir del Vt y la FR", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ volMinuto: null, vtEspirado: 590, frTotal: 20 }) });
+    expect(calcularDerivados(c, 67.8).volumenMinuto).toBeNull();
   });
 
   it("en CNAF no hay volumen minuto aunque quede un valor escrito", () => {

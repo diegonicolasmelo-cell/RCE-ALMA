@@ -36,8 +36,8 @@ describe("sábana del turno", () => {
     expect(fila("P. distensión (ΔP)").celda(c).texto).toBe("16 (pico)");
   });
 
-  it("un volumen minuto editado se marca con asterisco", () => {
-    expect(fila("Vol. minuto").celda(unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) })).texto).toBe("9.1*");
+  it("el volumen minuto es el espirado que se anotó, sin marcas", () => {
+    expect(fila("Vol. minuto").celda(unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) })).texto).toBe("9.1");
   });
 
   it("el Glasgow bajo sedación se marca con asterisco", () => {
@@ -67,6 +67,12 @@ describe("sábana del turno", () => {
     expect(fila("Auto PEEP").celda(unControl({ ventilacion: unaVentilacion({ autoPeep: 2 }) })).texto).toBe("2");
     const cpap = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", autoPeep: null }) });
     expect(fila("Auto PEEP").celda(cpap).texto).toBe("—");
+  });
+
+  it("el S5Q se lee en el PC: puntaje sobre 5 y contra el corte", () => {
+    expect(fila("S5Q").celda(unControl({ s5q: 4 })).texto).toBe("4/5 (≥3)");
+    expect(fila("S5Q").celda(unControl({ s5q: 2 })).texto).toBe("2/5 (<3)");
+    expect(fila("S5Q").celda(unControl()).texto).toBe("--");
   });
 
   it("la firma son las iniciales del profesional", () => {

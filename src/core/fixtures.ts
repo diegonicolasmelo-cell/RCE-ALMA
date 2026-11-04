@@ -54,7 +54,7 @@ export function unaVentilacion(over: Partial<Ventilacion> = {}): Ventilacion {
     pPlateau: 20,
     pMedia: 12,
     autoPeep: null,
-    volMinuto: null,
+    volMinuto: 8.6,
     ...over
   };
 }

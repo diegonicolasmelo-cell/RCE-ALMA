@@ -142,7 +142,7 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
   p.push(`Vt espirado ${fmt(v.vtEspirado)} ml (${fmt(d.vtEspiradoPorKg)} ml/kg PI)`);
   p.push(controlada ? `FR programada ${fmt(v.frProgramada)} / total ${fmt(v.frTotal)} rpm` : `FR ${fmt(v.frTotal)} rpm`);
   if (d.volumenMinuto !== null) {
-    p.push(`volumen minuto ${d.volumenMinuto} L/min${d.volumenMinutoOrigen === "EDITADO" ? " (leído del ventilador)" : ""}`);
+    p.push(`volumen minuto espirado ${d.volumenMinuto} L/min`);
   }
   if (controlada && v.ti !== null) p.push(`TI ${v.ti} s${d.relacionIE ? ` (I:E ${d.relacionIE})` : ""}`);
   p.push(`P.pico ${fmt(v.pPico)}`);

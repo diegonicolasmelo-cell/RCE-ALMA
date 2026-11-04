@@ -4,6 +4,7 @@
  */
 
 import {
+  CORTE_S5Q,
   ETIQUETA_MODALIDAD,
   calcularDerivados,
   calcularGlasgow,
@@ -56,7 +57,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
   if (monitoreo.pic) filas.push({ etiqueta: "PIC / PPC", celda: (c) => t(`${n(c.neuro?.pic)} / ${n(d(c).ppc)}`) });
   filas.push(
     { etiqueta: "Glasgow", celda: glasgowDe },
-    { etiqueta: "S5Q", celda: (c) => t(n(c.s5q)) },
+    { etiqueta: "S5Q", celda: (c) => t(c.s5q === null ? "--" : `${c.s5q}/5 (${c.s5q >= CORTE_S5Q ? "≥" : "<"}${CORTE_S5Q})`) },
     { etiqueta: "SAS / escalón", celda: (c) => t(sedoanalgesiaActiva(c.infusiones) ? `SAS ${n(c.sas)}` : c.vigilia ? c.vigilia.toLowerCase().replace("_", " ") : "--") },
     { etiqueta: "DVA / inotrópicos", celda: (c) => t(describirCardiovasculares(c.infusiones).replace("sin requerimiento de DVA ni inotrópicos", "—")) },
     // --- Terapia ventilatoria ---
@@ -76,7 +77,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     { etiqueta: "Auto PEEP", celda: (c) => t(esModalidadControlada(c.ventilacion.modalidad) ? n(c.ventilacion.autoPeep) : "—") },
     { etiqueta: "Relación I:E", celda: (c) => t(n(d(c).relacionIE)) },
     { etiqueta: "I. Tobin", celda: (c) => t(n(d(c).tobin)) },
-    { etiqueta: "Vol. minuto", celda: (c) => t(`${n(d(c).volumenMinuto)}${d(c).volumenMinutoOrigen === "EDITADO" ? "*" : ""}`) },
+    { etiqueta: "Vol. minuto", celda: (c) => t(n(d(c).volumenMinuto)) },
     { etiqueta: "FiO₂", celda: (c) => t(n(c.ventilacion.fio2)) },
     { etiqueta: "SpO₂", celda: (c) => t(n(c.spo2)) },
     // --- Lo que el papel no trae ---

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Wifi, WifiOff } from "lucide-react";
 import {
   apkVigente,
+  completarBorrador,
   crearBorradorNuevoControl,
   calcularPbw,
   esViaAereaArtificial,
@@ -207,8 +208,9 @@ export function Celular() {
     return <div className="cel-cuerpo"><p className="muted">No hay camas activas. Un PC de la estación debe ingresar a los pacientes.</p></div>;
   }
 
-  const b = borradores[ep.id] ?? base;
-  const editar = (fn: (x: BorradorControl) => BorradorControl): void => useApp.getState().editar(ep.id, base, fn);
+  // Un borrador de una version anterior de la app se completa con los campos nuevos.
+  const b = completarBorrador(borradores[ep.id], base);
+  const editar = (fn: (x: BorradorControl) => BorradorControl): void => useApp.getState().editar(ep.id, base, (x) => fn(completarBorrador(x, base)));
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const ctx: ContextoCama = { ep, ultimo, controles, eventos, apks, b, editar, pbw, ahora, rutAutor: sesion.rut };
 

@@ -422,3 +422,33 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     observaciones: b.observaciones.trim()
   };
 }
+
+/**
+ * Un borrador guardado por una version anterior de la app puede no traer los campos
+ * nuevos (y traer otros que ya no existen). Se completa con la base recien creada para
+ * esa cama: nunca debe romper la pantalla.
+ */
+export function completarBorrador(guardado: Partial<BorradorControl> | undefined | null, base: BorradorControl): BorradorControl {
+  if (!guardado) return base;
+  const g = guardado as Partial<BorradorControl> & Record<string, unknown>;
+  const infusiones = { ...base.infusiones };
+  for (const id of Object.keys(base.infusiones) as (keyof typeof infusiones)[]) {
+    const x = g.infusiones?.[id];
+    if (x && typeof x === "object") infusiones[id] = { ...base.infusiones[id], ...x };
+  }
+  const limpio: BorradorControl = {
+    ...base,
+    ...(g as Partial<BorradorControl>),
+    vent: { ...base.vent, ...(g.vent ?? {}) },
+    infusiones,
+    glasgow: { ...base.glasgow, ...(g.glasgow ?? {}) },
+    neuro: { ...base.neuro, ...(g.neuro ?? {}) },
+    auscultacion: Array.isArray(g.auscultacion) ? g.auscultacion : base.auscultacion,
+    actividades: Array.isArray(g.actividades) ? g.actividades : base.actividades
+  };
+  // Campos que ya no existen en el modelo.
+  const sobrante = limpio as unknown as Record<string, unknown>;
+  delete sobrante["kineRealizada"];
+  delete sobrante["aspiracion"];
+  return limpio;
+}

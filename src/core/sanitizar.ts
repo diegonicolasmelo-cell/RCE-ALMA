@@ -219,3 +219,30 @@ export function asegurarPayloadSinIdentidad<T>(payload: T): T {
   }
   return payload;
 }
+
+/**
+ * Un control guardado por una version anterior (o leido de una fila vieja de la hoja)
+ * puede no traer los campos que se agregaron despues. Se completan como "no medido".
+ */
+export function normalizarControl(c: Control): Control {
+  const v = c.ventilacion as Partial<Control["ventilacion"]> & Control["ventilacion"];
+  const k = (c.kineResp ?? {}) as Partial<Control["kineResp"]>;
+  return {
+    ...c,
+    s5q: c.s5q ?? null,
+    ventilacion: {
+      ...v,
+      autoPeep: v.autoPeep ?? null,
+      volMinuto: v.volMinuto ?? null,
+      temperatura: v.temperatura ?? null,
+      musculaturaAccesoria: v.musculaturaAccesoria ?? null
+    },
+    kineResp: {
+      auscultacion: Array.isArray(k.auscultacion) ? k.auscultacion : [],
+      aspecto: k.aspecto ?? null,
+      reologia: k.reologia ?? null,
+      cantidad: k.cantidad ?? null
+    },
+    infusiones: c.infusiones ?? {}
+  };
+}

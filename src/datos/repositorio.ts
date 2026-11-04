@@ -6,6 +6,7 @@
  */
 
 import { aplicarEventoAEpisodio } from "@core/index";
+import { normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
 import { filaDeApk, filaDeControl, filaDeEpisodio, filaDeEvento } from "./nube";
@@ -99,7 +100,7 @@ export class Repositorio {
 
   async controlesDe(episodioId: string): Promise<readonly Control[]> {
     const c = await this.db.controles.where("episodioId").equals(episodioId).toArray();
-    return c.sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
+    return c.map(normalizarControl).sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   }
 
   async eventosDe(episodioId: string): Promise<readonly EventoClinico[]> {

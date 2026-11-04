@@ -10,7 +10,8 @@ import { iniciarServicios } from "../datos/servicios";
 import type { Servicios } from "../datos/servicios";
 import { Estacion } from "../estacion/Estacion";
 import { ServiciosContext } from "./contexto";
-import { persistirBorradores, restaurarBorradores } from "./persistencia";
+import { CLAVE_BORRADORES, persistirBorradores, restaurarBorradores } from "./persistencia";
+import { Resguardo } from "./Resguardo";
 import { useApp } from "./store";
 import { Toast } from "./Toast";
 
@@ -82,7 +83,14 @@ export function App() {
         <Estacion />
       ) : sesion ? (
         <ProveedorFranja>
-          <Celular />
+          <Resguardo
+            onDescartar={async () => {
+              useApp.setState({ borradores: {}, vista: "camas" });
+              if (servicios) await servicios.db.meta.delete(CLAVE_BORRADORES);
+            }}
+          >
+            <Celular />
+          </Resguardo>
         </ProveedorFranja>
       ) : (
         <Login />

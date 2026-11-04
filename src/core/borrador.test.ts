@@ -15,6 +15,8 @@ import {
   validarBorrador
 } from "./borrador";
 import { CAMPOS_POR_MODALIDAD } from "./catalogos";
+import { completarBorrador } from "./borrador";
+import { normalizarControl } from "./sanitizar";
 import type { BorradorControl } from "./borrador";
 import { firmarApk, firmarApkCumple } from "./apk";
 import { unControl, unEpisodio, unaVentilacion } from "./fixtures";
@@ -372,5 +374,44 @@ describe("CNAF: temperatura y musculatura accesoria", () => {
   it("la terapia física no es obligatoria: si no se registra, queda 'no'", () => {
     const c = materializarControl({ ...completo(), terapiaFisica: null }, { id: "z", numero: 1, ahora: new Date(), viaAerea: "TET", monitoreo: { capnografia: false, pic: false, dve: false } });
     expect(c.terapiaFisica.estado).toBe("NO");
+  });
+});
+
+describe("compatibilidad con datos de versiones anteriores", () => {
+  it("un borrador viejo se completa con los campos nuevos y pierde los que ya no existen", () => {
+    const base = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
+    const viejo = { ...base, fc: "88", kineRealizada: true, aspiracion: "SET" } as unknown as Record<string, unknown>;
+    delete viejo["auscultacion"];
+    delete viejo["musculaturaAccesoria"];
+    delete viejo["s5q"];
+    const vent = { ...base.vent } as Record<string, string>;
+    delete vent["temperatura"];
+    viejo["vent"] = vent;
+    const inf = { ...base.infusiones } as Record<string, unknown>;
+    delete inf["rocuronio"];
+    viejo["infusiones"] = inf;
+    const b = completarBorrador(viejo as never, base);
+    expect(b.fc).toBe("88");
+    expect(b.auscultacion).toEqual([]);
+    expect(b.musculaturaAccesoria).toBeNull();
+    expect(b.s5q).toBe("");
+    expect(b.vent.temperatura).toBe("");
+    expect(b.infusiones.rocuronio.activa).toBe(false);
+    expect("kineRealizada" in b).toBe(false);
+  });
+
+  it("un control viejo se lee con los campos nuevos en 'no medido'", () => {
+    const c = unControl() as unknown as Record<string, unknown>;
+    delete c["s5q"];
+    c["kineResp"] = { realizada: true, aspiracion: "TRACHCARE", aspecto: null, reologia: null, cantidad: null };
+    const v = { ...(c["ventilacion"] as object) } as Record<string, unknown>;
+    delete v["temperatura"];
+    delete v["musculaturaAccesoria"];
+    c["ventilacion"] = v;
+    const n = normalizarControl(c as never);
+    expect(n.s5q).toBeNull();
+    expect(n.kineResp.auscultacion).toEqual([]);
+    expect(n.ventilacion.temperatura).toBeNull();
+    expect(n.ventilacion.musculaturaAccesoria).toBeNull();
   });
 });

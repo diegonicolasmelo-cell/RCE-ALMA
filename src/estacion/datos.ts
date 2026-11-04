@@ -1,3 +1,4 @@
+import { normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
@@ -37,7 +38,7 @@ export function useDatosUnidad(): DatosUnidad {
       ]);
       return {
         episodios,
-        controles: agrupar(controles),
+        controles: agrupar(controles.map(normalizarControl)),
         eventos: agrupar(eventos),
         apks: agrupar(apks),
         identidades: new Map(ids.map((i) => [i.episodioId, i] as const))

@@ -1,10 +1,8 @@
 import { useState } from "react";
 import {
   ESTADOS_VIGILIA,
-  FARMACOS_BNM,
   INFUSIONES,
   alternarDosisLibre,
-  bnmVigente,
   calcularGlasgow,
   calcularPam,
   calcularPpc,
@@ -21,17 +19,12 @@ import { CampoNum, Pildora, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { opcionesNumericas } from "./franja";
 import type { DescriptorFranja } from "./franja";
-import { baseEvento } from "./eventos-ui";
 import { TarjetaInfusion } from "./TarjetaInfusion";
 import type { SegmentoId } from "./pasos";
 
 export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) {
-  const { ep, ultimo, b, editar, eventos } = ctx;
-  const { repo } = useServicios();
+  const { ep, ultimo, b, editar } = ctx;
   const avisar = useApp((s) => s.avisar);
-  const bnm = bnmVigente(eventos)
-    ? [...eventos].filter((e) => e.tipo === "INICIO_BNM").sort((a, c) => a.registradoEn.localeCompare(c.registradoEn)).at(-1) ?? null
-    : null;
   const sedada = sedoanalgesiaActivaEnBorrador(b);
   const artificial = esViaAereaArtificial(ep.viaAereaActual);
 
@@ -65,10 +58,10 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
   const calculado = completo ? calcularGlasgow(b.glasgow as Glasgow, ep.viaAereaActual) : null;
 
   // Sedoanalgesia: lo que esta en curso se ve siempre; el resto se agrega con "+".
-  const [abiertos, setAbiertos] = useState<{ sedacion: boolean; agitacion: boolean }>({ sedacion: false, agitacion: false });
+  const [abiertos, setAbiertos] = useState<{ sedacion: boolean; agitacion: boolean; bnm: boolean }>({ sedacion: false, agitacion: false, bnm: false });
   const GRUPO_SEDACION: readonly IdInfusion[] = ["fentanilo", "propofol", "midazolam"];
   const GRUPO_AGITACION: readonly IdInfusion[] = ["dexmedetomidina", "lorazepam"];
-  const [farmacoBnm, setFarmacoBnm] = useState(FARMACOS_BNM[0] ?? "");
+  const GRUPO_BNM: readonly IdInfusion[] = ["rocuronio", "vecuronio", "atracurio"];
   const tarjeta = (id: IdInfusion): JSX.Element | null => {
     const def = INFUSIONES.find((i) => i.id === id);
     if (!def) return null;
@@ -158,27 +151,9 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
           )}
 
           <section>
-            <h3>Bloqueo neuromuscular {bnm ? <Pildora tipo="crit">En curso</Pildora> : <Pildora>No</Pildora>}</h3>
-            {bnm ? (
-              <div className="infu">
-                <div className="infu-top">
-                  <div className="infu-name"><b>{bnm.tipo === "INICIO_BNM" ? bnm.farmaco : "Bloqueo"}</b><span className="small muted">desde las {bnm.hora}</span></div>
-                  <button type="button" className="btn sm stop" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, ctx.rutAutor, new Date()), tipo: "FIN_BNM" }).then(() => avisar("Bloqueo neuromuscular suspendido."))}>Suspender</button>
-                </div>
-              </div>
-            ) : (
-              <div className="infu off">
-                <div className="infu-top">
-                  <div className="infu-name">
-                    <b>Bloqueo neuromuscular</b>
-                    <select aria-label="Fármaco de bloqueo" value={farmacoBnm} onChange={(e) => setFarmacoBnm(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)", minHeight: 34, padding: "2px 6px" }}>
-                      {FARMACOS_BNM.map((f) => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" className="btn sm play" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, ctx.rutAutor, new Date()), tipo: "INICIO_BNM", farmaco: farmacoBnm }).then(() => avisar(`Bloqueo neuromuscular iniciado (${farmacoBnm}).`))}>Iniciar</button>
-                </div>
-              </div>
-            )}
+            <h3>Bloqueo neuromuscular <Pildora tipo={GRUPO_BNM.some((id) => b.infusiones[id].activa) ? "crit" : ""}>{GRUPO_BNM.some((id) => b.infusiones[id].activa) ? "En curso" : "No"}</Pildora></h3>
+            <div className="stack" style={{ gap: 6 }}>{visibles(GRUPO_BNM, abiertos.bnm).map(tarjeta)}</div>
+            {!abiertos.bnm && <div className="row mt"><button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, bnm: true }))}>+ Agregar bloqueo neuromuscular</button></div>}
           </section>
         </>
       )}
@@ -187,7 +162,7 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
 }
 
 function Neuromonitoreo({ ctx }: { ctx: ContextoCama }) {
-  const { ep, b, editar, ultimo } = ctx;
+  const { ep, b, editar } = ctx;
   const { repo } = useServicios();
   const m = ep.monitoreo;
 
@@ -198,7 +173,6 @@ function Neuromonitoreo({ ctx }: { ctx: ContextoCama }) {
   const pam = calcularPam(medicionDe(b.pas), medicionDe(b.pad));
   const ppc = calcularPpc(pam, medicionDe(b.neuro.pic));
   const sinFranja = (etiqueta: string) => (): DescriptorFranja => ({ etiqueta, opciones: [], onElegir: () => undefined });
-  const prev = (v: number | null | undefined): string => (v === null || v === undefined ? "" : `ant. ${v}`);
   const setNeuro = (parcial: Partial<typeof b.neuro>): void => editar((x) => ({ ...x, neuro: { ...x.neuro, ...parcial } }));
 
   return (
@@ -221,10 +195,10 @@ function Neuromonitoreo({ ctx }: { ctx: ContextoCama }) {
         <div className="stack mt" style={{ gap: 8 }}>
           <div className="fgrid">
             {m.capnografia && (
-              <CampoNum clave="neuro:etco2" etiqueta="EtCO₂" unidad="mmHg" valor={b.neuro.etco2} onCambio={(v) => setNeuro({ etco2: v })} franja={sinFranja("EtCO₂")} placeholder={prev(ultimo?.neuro?.etco2)} />
+              <CampoNum clave="neuro:etco2" etiqueta="EtCO₂" unidad="mmHg" valor={b.neuro.etco2} onCambio={(v) => setNeuro({ etco2: v })} franja={sinFranja("EtCO₂")} />
             )}
             {m.pic && (
-              <CampoNum clave="neuro:pic" etiqueta="PIC" unidad="mmHg" valor={b.neuro.pic} onCambio={(v) => setNeuro({ pic: v })} franja={sinFranja("PIC")} placeholder={prev(ultimo?.neuro?.pic)} />
+              <CampoNum clave="neuro:pic" etiqueta="PIC" unidad="mmHg" valor={b.neuro.pic} onCambio={(v) => setNeuro({ pic: v })} franja={sinFranja("PIC")} />
             )}
             {m.pic && (
               <div className="f">
@@ -233,7 +207,7 @@ function Neuromonitoreo({ ctx }: { ctx: ContextoCama }) {
               </div>
             )}
             {m.dve && (
-              <CampoNum clave="neuro:dve" etiqueta="Altura DVE" unidad="cmH₂O" valor={b.neuro.dveAltura} onCambio={(v) => setNeuro({ dveAltura: v })} franja={sinFranja("Altura DVE")} placeholder={prev(ultimo?.neuro?.dveAlturaCmH2O)} />
+              <CampoNum clave="neuro:dve" etiqueta="Altura DVE" unidad="cmH₂O" valor={b.neuro.dveAltura} onCambio={(v) => setNeuro({ dveAltura: v })} franja={sinFranja("Altura DVE")} />
             )}
           </div>
           {m.dve && (

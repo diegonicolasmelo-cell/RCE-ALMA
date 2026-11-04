@@ -176,3 +176,11 @@ describe("documento: copia fiel de la hoja", () => {
     expect(fechaCorta("2026-11-04")).toBe("04/11/26");
   });
 });
+
+describe("fecha de la APK", () => {
+  it("queda con la fecha del día en que empezó el turno", () => {
+    expect(firmar("n", f(4, 23, 30)).fecha).toBe("2026-11-04");
+    expect(firmar("n", f(5, 2, 10)).fecha).toBe("2026-11-04");
+    expect(firmar("d", f(5, 9, 0)).fecha).toBe("2026-11-05");
+  });
+});

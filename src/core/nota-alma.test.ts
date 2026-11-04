@@ -300,6 +300,6 @@ describe("catálogo de modalidades", () => {
     const a = INFUSIONES.find((i) => i.id === "amiodarona");
     expect(a?.grupo).toBe("ANTIARRITMICO");
     expect(a?.unidadConfirmada).toBe(false);
-    expect(INFUSIONES.filter((i) => i.unidadConfirmada === false).map((i) => i.id)).toEqual(["amiodarona"]);
+    expect(INFUSIONES.filter((i) => i.unidadConfirmada === false).map((i) => i.id)).toEqual(["amiodarona", "rocuronio", "vecuronio", "atracurio"]);
   });
 });

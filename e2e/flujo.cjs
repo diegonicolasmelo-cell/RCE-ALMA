@@ -98,24 +98,44 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".app-cel b.mono"), /UCI-01/);
     });
 
-    await prueba("las lecturas nacen en blanco con el valor anterior en gris (sin boton para copiarlo)", async () => {
+    await prueba("las lecturas nacen en blanco, sin el valor anterior a la vista ni para copiar", async () => {
       assert.equal(await cel.inputValue("#in-fc"), "");
-      assert.match(await cel.getAttribute("#in-fc", "placeholder"), /^ant\. \d+/);
+      assert.equal(await cel.getAttribute("#in-fc", "placeholder"), "", "nada que parezca pre-rellenado");
+      assert.equal(await cel.getAttribute("#in-pas", "placeholder"), "");
       await cel.click("#in-fc");
       assert.ok(!(await franja()).some((t) => t.startsWith("ant.")), "una lectura de monitor no debe ofrecer copiar la anterior");
     });
 
-    await prueba("'Sig.' avanza casillero a casillero y se detiene en el Modo con 'Igual que el anterior'", async () => {
-      await cel.click("#in-fc");
+    await prueba("con el teclado abierto se oculta la cabecera y se ve el cuadro completo", async () => {
+      assert.equal(await cel.locator(".app-cel.teclado").count(), 1);
+      assert.equal(await cel.locator(".airway").isVisible(), false, "la via aerea y las pestanas se ocultan mientras se escribe");
+      assert.equal(await cel.locator('.ph-tabs').isVisible(), false);
+      assert.ok(await cel.locator('.seg[data-seg="fc"] h3:has-text("Inotrópicos")').isVisible(), "se ven las drogas del mismo cuadro");
+    });
+
+    await prueba("'Sig.' va de casilla en casilla y de cuadro en cuadro (FC -> PA -> PIC), sin saltarse cuadros", async () => {
       const secuencia = [await parada()];
-      for (let i = 0; i < 40 && (await parada()) !== "modo"; i++) {
+      for (let i = 0; i < 2; i++) {
         await cel.click('.franja .qchip:has-text("Sig.")');
-        await cel.waitForTimeout(120);
+        await cel.waitForTimeout(250);
         secuencia.push(await parada());
       }
-      assert.deepEqual(secuencia.slice(0, 3), ["fc", "pas", "pad"]);
-      assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Ventilación/, "Sig. pasa de Monitoreo a Ventilación");
-      assert.equal(secuencia.at(-1), "modo");
+      assert.deepEqual(secuencia, ["fc", "pas", "pad"]);
+      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /PA/);
+      // PA tiene las drogas vasoactivas: la noradrenalina en curso es la casilla siguiente del mismo cuadro
+      await cel.click('.franja .qchip:has-text("Sig.")');
+      await cel.waitForTimeout(250);
+      assert.equal(await parada(), "inf:noradrenalina:dosis");
+      // ultima casilla del cuadro PA -> cuadro PIC (sin casillas: se cierra el teclado)
+      await cel.click('.franja .qchip:has-text("Sig.")');
+      await cel.waitForTimeout(500);
+      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /PIC/);
+      assert.equal(await cel.locator(".app-cel.teclado").count(), 0, "sin casillas, el teclado se cierra y vuelve la cabecera");
+    });
+
+    await prueba("en el Modo ofrece 'Igual que el anterior' u otra modalidad", async () => {
+      await cel.click('[role=tab]:has-text("Ventilación")');
+      await cel.click("#in-modo, button.pickbtn");
       const opciones = await franja();
       assert.match(opciones[0], /^Igual: /);
       assert.ok(opciones.includes("PCV") && opciones.includes("CNAF"));
@@ -136,6 +156,8 @@ async function esperarServidor() {
       await cel.click("#in-modo, button.pickbtn");
       await cel.click('.franja .qchip:has-text("ACVC")');
       await cel.click('.franja .qchip:has-text("Listo")');
+      assert.equal(await cel.locator('.seg[data-seg="modo"] >> text=Peso ideal').count(), 0, "la talla ya no esta en el cuadro del modo");
+      await cel.click('.guide button:has-text("editar")');
       await cel.fill('input[aria-label="Talla en cm"]', "180");
       await cel.press('input[aria-label="Talla en cm"]', "Enter");
       await cel.waitForTimeout(400);
@@ -166,11 +188,11 @@ async function esperarServidor() {
         await cel.waitForTimeout(250);
         vistos.push(await actual());
       }
-      assert.deepEqual(vistos, ["FC", "PA", "PIC", "Glasgow", "SAS", "Modo", "Ventilación", "SpO₂", "Kine", "APK", "Terapia física"]);
+      assert.deepEqual(vistos, ["FC", "PA", "PIC", "Glasgow", "SAS", "Modo", "Ventilación", "Kine", "APK"]);
       assert.equal(await cel.locator('button:has-text("‹ Atrás")').count(), 1);
       await cel.click('button:has-text("‹ Atrás")');
       await cel.waitForTimeout(250);
-      assert.match(await actual(), /APK/);
+      assert.match(await actual(), /Kine/);
       // la seccion activa queda marcada y a la vista (Siguiente deja el segmento arriba)
       assert.equal(await cel.locator('.seg[data-activo="true"]').count(), 1);
     });
@@ -195,11 +217,16 @@ async function esperarServidor() {
       await cel.fill("#in-s5q", "4");
       assert.equal(await cel.inputValue("#in-s5q"), "4");
       assert.equal(await cel.locator('.seg[data-seg="glasgow"] .notice').count(), 0, "sin avisos ni interpretaciones en el celular");
-      assert.ok((await cel.locator('.infu:has(b:text-is("Bloqueo neuromuscular")) button:has-text("Iniciar")').count()) === 1);
+      await cel.click('button:has-text("+ Agregar bloqueo neuromuscular")');
+      const roc = cel.locator('.infu:has(b:text-is("Rocuronio"))');
+      assert.ok((await roc.locator('button:has-text("Iniciar") svg').count()) === 1, "Iniciar con el icono de play");
+      await roc.locator('button:has-text("Iniciar")').click();
+      assert.ok((await roc.locator("input").count()) === 1, "el bloqueo neuromuscular pide la dosis");
+      await roc.locator('button:has-text("Suspender")').click();
       await cel.click('[role=tab]:has-text("Ventilación")');
       assert.ok((await cel.locator('label:has-text("Vol. minuto espirado")').count()) === 1, "el volumen minuto se anota, no se calcula");
       assert.equal(await cel.locator('text=Editar volumen minuto').count(), 0);
-      assert.ok((await cel.locator('label:has-text("Peso ideal")').count()) === 1);
+      assert.match(await cel.textContent(".guide"), /Peso ideal/, "peso ideal en la guia, no en el cuadro del modo");
       assert.equal(await cel.locator('text=estimada').count(), 0, "la talla no distingue medida/estimada");
     });
 
@@ -227,6 +254,7 @@ async function esperarServidor() {
 
     await prueba("guardar incompleto dice que falta y lleva a la pestana correcta", async () => {
       await cel.fill("#in-sas", "3");
+      await cel.click('.franja .qchip:has-text("Listo")');
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /Falta:.*FC.*SpO₂/);
       await cel.waitForTimeout(500);
@@ -234,7 +262,7 @@ async function esperarServidor() {
       assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /FC/);
       await cel.click('button:has-text("Rellenar signos de ejemplo")');
       await cel.click('button:has-text("Guardar control")');
-      assert.match(await aviso(), /terapia física/);
+      assert.match(await aviso(), /firmar la APK/);
       assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Kine/);
     });
 
@@ -243,8 +271,18 @@ async function esperarServidor() {
       assert.ok(kine.includes("Auscultación") && kine.includes("Secreciones"), "la kine respiratoria pide auscultacion y secreciones");
       assert.ok(!/Aspiración|TrachCare|Set\b/.test(await cel.textContent('.seg[data-seg="kine"]')), "ya no se pregunta por aspiracion");
       assert.equal(await cel.locator('[aria-label="Kinesiterapia respiratoria"]').count(), 0, "cada control es una atencion: no hay Si/No de kine");
-      await cel.click('.chip:has-text("Crépitos")');
-      await cel.locator('[aria-label="Terapia física"]').locator('button:has-text("No")').click();
+      // auscultacion y secreciones en listas desplegables
+      await cel.click('summary[aria-label="Auscultación"]');
+      await cel.click('.desplegable label:has-text("Crépitos")');
+      await cel.click('.desplegable label:has-text("Roncus")');
+      assert.match(await cel.textContent('summary[aria-label="Auscultación"]'), /Crépitos, Roncus/);
+      await cel.click('summary[aria-label="Auscultación"]');
+      await cel.selectOption("#sel-cantidad", "MODERADA");
+      // la kine motora va aparte y no es obligatoria
+      assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 0, "la terapia fisica no esta en kine respiratoria");
+      await cel.click('[role=tab]:has-text("Kine motora")');
+      assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 1);
+      await cel.click('[role=tab]:has-text("Kine resp.")');
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /APK/);
       await cel.waitForTimeout(500);
@@ -261,7 +299,7 @@ async function esperarServidor() {
     await prueba("el control siguiente hereda ajustes e infusiones, pero no las lecturas ni la APK ya firmada", async () => {
       await cel.click('[role=tab]:has-text("Monitoreo")');
       assert.equal(await cel.inputValue("#in-fc"), "");
-      assert.match(await cel.getAttribute("#in-fc", "placeholder"), /ant\. 86/);
+      assert.equal(await cel.getAttribute("#in-fc", "placeholder"), "");
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03");
       await cel.click('[role=tab]:has-text("Kine")');
       assert.ok((await cel.locator(".notice.good").count()) >= 1, "la APK del turno sigue vigente");
@@ -337,6 +375,18 @@ async function esperarServidor() {
       await cel.click('button:has-text("Cambio de filtro HME")');
       await cel.waitForTimeout(400);
       assert.match(await cel.textContent(".app-cel"), /Filtro HME.*vence/);
+    });
+
+    await prueba("CNAF: flujo, temperatura, FiO2, FR, SpO2 y musculatura accesoria en el mismo cuadro", async () => {
+      await cel.click('.cel-camas button:text-is("05")');
+      await cel.click('[role=tab]:has-text("Ventilación")');
+      await cel.click("#in-modo, button.pickbtn");
+      await cel.click('.franja .qchip:text-is("CNAF")');
+      await cel.waitForTimeout(300);
+      const etiquetas = await cel.locator('.seg[data-seg="vent"] .f label').allTextContents();
+      for (const e of ["Flujo", "Temperatura", "FiO₂", "FR", "SpO₂"]) assert.ok(etiquetas.some((t) => t.startsWith(e)), "falta " + e + " en " + etiquetas.join("|"));
+      assert.equal(await cel.locator('.seg[data-seg="vent"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
+      if (await cel.locator(".franja").count()) await cel.click('.franja .qchip:has-text("Listo")');
     });
 
     console.log("Estacion (PC)");

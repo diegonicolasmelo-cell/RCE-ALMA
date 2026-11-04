@@ -82,7 +82,10 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     { etiqueta: "FiO₂", celda: (c) => t(n(c.ventilacion.fio2)) },
     { etiqueta: "SpO₂", celda: (c) => t(n(c.spo2)) },
     // --- Lo que el papel no trae ---
-    { etiqueta: "Sedación", celda: (c) => t(describirInfusiones(c.infusiones, "SEDANTE") || "—") }
+    { etiqueta: "Sedación", celda: (c) => t(describirInfusiones(c.infusiones, "SEDANTE") || "—") },
+    { etiqueta: "Bloqueo neuromuscular", celda: (c) => t(describirInfusiones(c.infusiones, "BNM") || "—") },
+    { etiqueta: "Temperatura (CNAF)", celda: (c) => t(c.ventilacion.modalidad === "CNAF" ? n(c.ventilacion.temperatura) : "—") },
+    { etiqueta: "Musc. accesoria", celda: (c) => t(c.ventilacion.musculaturaAccesoria === null ? "--" : c.ventilacion.musculaturaAccesoria ? "Sí" : "No") }
   );
 
   if (monitoreo.capnografia) filas.push({ etiqueta: "EtCO₂", celda: (c) => t(n(c.neuro?.etco2)) });

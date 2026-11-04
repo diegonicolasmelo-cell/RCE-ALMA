@@ -240,3 +240,10 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .paso-chip[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .cel-guardar .btn{white-space:nowrap}
 .fgrid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}
+.desplegable{position:relative}
+.desplegable summary{list-style:none;cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:10px 12px;min-height:44px;font-size:14px}
+.desplegable summary::-webkit-details-marker{display:none}
+.desplegable[open] summary{border-color:var(--accent)}
+.desplegable-lista{display:grid;gap:2px;padding:6px 4px}
+/* Mientras se escribe con el teclado: fuera la cabecera y el pie, todo el alto para el cuadro */
+.app-cel.teclado .cel-top,.app-cel.teclado .cel-cabeza,.app-cel.teclado .airway,.app-cel.teclado .ph-tabs,.app-cel.teclado .pasos,.app-cel.teclado .cel-pie{display:none !important}

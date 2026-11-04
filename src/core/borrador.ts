@@ -56,7 +56,8 @@ export const CAMPOS_VENT_PROGRAMADOS: readonly CampoVent[] = [
   "ti",
   "presion",
   "peep",
-  "fio2"
+  "fio2",
+  "temperatura"
 ];
 
 /** Lo que hace el paciente: nace en blanco, se lee del monitor. */
@@ -91,6 +92,8 @@ export interface BorradorControl {
 
   modalidad: Modalidad;
   asincronico: boolean;
+  /** Uso de musculatura accesoria (CNAF). Observacion del momento: nace en blanco. */
+  musculaturaAccesoria: boolean | null;
   vent: Record<CampoVent, string>;
 
   infusiones: Record<IdInfusion, BorradorInfusion>;
@@ -184,6 +187,7 @@ export function crearBorradorNuevoControl(
     modalidad,
     // La asincronia es una observacion del momento: no se hereda.
     asincronico: false,
+    musculaturaAccesoria: null,
     vent,
 
     infusiones,
@@ -288,7 +292,6 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
   const nGlasgow = [g.ocular, g.verbal, g.motora].filter((x) => x !== null).length;
   if (nGlasgow > 0 && nGlasgow < 3) falta("glasgow", "Glasgow completo (O, V y M)");
 
-  if (b.terapiaFisica === null) falta("terapiaFisica", "terapia física");
 
   // Cada control es una atencion: exige la APK firmada por quien guarda, valida para todo su turno.
   if (!kineRespiratoriaPermitida(ctx.apkVigente)) {
@@ -344,6 +347,8 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     pPlateau: campo("pPlateau"),
     pMedia: campo("pMedia"),
     autoPeep: campo("autoPeep"),
+    temperatura: campo("temperatura"),
+    musculaturaAccesoria: b.modalidad === "CNAF" ? b.musculaturaAccesoria : null,
     volMinuto: campo("volMinuto")
   };
 

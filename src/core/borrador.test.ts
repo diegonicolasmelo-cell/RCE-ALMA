@@ -177,7 +177,8 @@ describe("validarBorrador", () => {
   it("un borrador recién creado reporta todo lo obligatorio", () => {
     const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
     const c = campos(b);
-    expect(c).toEqual(expect.arrayContaining(["fc", "spo2", "pas", "pad", "frTotal", "terapiaFisica"]));
+    expect(c).toEqual(expect.arrayContaining(["fc", "spo2", "pas", "pad", "frTotal"]));
+    expect(c).not.toContain("terapiaFisica");
   });
 
   it("un borrador completo con APK vigente no reporta nada", () => {
@@ -354,5 +355,22 @@ describe("neuromonitoreo, Glasgow, volumen minuto y equipos", () => {
   it("los equipos se heredan del episodio", () => {
     const ep = unEpisodio({ equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true }] });
     expect(crearBorradorNuevoControl(ep, null, "x").equipos).toEqual(ep.equipos);
+  });
+});
+
+describe("CNAF: temperatura y musculatura accesoria", () => {
+  it("se guardan solo en CNAF", () => {
+    const b = cambiarModalidad(completo(), "CNAF");
+    const c = materializarControl({ ...b, musculaturaAccesoria: true, vent: { ...b.vent, temperatura: "37", flujo: "40", fio2: "40", frTotal: "22" } }, { id: "x", numero: 1, ahora: new Date(), viaAerea: "NATURAL", monitoreo: { capnografia: false, pic: false, dve: false } });
+    expect(c.ventilacion.temperatura).toBe(37);
+    expect(c.ventilacion.musculaturaAccesoria).toBe(true);
+    const acvc = materializarControl({ ...completo(), musculaturaAccesoria: true }, { id: "y", numero: 1, ahora: new Date(), viaAerea: "TET", monitoreo: { capnografia: false, pic: false, dve: false } });
+    expect(acvc.ventilacion.musculaturaAccesoria).toBeNull();
+    expect(acvc.ventilacion.temperatura).toBeNull();
+  });
+
+  it("la terapia física no es obligatoria: si no se registra, queda 'no'", () => {
+    const c = materializarControl({ ...completo(), terapiaFisica: null }, { id: "z", numero: 1, ahora: new Date(), viaAerea: "TET", monitoreo: { capnografia: false, pic: false, dve: false } });
+    expect(c.terapiaFisica.estado).toBe("NO");
   });
 });

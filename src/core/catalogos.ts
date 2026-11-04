@@ -125,7 +125,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("volMinuto", "Vol. minuto espirado", "L/min"),
     o("pPico", "P. pico", "cmH₂O")
   ],
-  CNAF: [p("flujo", "Flujo", "L/min"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")]
+  CNAF: [p("flujo", "Flujo", "L/min"), p("temperatura", "Temperatura", "°C"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")]
 };
 
 /** Valores rapidos para la franja del teclado. Por confirmar con la unidad. */
@@ -152,7 +152,7 @@ export const CORTE_FUGA = 0.1;
 // Infusiones: sedoanalgesia y cardiovasculares
 // ---------------------------------------------------------------------------
 
-export type GrupoInfusion = "SEDANTE" | "DVA" | "INOTROPO" | "ANTIARRITMICO";
+export type GrupoInfusion = "SEDANTE" | "DVA" | "INOTROPO" | "ANTIARRITMICO" | "BNM";
 
 export interface DefinicionInfusion {
   readonly id: IdInfusion;
@@ -191,7 +191,11 @@ export const INFUSIONES: readonly DefinicionInfusion[] = [
   { id: "dobutamina", nombre: "Dobutamina", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
   { id: "milrinona", nombre: "Milrinona", unidad: "mcg/kg/min", grupo: "INOTROPO", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [] },
   /** La unidad (mg/h) es una suposicion: la unidad clinica aun no la confirma. */
-  { id: "amiodarona", nombre: "Amiodarona", unidad: "mg/h", grupo: "ANTIARRITMICO", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] }
+  { id: "amiodarona", nombre: "Amiodarona", unidad: "mg/h", grupo: "ANTIARRITMICO", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] },
+  /** Bloqueo neuromuscular en infusion. Unidades habituales, POR CONFIRMAR con la unidad. */
+  { id: "rocuronio", nombre: "Rocuronio", unidad: "mg/kg/h", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] },
+  { id: "vecuronio", nombre: "Vecuronio", unidad: "mcg/kg/min", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] },
+  { id: "atracurio", nombre: "Atracurio", unidad: "mg/kg/h", grupo: "BNM", escalones: null, semaforo: false, unidadConfirmada: false, rapidos: [] }
 ];
 
 // ---------------------------------------------------------------------------

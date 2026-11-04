@@ -102,6 +102,11 @@ export function sedoanalgesiaActiva(infusiones: Infusiones): boolean {
   return infusionesActivas(infusiones, "SEDANTE").length > 0;
 }
 
+/** Bloqueo neuromuscular en curso segun las infusiones del control. */
+export function bnmEnCurso(infusiones: Infusiones | undefined | null): boolean {
+  return infusiones ? infusionesActivas(infusiones, "BNM").length > 0 : false;
+}
+
 export function iniciar(infusiones: Infusiones, id: IdInfusion, dosis: InfusionEnCurso): Infusiones {
   return { ...infusiones, [id]: dosis };
 }

@@ -49,8 +49,10 @@ export type CampoVent =
   | "pMedia"
   /** Solo en modalidades controladas (ACVC, PCV). */
   | "autoPeep"
-  /** Volumen minuto leido del ventilador. Opcional: por defecto se calcula (Vt espirado x FR total). */
-  | "volMinuto";
+  /** Volumen minuto espirado leido del ventilador. */
+  | "volMinuto"
+  /** Temperatura programada del humidificador (CNAF). */
+  | "temperatura";
 
 export const CAMPOS_VENT: readonly CampoVent[] = [
   "frProgramada",
@@ -66,7 +68,8 @@ export const CAMPOS_VENT: readonly CampoVent[] = [
   "pPlateau",
   "pMedia",
   "autoPeep",
-  "volMinuto"
+  "volMinuto",
+  "temperatura"
 ];
 
 /**
@@ -78,6 +81,8 @@ export type Ventilacion = Readonly<Record<CampoVent, Medicion>> & {
   readonly modalidad: Modalidad;
   /** Asincronia paciente-ventilador. En modalidad controlada invalida plateau. */
   readonly asincronico: boolean;
+  /** Uso de musculatura accesoria (se registra en CNAF). null = no evaluado. */
+  readonly musculaturaAccesoria: boolean | null;
 };
 
 /** Mecanica del esfuerzo respiratorio y destete (panel opcional). */
@@ -104,7 +109,9 @@ export type IdCardiovascular =
   | "dobutamina"
   | "milrinona"
   | "amiodarona";
-export type IdInfusion = IdSedante | IdCardiovascular;
+/** Bloqueo neuromuscular: misma tarjeta que las demas infusiones (Iniciar, dosis, Suspender). */
+export type IdBnm = "rocuronio" | "vecuronio" | "atracurio";
+export type IdInfusion = IdSedante | IdCardiovascular | IdBnm;
 
 /** Una infusion en curso. Si un farmaco no esta en el mapa, esta suspendido. */
 export interface InfusionEnCurso {

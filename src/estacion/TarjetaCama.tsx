@@ -1,6 +1,7 @@
 import { AlertTriangle, Check } from "lucide-react";
 import {
   apkVigente,
+  bnmEnCurso,
   bnmVigente,
   calcularDerivados,
   calcularPbw,
@@ -79,7 +80,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
         {pve.activa && <Pildora tipo="acc">PVE en curso</Pildora>}
         {filtrosPorCambiar(eventos, ahora).map((f) => <Pildora key={f.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[f.elemento]}</Pildora>)}
         {pendientes.length > 0 && <Pildora tipo="warn">Post extub. {pendientes[0]?.etiqueta} pendiente</Pildora>}
-        {bnmVigente(eventos) && <Pildora tipo="crit">BNM</Pildora>}
+        {(bnmVigente(eventos) || bnmEnCurso(u?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
         {equipo && <Pildora>{etiquetaEquipo(equipo)}</Pildora>}
         <Pildora tipo={ep.transcritoAlma ? "good" : ""}>
           {ep.transcritoAlma ? <><Check size={12} aria-hidden /> Transcrito {ep.horaTranscripcion}</> : "Pendiente"}

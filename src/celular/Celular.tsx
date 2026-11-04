@@ -7,6 +7,7 @@ import {
   esViaAereaArtificial,
   estadoProno,
   etiquetaTurno,
+  bnmEnCurso,
   bnmVigente,
   materializarControl,
   turnoDe,
@@ -21,7 +22,7 @@ import type { TabCelular } from "../app/store";
 import { nuevoId } from "../app/util";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
-import { EVENTO_FIN_PESTANA, enfocarPrimero, useFranja } from "./franja";
+import { EVENTO_FIN_PESTANA, EVENTO_FIN_SEGMENTO, asegurarVisible, enfocarPrimero, enfocarPrimeroEn, useFranja } from "./franja";
 import { ORDEN_TABS, SEGMENTOS, ubicacionDeCampo } from "./pasos";
 import type { SegmentoId, TabControl as TabDeControl } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
@@ -36,7 +37,8 @@ import { TabPve } from "./TabPve";
 const TABS: readonly (readonly [TabCelular, string])[] = [
   ["monitoreo", "Monitoreo"],
   ["ventilacion", "Ventilación"],
-  ["kine", "Kine · APK"],
+  ["kine", "Kine resp. · APK"],
+  ["motora", "Kine motora"],
   ["pve", "PVE"],
   ["eventos", "Eventos"]
 ];
@@ -141,9 +143,20 @@ export function Celular() {
       marcar(idx);
     };
     const alFoco = (e: FocusEvent): void => {
-      const seg = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-seg]");
+      const el = e.target as HTMLElement | null;
+      const seg = el?.closest<HTMLElement>("[data-seg]");
       const i = seg ? segmentos().indexOf(seg) : -1;
-      if (i >= 0) marcar(i);
+      if (i < 0 || !seg || !el?.matches("input")) return;
+      const cambio = !seg.hasAttribute("data-activo");
+      marcar(i);
+      // Esperar a que el teclado termine de abrir (y se oculte la cabecera) antes de medir.
+      setTimeout(() => {
+        if (cambio) {
+          navegandoHasta.current = Date.now() + 700;
+          seg.scrollIntoView({ behavior: "smooth", block: "start" });
+          setTimeout(() => asegurarVisible(el), 380);
+        } else asegurarVisible(el);
+      }, 260);
     };
     cuerpo.addEventListener("scroll", alScroll, { passive: true });
     cuerpo.addEventListener("focusin", alFoco);
@@ -152,6 +165,24 @@ export function Celular() {
       cuerpo.removeEventListener("focusin", alFoco);
     };
   }, [tab, vista, ep?.id, segmentos, marcar]);
+
+  // "Sig." en la ultima casilla de un cuadro: muestra el cuadro siguiente completo y, si
+  // tiene casillas, enfoca la primera; si no (p. ej. PIC sin monitoreo), cierra el teclado.
+  useEffect(() => {
+    const alFinSeg = (e: Event): void => {
+      const lista = segmentos();
+      const i = lista.findIndex((el) => el.dataset["seg"] === (e as CustomEvent<string>).detail);
+      const sig = lista[i + 1];
+      if (i < 0 || !sig) return;
+      e.preventDefault();
+      marcar(i + 1);
+      navegandoHasta.current = Date.now() + 700;
+      sig.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (!enfocarPrimeroEn(sig)) franja.cerrar();
+    };
+    window.addEventListener(EVENTO_FIN_SEGMENTO, alFinSeg);
+    return () => window.removeEventListener(EVENTO_FIN_SEGMENTO, alFinSeg);
+  }, [franja, segmentos, marcar]);
 
   // "Sig." del teclado al terminar los casilleros de Monitoreo sigue en Ventilacion.
   useEffect(() => {
@@ -221,7 +252,7 @@ export function Celular() {
     if (prev) { franja.cerrar(); const ult = SEGMENTOS[prev].at(-1); if (ult) pedirSegmento(ult.id); setTab(prev); }
   };
   const renderSeg = (id: SegmentoId): JSX.Element =>
-    ["fc", "pa", "modo", "vent", "spo2"].includes(id) ? <TabControl ctx={ctx} paso={id} /> :
+    ["fc", "pa", "modo", "vent"].includes(id) ? <TabControl ctx={ctx} paso={id} /> :
     ["neuro", "glasgow", "sas"].includes(id) ? <TabConciencia ctx={ctx} paso={id} /> :
     <TabKine ctx={ctx} paso={id} />;
   const cuerpoSegmentos = (
@@ -230,7 +261,7 @@ export function Celular() {
       <div className="seg-relleno" aria-hidden />
     </>
   );
-  const cuerpo = enTabControl ? cuerpoSegmentos : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
+  const cuerpo = enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
 
   const cabecera = (
       <div className="cel-top">
@@ -282,7 +313,7 @@ export function Celular() {
   }
 
   return (
-    <div className="app-cel">
+    <div className={`app-cel${franja.activa ? " teclado" : ""}`}>
       <div className="cel-top">
         <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
         <span className="row" style={{ gap: 8 }}>
@@ -293,7 +324,7 @@ export function Celular() {
         </span>
       </div>
 
-      <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="cel-cabeza" style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
         {volver}
         <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
         {!esMia(ep) && <Pildora>control de apoyo</Pildora>}
@@ -306,7 +337,7 @@ export function Celular() {
             : "Vía aérea natural"}
         </span>
         {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
-        {bnmVigente(eventos) && <Pildora tipo="crit">BNM</Pildora>}
+        {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
       </div>
 
       <div className="ph-tabs" role="tablist">

@@ -7,7 +7,7 @@ import { create } from "zustand";
 import type { BorradorControl } from "@core/index";
 import type { SegmentoId } from "../celular/pasos";
 
-export type TabCelular = "monitoreo" | "ventilacion" | "kine" | "pve" | "eventos";
+export type TabCelular = "monitoreo" | "ventilacion" | "kine" | "motora" | "pve" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. */
 export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion";
 

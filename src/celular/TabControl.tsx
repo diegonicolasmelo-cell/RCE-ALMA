@@ -108,7 +108,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
           valor={b.vent[def.campo]}
           onCambio={(v) => setVent(def.campo, v)}
           franja={franjaVent(def)}
-          placeholder={def.campo === "pPlateau" && bloqueado ? "bloqueado" : g === "OBSERVADO" && ultimo?.ventilacion[def.campo] != null ? `ant. ${ultimo.ventilacion[def.campo]}` : ""}
+          placeholder={def.campo === "pPlateau" && bloqueado ? "bloqueado" : ""}
           deshabilitado={def.campo === "pPlateau" && bloqueado}
         />
       ));
@@ -147,7 +147,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       <section>
         <h3>Frecuencia cardiaca</h3>
         <div style={{ maxWidth: 160 }}>
-          <CampoNum clave="fc" etiqueta="FC" unidad="lpm" valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} placeholder={textoPrevio(ultimo?.fc)} />
+          <CampoNum clave="fc" etiqueta="FC" unidad="lpm" valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} />
         </div>
       </section>
 
@@ -176,8 +176,8 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       <section>
         <h3>Presión arterial</h3>
         <div className="fgrid">
-          <CampoNum clave="pas" etiqueta="PAS" valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} placeholder={textoPrevio(ultimo?.pas)} />
-          <CampoNum clave="pad" etiqueta="PAD" valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} placeholder={textoPrevio(ultimo?.pad)} />
+          <CampoNum clave="pas" etiqueta="PAS" valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} />
+          <CampoNum clave="pad" etiqueta="PAD" valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} />
           <div className="f">
             <label>PAM</label>
             <div className="pam mono" aria-live="polite">{textoNum(pam)}</div>
@@ -195,8 +195,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       )}
       {paso === "modo" && (
       <section>
-        <h3>Ventilador</h3>
-        <PesoIdeal ctx={ctx} />
+        <h3>Soporte y modo</h3>
         <PanelEquipos ctx={ctx} />
         <div className="fgrid2 mt">
           <div className="f">
@@ -236,25 +235,25 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         <div className="subg">Programado</div>
         <div className="fgrid">{grupo("PROGRAMADO")}</div>
         <div className="subg">Lo que hace el paciente</div>
-        <div className="fgrid">{grupo("OBSERVADO")}</div>
+        <div className="fgrid">
+          {grupo("OBSERVADO")}
+          <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} />
+        </div>
+        {b.modalidad === "CNAF" && (
+          <div className="mt">
+            <div className="small ink2">Uso de musculatura accesoria</div>
+            <Seg ancho etiqueta="Uso de musculatura accesoria" valor={b.musculaturaAccesoria} opciones={[{ valor: true, texto: "Sí" }, { valor: false, texto: "No" }]} onCambio={(v) => editar((x) => ({ ...x, musculaturaAccesoria: v }))} />
+          </div>
+        )}
       </section>
 
       <Resultantes ctx={ctx} d={d} bloqueado={bloqueado} />
         </>
       )}
-      {paso === "spo2" && (
-      <section>
-        <h3>Saturación</h3>
-        <div style={{ maxWidth: 160 }}>
-          <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} placeholder={textoPrevio(ultimo?.spo2)} />
-        </div>
-      </section>
-      )}
     </>
   );
 }
 
-const textoPrevio = (v: number | null | undefined): string => (v === null || v === undefined ? "" : `ant. ${v}`);
 
 function rellenarEjemplo({ b, editar }: ContextoCama): void {
   const aplica = new Set(CAMPOS_POR_MODALIDAD[b.modalidad].map((c) => c.campo));
@@ -272,7 +271,7 @@ function rellenarEjemplo({ b, editar }: ContextoCama): void {
 // ---------------------------------------------------------------------------
 
 function Resultantes({ ctx, d, bloqueado }: { ctx: ContextoCama; d: ReturnType<typeof calcularDerivados>; bloqueado: boolean }) {
-  const { b, pbw, ep } = ctx;
+  const { b, pbw } = ctx;
   if (b.modalidad === "CNAF") {
     return (
       <section>
@@ -290,9 +289,7 @@ function Resultantes({ ctx, d, bloqueado }: { ctx: ContextoCama; d: ReturnType<t
     <section>
       <h3>Guía de protección pulmonar</h3>
       <div className="guide">
-        <div className="small muted" style={{ fontWeight: 700 }}>
-          Peso ideal {pbw} kg · talla {ep.tallaCm} cm
-        </div>
+        <PesoIdeal ctx={ctx} />
         {lineas.map((x) => {
           const banda = bandaProteccion(x.kg);
           return (
@@ -335,9 +332,11 @@ function Celda({ valor, etiqueta, bloqueado }: { valor: number | string | null; 
 
 // ---------------------------------------------------------------------------
 
+/** Talla y peso ideal: se definen al ingreso; aqui solo se ven y, si hace falta, se corrigen. */
 function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
   const { ep, pbw } = ctx;
   const { repo } = useServicios();
+  const [editando, setEditando] = useState(false);
   const [talla, setTalla] = useState(String(ep.tallaCm));
   useEffect(() => setTalla(String(ep.tallaCm)), [ep.tallaCm]);
 
@@ -345,19 +344,21 @@ function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
     const t = medicionDe(talla);
     if (t !== null && t >= 100 && t <= 230 && t !== ep.tallaCm) await repo.guardarEpisodio({ ...ep, tallaCm: t });
     else setTalla(String(ep.tallaCm));
+    setEditando(false);
   };
 
   return (
-    <div className="fgrid2">
-      <div className="f">
-        <label htmlFor="in-talla-cm">Talla <span className="muted">cm</span></label>
-        <input id="in-talla-cm" aria-label="Talla en cm" inputMode="numeric" autoComplete="off" value={talla}
+    <div className="small muted" style={{ fontWeight: 700, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span>Peso ideal <span className="mono">{pbw} kg</span> · talla</span>
+      {editando ? (
+        <input aria-label="Talla en cm" inputMode="numeric" autoFocus autoComplete="off" value={talla} style={{ width: 80, minHeight: 34 }}
           onChange={(e) => setTalla(e.target.value)} onBlur={() => void guardar()} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
-      </div>
-      <div className="f">
-        <label>Peso ideal</label>
-        <div className="pam mono" aria-live="polite">{pbw} kg</div>
-      </div>
+      ) : (
+        <>
+          <span className="mono">{ep.tallaCm} cm</span>
+          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setEditando(true)}>editar</button>
+        </>
+      )}
     </div>
   );
 }

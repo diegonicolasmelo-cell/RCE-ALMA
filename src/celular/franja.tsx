@@ -10,7 +10,7 @@
  * (un select nativo se saltaba ese paso).
  */
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useAlturaTeclado } from "../app/hooks";
 import { cx } from "../app/util";
@@ -52,6 +52,31 @@ export function useFranja(): CtxFranja {
 /** Se emite cuando "Sig." no encuentra mas casilleros. `preventDefault()` = "ya me encargo yo". */
 export const EVENTO_FIN_PESTANA = "franja-fin-pestana";
 
+/** Se emite cuando "Sig." termina las casillas de un cuadro; `detail` = id del cuadro. */
+export const EVENTO_FIN_SEGMENTO = "franja-fin-segmento";
+
+/**
+ * Deja el casillero a la vista por ENCIMA del teclado y de la franja: el visualViewport
+ * mide lo que queda libre cuando el teclado del sistema esta abierto.
+ */
+export function asegurarVisible(el: HTMLElement): void {
+  const cuerpo = document.getElementById("cuerpo");
+  if (!cuerpo) return;
+  const vv = window.visualViewport;
+  const limite = (vv ? vv.offsetTop + vv.height : window.innerHeight) - 72;
+  const r = el.getBoundingClientRect();
+  const arriba = cuerpo.getBoundingClientRect().top;
+  if (r.bottom > limite) cuerpo.scrollBy({ top: r.bottom - limite + 8, behavior: "smooth" });
+  else if (r.top < arriba) cuerpo.scrollBy({ top: r.top - arriba - 8, behavior: "smooth" });
+}
+
+/** Enfoca el primer casillero de un cuadro (o de la pantalla), sin mover el scroll. */
+export function enfocarPrimeroEn(cont: ParentNode | null): boolean {
+  const primero = paradas().find((el) => !cont || cont.contains(el));
+  primero?.focus({ preventScroll: true });
+  return primero !== undefined;
+}
+
 /** Enfoca el primer casillero de la pantalla actual (tras cambiar de pestana). */
 export function enfocarPrimero(): boolean {
   const primero = paradas()[0];
@@ -85,6 +110,14 @@ export function ProveedorFranja({ children }: { children: ReactNode }) {
       const lista = paradas();
       const i = lista.findIndex((el) => el.dataset["stop"] === clave);
       const sig = lista[i + 1];
+      const actual = lista[i];
+      const segActual = actual?.closest<HTMLElement>("[data-seg]") ?? null;
+      // Dentro del cuadro se va de casilla en casilla; la ultima casilla lleva al cuadro siguiente.
+      if (sig && segActual && sig.closest("[data-seg]") !== segActual) {
+        if (!cruzar) return cerrar();
+        const manejado = !window.dispatchEvent(new CustomEvent(EVENTO_FIN_SEGMENTO, { cancelable: true, detail: segActual.dataset["seg"] }));
+        if (manejado) return;
+      }
       if (!sig) {
         if (!cruzar) return cerrar();
         // Fin de la pestana: quien la muestra puede pasar a la siguiente (Monitoreo -> Ventilacion).
@@ -92,11 +125,26 @@ export function ProveedorFranja({ children }: { children: ReactNode }) {
         if (!manejado) cerrar();
         return;
       }
-      sig.focus();
-      sig.scrollIntoView({ block: "center", behavior: "smooth" });
+      sig.focus({ preventScroll: true });
+      asegurarVisible(sig);
     },
     [cerrar]
   );
+
+  // Si el foco sale de los casilleros (se toco fuera o se cerro el teclado), la franja se va.
+  useEffect(() => {
+    if (activa === null) return;
+    const alSalir = (): void => {
+      setTimeout(() => {
+        const el = document.activeElement;
+        const enCasillero = el instanceof HTMLElement && el.closest("[data-stop]") !== null;
+        const enFranja = el instanceof HTMLElement && el.closest(".franja") !== null;
+        if (!enCasillero && !enFranja) setActiva(null);
+      }, 120);
+    };
+    document.addEventListener("focusout", alSalir);
+    return () => document.removeEventListener("focusout", alSalir);
+  }, [activa]);
 
   const valor = useMemo<CtxFranja>(
     () => ({ activa, abrir, cerrar, registrar, siguiente }),
@@ -120,7 +168,8 @@ function BarraFranja({ registro }: { registro: Map<string, () => DescriptorFranj
   const elegir = (valor: string): void => {
     desc.onElegir(valor);
     // Si el cambio redibuja la pantalla (p. ej. nueva modalidad), esperar antes de avanzar.
-    setTimeout(() => siguiente(activa, false), 40);
+    // Elegir una opcion no salta de cuadro, salvo el Modo: de ahi se sigue a los ajustes.
+    setTimeout(() => siguiente(activa, activa === "modo"), 40);
   };
 
   return (

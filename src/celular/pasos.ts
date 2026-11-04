@@ -5,12 +5,13 @@
  *
  *   Monitoreo:   FC + inotropicos/antiarritmicos · PA + vasoactivos · neuromonitoreo ·
  *                Glasgow y S5Q · SAS y escalones de sedacion
- *   Ventilacion: modo · terapia ventilatoria · saturacion
- *   Kine:        kinesiterapia · APK · terapia fisica
+ *   Ventilacion: modo · terapia ventilatoria (con la saturacion)
+ *   Kine resp.:  auscultacion y secreciones · APK
+ *   (La kine motora / terapia fisica va en su propia pestana y es opcional.)
  */
 
 export type TabControl = "monitoreo" | "ventilacion" | "kine";
-export type SegmentoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "modo" | "vent" | "spo2" | "kine" | "apk" | "tf";
+export type SegmentoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "modo" | "vent" | "kine" | "apk" | "tf";
 
 export interface DefSegmento {
   readonly id: SegmentoId;
@@ -27,13 +28,11 @@ export const SEGMENTOS: Readonly<Record<TabControl, readonly DefSegmento[]>> = {
   ],
   ventilacion: [
     { id: "modo", corto: "Modo" },
-    { id: "vent", corto: "Ventilación" },
-    { id: "spo2", corto: "SpO₂" }
+    { id: "vent", corto: "Ventilación" }
   ],
   kine: [
     { id: "kine", corto: "Kine" },
-    { id: "apk", corto: "APK" },
-    { id: "tf", corto: "Terapia física" }
+    { id: "apk", corto: "APK" }
   ]
 };
 
@@ -51,9 +50,8 @@ export function ubicacionDeCampo(campo: string): { tab: TabControl; seg: Segment
     return SEDANTES.includes(campo.slice("infusion:".length)) ? { tab: "monitoreo", seg: "sas" } : { tab: "monitoreo", seg: /amiodarona|dobutamina|milrinona/.test(campo) ? "fc" : "pa" };
   }
   if (campo === "frTotal") return { tab: "ventilacion", seg: "vent" };
-  if (campo === "spo2") return { tab: "ventilacion", seg: "spo2" };
+  if (campo === "spo2") return { tab: "ventilacion", seg: "vent" };
   if (campo === "kine") return { tab: "kine", seg: "kine" };
   if (campo === "apk") return { tab: "kine", seg: "apk" };
-  if (campo === "terapiaFisica") return { tab: "kine", seg: "tf" };
   return { tab: "monitoreo", seg: "fc" };
 }

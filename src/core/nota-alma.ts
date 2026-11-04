@@ -73,7 +73,8 @@ function textoConciencia(c: Control, pbw: number): string {
   const sufijo = gl ? `, ${gl}` : "";
   if (sedoanalgesiaActiva(c.infusiones)) {
     const sas = ESCALA_SAS.find((s) => s.val === c.sas);
-    return `${sas ? `SAS ${sas.val} (${sas.label})` : "SAS no consignado"}, ${describirInfusiones(c.infusiones, "SEDANTE")}${sufijo}`;
+    const bnm = describirInfusiones(c.infusiones, "BNM");
+    return `${sas ? `SAS ${sas.val} (${sas.label})` : "SAS no consignado"}, ${describirInfusiones(c.infusiones, "SEDANTE")}${bnm ? `, bloqueo neuromuscular con ${bnm}` : ""}${sufijo}`;
   }
   const v = ESTADOS_VIGILIA.find((e) => e.val === c.vigilia);
   return `sin sedoanalgesia, estado de vigilia ${v ? v.label.toLowerCase() : "no consignado"}${sufijo}`;
@@ -124,7 +125,8 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
   const d = calcularDerivados(c, pbw);
 
   if (v.modalidad === "CNAF") {
-    const p = [`CNAF flujo ${fmt(v.flujo)} L/min`, `FiO2 ${fmt(v.fio2)}%`, `FR ${fmt(v.frTotal)} rpm`];
+    const p = [`CNAF flujo ${fmt(v.flujo)} L/min`, ...(v.temperatura !== null ? [`temperatura ${v.temperatura} °C`] : []), `FiO2 ${fmt(v.fio2)}%`, `FR ${fmt(v.frTotal)} rpm`];
+    if (v.musculaturaAccesoria !== null) p.push(v.musculaturaAccesoria ? "con uso de musculatura accesoria" : "sin uso de musculatura accesoria");
     if (d.rox !== null) p.push(`índice ROX ${d.rox}`);
     return p.join(", ");
   }

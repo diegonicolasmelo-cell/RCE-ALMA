@@ -76,10 +76,6 @@ function horaDe(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function fechaDe(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export function resultadoDeMarcas(marcas: readonly MarcaApk[]): "CUMPLE" | "NO_CUMPLE" {
   return marcas.includes("0") ? "NO_CUMPLE" : "CUMPLE";
 }
@@ -93,7 +89,8 @@ export function firmarApk(datos: DatosFirmaApk): ValidacionApk {
     id: datos.id,
     episodioId: datos.episodioId,
     turno: turnoDe(datos.ahora).clave,
-    fecha: fechaDe(datos.ahora),
+    // Fecha del dia en que EMPEZO el turno (la noche del 4 queda con fecha 4, aunque se firme a las 02:00 del 5).
+    fecha: turnoDe(datos.ahora).fecha,
     hora: horaDe(datos.ahora),
     registradoEn: datos.ahora.toISOString(),
     rutAutor: datos.rutAutor,

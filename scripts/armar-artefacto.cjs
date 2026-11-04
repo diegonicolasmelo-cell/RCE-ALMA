@@ -20,6 +20,7 @@ html,body{height:100%}
 .nav-demo a{color:var(--ink);text-decoration:none;padding:8px 12px;border-radius:8px;border:1px solid var(--line)}
 .nav-demo a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:#fff}
 #raiz{flex:1;min-height:0;overflow:auto}
+#cuerpo-demo:has(.teclado) .nav-demo{display:none}
 </style>
 <div id="cuerpo-demo">
   <nav class="nav-demo" aria-label="Vista de la demostración">

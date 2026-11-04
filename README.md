@@ -153,9 +153,17 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
 - **Cada control es una atención kinésica** (así se cuenta en la estadística): no se
   pregunta si hubo kine respiratoria ni aspiración; se registran auscultación y
   secreciones (calidad, reología, cantidad). Los hallazgos de auscultación son provisorios.
+- **Kine motora aparte**: la terapia física tiene su pestaña y solo se registra
+  cuando se hace (no es obligatoria para guardar).
+- **Teclado**: mientras se escribe se ocultan la cabecera y el pie para ver el cuadro
+  completo; «Sig.» va de casilla en casilla y, en la última, al cuadro siguiente
+  (aunque no tenga casillas). Las lecturas nacen en blanco, sin el valor anterior.
+- **Bloqueo neuromuscular** como infusión (rocuronio, vecuronio, atracurio) con
+  dosis; unidades por confirmar. **CNAF**: flujo, temperatura, FiO₂, FR, SpO₂ y uso
+  de musculatura accesoria en el mismo cuadro (ROX en el PC).
 - **APK una vez por turno y por kinesiólogo**: se firma con un toque (fecha, hora y
   siglas de quien inició sesión) y vale para todos sus controles del turno; un colega
-  firma la suya. Es la pauta de
+  firma la suya. Queda con la fecha del día en que empezó el turno. Es la pauta de
   papel del hospital (8 filas + siglas), con marca por fila: **1** sí, **N/A** no
   aplica, **0** no. Con vía aérea artificial parte todo en 1; con vía natural, lo
   invasivo y la alimentación parten en N/A. Al firmar se llena una columna de la

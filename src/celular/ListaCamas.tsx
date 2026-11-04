@@ -6,6 +6,7 @@ import {
   estadoFlujoPve,
   estadoProno,
   filtrosPorCambiar,
+  bnmEnCurso,
   bnmVigente,
   ETIQUETA_ELEMENTO
 } from "@core/index";
@@ -88,7 +89,7 @@ export function ListaCamas() {
               {flujo.fase === "EN_CURSO" && <Pildora tipo="acc">PVE {flujo.pve.minutosTranscurridos}/{flujo.pve.duracionMin} min</Pildora>}
               {duePost && <Pildora tipo="warn">Post extub. {duePost.etiqueta}</Pildora>}
               {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
-              {bnmVigente(eventos) && <Pildora tipo="crit">BNM</Pildora>}
+              {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
               {cambios.map((c) => <Pildora key={c.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[c.elemento]}</Pildora>)}
             </div>
             <div className="row">

@@ -15,7 +15,9 @@ contradice, **manda esta lista**.
 
 | Tema | Decisión |
 |---|---|
-| **APK** | Una por **turno** (dos al día, por profesionales distintos); lo firmado vale para los controles siguientes del turno. Guardar con kine respiratoria exige la APK del turno. |
+| **APK** | Una por **turno** (dos al día, por profesionales distintos); lo firmado vale para los controles siguientes. **Reemplaza el cap. 6**: es la pauta de papel del hospital (8 filas + siglas, marcas 1 / N/A / 0), no una aserción global. Al firmar se llena una columna de una copia fiel de la hoja (HTML apaisado, 10 fechas por página) que la estación guarda en Drive. Con vía natural, lo invasivo y la alimentación parten en N/A. Un “0” difiere la kine respiratoria. |
+| **PVE** | Checklist de 8 criterios, control inicial con cronómetro, control a 30 min, y tras extubar reevaluaciones a 0/30/60/120 min y 48 h con falla post extubación. Todo derivado del log de eventos. |
+| **Hoja diaria** | La app sigue el orden del papel (Monitoreo, Ventilación). S5Q, Auto PEEP (solo controladas), fechas de TrachCare/HEPA/HME y evaluaciones (MRC-ss, FSS-ICU, PIM/PEF, VISAGE…) desde un apartado aparte. El bloqueo neuromuscular va con la sedación. |
 | **Modalidades** | ACVC, PCV, CPAP+PS, CNAF. El modo decide qué se registra, separando **programado** de **lo que hace el paciente** (FR total, Vt espirado, presiones). |
 | **Vt/kg** | Es una **guía de titulación** (protector 6–8, ultraprotector < 6 ml/kg de peso ideal), no solo un resultante. La franja del teclado ofrece 6/7/8 ml/kg ya calculados. Exige talla de ingreso (medida o estimada). |
 | **Tobin** | Solo en espontáneas (CPAP+PS). La v1 lo calculaba también en controladas: error corregido. |
@@ -30,7 +32,7 @@ contradice, **manda esta lista**.
 | **Kine** | Respiratoria sí/no con aspiración (No, TrachCare, Set) y secreciones (aspecto, reología, cantidad). Terapia física engloba KTM + IMT. |
 
 **Sigue pendiente de la unidad:** tabla real de escalones, unidad de la amiodarona,
-horarios de turno, TI/flujo/I:E por modalidad, criterios de la APK y URL de
+horarios de turno, TI/flujo/I:E por modalidad, vocabulario de la hoja de PVE y URL de
 Sinapse (lista en el README).
 
 ---
@@ -335,6 +337,8 @@ de los eventos, no se escriben a mano. Solo es posible gracias a la separación 
 ---
 
 ## 6. Módulo APK digital — con una objeción que hay que resolver
+
+> **Superado (Revisión 2).** La unidad pidió una copia fiel de la hoja de papel con marca por criterio; se implementó así y se conserva abajo solo como historia de la objeción original.
 
 El informe pide: "Al registrar que la APK se realizó, el sistema valida y rellena de
 inmediato todos los puntos de la pauta", con firma automática por sesión.

@@ -52,8 +52,20 @@ punta hay que hacerlo con datos ficticios.
 - **Turnos**: se asumen Día 08–20 y Noche 20–08 (`src/core/turnos.ts`).
 - **TI, flujo e I:E** por modalidad (`src/core/catalogos.ts`), y los valores
   rápidos de la franja del teclado.
-- **Criterios de la pauta APK**: transcripción de un formato en papel que debe
-  ratificar la jefatura de kinesiología.
+- **Vocabulario de la hoja de PVE**: la hoja dice solo “Trabajo respiratorio”,
+  “Secreciones bronquiales” y “Manejo de secreciones”; las opciones del celular
+  (sin aumento/aumentado, escasas/moderadas/abundantes, maneja/no maneja) son
+  provisorias. Los 8 criterios del checklist son los del papel, pero sus umbrales
+  (PaFi, DVA, volumen minuto) los define la unidad.
+- **Escalas de evaluación**: VISAGE y el score de cuidados de vía aérea se guardan
+  como un puntaje único (la hoja da solo el corte). Falta la contraindicación
+  neuromuscular absoluta/relativa y el laboratorio (GSA, lactato…), que se dejó
+  para después.
+- **Carpeta de las APK en Drive**: se crea sola (“APK UCI Adulto”) al primer uso,
+  o se fija con `CARPETA_APK_ID`. A diferencia de la identidad, el documento
+  **no se borra al alta**; decidir cuánto tiempo se conserva. El PDF lo arma Apps
+  Script desde el HTML y puede salir en vertical: el HTML (apaisado, fiel) es la
+  copia de referencia. No está probado contra Google.
 - Formato de la URL de **Sinapse** (`VITE_SINAPSE_URL`).
 - RUT de la dotación: son marcadores de posición (`src/core/dotacion.ts`).
 
@@ -131,8 +143,19 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
   presión pico y lo declara.
 - **Guía de protección pulmonar** en ml/kg de peso ideal (6–8 protector, menos de
   6 ultraprotector); la franja ofrece 6, 7 y 8 ml/kg ya calculados.
-- **APK una vez por turno**, vale para los controles siguientes. El toque único
-  registra una aserción global firmada, no N criterios marcados.
+- **APK una vez por turno**, vale para los controles siguientes. Es la pauta de
+  papel del hospital (8 filas + siglas), con marca por fila: **1** sí, **N/A** no
+  aplica, **0** no. Con vía aérea artificial parte todo en 1; con vía natural, lo
+  invasivo y la alimentación parten en N/A. Al firmar se llena una columna de la
+  hoja digital (copia fiel, 10 fechas por página, con RUN), que la estación guarda
+  en Drive y se puede imprimir o descargar. Un “0” difiere la kine respiratoria.
+- **PVE**: checklist de 8 criterios → control inicial (arranca el cronómetro) →
+  control a los 30 min → fin → extubación → reevaluaciones a 0, 30, 60, 120 min y
+  48 h → falla post extubación (sí/no, hipótesis, observaciones).
+- **Orden de la hoja diaria**: Monitoreo (FC, PA, PIC/PPC, Glasgow, S5Q, SAS,
+  sedación y bloqueo neuromuscular, DVA) y Ventilación (de Modo a FiO₂ y SpO₂),
+  igual que el papel. Auto PEEP solo en modalidades controladas. TrachCare y HEPA
+  duran 3 días, el HME 2: se anota solo el cambio.
 - **Vía aérea fija por episodio:** solo la cambia un evento.
 
 ## Estructura

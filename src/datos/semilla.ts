@@ -173,7 +173,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
 
   const turnoPrevio = turnoAnterior(ahora).clave;
   const apkPrevia = (id: string, episodioId: string, via: "TET" | "TQT" | "NATURAL", rut: string) => ({
-    ...firmarApkCumple({ id, episodioId, via, rutAutor: rut, ahora: new Date(ahora.getTime() - 6 * 60 * MIN) }),
+    ...firmarApkCumple({ id, episodioId, via, rutAutor: rut, siglas: "FG", ahora: new Date(ahora.getTime() - 6 * 60 * MIN) }),
     turno: turnoPrevio
   });
 

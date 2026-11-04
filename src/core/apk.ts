@@ -1,80 +1,74 @@
 /**
- * Modulo APK digital — Autorizacion de Procedimiento Kinesico.
+ * Modulo APK digital — "Pauta de cotejo preparacion del paciente para
+ * ejecucion de KTR" (formato del hospital, version 1.2 / 2017).
  *
- * UNA POR TURNO. La pauta se firma una vez por turno (dos al dia, por
- * profesionales distintos). Lo firmado ahora vale para los controles siguientes
- * del mismo turno, sin volver a firmar.
+ * Es transcripcion EXACTA de la hoja en papel: mismas filas, mismo orden, mismo
+ * texto (incluidos los "(*)"), misma leyenda. Cada firma llena UNA columna
+ * "Fecha" de la hoja: la fecha, una marca por fila y las iniciales de quien
+ * ejecuta la KTR. Marcas: "1" = SI, "NA" = no aplica, "0" = NO.
  *
- * DECISION DE DISENO (docs/PLAN-MAESTRO.md cap. 6): el toque unico NO marca N
- * criterios individuales como verificados. Un registro que afirma revisiones que
- * quiza nadie hizo, con una firma nominal detras, expone a quien firma. En su
- * lugar registra UNA asercion atestiguada global, con via rapida de excepcion:
- * si un criterio falla, se nombra y la APK queda NO_CUMPLE.
+ * UNA POR TURNO (dos al dia, por profesionales distintos). Lo firmado vale para
+ * los controles siguientes del mismo turno.
  *
- * Los criterios son la transcripcion de un formato en papel; su contenido es
- * responsabilidad de la jefatura de kinesiologia y debe ratificarse antes de la
- * marcha blanca.
+ * Via aerea: con via aerea artificial (ventilado) todo parte en 1. Con via aerea
+ * natural, las filas ligadas a lo invasivo y a la alimentacion parten en N/A.
+ * Siempre se pueden cambiar una a una antes de firmar. Un "0" deja la APK en
+ * NO_CUMPLE y difiere la kinesiterapia respiratoria; "NA" no es incumplimiento.
  */
 
 import { esViaAereaArtificial } from "./fisiologia";
 import { turnoDe } from "./turnos";
-import type { TurnoClave, Uuid, ValidacionApk, ViaAerea } from "./tipos";
+import type { MarcaApk, TurnoClave, Uuid, ValidacionApk, ViaAerea } from "./tipos";
 
-/** Al cambiar los criterios se sube la version: lo ya firmado no se reescribe. */
-export const VERSION_PAUTA_APK = "2026.1";
+/** Identifica el formato de papel transcrito. Si cambia la hoja, se sube. */
+export const VERSION_PAUTA_APK = "HSP-APK-1.2-2017";
 
-export type PerfilApk = "VIA_AEREA_ARTIFICIAL" | "VIA_AEREA_NATURAL";
+export const TITULO_APK = "PAUTA DE COTEJO PREPARACIÓN DEL PACIENTE PARA EJECUCIÓN DE KTR";
+export const LEYENDA_APK = "En cada atributo señale lo siguiente: 1= SI 0= NO o N/A según corresponda";
+export const FILA_INICIALES_APK = "Iniciales del profesional que ejecuta KTR";
+/** Columnas "Fecha" que trae la hoja impresa. */
+export const COLUMNAS_APK = 10;
 
-export interface PautaApk {
-  readonly perfil: PerfilApk;
-  readonly version: string;
-  readonly titulo: string;
-  readonly criterios: readonly string[];
+export interface CriterioApk {
+  readonly texto: string;
+  /** Ligado a lo invasivo o a la alimentacion: parte en N/A con via aerea natural. */
+  readonly invasivo: boolean;
 }
 
-const PAUTA_ARTIFICIAL: PautaApk = {
-  perfil: "VIA_AEREA_ARTIFICIAL",
-  version: VERSION_PAUTA_APK,
-  titulo: "Pauta APK · Soporte ventilatorio invasivo (TET / TQT)",
-  criterios: [
-    "Hemodinamia estable: PAM ≥ 65 mmHg y DVA sin escalada en la última hora",
-    "Oxigenación suficiente: SpO₂ ≥ 90% con FiO₂ ≤ 60%",
-    "PEEP ≤ 12 cmH₂O",
-    "Sin arritmia de novo ni isquemia activa",
-    "Presión de cuff en rango (20-30 cmH₂O)",
-    "Vía aérea permeable, fijación verificada y circuito indemne",
-    "Sin sangrado activo de vía aérea ni hemoptisis",
-    "PIC < 20 mmHg si existe neuromonitoreo",
-    "Sin contraindicación quirúrgica ni tórax abierto"
-  ]
-};
+/** Orden y texto tal cual el papel. */
+export const CRITERIOS_APK: readonly CriterioApk[] = [
+  { texto: "Ficha clínica y registros de evolución del paciente disponible. (*)", invasivo: false },
+  { texto: "Ausencia de contraindicaciones (*)", invasivo: false },
+  { texto: "Materiales necesarios para evaluación, monitoreo y atención del paciente.", invasivo: false },
+  { texto: "Se cuenta con los materiales e insumos necesarios", invasivo: false },
+  { texto: "Red central de oxígeno y de aspiración funcionando correctamente. (*)", invasivo: false },
+  { texto: "Paciente posicionado y monitorizado (saturó metro y/o monitor) (*)", invasivo: false },
+  { texto: "Catéteres, drenajes y vía aérea artificial en correcta posición según corresponda", invasivo: true },
+  { texto: "Alimentación suspendida (*)", invasivo: true }
+];
 
-const PAUTA_NATURAL: PautaApk = {
-  perfil: "VIA_AEREA_NATURAL",
-  version: VERSION_PAUTA_APK,
-  titulo: "Pauta APK · Vía aérea natural",
-  criterios: [
-    "Hemodinamia estable: PAM ≥ 65 mmHg sin DVA en ascenso",
-    "Oxigenación suficiente con el soporte actual (SpO₂ ≥ 90%)",
-    "Estado de conciencia que permite el procedimiento",
-    "Tos efectiva o asistencia de la tos disponible",
-    "Sin riesgo de aspiración no controlado",
-    "Sin broncoespasmo severo activo",
-    "Sin contraindicación quirúrgica reciente"
-  ]
-};
+/** Marcas iniciales segun la via aerea del momento. */
+export function marcasPorDefecto(via: ViaAerea): MarcaApk[] {
+  const artificial = esViaAereaArtificial(via);
+  return CRITERIOS_APK.map((c): MarcaApk => (c.invasivo && !artificial ? "NA" : "1"));
+}
 
-/** La pauta se discrimina por la via aerea del episodio: sin llenado redundante. */
-export function pautaApk(via: ViaAerea): PautaApk {
-  return esViaAereaArtificial(via) ? PAUTA_ARTIFICIAL : PAUTA_NATURAL;
+/** "Diego Melo" -> "DM". Son las siglas con que hoy se firma a mano. */
+export function inicialesDe(nombre: string): string {
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join("");
 }
 
 export interface DatosFirmaApk {
   readonly id: Uuid;
   readonly episodioId: Uuid;
-  readonly via: ViaAerea;
   readonly rutAutor: string;
+  readonly siglas: string;
   readonly ahora: Date;
+  readonly marcas: readonly MarcaApk[];
   readonly observacion?: string;
 }
 
@@ -82,30 +76,39 @@ function horaDe(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-/** Firma de cumplimiento con un toque: una asercion global atestiguada. */
-export function firmarApkCumple(datos: DatosFirmaApk): ValidacionApk {
-  const pauta = pautaApk(datos.via);
+function fechaDe(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function resultadoDeMarcas(marcas: readonly MarcaApk[]): "CUMPLE" | "NO_CUMPLE" {
+  return marcas.includes("0") ? "NO_CUMPLE" : "CUMPLE";
+}
+
+/** Firma: congela fecha, marcas e iniciales en un registro inmutable. */
+export function firmarApk(datos: DatosFirmaApk): ValidacionApk {
+  if (datos.marcas.length !== CRITERIOS_APK.length) {
+    throw new Error(`La pauta APK tiene ${CRITERIOS_APK.length} filas; llegaron ${datos.marcas.length} marcas.`);
+  }
   return {
     id: datos.id,
     episodioId: datos.episodioId,
     turno: turnoDe(datos.ahora).clave,
+    fecha: fechaDe(datos.ahora),
     hora: horaDe(datos.ahora),
     registradoEn: datos.ahora.toISOString(),
     rutAutor: datos.rutAutor,
-    versionPauta: pauta.version,
-    perfil: pauta.perfil,
-    resultado: "CUMPLE",
-    criteriosNoCumplidos: [],
+    siglas: datos.siglas.trim().toUpperCase(),
+    versionPauta: VERSION_PAUTA_APK,
+    marcas: [...datos.marcas],
+    resultado: resultadoDeMarcas(datos.marcas),
     observacion: datos.observacion ?? ""
   };
 }
 
-/** Via de excepcion: se nombran los criterios que impidieron el procedimiento. */
-export function firmarApkNoCumple(
-  datos: DatosFirmaApk,
-  criteriosNoCumplidos: readonly string[]
-): ValidacionApk {
-  return { ...firmarApkCumple(datos), resultado: "NO_CUMPLE", criteriosNoCumplidos: [...criteriosNoCumplidos] };
+/** Atajo: todo segun lo esperado para la via aerea (semillas y pruebas). */
+export function firmarApkCumple(datos: Omit<DatosFirmaApk, "marcas"> & { readonly via: ViaAerea }): ValidacionApk {
+  const { via, ...resto } = datos;
+  return firmarApk({ ...resto, marcas: marcasPorDefecto(via) });
 }
 
 /** APK de un episodio en un turno concreto: la ultima registrada. */
@@ -134,23 +137,12 @@ export function kineRespiratoriaPermitida(apk: ValidacionApk | null): boolean {
   return apk === null || apk.resultado === "CUMPLE";
 }
 
-/** Texto exacto que queda atestiguado: se muestra antes de firmar. */
-export function textoAsercionApk(v: ValidacionApk, nombreAutor: string): string {
-  if (v.resultado === "CUMPLE") {
-    return (
-      `Declaro haber verificado los criterios de seguridad de la pauta APK ` +
-      `(versión ${v.versionPauta}, perfil ${etiquetaPerfil(v.perfil)}) y no ` +
-      `encontrar contraindicación para el procedimiento kinésico. ` +
-      `${nombreAutor} · ${v.hora} hrs.`
-    );
-  }
-  return (
-    `Pauta APK (versión ${v.versionPauta}, perfil ${etiquetaPerfil(v.perfil)}) ` +
-    `NO CUMPLE. Criterio(s) que lo impiden: ${v.criteriosNoCumplidos.join("; ")}. ` +
-    `Procedimiento kinésico diferido. ${nombreAutor} · ${v.hora} hrs.`
-  );
+/** Filas no cumplidas, con el texto de la hoja (para avisos y nota). */
+export function criteriosNoCumplidos(v: ValidacionApk): string[] {
+  return CRITERIOS_APK.filter((_, i) => v.marcas[i] === "0").map((c) => c.texto);
 }
 
-export function etiquetaPerfil(perfil: PerfilApk): string {
-  return perfil === "VIA_AEREA_ARTIFICIAL" ? "vía aérea artificial" : "vía aérea natural";
+/** Todas las APK de un episodio, de la mas antigua a la mas nueva (una columna cada una). */
+export function columnasApk(apks: readonly ValidacionApk[], episodioId: Uuid): ValidacionApk[] {
+  return apks.filter((a) => a.episodioId === episodioId).sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
 }

@@ -47,6 +47,8 @@ export interface ClienteApi {
   leerIdentidades(): Promise<Resultado<{ identidades: readonly IdentidadPaciente[] }>>;
   guardarIdentidades(identidades: readonly IdentidadPaciente[]): Promise<{ ok: boolean; error?: string }>;
   purgarIdentidades(episodioIds: readonly string[]): Promise<{ ok: boolean; error?: string }>;
+  /** Canal de identidad: archiva la hoja APK digitalizada (HTML + PDF) en la carpeta de Drive. */
+  guardarDocumentoApk(nombre: string, html: string): Promise<{ ok: boolean; error?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +162,12 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
       if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
       const r = await post({ token: cfg.stationToken, accion: "purgarIdentidad", episodioIds });
       return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
+    },
+
+    async guardarDocumentoApk(nombre, html) {
+      if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
+      const r = await post({ token: cfg.stationToken, accion: "guardarDocumentoApk", nombre, html });
+      return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
     }
   };
 }
@@ -198,6 +206,10 @@ export function crearApiLocal(): ClienteApi {
     },
     async purgarIdentidades(ids) {
       for (const id of ids) identidades.delete(id);
+      return { ok: true };
+    },
+    async guardarDocumentoApk() {
+      // Sin servidor no hay carpeta: el documento se descarga desde el PC.
       return { ok: true };
     }
   };

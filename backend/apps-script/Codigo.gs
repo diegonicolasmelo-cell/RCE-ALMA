@@ -64,7 +64,9 @@ function doPost(e) {
 
     // El canal de identidad exige el token de estacion; el resto, el de app.
     var esAccionIdentidad =
-      cuerpo.accion === "guardarIdentidad" || cuerpo.accion === "purgarIdentidad";
+      cuerpo.accion === "guardarIdentidad" ||
+      cuerpo.accion === "purgarIdentidad" ||
+      cuerpo.accion === "guardarDocumentoApk";
     var autorizado = esAccionIdentidad
       ? tokenEstacionValido(cuerpo.token)
       : tokenValido(cuerpo.token);
@@ -77,6 +79,8 @@ function doPost(e) {
         return respuesta(guardarIdentidad(cuerpo.identidades));
       case "purgarIdentidad":
         return respuesta(purgarIdentidad(cuerpo.episodioIds));
+      case "guardarDocumentoApk":
+        return respuesta(guardarDocumentoApk(cuerpo.nombre, cuerpo.html));
       case "login":
         return respuesta(login(cuerpo.rut, cuerpo.pin));
       case "definirPin":
@@ -355,6 +359,48 @@ function filasPorEpisodio(hoja) {
 }
 
 /** Upsert: la identidad si se corrige (un nombre mal tipeado), a diferencia de lo clinico. */
+/**
+ * Archivo de la APK digitalizada: copia fiel de la hoja de papel, rellenada.
+ * La arma la estacion (lleva RUN del paciente, por eso viaja por el canal de
+ * identidad) y aqui se deja en una carpeta de Drive, en HTML y en PDF. Cada firma
+ * nueva reemplaza el archivo del mismo nombre: el nombre identifica al episodio.
+ *
+ * Carpeta: ScriptProperties CARPETA_APK_ID; si no existe, se crea "APK UCI Adulto".
+ * A diferencia de la identidad, este documento NO se borra al alta: es el
+ * respaldo que piden en una auditoria. Quien administra la carpeta decide cuanto
+ * tiempo se conserva.
+ */
+function carpetaApk() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty("CARPETA_APK_ID");
+  if (id) return DriveApp.getFolderById(id);
+  var carpeta = DriveApp.createFolder("APK UCI Adulto");
+  props.setProperty("CARPETA_APK_ID", carpeta.getId());
+  return carpeta;
+}
+
+function guardarDocumentoApk(nombre, html) {
+  if (!nombre || !html) throw new Error("Documento APK incompleto");
+  if (String(html).length > 2000000) throw new Error("Documento demasiado grande");
+  var seguro = String(nombre).replace(/[^A-Za-z0-9._ -]/g, "_").slice(0, 80);
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
+  try {
+    var carpeta = carpetaApk();
+    [seguro + ".html", seguro + ".pdf"].forEach(function (n) {
+      var viejos = carpeta.getFilesByName(n);
+      while (viejos.hasNext()) viejos.next().setTrashed(true);
+    });
+    var blob = Utilities.newBlob(html, "text/html", seguro + ".html");
+    carpeta.createFile(blob);
+    carpeta.createFile(blob.getAs("application/pdf").setName(seguro + ".pdf"));
+    registrarAuditoria("", "apk_documento", seguro);
+    return { ok: true, carpetaId: carpeta.getId() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function guardarIdentidad(identidades) {
   if (!identidades || identidades.length === 0) return { ok: true, guardadas: 0 };
   if (identidades.length > MAX_REGISTROS_POR_LOTE) throw new Error("Lote demasiado grande");

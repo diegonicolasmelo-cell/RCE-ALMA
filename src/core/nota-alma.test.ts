@@ -41,7 +41,7 @@ describe("nota de turno completo", () => {
   });
 
   it("informa la APK del turno y la producción", () => {
-    const apk = firmarApkCumple({ id: "a", episodioId: "ep-1", via: "TET", rutAutor: "x", ahora: new Date(2026, 10, 4, 15, 5) });
+    const apk = firmarApkCumple({ id: "a", episodioId: "ep-1", via: "TET", rutAutor: "x", siglas: "XX", ahora: new Date(2026, 10, 4, 15, 5) });
     const n = nota({ apk: [apk], ahora: new Date(2026, 10, 4, 16, 0) });
     expect(n).toContain("APK de este turno: firmada 15:05");
     expect(n).toContain("Kinesiterapia respiratoria: 1 | Aspiraciones: 1");

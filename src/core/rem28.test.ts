@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { consolidarRem28, resumirTurno } from "./rem28";
 import { unControl, unEvento } from "./fixtures";
-import { firmarApkCumple, firmarApkNoCumple } from "./apk";
+import { firmarApk, firmarApkCumple } from "./apk";
 import type { Control, EventoClinico } from "./tipos";
 
 const AHORA = new Date(2026, 10, 4, 9, 0);
-const DATOS_APK = { id: "a", episodioId: "ep-1", via: "TET" as const, rutAutor: "x", ahora: AHORA };
+const DATOS_APK = { id: "a", episodioId: "ep-1", via: "TET" as const, rutAutor: "x", siglas: "XX", ahora: AHORA };
 
 const conTf = (acts: string[], ims: number | null = null, estado: Control["terapiaFisica"]["estado"] = "REALIZADA"): Control =>
   unControl({ terapiaFisica: { estado, actividades: acts, ims, motivoContraindicacion: null } });
@@ -83,7 +83,7 @@ describe("resumirTurno", () => {
   });
 
   it("cuenta las APK que cumplen y las que no", () => {
-    const r = resumirTurno([], [], [firmarApkCumple(DATOS_APK), firmarApkNoCumple(DATOS_APK, ["PEEP ≤ 12 cmH₂O"])]);
+    const r = resumirTurno([], [], [firmarApkCumple(DATOS_APK), firmarApk({ id: "b", episodioId: "ep-1", rutAutor: "x", siglas: "XX", ahora: AHORA, marcas: ["1", "0", "1", "1", "1", "1", "1", "1"] })]);
     expect(r.apkCumple).toBe(1);
     expect(r.apkNoCumple).toBe(1);
   });

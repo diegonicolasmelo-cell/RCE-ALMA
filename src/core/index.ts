@@ -22,3 +22,4 @@ export * from "./nota-alma";
 export * from "./riesgo";
 export * from "./sanitizar";
 export * from "./sinapse";
+export * from "./apk-documento";

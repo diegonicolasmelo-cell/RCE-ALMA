@@ -332,17 +332,24 @@ export type TurnoClave = string;
  * El toque unico registra UNA asercion global atestiguada, no N criterios
  * marcados (docs/PLAN-MAESTRO.md cap. 6). Si un criterio falla, se nombra.
  */
+export type MarcaApk = "1" | "0" | "NA";
+
 export interface ValidacionApk {
   readonly id: Uuid;
   readonly episodioId: Uuid;
   readonly turno: TurnoClave;
+  /** Fecha local AAAA-MM-DD: va en la celda "Fecha" de la hoja. */
+  readonly fecha: string;
   readonly hora: HoraHHMM;
   readonly registradoEn: string;
   readonly rutAutor: string;
+  /** Siglas del profesional que ejecuta KTR (ultima fila de la hoja). */
+  readonly siglas: string;
   readonly versionPauta: string;
-  readonly perfil: "VIA_AEREA_ARTIFICIAL" | "VIA_AEREA_NATURAL";
+  /** Una marca por fila de CRITERIOS_APK, en el mismo orden que el papel. */
+  readonly marcas: readonly MarcaApk[];
+  /** NO_CUMPLE si alguna marca es "0". "NA" no cuenta como incumplimiento. */
   readonly resultado: "CUMPLE" | "NO_CUMPLE";
-  readonly criteriosNoCumplidos: readonly string[];
   readonly observacion: string;
 }
 

@@ -15,15 +15,15 @@ import {
   validarBorrador
 } from "./borrador";
 import type { BorradorControl } from "./borrador";
-import { firmarApkCumple, firmarApkNoCumple } from "./apk";
+import { firmarApk, firmarApkCumple } from "./apk";
 import { unControl, unEpisodio, unaVentilacion } from "./fixtures";
 import type { ValidacionApk } from "./tipos";
 
 const episodio = unEpisodio();
 const AHORA = new Date(2026, 10, 4, 15, 30);
 
-const apkOk = () => firmarApkCumple({ id: "a1", episodioId: "ep-1", via: "TET", rutAutor: "x", ahora: AHORA });
-const apkNo = () => firmarApkNoCumple({ id: "a2", episodioId: "ep-1", via: "TET", rutAutor: "x", ahora: AHORA }, ["PEEP ≤ 12 cmH₂O"]);
+const apkOk = () => firmarApkCumple({ id: "a1", episodioId: "ep-1", via: "TET", rutAutor: "x", siglas: "XX", ahora: AHORA });
+const apkNo = () => firmarApk({ id: "a2", episodioId: "ep-1", rutAutor: "x", siglas: "XX", ahora: AHORA, marcas: ["1", "0", "1", "1", "1", "1", "1", "1"] });
 
 /** Un borrador completo, listo para guardar. */
 function completo(over: Partial<BorradorControl> = {}): BorradorControl {

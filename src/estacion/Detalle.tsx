@@ -1,4 +1,4 @@
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   DOTACION,
@@ -18,6 +18,7 @@ import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
+import { htmlApk, nombreArchivoApk } from "./apkDocumento";
 import { filasSabana } from "./sabana";
 import { Tendencia } from "./Tendencia";
 import { VENTANA_ALERTA_MS, copiarTexto, nombreProfesional } from "./util";
@@ -60,6 +61,22 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
     avisar(r.ok ? `${ep.cama} dada de alta. La identidad se borró.` : `${ep.cama} dada de alta, pero la identidad no se pudo borrar de la nube (${r.error}). Reintenta desde Estado.`);
   };
 
+  const abrirApk = (imprimir: boolean): void => {
+    const html = htmlApk(ep, identidad, apks);
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    if (imprimir) {
+      const w = window.open(url, "_blank");
+      if (w) w.addEventListener("load", () => w.print());
+      else avisar("El navegador bloqueó la ventana. Permite ventanas emergentes para imprimir.");
+    } else {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${nombreArchivoApk(ep, identidad)}.html`;
+      a.click();
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
   const razonSinSinapse = !identidad?.rut ? "sin RUT registrado" : !config.sinapseUrl ? "falta configurar VITE_SINAPSE_URL" : "RUT con dígito verificador inválido";
 
   return (
@@ -78,6 +95,10 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           </div>
         </div>
         <div className="row">
+          <button type="button" className="btn" disabled={apks.length === 0} title="Hoja APK de papel, rellenada con las firmas" onClick={() => abrirApk(true)}>
+            <FileText size={14} aria-hidden /> Hoja APK
+          </button>
+          <button type="button" className="btn" disabled={apks.length === 0} onClick={() => abrirApk(false)}>Descargar APK</button>
           {sinapse ? (
             <a className="btn" href={sinapse} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={14} aria-hidden /> Abrir Sinapse

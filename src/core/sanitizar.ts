@@ -168,7 +168,7 @@ export function serializarEventoParaNube(e: EventoClinico): Record<string, unkno
 }
 
 export function serializarApkParaNube(v: ValidacionApk): Record<string, unknown> {
-  return { ...v, criteriosNoCumplidos: [...v.criteriosNoCumplidos] };
+  return { ...v, marcas: [...v.marcas] };
 }
 
 /**

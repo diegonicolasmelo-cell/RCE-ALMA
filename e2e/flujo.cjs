@@ -166,11 +166,12 @@ async function esperarServidor() {
 
     await prueba("la APK se exige una vez por turno y vale para los controles siguientes", async () => {
       await cel.click('.seg button:has-text("Sí")');
-      await cel.locator(".seg").nth(1).locator('button:has-text("No")').click();
+      await cel.locator('[aria-label="Terapia física"]').locator('button:has-text("No")').click();
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /APK/);
-      await cel.click('button:has-text("Firmar: cumple la pauta")');
-      assert.match(await cel.textContent(".notice.good"), /Declaro haber verificado/);
+      assert.ok((await cel.locator("text=Alimentación suspendida (*)").count()) >= 1, "la hoja muestra las filas de la pauta de papel");
+      await cel.click('button:has-text("Firmar APK")');
+      assert.match(await cel.textContent(".notice.good"), /Este turno: firmada/);
       await cel.click('button:has-text("Guardar control")');
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Guardado UCI-01/);
@@ -215,6 +216,16 @@ async function esperarServidor() {
       assert.match(informe, /tracciona el TET/);
       assert.match(informe, /Paciente Prueba Uno · RUT 12\.345\.678-5/);
       assert.match(informe, /Contexto de las horas previas/);
+    });
+
+    await prueba("la hoja APK se descarga como copia de la hoja de papel, con el RUN del paciente", async () => {
+      const [descarga] = await Promise.all([pc.waitForEvent("download"), pc.click('button:has-text("Descargar APK")')]);
+      const ruta = await descarga.path();
+      const html = require("node:fs").readFileSync(ruta, "utf8");
+      assert.match(html, /PAUTA DE COTEJO PREPARACIÓN DEL PACIENTE PARA EJECUCIÓN DE KTR/);
+      assert.match(html, /Ficha o RUN del paciente:/);
+      assert.match(html, /12\.345\.678-5/);
+      assert.match(html, /Alimentación suspendida \(\*\)/);
     });
 
     await prueba("la sabana bloquea los datos de mecanica invalidados por asincronia", async () => {

@@ -110,31 +110,24 @@ async function esperarServidor() {
       assert.equal(await cel.locator(".app-cel.teclado").count(), 1);
       assert.equal(await cel.locator(".airway").isVisible(), false, "la via aerea y las pestanas se ocultan mientras se escribe");
       assert.equal(await cel.locator('.ph-tabs').isVisible(), false);
-      assert.ok(await cel.locator('.seg[data-seg="fc"] h3:has-text("Inotrópicos")').isVisible(), "se ven las drogas del mismo cuadro");
+      assert.ok(await cel.locator('.segmento[data-seg="fc"] h3:has-text("Inotrópicos")').isVisible(), "se ven las drogas del mismo cuadro");
     });
 
-    await prueba("'Sig.' va de casilla en casilla y de cuadro en cuadro (FC -> PA -> PIC), sin saltarse cuadros", async () => {
+    await prueba("'Sig.' (o Enter) va de casilla en casilla por toda la hoja, hasta el Modo", async () => {
       const secuencia = [await parada()];
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 40 && (await parada()) !== "modo"; i++) {
         await cel.click('.franja .qchip:has-text("Sig.")');
-        await cel.waitForTimeout(250);
+        await cel.waitForTimeout(150);
         secuencia.push(await parada());
       }
-      assert.deepEqual(secuencia, ["fc", "pas", "pad"]);
-      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /PA/);
-      // PA tiene las drogas vasoactivas: la noradrenalina en curso es la casilla siguiente del mismo cuadro
-      await cel.click('.franja .qchip:has-text("Sig.")');
-      await cel.waitForTimeout(250);
-      assert.equal(await parada(), "inf:noradrenalina:dosis");
-      // ultima casilla del cuadro PA -> cuadro PIC (sin casillas: se cierra el teclado)
-      await cel.click('.franja .qchip:has-text("Sig.")');
-      await cel.waitForTimeout(500);
-      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /PIC/);
-      assert.equal(await cel.locator(".app-cel.teclado").count(), 0, "sin casillas, el teclado se cierra y vuelve la cabecera");
+      assert.deepEqual(secuencia.slice(0, 4), ["fc", "pas", "pad", "inf:noradrenalina:dosis"], secuencia.join(","));
+      assert.equal(secuencia.at(-1), "modo", "la hoja sigue sin cambiar de pestana hasta el modo");
+      assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Control/);
+      await cel.click('.franja .qchip:has-text("Listo")');
     });
 
     await prueba("en el Modo ofrece 'Igual que el anterior' u otra modalidad", async () => {
-      await cel.click('[role=tab]:has-text("Ventilación")');
+      await cel.click('[role=tab]:has-text("Control")');
       await cel.click("#in-modo, button.pickbtn");
       const opciones = await franja();
       assert.match(opciones[0], /^Igual: /);
@@ -156,7 +149,7 @@ async function esperarServidor() {
       await cel.click("#in-modo, button.pickbtn");
       await cel.click('.franja .qchip:has-text("ACVC")');
       await cel.click('.franja .qchip:has-text("Listo")');
-      assert.equal(await cel.locator('.seg[data-seg="modo"] >> text=Peso ideal').count(), 0, "la talla ya no esta en el cuadro del modo");
+      assert.equal(await cel.locator('.segmento[data-seg="modo"] >> text=Peso ideal').count(), 0, "la talla ya no esta en el cuadro del modo");
       await cel.click('.guide button:has-text("editar")');
       await cel.fill('input[aria-label="Talla en cm"]', "180");
       await cel.press('input[aria-label="Talla en cm"]', "Enter");
@@ -178,52 +171,46 @@ async function esperarServidor() {
       await cel.click('.seg button:has-text("Sincrónico")');
     });
 
-    await prueba("Siguiente recorre las secciones en orden, cambia de pestana al terminar y no se salta ninguna", async () => {
-      await cel.click('[role=tab]:has-text("Monitoreo")');
-      await cel.click('.paso-chip:text-is("FC")');
-      const actual = () => cel.textContent('.paso-chip[aria-current="step"]');
-      const vistos = [await actual()];
-      while ((await cel.locator('button:has-text("Siguiente")').count()) > 0) {
-        await cel.click('button:has-text("Siguiente")');
-        await cel.waitForTimeout(250);
-        vistos.push(await actual());
-      }
-      assert.deepEqual(vistos, ["FC", "PA", "PIC", "Glasgow", "SAS", "Modo", "Ventilación", "Kine", "APK"]);
-      assert.equal(await cel.locator('button:has-text("‹ Atrás")').count(), 1);
-      await cel.click('button:has-text("‹ Atrás")');
+    await prueba("el control es una sola hoja en el orden del papel: monitorizacion y luego terapia ventilatoria", async () => {
+      await cel.click('[role=tab]:has-text("Control")');
+      const orden = await cel.locator(".hoja-ctl .segmento").evaluateAll((l) => l.map((x) => x.getAttribute("data-seg")));
+      assert.deepEqual(orden, ["fc", "pa", "neuro", "glasgow", "sas", "modo", "vent"]);
+      const grupos = await cel.locator(".hoja-grupo").allTextContents();
+      assert.deepEqual(grupos, ["Monitorización", "Terapia ventilatoria"]);
+      // En Kine resp. siguen Siguiente y Atras entre auscultacion y APK
+      await cel.click('[role=tab]:has-text("Kine resp.")');
+      await cel.click('button:has-text("Siguiente")');
       await cel.waitForTimeout(250);
-      assert.match(await actual(), /Kine/);
-      // la seccion activa queda marcada y a la vista (Siguiente deja el segmento arriba)
-      assert.equal(await cel.locator('.seg[data-activo="true"]').count(), 1);
+      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /APK/);
+      await cel.click('[role=tab]:has-text("Control")');
     });
 
     await prueba("la primera seccion junta la FC con inotropicos y antiarritmicos; la PA, con las drogas vasoactivas", async () => {
-      await cel.click('[role=tab]:has-text("Monitoreo")');
-      assert.ok((await cel.locator('.seg[data-seg="fc"] h3:has-text("Inotrópicos y antiarrítmicos")').count()) === 1);
-      assert.ok((await cel.locator('.seg[data-seg="pa"] h3:has-text("Drogas vasoactivas")').count()) === 1);
-      assert.ok((await cel.locator('.seg[data-seg="sas"] h3:has-text("Sedoanalgesia")').count()) === 1, "SAS y los escalones de sedacion van juntos");
-      const orden = await cel.locator(".seg").evaluateAll((l) => l.map((x) => x.getAttribute("data-seg")));
-      assert.deepEqual(orden, ["fc", "pa", "neuro", "glasgow", "sas"]);
+      await cel.click('[role=tab]:has-text("Control")');
+      assert.ok((await cel.locator('.segmento[data-seg="fc"] h3:has-text("Inotrópicos y antiarrítmicos")').count()) === 1);
+      assert.ok((await cel.locator('.segmento[data-seg="pa"] h3:has-text("Drogas vasoactivas")').count()) === 1);
+      assert.ok((await cel.locator('.segmento[data-seg="sas"] h3:has-text("Sedoanalgesia")').count()) === 1, "SAS y los escalones de sedacion van juntos");
+
     });
 
     await prueba("Glasgow en una fila (ocular, verbal, motora y total al final), S5Q numerico y bloqueo neuromuscular como tarjeta", async () => {
-      await cel.click('[role=tab]:has-text("Monitoreo")');
+      await cel.click('[role=tab]:has-text("Control")');
       await cel.fill("#in-gcs-o", "3");
       await cel.fill("#in-gcs-o", "9");
       assert.equal(await cel.inputValue("#in-gcs-o"), "3", "un valor fuera de rango se ignora");
       await cel.fill("#in-gcs-m", "5");
-      assert.match(await cel.textContent('.seg[data-seg="glasgow"]'), /9T/, "total al final, con la T de intubado");
+      assert.match(await cel.textContent('.segmento[data-seg="glasgow"]'), /9T/, "total al final, con la T de intubado");
       assert.equal(await cel.locator("#in-gcs-v").count(), 0, "verbal es NT con via aerea artificial");
       await cel.fill("#in-s5q", "4");
       assert.equal(await cel.inputValue("#in-s5q"), "4");
-      assert.equal(await cel.locator('.seg[data-seg="glasgow"] .notice').count(), 0, "sin avisos ni interpretaciones en el celular");
+      assert.equal(await cel.locator('.segmento[data-seg="glasgow"] .notice').count(), 0, "sin avisos ni interpretaciones en el celular");
       await cel.click('button:has-text("+ Agregar bloqueo neuromuscular")');
       const roc = cel.locator('.infu:has(b:text-is("Rocuronio"))');
       assert.ok((await roc.locator('button:has-text("Iniciar") svg').count()) === 1, "Iniciar con el icono de play");
       await roc.locator('button:has-text("Iniciar")').click();
       assert.ok((await roc.locator("input").count()) === 1, "el bloqueo neuromuscular pide la dosis");
       await roc.locator('button:has-text("Suspender")').click();
-      await cel.click('[role=tab]:has-text("Ventilación")');
+      await cel.click('[role=tab]:has-text("Control")');
       assert.ok((await cel.locator('label:has-text("Vol. minuto espirado")').count()) === 1, "el volumen minuto se anota, no se calcula");
       assert.equal(await cel.locator('text=Editar volumen minuto').count(), 0);
       assert.match(await cel.textContent(".guide"), /Peso ideal/, "peso ideal en la guia, no en el cuadro del modo");
@@ -231,7 +218,7 @@ async function esperarServidor() {
     });
 
     await prueba("sedantes plegados: Iniciar abre el escalon con su dosis, y Suspender se puede deshacer", async () => {
-      await cel.click('[role=tab]:has-text("Monitoreo")');
+      await cel.click('[role=tab]:has-text("Control")');
       const tarjeta = cel.locator('.infu:has(b:text-is("Propofol"))');
       assert.equal(await tarjeta.count(), 0, "lo que no esta en curso no ocupa lugar hasta agregarlo");
       assert.equal(await cel.locator('.infu:has(b:text-is("Precedex"))').count(), 0);
@@ -259,8 +246,8 @@ async function esperarServidor() {
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /Falta:.*FC.*SpO₂/);
       await cel.waitForTimeout(500);
-      assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Monitoreo/, "lleva a la seccion donde falta el dato");
-      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /FC/);
+      assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Control/, "lleva a la hoja donde falta el dato");
+      assert.ok(await cel.locator("#in-fc").isVisible(), "la FC queda a la vista");
       await cel.click('button:has-text("Rellenar signos de ejemplo")');
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /firmar la APK/);
@@ -270,7 +257,7 @@ async function esperarServidor() {
     await prueba("la APK se exige una vez por turno y vale para los controles siguientes", async () => {
       const kine = await cel.textContent(".app-cel");
       assert.ok(kine.includes("Auscultación") && kine.includes("Secreciones"), "la kine respiratoria pide auscultacion y secreciones");
-      assert.ok(!/Aspiración|TrachCare|Set\b/.test(await cel.textContent('.seg[data-seg="kine"]')), "ya no se pregunta por aspiracion");
+      assert.ok(!/Aspiración|TrachCare|Set\b/.test(await cel.textContent('.segmento[data-seg="kine"]')), "ya no se pregunta por aspiracion");
       assert.equal(await cel.locator('[aria-label="Kinesiterapia respiratoria"]').count(), 0, "cada control es una atencion: no hay Si/No de kine");
       // auscultacion y secreciones en listas desplegables
       await cel.click('summary[aria-label="Auscultación"]');
@@ -288,7 +275,7 @@ async function esperarServidor() {
       assert.match(await aviso(), /APK/);
       await cel.waitForTimeout(500);
       assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /APK/, "lleva a la APK: " + (await cel.textContent('.paso-chip[aria-current="step"]')) + " / " + (await aviso()));
-      assert.equal(await cel.locator(".seg[data-seg=apk] .seg, .seg[data-seg=apk] [aria-label=\"Alimentación suspendida (*)\"]").count(), 0, "solo firmar: sin formulario criterio por criterio");
+      assert.equal(await cel.locator(".segmento[data-seg=apk] .seg, .segmento[data-seg=apk] [aria-label=\"Alimentación suspendida (*)\"]").count(), 0, "solo firmar: sin formulario criterio por criterio");
       await cel.click('button:has-text("Firmar APK")');
       assert.match(await cel.textContent(".notice.good"), /APK firmada · \d\d\/\d\d\/\d{4} \d\d:\d\d · DM/, "queda con fecha, hora y siglas de quien inicio sesion");
       assert.match(await cel.textContent(".notice.good"), /todos tus controles de este turno/);
@@ -296,13 +283,13 @@ async function esperarServidor() {
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Guardado UCI-01/);
       await cel.waitForSelector('article[aria-label^="Cama"]');
-      assert.equal(await cel.locator("#cuerpo .seg").count(), 0, "al guardar vuelve a las tarjetas de las camas");
+      assert.equal(await cel.locator("#cuerpo .segmento").count(), 0, "al guardar vuelve a las tarjetas de las camas");
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
-      await cel.waitForSelector(".seg");
+      await cel.waitForSelector(".segmento");
     });
 
     await prueba("el control siguiente hereda ajustes e infusiones, pero no las lecturas ni la APK ya firmada", async () => {
-      await cel.click('[role=tab]:has-text("Monitoreo")');
+      await cel.click('[role=tab]:has-text("Control")');
       assert.equal(await cel.inputValue("#in-fc"), "");
       assert.equal(await cel.getAttribute("#in-fc", "placeholder"), "");
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03");
@@ -377,7 +364,7 @@ async function esperarServidor() {
     await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive junto a la sedacion", async () => {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Control")');
-      await cel.click('[role=tab]:has-text("Monitoreo")');
+      await cel.click('[role=tab]:has-text("Control")');
       assert.ok((await cel.locator('h3:has-text("Bloqueo neuromuscular")').count()) === 1, "BNM en Monitoreo, con la sedacion");
       await cel.click('[role=tab]:has-text("Eventos")');
       assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
@@ -388,13 +375,13 @@ async function esperarServidor() {
 
     await prueba("CNAF: flujo, temperatura, FiO2, FR, SpO2 y musculatura accesoria en el mismo cuadro", async () => {
       await cel.click('.cel-camas button:text-is("05")');
-      await cel.click('[role=tab]:has-text("Ventilación")');
+      await cel.click('[role=tab]:has-text("Control")');
       await cel.click("#in-modo, button.pickbtn");
       await cel.click('.franja .qchip:text-is("CNAF")');
       await cel.waitForTimeout(300);
-      const etiquetas = await cel.locator('.seg[data-seg="vent"] .f label').allTextContents();
+      const etiquetas = await cel.locator('.segmento[data-seg="vent"] .f label').allTextContents();
       for (const e of ["Flujo", "Temperatura", "FiO₂", "FR", "SpO₂"]) assert.ok(etiquetas.some((t) => t.startsWith(e)), "falta " + e + " en " + etiquetas.join("|"));
-      assert.equal(await cel.locator('.seg[data-seg="vent"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
+      assert.equal(await cel.locator('.segmento[data-seg="vent"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
       if (await cel.locator(".franja").count()) await cel.click('.franja .qchip:has-text("Listo")');
     });
 

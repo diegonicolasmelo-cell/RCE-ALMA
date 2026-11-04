@@ -230,8 +230,8 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 
 /* Secciones del control (celular): una pantalla larga, "Siguiente" deja arriba el segmento que sigue */
 #cuerpo{scroll-snap-type:y proximity}
-.seg{flex:none;scroll-snap-align:start;scroll-margin-top:8px;display:grid;gap:16px;padding:12px;margin:0 0 14px;border:2px solid transparent;border-radius:14px;transition:border-color .15s,background .15s}
-.seg[data-activo="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.segmento{flex:none;scroll-snap-align:start;scroll-margin-top:8px;display:grid;gap:16px;padding:12px;margin:0 0 14px;border:2px solid transparent;border-radius:14px;transition:border-color .15s,background .15s}
+.segmento[data-activo="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .seg-relleno{flex:none;height:100vh}
 .pasos{border-bottom:1px solid var(--line);padding:6px 0 6px;background:var(--panel)}
 .pasos-lista{display:flex;gap:6px;overflow-x:auto;padding:0 14px;scrollbar-width:none}
@@ -249,3 +249,32 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .app-cel.teclado .cel-top,.app-cel.teclado .cel-cabeza,.app-cel.teclado .airway,.app-cel.teclado .ph-tabs,.app-cel.teclado .pasos,.app-cel.teclado .cel-pie{display:none !important}
 .sas-desc{padding-bottom:12px;font-weight:600;color:var(--ink-2)}
 .infu-row .f.inl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+/* Control en formato hoja: etiqueta | casilla (| anterior en tablet), como el papel */
+#cuerpo:has(.hoja-ctl){scroll-snap-type:none}
+.hoja-ctl .segmento{padding:0;margin:0;border:0;background:none;gap:0;scroll-snap-align:none;border-radius:0}
+.hoja-ctl .segmento[data-activo="true"]{background:none}
+.hoja-ctl section{padding:6px 0 10px}
+.hoja-ctl h3{margin:10px 0 4px;font-size:12px}
+.hoja-grupo{margin:14px 0 2px;padding:6px 8px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:6px}
+.hoja-ctl .fgrid,.hoja-ctl .fgrid2{grid-template-columns:minmax(0,1fr)!important;gap:0}
+.hoja-ctl .f:not(.inl){display:grid;grid-template-columns:minmax(0,1fr) 7.5em;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.hoja-ctl .f:not(.inl) > label{margin:0}
+.hoja-ctl .f:not(.inl) input{min-height:42px;text-align:center}
+.hoja-ctl .fgrid4 .f:not(.inl){display:flex;flex-direction:column;align-items:stretch;border:0;gap:2px}
+.hoja-ctl .fgrid4{gap:6px}
+.previo{display:none}
+.hoja-cab{display:none}
+@media (min-width:640px){
+  .hoja-ctl .f:not(.inl){grid-template-columns:minmax(0,1fr) 8em 5.5em}
+  .hoja-ctl .fgrid4 .f:not(.inl){display:flex}
+  .hoja-ctl .previo{display:block;text-align:center;font-family:var(--font-data);color:var(--muted)}
+  .hoja-ctl .fgrid4 .previo{display:none}
+  .hoja-cab{display:grid;grid-template-columns:minmax(0,1fr) 8em 5.5em;gap:10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--line)}
+  .hoja-cab span:not(:first-child){text-align:center}
+}
+.hoja-ctl [style*="max-width"]{max-width:none!important}
+.hoja-ctl .segmento[data-seg="fc"] > section:first-child > h3,.hoja-ctl .segmento[data-seg="pa"] > section:first-child > h3{display:none}
+.hoja-ctl .infu{padding:6px 10px}
+.hoja-ctl .infu.off{padding:4px 10px}
+.hoja-ctl .stack{gap:4px!important}

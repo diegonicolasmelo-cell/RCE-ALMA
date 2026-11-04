@@ -23,7 +23,7 @@ import { nuevoId } from "../app/util";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { EVENTO_FIN_PESTANA, EVENTO_FIN_SEGMENTO, asegurarVisible, enfocarPrimero, enfocarPrimeroEn, useFranja } from "./franja";
-import { ORDEN_TABS, SEGMENTOS, ubicacionDeCampo } from "./pasos";
+import { ORDEN_TABS, SEGMENTOS, SEGMENTOS_HOJA, ubicacionDeCampo } from "./pasos";
 import type { SegmentoId, TabControl as TabDeControl } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
@@ -35,8 +35,7 @@ import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 
 const TABS: readonly (readonly [TabCelular, string])[] = [
-  ["monitoreo", "Monitoreo"],
-  ["ventilacion", "Ventilación"],
+  ["control", "Control"],
   ["kine", "Kine resp. · APK"],
   ["motora", "Kine motora"],
   ["pve", "PVE"],
@@ -170,6 +169,7 @@ export function Celular() {
   // tiene casillas, enfoca la primera; si no (p. ej. PIC sin monitoreo), cierra el teclado.
   useEffect(() => {
     const alFinSeg = (e: Event): void => {
+      if (useApp.getState().tab === "control") return;
       const lista = segmentos();
       const i = lista.findIndex((el) => el.dataset["seg"] === (e as CustomEvent<string>).detail);
       const sig = lista[i + 1];
@@ -188,9 +188,9 @@ export function Celular() {
   useEffect(() => {
     const alFin = (e: Event): void => {
       const st = useApp.getState();
-      if (st.vista !== "cama" || st.tab !== "monitoreo") return;
+      if (st.vista !== "cama" || st.tab !== "control") return;
       e.preventDefault();
-      st.setTab("ventilacion");
+      st.setTab("kine");
       setTimeout(() => {
         if (!enfocarPrimero()) franja.cerrar();
       }, 80);
@@ -232,7 +232,7 @@ export function Celular() {
     await repo.guardarControl(control);
     useApp.getState().descartar(ep.id);
     franja.cerrar();
-    setTab("monitoreo");
+    setTab("control");
     // Guardado el control, de vuelta a las tarjetas de las camas.
     irA("camas");
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.` : `Guardado ${ep.cama} ${control.hora}. Sin señal: se sube cuando vuelva la conexión.`);
@@ -259,11 +259,22 @@ export function Celular() {
     <TabKine ctx={ctx} paso={id} />;
   const cuerpoSegmentos = (
     <>
-      {defsSeg.map((d) => <div key={d.id} className="seg" data-seg={d.id}>{renderSeg(d.id)}</div>)}
+      {defsSeg.map((d) => <div key={d.id} className="segmento" data-seg={d.id}>{renderSeg(d.id)}</div>)}
       <div className="seg-relleno" aria-hidden />
     </>
   );
-  const cuerpo = enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
+  const previoEn = ultimo ? `ant. ${ultimo.hora}` : null;
+  const cuerpoHoja = (
+    <div className="hoja-ctl">
+      {previoEn && <div className="hoja-cab" aria-hidden="true"><span>Parámetro</span><span>Ahora</span><span>{previoEn}</span></div>}
+      <div className="hoja-grupo">Monitorización</div>
+      {SEGMENTOS_HOJA.slice(0, 5).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
+      <div className="hoja-grupo">Terapia ventilatoria</div>
+      {SEGMENTOS_HOJA.slice(5).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
+      <div className="seg-relleno" aria-hidden />
+    </div>
+  );
+  const cuerpo = tab === "control" ? cuerpoHoja : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
 
   const cabecera = (
       <div className="cel-top">

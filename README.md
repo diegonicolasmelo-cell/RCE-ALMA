@@ -172,13 +172,12 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
 - **PVE**: checklist de 8 criterios → control inicial (arranca el cronómetro) →
   control a los 30 min → fin → extubación → reevaluaciones a 0, 30, 60, 120 min y
   48 h → falla post extubación (sí/no, hipótesis, observaciones).
-- **Control por secciones**, como la hoja de papel. Pestañas Monitoreo, Ventilación y
-  Kine, cada una una pantalla larga con scroll libre dividida en segmentos. Monitoreo:
-  FC con inotrópicos y antiarrítmicos; presión arterial con drogas vasoactivas;
-  neuromonitoreo; Glasgow y S5Q; SAS con los escalones de sedación y el bloqueo
-  neuromuscular. «Siguiente» deja arriba y marcado el segmento que sigue (y pasa a la
-  pestaña siguiente al terminar); «Atrás» vuelve. Nunca se salta un segmento por estar
-  vacío. «Sig.» del teclado sigue casillero a casillero. Auto PEEP solo en modalidades
+- **Control en formato hoja**: una sola pestaña «Control» con todo en el orden del papel
+  (Monitorización y Terapia ventilatoria): etiqueta a la izquierda, casilla a la derecha
+  y, en tablet, el control anterior como columna aparte. «Sig.» o Enter van de casilla
+  en casilla por toda la hoja. Las drogas van en su fila (FC con inotrópicos y
+  antiarrítmicos, PA con vasoactivos, SAS con sedación y bloqueo). Kine resp. · APK,
+  Kine motora, PVE y Eventos siguen en sus pestañas. Auto PEEP solo en modalidades
   controladas. TrachCare y HEPA duran 3 días, el HME 2: se anota solo el cambio.
 - **Vía aérea fija por episodio:** solo la cambia un evento.
 

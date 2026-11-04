@@ -7,7 +7,7 @@ import { create } from "zustand";
 import type { BorradorControl } from "@core/index";
 import type { SegmentoId } from "../celular/pasos";
 
-export type TabCelular = "monitoreo" | "ventilacion" | "kine" | "motora" | "pve" | "eventos";
+export type TabCelular = "control" | "kine" | "motora" | "pve" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. */
 export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion";
 
@@ -58,15 +58,15 @@ export const useApp = create<EstadoApp>((set) => ({
   setSesion: (sesion) => set({ sesion, vista: "camas" }),
 
   camaId: null,
-  setCama: (camaId) => set({ camaId, tab: "monitoreo", segPedido: null }),
-  tab: "monitoreo",
+  setCama: (camaId) => set({ camaId, tab: "control", segPedido: null }),
+  tab: "control",
   setTab: (tab) => set({ tab }),
   segPedido: null,
   pedirSegmento: (segPedido) => set({ segPedido }),
   vista: "camas",
   misCamas: null,
   setMisCamas: (misCamas) => set({ misCamas }),
-  irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "monitoreo", segPedido: null } : { vista, camaId: s.camaId })),
+  irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "control", segPedido: null } : { vista, camaId: s.camaId })),
 
   borradores: {},
   editar: (episodioId, base, fn) =>

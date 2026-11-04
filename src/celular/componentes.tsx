@@ -74,6 +74,8 @@ export function CampoNum(props: {
   deshabilitado?: boolean;
   unidad?: string;
   ariaLabel?: string;
+  /** Valor del control anterior: columna aparte, solo en pantallas anchas (como la hoja). */
+  previo?: number | string | null;
 }) {
   const f = useFranja();
   f.registrar(props.clave, props.franja);
@@ -93,9 +95,17 @@ export function CampoNum(props: {
         placeholder={props.placeholder ?? ""}
         disabled={props.deshabilitado}
         aria-label={props.ariaLabel ?? props.etiqueta}
+        enterKeyHint="next"
         onFocus={() => f.abrir(props.clave)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            f.siguiente(props.clave);
+          }
+        }}
         onChange={(e) => props.onCambio(e.target.value)}
       />
+      <span className="previo" aria-hidden="true">{props.previo === null || props.previo === undefined ? "" : String(props.previo)}</span>
     </div>
   );
 }

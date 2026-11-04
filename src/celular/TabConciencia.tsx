@@ -107,7 +107,7 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
             </div>
           </div>
           <div className="fgrid4">
-            <CampoNum clave="s5q" etiqueta="S5Q" unidad="0 a 5" valor={b.s5q} onCambio={(v) => { const n = digito(v, 0, 5); if (n !== undefined) editar((x) => ({ ...x, s5q: n === null ? "" : String(n) })); }}
+            <CampoNum clave="s5q" etiqueta="S5Q" unidad="0 a 5" previo={ultimo?.s5q ?? null} valor={b.s5q} onCambio={(v) => { const n = digito(v, 0, 5); if (n !== undefined) editar((x) => ({ ...x, s5q: n === null ? "" : String(n) })); }}
               franja={franjaNum("S5Q", [0, 1, 2, 3, 4, 5], b.s5q, (v) => editar((x) => ({ ...x, s5q: v })))} />
           </div>
         </section>
@@ -134,7 +134,7 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
               <h3>Escala SAS</h3>
               <div className="row" style={{ alignItems: "end", gap: 12 }}>
                 <div style={{ maxWidth: 110 }}>
-                <CampoNum clave="sas" etiqueta="SAS" unidad="1 a 7" valor={b.sas === null ? "" : String(b.sas)}
+                <CampoNum clave="sas" etiqueta="SAS" unidad="1 a 7" previo={ultimo?.sas ?? null} valor={b.sas === null ? "" : String(b.sas)}
                   onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }}
                   franja={franjaNum("SAS", [1, 2, 3, 4, 5, 6, 7], b.sas === null ? "" : String(b.sas), (v) => editar((x) => ({ ...x, sas: Number(v) as ValorSas })))} />
               </div>

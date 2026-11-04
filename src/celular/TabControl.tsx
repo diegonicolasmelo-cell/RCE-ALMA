@@ -106,6 +106,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
           etiqueta={def.etiqueta}
           unidad={def.unidad}
           valor={b.vent[def.campo]}
+          previo={ultimo && ultimo.ventilacion.modalidad === b.modalidad ? ultimo.ventilacion[def.campo] : null}
           onCambio={(v) => setVent(def.campo, v)}
           franja={franjaVent(def)}
           placeholder={def.campo === "pPlateau" && bloqueado ? "bloqueado" : ""}
@@ -147,7 +148,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       <section>
         <h3>Frecuencia cardiaca</h3>
         <div style={{ maxWidth: 160 }}>
-          <CampoNum clave="fc" etiqueta="FC" unidad="lpm" valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} />
+          <CampoNum clave="fc" etiqueta="Frec. cardiaca" unidad="lpm" previo={ultimo?.fc ?? null} valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} />
         </div>
       </section>
 
@@ -176,8 +177,8 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       <section>
         <h3>Presión arterial</h3>
         <div className="fgrid">
-          <CampoNum clave="pas" etiqueta="PAS" valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} />
-          <CampoNum clave="pad" etiqueta="PAD" valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} />
+          <CampoNum clave="pas" etiqueta="PAS" unidad="mmHg" previo={ultimo?.pas ?? null} valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} />
+          <CampoNum clave="pad" etiqueta="PAD" unidad="mmHg" previo={ultimo?.pad ?? null} valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} />
           <div className="f">
             <label>PAM</label>
             <div className="pam mono" aria-live="polite">{textoNum(pam)}</div>
@@ -237,7 +238,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         <div className="subg">Lo que hace el paciente</div>
         <div className="fgrid">
           {grupo("OBSERVADO")}
-          <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} />
+          <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" previo={ultimo?.spo2 ?? null} valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} />
         </div>
         {b.modalidad === "CNAF" && (
           <div className="mt">

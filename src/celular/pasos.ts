@@ -10,7 +10,7 @@
  *   (La kine motora / terapia fisica va en su propia pestana y es opcional.)
  */
 
-export type TabControl = "monitoreo" | "ventilacion" | "kine";
+export type TabControl = "kine";
 export type SegmentoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "modo" | "vent" | "kine" | "apk" | "tf";
 
 export interface DefSegmento {
@@ -19,39 +19,31 @@ export interface DefSegmento {
 }
 
 export const SEGMENTOS: Readonly<Record<TabControl, readonly DefSegmento[]>> = {
-  monitoreo: [
-    { id: "fc", corto: "FC" },
-    { id: "pa", corto: "PA" },
-    { id: "neuro", corto: "PIC" },
-    { id: "glasgow", corto: "Glasgow" },
-    { id: "sas", corto: "SAS" }
-  ],
-  ventilacion: [
-    { id: "modo", corto: "Modo" },
-    { id: "vent", corto: "Ventilación" }
-  ],
   kine: [
     { id: "kine", corto: "Kine" },
     { id: "apk", corto: "APK" }
   ]
 };
 
-export const ORDEN_TABS: readonly TabControl[] = ["monitoreo", "ventilacion", "kine"];
+export const ORDEN_TABS: readonly TabControl[] = ["kine"];
+
+/** Orden de la hoja de control: monitorizacion y luego terapia ventilatoria. */
+export const SEGMENTOS_HOJA: readonly SegmentoId[] = ["fc", "pa", "neuro", "glasgow", "sas", "modo", "vent"];
 
 const SEDANTES = ["fentanilo", "propofol", "midazolam", "dexmedetomidina", "lorazepam"];
 
 /** Donde esta un campo que falta, para llevar a la persona hasta el. */
-export function ubicacionDeCampo(campo: string): { tab: TabControl; seg: SegmentoId } {
-  if (campo === "fc") return { tab: "monitoreo", seg: "fc" };
-  if (campo === "pas" || campo === "pad") return { tab: "monitoreo", seg: "pa" };
-  if (campo === "glasgow") return { tab: "monitoreo", seg: "glasgow" };
-  if (campo === "sas" || campo === "vigilia") return { tab: "monitoreo", seg: "sas" };
+export function ubicacionDeCampo(campo: string): { tab: "control" | TabControl; seg: SegmentoId } {
+  if (campo === "fc") return { tab: "control", seg: "fc" };
+  if (campo === "pas" || campo === "pad") return { tab: "control", seg: "pa" };
+  if (campo === "glasgow") return { tab: "control", seg: "glasgow" };
+  if (campo === "sas" || campo === "vigilia") return { tab: "control", seg: "sas" };
   if (campo.startsWith("infusion:")) {
-    return SEDANTES.includes(campo.slice("infusion:".length)) ? { tab: "monitoreo", seg: "sas" } : { tab: "monitoreo", seg: /amiodarona|dobutamina|milrinona/.test(campo) ? "fc" : "pa" };
+    return SEDANTES.includes(campo.slice("infusion:".length)) ? { tab: "control", seg: "sas" } : { tab: "control", seg: /amiodarona|dobutamina|milrinona/.test(campo) ? "fc" : "pa" };
   }
-  if (campo === "frTotal") return { tab: "ventilacion", seg: "vent" };
-  if (campo === "spo2") return { tab: "ventilacion", seg: "vent" };
+  if (campo === "frTotal") return { tab: "control", seg: "vent" };
+  if (campo === "spo2") return { tab: "control", seg: "vent" };
   if (campo === "kine") return { tab: "kine", seg: "kine" };
   if (campo === "apk") return { tab: "kine", seg: "apk" };
-  return { tab: "monitoreo", seg: "fc" };
+  return { tab: "control", seg: "fc" };
 }

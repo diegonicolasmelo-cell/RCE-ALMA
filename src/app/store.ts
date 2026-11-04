@@ -6,7 +6,9 @@
 import { create } from "zustand";
 import type { BorradorControl } from "@core/index";
 
-export type TabCelular = "control" | "conciencia" | "kine" | "eventos" | "pve";
+export type TabCelular = "monitoreo" | "ventilacion" | "kine" | "pve" | "eventos";
+/** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. */
+export type VistaCelular = "camas" | "cama" | "evaluacion";
 
 export interface Sesion {
   readonly rut: string;
@@ -28,6 +30,9 @@ interface EstadoApp {
   setCama: (id: string) => void;
   tab: TabCelular;
   setTab: (t: TabCelular) => void;
+  vista: VistaCelular;
+  /** Abre una cama en la vista indicada (o vuelve a las tarjetas). */
+  irA: (vista: VistaCelular, camaId?: string) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
@@ -43,12 +48,14 @@ let contadorAvisos = 0;
 
 export const useApp = create<EstadoApp>((set) => ({
   sesion: null,
-  setSesion: (sesion) => set({ sesion }),
+  setSesion: (sesion) => set({ sesion, vista: "camas" }),
 
   camaId: null,
-  setCama: (camaId) => set({ camaId, tab: "control" }),
-  tab: "control",
+  setCama: (camaId) => set({ camaId, tab: "monitoreo" }),
+  tab: "monitoreo",
   setTab: (tab) => set({ tab }),
+  vista: "camas",
+  irA: (vista, camaId) => set((s) => (camaId ? { vista, camaId, tab: "monitoreo" } : { vista, camaId: s.camaId })),
 
   borradores: {},
   editar: (episodioId, base, fn) =>

@@ -48,6 +48,14 @@ export function useFranja(): CtxFranja {
   return c;
 }
 
+/** Se emite cuando "Sig." no encuentra mas casilleros. `preventDefault()` = "ya me encargo yo". */
+export const EVENTO_FIN_PESTANA = "franja-fin-pestana";
+
+/** Enfoca el primer casillero de la pantalla actual (tras cambiar de pestana). */
+export function enfocarPrimero(): void {
+  paradas()[0]?.focus();
+}
+
 /** Casilleros navegables, en el orden de la pantalla. */
 function paradas(): HTMLElement[] {
   const cuerpo = document.getElementById("cuerpo");
@@ -74,7 +82,12 @@ export function ProveedorFranja({ children }: { children: ReactNode }) {
       const lista = paradas();
       const i = lista.findIndex((el) => el.dataset["stop"] === clave);
       const sig = lista[i + 1];
-      if (!sig) return cerrar();
+      if (!sig) {
+        // Fin de la pestana: quien la muestra puede pasar a la siguiente (Monitoreo -> Ventilacion).
+        const manejado = !window.dispatchEvent(new CustomEvent(EVENTO_FIN_PESTANA, { cancelable: true }));
+        if (!manejado) cerrar();
+        return;
+      }
       sig.focus();
       sig.scrollIntoView({ block: "center", behavior: "smooth" });
     },

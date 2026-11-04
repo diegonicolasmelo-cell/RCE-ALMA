@@ -1,4 +1,4 @@
-import { CRITERIOS_PVE, bloquesPostExtub, registrosPve } from "@core/index";
+import { CRITERIOS_PVE, ESCALAS, ETIQUETA_ELEMENTO, bloquesPostExtub, calcularEscala, registrosPve, vigenciaFiltros } from "@core/index";
 import type { EventoClinico, LecturasPve, Medicion } from "@core/index";
 
 const v = (x: Medicion | string | undefined): string => (x === null || x === undefined || x === "" ? "—" : String(x));
@@ -83,6 +83,41 @@ export function PanelPve({ eventos, ahora }: { eventos: readonly EventoClinico[]
           </div>
         );
       })}
+    </section>
+  );
+}
+
+/** Filtros/TrachCare con su plazo, y la ultima evaluacion de cada escala. */
+export function PanelCircuitoYEvaluaciones({ eventos, ahora }: { eventos: readonly EventoClinico[]; ahora: Date }) {
+  const filtros = vigenciaFiltros(eventos, ahora);
+  const evaluaciones = eventos.filter((e): e is Extract<EventoClinico, { tipo: "EVALUACION_PUNTUAL" }> => e.tipo === "EVALUACION_PUNTUAL");
+  const ultimas = ESCALAS.map((d) => ({ d, e: evaluaciones.filter((x) => x.escala === d.id).at(-1) })).filter((x) => x.e);
+  return (
+    <section className="card" style={{ marginTop: 14 }}>
+      <h3 style={{ marginTop: 0 }}>Fechas de filtros y sonda de circuito cerrado</h3>
+      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+        {filtros.map((f) => (
+          <span key={f.elemento} className={`pill ${f.estado === "VENCIDO" ? "crit" : f.estado === "VENCE_HOY" ? "warn" : ""}`}>
+            {ETIQUETA_ELEMENTO[f.elemento]}: {f.cambiadoEn ? `cambiado ${f.cambiadoEn} · ${f.estado === "VENCIDO" ? "vencido" : f.estado === "VENCE_HOY" ? "vence hoy" : `vence ${f.venceFecha}`}` : "sin registro"}
+          </span>
+        ))}
+      </div>
+      {ultimas.length > 0 && (
+        <>
+          <h3>Evaluaciones</h3>
+          <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
+            {ultimas.map(({ d, e }) => {
+              const r = calcularEscala(d.id, e!.valores);
+              return (
+                <li key={d.id}>
+                  <b>{d.nombre}</b> · {e!.registradoEn.slice(0, 10)} {e!.hora}: {r.lineas.length > 0 ? r.lineas.join(" · ") : e!.total ?? "registrada"}
+                  {r.interpretacion ? ` · ${r.interpretacion}` : ""}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </section>
   );
 }

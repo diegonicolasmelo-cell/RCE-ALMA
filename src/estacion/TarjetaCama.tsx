@@ -6,7 +6,9 @@ import {
   calcularPbw,
   equipoEnUso,
   estadoProno,
+  ETIQUETA_ELEMENTO,
   estadoFlujoPve,
+  filtrosPorCambiar,
   estadoPve,
   etiquetaEquipo,
   etiquetaEventoRiesgo,
@@ -75,6 +77,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
         {sem ? <Pildora tipo={sem.tipo}>{sem.t}</Pildora> : soporte ? <Pildora tipo="warn">Soporte CV</Pildora> : u ? <Pildora>Sin DVA</Pildora> : null}
         {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
         {pve.activa && <Pildora tipo="acc">PVE en curso</Pildora>}
+        {filtrosPorCambiar(eventos, ahora).map((f) => <Pildora key={f.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[f.elemento]}</Pildora>)}
         {pendientes.length > 0 && <Pildora tipo="warn">Post extub. {pendientes[0]?.etiqueta} pendiente</Pildora>}
         {bnmVigente(eventos) && <Pildora tipo="crit">BNM</Pildora>}
         {equipo && <Pildora>{etiquetaEquipo(equipo)}</Pildora>}

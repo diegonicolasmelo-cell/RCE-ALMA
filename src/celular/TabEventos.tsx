@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
   DESTINOS_IMAGEN,
-  FARMACOS_BNM,
   MUESTRAS_CULTIVO,
   PROCEDIMIENTOS_MEDICOS,
-  bnmVigente,
   describirEvento,
   esViaAereaArtificial,
-  estadoProno
+  estadoProno,
+  vigenciaFiltros,
+  ETIQUETA_ELEMENTO
 } from "@core/index";
 import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo } from "@core/index";
 import { useApp } from "../app/store";
@@ -47,7 +47,6 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
   const [valores, setValores] = useState<Record<string, string>>({});
 
   const prono = estadoProno(eventos, ahora);
-  const bnm = bnmVigente(eventos);
 
   const grupos: { titulo: string; items: Item[] }[] = [
     {
@@ -61,14 +60,11 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
       ]
     },
     {
-      titulo: "Posición y bloqueo",
+      titulo: "Posición",
       items: [
         prono.enProno
           ? { k: "supinar", texto: "Supinar", req: "art", crear: (_v, b) => ({ ...b, tipo: "SUPINACION" }) }
-          : { k: "prono", texto: "Iniciar prono", req: "art", crear: (_v, b) => ({ ...b, tipo: "INICIO_PRONO" }) },
-        bnm
-          ? { k: "bnmfin", texto: "Suspender bloqueo neuromuscular", req: "art", crear: (_v, b) => ({ ...b, tipo: "FIN_BNM" }) }
-          : { k: "bnmini", texto: "Iniciar bloqueo neuromuscular", req: "art", campos: [{ id: "far", etiqueta: "Fármaco", opciones: lista(FARMACOS_BNM) }], crear: (v, b) => ({ ...b, tipo: "INICIO_BNM", farmaco: v["far"] ?? FARMACOS_BNM[0] ?? "" }) }
+          : { k: "prono", texto: "Iniciar prono", req: "art", crear: (_v, b) => ({ ...b, tipo: "INICIO_PRONO" }) }
       ]
     },
     {
@@ -78,7 +74,9 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
         { k: "cult", texto: "Toma de cultivo", campos: [{ id: "mu", etiqueta: "Muestra", opciones: lista(MUESTRAS_CULTIVO) }], crear: (v, b) => ({ ...b, tipo: "TOMA_CULTIVO", muestra: v["mu"] ?? MUESTRAS_CULTIVO[0] ?? "" }) },
         { k: "img", texto: "Traslado a imagenología", campos: [{ id: "dst", etiqueta: "Destino", opciones: lista(DESTINOS_IMAGEN) }], crear: (v, b) => ({ ...b, tipo: "TRASLADO_IMAGEN", destino: v["dst"] ?? DESTINOS_IMAGEN[0] ?? "" }) },
         { k: "asist", texto: "Asistencia en procedimiento", campos: [{ id: "pr", etiqueta: "Procedimiento", opciones: lista(PROCEDIMIENTOS_MEDICOS) }], crear: (v, b) => ({ ...b, tipo: "ASISTENCIA_PROCEDIMIENTO", procedimiento: v["pr"] ?? PROCEDIMIENTOS_MEDICOS[0] ?? "" }) },
-        { k: "hmef", texto: "Cambio de filtro HMEF", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_HMEF" }) }
+        { k: "hme", texto: "Cambio de filtro HME", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_HMEF" }) },
+        { k: "trach", texto: "Cambio de TrachCare", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "TRACHCARE" }) },
+        { k: "hepa", texto: "Cambio de filtro HEPA", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "HEPA" }) }
       ]
     },
     {
@@ -117,10 +115,9 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
 
   return (
     <>
-      {(prono.enProno || bnm) && (
+      {prono.enProno && (
         <div className="row">
           {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
-          {bnm && <Pildora tipo="crit">Bloqueo neuromuscular en curso</Pildora>}
         </div>
       )}
 
@@ -146,6 +143,19 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
           {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
         </div>
       )}
+
+      <section>
+        <h3>Filtros y circuito</h3>
+        <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
+          {vigenciaFiltros(eventos, ahora).map((v) => (
+            <li key={v.elemento}>
+              <b>{ETIQUETA_ELEMENTO[v.elemento]}</b>:{" "}
+              {v.estado === "SIN_REGISTRO" ? "sin cambio registrado" : v.estado === "VENCIDO" ? `vencido desde el ${v.venceFecha}` : v.estado === "VENCE_HOY" ? `cambiado el ${v.cambiadoEn}, vence hoy` : `cambiado el ${v.cambiadoEn}, vence el ${v.venceFecha}`}
+            </li>
+          ))}
+        </ul>
+        <p className="small muted mt">Se anota la fecha solo cuando se cambia; el sistema cuenta el plazo (TrachCare y HEPA 3 días, HME 2).</p>
+      </section>
 
       {grupos.map((g) => (
         <section key={g.titulo}>

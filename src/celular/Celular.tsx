@@ -20,30 +20,33 @@ import type { TabCelular } from "../app/store";
 import { nuevoId } from "../app/util";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
-import { useFranja } from "./franja";
+import { EVENTO_FIN_PESTANA, enfocarPrimero, useFranja } from "./franja";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
 import { TabEventos } from "./TabEventos";
+import { Evaluaciones } from "./Evaluaciones";
+import { ListaCamas } from "./ListaCamas";
 import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 
 const TABS: readonly (readonly [TabCelular, string])[] = [
-  ["control", "Control"],
-  ["conciencia", "Conciencia"],
+  ["monitoreo", "Monitoreo"],
+  ["ventilacion", "Ventilación"],
   ["kine", "Kine · APK"],
-  ["eventos", "Eventos"],
-  ["pve", "PVE"]
+  ["pve", "PVE"],
+  ["eventos", "Eventos"]
 ];
 
 /** A que pestana pertenece cada campo que falta, para llevar al usuario hasta el. */
 function pestanaDe(campo: string): TabCelular {
   if (campo === "apk" || campo === "kine" || campo === "terapiaFisica") return "kine";
-  if (campo === "sas" || campo === "vigilia" || campo === "glasgow") return "conciencia";
+  if (campo === "sas" || campo === "vigilia" || campo === "glasgow") return "monitoreo";
   if (campo.startsWith("infusion:")) {
     const sedantes = ["fentanilo", "propofol", "midazolam", "dexmedetomidina", "lorazepam"];
-    return sedantes.includes(campo.slice("infusion:".length)) ? "conciencia" : "control";
+    void sedantes;
+    return "monitoreo";
   }
-  return "control";
+  return campo === "frTotal" || campo === "spo2" ? "ventilacion" : "monitoreo";
 }
 
 export function Celular() {
@@ -51,6 +54,8 @@ export function Celular() {
   const sesion = useApp((s) => s.sesion)!;
   const camaId = useApp((s) => s.camaId);
   const setCama = useApp((s) => s.setCama);
+  const vista = useApp((s) => s.vista);
+  const irA = useApp((s) => s.irA);
   const tab = useApp((s) => s.tab);
   const setTab = useApp((s) => s.setTab);
   const borradores = useApp((s) => s.borradores);
@@ -76,6 +81,20 @@ export function Celular() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ep?.id, ultimo?.id, sesion.rut]
   );
+
+  // "Sig." al final de Monitoreo sigue en Ventilacion, como seguiria el papel.
+  useEffect(() => {
+    const alFin = (e: Event): void => {
+      const st = useApp.getState();
+      if (st.vista === "cama" && st.tab === "monitoreo") {
+        e.preventDefault();
+        st.setTab("ventilacion");
+        setTimeout(enfocarPrimero, 80);
+      }
+    };
+    window.addEventListener(EVENTO_FIN_PESTANA, alFin);
+    return () => window.removeEventListener(EVENTO_FIN_PESTANA, alFin);
+  }, []);
 
   useEffect(() => {
     if (ep && camaId !== ep.id) useApp.setState({ camaId: ep.id });
@@ -106,12 +125,57 @@ export function Celular() {
     await repo.guardarControl(control);
     useApp.getState().descartar(ep.id);
     franja.cerrar();
-    setTab("control");
+    setTab("monitoreo");
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.` : `Guardado ${ep.cama} ${control.hora}. Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
 
-  const cuerpo = tab === "control" ? <TabControl ctx={ctx} /> : tab === "conciencia" ? <TabConciencia ctx={ctx} /> : tab === "kine" ? <TabKine ctx={ctx} /> : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
+  const cuerpo =
+    tab === "monitoreo" ? <TabControl ctx={ctx} parte="monitoreo" intermedio={<TabConciencia ctx={ctx} />} /> :
+    tab === "ventilacion" ? <TabControl ctx={ctx} parte="ventilacion" /> :
+    tab === "kine" ? <TabKine ctx={ctx} /> :
+    tab === "pve" ? <TabPve ctx={ctx} /> :
+    <TabEventos ctx={ctx} />;
+
+  const cabecera = (
+      <div className="cel-top">
+        <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
+        <span className="row" style={{ gap: 8 }}>
+          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => void sync.ciclo()} aria-label="Sincronizar ahora">
+            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}
+          </button>
+          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
+        </span>
+      </div>
+  );
+
+  if (vista === "camas") {
+    return (
+      <div className="app-cel">
+        {cabecera}
+        <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· elige Control o Evaluación</span></div>
+        <ListaCamas />
+      </div>
+    );
+  }
+
+  const volver = (
+    <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => { franja.cerrar(); irA("camas"); }}>‹ Camas</button>
+  );
+
+  if (vista === "evaluacion") {
+    return (
+      <div className="app-cel">
+        {cabecera}
+        <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
+          {volver}
+          <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
+          <span className="small muted">Evaluación</span>
+        </div>
+        <Evaluaciones ctx={ctx} />
+      </div>
+    );
+  }
 
   return (
     <div className="app-cel">
@@ -125,7 +189,8 @@ export function Celular() {
         </span>
       </div>
 
-      <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
+        {volver}
         <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
         {ep.rutTitular !== sesion.rut && <Pildora>control de apoyo</Pildora>}
       </div>

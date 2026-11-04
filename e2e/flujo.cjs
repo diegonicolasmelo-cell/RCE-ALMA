@@ -74,6 +74,10 @@ async function esperarServidor() {
 
     await prueba("entra con el RUT con o sin puntos y ve sus camas", async () => {
       await entrar("16452891k", "0000");
+      await cel.waitForSelector('article[aria-label^="Cama"]');
+      assert.equal(await cel.locator('article[aria-label^="Cama"]').count(), 8, "las camas salen como tarjetas");
+      assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Evaluación")').count()) === 1, "cada tarjeta ofrece Control y Evaluación");
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Control")');
       await cel.waitForSelector("#cuerpo");
       assert.equal((await cel.locator(".cel-camas .chip").count()), 8);
       assert.match(await cel.textContent(".app-cel b.mono"), /UCI-01/);
@@ -89,12 +93,13 @@ async function esperarServidor() {
     await prueba("'Sig.' avanza casillero a casillero y se detiene en el Modo con 'Igual que el anterior'", async () => {
       await cel.click("#in-fc");
       const secuencia = [await parada()];
-      for (let i = 0; i < 12 && (await parada()) !== "modo"; i++) {
+      for (let i = 0; i < 40 && (await parada()) !== "modo"; i++) {
         await cel.click('.franja .qchip:has-text("Sig.")');
         await cel.waitForTimeout(120);
         secuencia.push(await parada());
       }
-      assert.deepEqual(secuencia.slice(0, 4), ["fc", "spo2", "pas", "pad"]);
+      assert.deepEqual(secuencia.slice(0, 3), ["fc", "pas", "pad"]);
+      assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Ventilación/, "Sig. pasa de Monitoreo a Ventilación");
       assert.equal(secuencia.at(-1), "modo");
       const opciones = await franja();
       assert.match(opciones[0], /^Igual: /);
@@ -107,6 +112,7 @@ async function esperarServidor() {
       assert.equal(await parada(), "vent:frProgramada");
       const etiquetas = await cel.locator('section:has(h3:has-text("Terapia ventilatoria")) .f label').allTextContents();
       assert.ok(etiquetas.some((t) => t.startsWith("P. control")));
+      assert.ok(etiquetas.some((t) => t.startsWith("Auto PEEP")), "Auto PEEP aparece en modalidades controladas");
       assert.ok(!etiquetas.some((t) => t.startsWith("Vt programado")), "en PCV no hay volumen programado");
       await cel.click('.franja .qchip:has-text("Listo")');
     });
@@ -137,7 +143,7 @@ async function esperarServidor() {
     });
 
     await prueba("sedantes plegados: Iniciar abre el escalon con su dosis, y Suspender se puede deshacer", async () => {
-      await cel.click('[role=tab]:has-text("Conciencia")');
+      await cel.click('[role=tab]:has-text("Monitoreo")');
       const tarjeta = cel.locator('.infu:has(b:text-is("Propofol"))');
       await tarjeta.locator('button:has-text("Iniciar")').click();
       await cel.waitForTimeout(200);
@@ -157,7 +163,7 @@ async function esperarServidor() {
       await cel.click('.sas .chip:has-text("3")');
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /Falta:.*FC.*SpO₂/);
-      await cel.click('[role=tab]:has-text("Control")');
+      await cel.click('[role=tab]:has-text("Ventilación")');
       await cel.click('button:has-text("Rellenar signos de ejemplo")');
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /kine respiratoria/);
@@ -178,7 +184,7 @@ async function esperarServidor() {
     });
 
     await prueba("el control siguiente hereda ajustes e infusiones, pero no las lecturas ni la APK ya firmada", async () => {
-      await cel.click('[role=tab]:has-text("Control")');
+      await cel.click('[role=tab]:has-text("Monitoreo")');
       assert.equal(await cel.inputValue("#in-fc"), "");
       assert.match(await cel.getAttribute("#in-fc", "placeholder"), /ant\. 86/);
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03");
@@ -231,6 +237,31 @@ async function esperarServidor() {
       const lista = await cel.textContent(".app-cel");
       for (const m of ["Extubación", "30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
       assert.match(await cel.textContent(".airway"), /Vía aérea natural/);
+    });
+
+    await prueba("evaluacion MRC-ss desde la tarjeta de la cama: puntaje, corte de debilidad y registro", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
+      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluación")');
+      await cel.click('button:has-text("Fuerza muscular MRC-ss")');
+      for (const c of await cel.locator('input[id^="ev-m"]').all()) await c.fill("4");
+      assert.match(await cel.textContent(".app-cel"), /MRC sum score 48\/60/);
+      assert.match(await cel.textContent(".notice"), /Debilidad adquirida en UCI/);
+      await cel.click('button:has-text("Registrar evaluación")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent(".app-cel"), /MRC-ss: 48|Fuerza muscular MRC-ss: 48/);
+    });
+
+    await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive junto a la sedacion", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Control")');
+      await cel.click('[role=tab]:has-text("Monitoreo")');
+      assert.ok((await cel.locator('h3:has-text("Bloqueo neuromuscular")').count()) === 1, "BNM en Monitoreo, con la sedacion");
+      await cel.click('[role=tab]:has-text("Eventos")');
+      assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
+      await cel.click('button:has-text("Cambio de filtro HME")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent(".app-cel"), /Filtro HME.*vence/);
     });
 
     console.log("Estacion (PC)");
@@ -309,7 +340,7 @@ async function esperarServidor() {
       await cel.evaluate(() => navigator.serviceWorker.ready);
       await ctx.setOffline(true);
       await cel.reload();
-      await cel.waitForSelector("#cuerpo", { timeout: 8000 });
+      await cel.waitForSelector('article[aria-label^="Cama"]', { timeout: 8000 });
       assert.match(await cel.textContent(".cel-top"), /Sin señal/);
       assert.match(await cel.textContent(".app-cel b.mono"), /UCI/);
       await ctx.setOffline(false);

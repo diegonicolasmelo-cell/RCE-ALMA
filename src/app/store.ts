@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import type { BorradorControl } from "@core/index";
 
-export type TabCelular = "control" | "conciencia" | "kine" | "eventos";
+export type TabCelular = "control" | "conciencia" | "kine" | "eventos" | "pve";
 
 export interface Sesion {
   readonly rut: string;

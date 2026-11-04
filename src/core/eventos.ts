@@ -59,6 +59,10 @@ export function viaAereaVigente(
         break;
       // No alteran la via aerea:
       case "AJUSTE_TUBO":
+      case "EVALUACION_PVE":
+      case "CONTROL_PVE":
+      case "REEVAL_POST_EXTUB":
+      case "FALLA_POST_EXTUB":
       case "INICIO_PVE":
       case "FIN_PVE":
       case "INICIO_PRONO":

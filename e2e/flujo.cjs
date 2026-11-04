@@ -196,6 +196,43 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".airway"), /Vía aérea natural/);
     });
 
+    await prueba("PVE: checklist de 8 criterios, control inicial, cronometro, 30 min y post extubacion", async () => {
+      await cel.click('.cel-camas button:text-is("02")');
+      await cel.click('[role=tab]:has-text("PVE")');
+      assert.ok((await cel.locator('button:has-text("Iniciar PVE")').count()) === 0, "sin checklist no se puede iniciar");
+      // un criterio no cumple: no hay PVE
+      await cel.locator('[aria-label="Resolución del cuadro"] button:text-is("No cumple")').click();
+      for (const n of ["Signos de infección", "DVA", "PaFi", "Volumen minuto", "GCS / SAS", "Estab. metab. o vías de corrección", "Hb ≥ 7"]) {
+        await cel.locator(`[aria-label="${n}"] button:text-is("Cumple")`).click();
+      }
+      await cel.click('button:has-text("Registrar checklist")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent(".notice.crit"), /no cumple/);
+      assert.ok((await cel.locator('button:has-text("Iniciar PVE")').count()) === 0, "checklist no apto bloquea la PVE");
+      // corregido: los 8 cumplen
+      for (const n of ["Resolución del cuadro", "Signos de infección", "DVA", "PaFi", "Volumen minuto", "GCS / SAS", "Estab. metab. o vías de corrección", "Hb ≥ 7"]) {
+        await cel.locator(`[aria-label="${n}"] button:text-is("Cumple")`).click();
+      }
+      await cel.click('button:has-text("Registrar checklist")');
+      await cel.waitForTimeout(400);
+      await cel.click('button:has-text("Iniciar PVE")');
+      for (const [id, val] of [["fc", "82"], ["fr", "18"], ["pas", "122"], ["pad", "70"], ["spo2", "96"], ["gcs", "15"], ["vm", "7"]]) await cel.fill(`#pve-${id}`, val);
+      await cel.click('button:has-text("Registrar e iniciar cronómetro")');
+      await cel.waitForTimeout(500);
+      assert.match(await cel.textContent("#pve-timer"), /0 \/ 30 min/);
+      await cel.click('button:has-text("Control a los 30 min")');
+      for (const [id, val] of [["fc", "88"], ["fr", "20"], ["pas", "118"], ["pad", "68"], ["spo2", "95"]]) await cel.fill(`#pve-${id}`, val);
+      await cel.click('button:has-text("Registrar control")');
+      await cel.click('button:has-text("Fin · tolerada")');
+      await cel.waitForTimeout(400);
+      await cel.click('button:has-text("Registrar extubación")');
+      await cel.click('button:has-text("CNAF")');
+      await cel.waitForTimeout(500);
+      const lista = await cel.textContent(".app-cel");
+      for (const m of ["Extubación", "30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
+      assert.match(await cel.textContent(".airway"), /Vía aérea natural/);
+    });
+
     console.log("Estacion (PC)");
     const pc = await ctx.newPage();
     vigilar(pc);

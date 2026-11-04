@@ -13,6 +13,7 @@
 import { buscarProfesional } from "./dotacion";
 import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD } from "./catalogos";
 import { apkVigente } from "./apk";
+import { etiquetaMomentoPostExtub } from "./pve";
 import { describirEquipos, equipoEnUso, etiquetaEquipo } from "./equipos";
 import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiologia";
 import { describirCardiovasculares, describirInfusiones, sedoanalgesiaActiva } from "./infusiones";
@@ -163,6 +164,14 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
 
 export function describirEvento(ev: EventoClinico): string {
   switch (ev.tipo) {
+    case "EVALUACION_PVE":
+      return ev.apto ? "Checklist de PVE: cumple los 8 criterios" : "Checklist de PVE: no cumple los criterios, PVE no iniciada";
+    case "CONTROL_PVE":
+      return `Control de PVE ${ev.fase === "INICIAL" ? "inicial" : "a los 30 min"}`;
+    case "REEVAL_POST_EXTUB":
+      return `Reevaluación post extubación (${etiquetaMomentoPostExtub(ev.momento)})`;
+    case "FALLA_POST_EXTUB":
+      return ev.falla ? `Falla post extubación${ev.hipotesis ? `: ${ev.hipotesis}` : ""}` : "Sin falla post extubación";
     case "INICIO_PVE":
       return `Inicio de PVE (protocolo ${ev.duracionMin} min)`;
     case "FIN_PVE":

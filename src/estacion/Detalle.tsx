@@ -20,6 +20,7 @@ import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
 import { htmlApk, nombreArchivoApk } from "./apkDocumento";
 import { filasSabana } from "./sabana";
+import { PanelPve } from "./PanelPve";
 import { Tendencia } from "./Tendencia";
 import { VENTANA_ALERTA_MS, copiarTexto, nombreProfesional } from "./util";
 
@@ -130,6 +131,8 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           </Aviso>
         );
       })}
+
+      <PanelPve eventos={eventos} ahora={ahora} />
 
       {visibles.length > 0 ? (
         <>

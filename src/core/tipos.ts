@@ -290,7 +290,50 @@ export interface EventoBase {
 export type DispositivoPosterior = "CNAF" | "VMNI" | "O2_CONVENCIONAL" | "AIRE_AMBIENTE";
 export type MotivoAjusteTubo = "DESPLAZAMIENTO_SUPERFICIAL" | "CONTROL_RADIOLOGICO";
 
+/** Una lectura de la hoja de registro de PVE. Todo nace en blanco (null = no medido). */
+export interface LecturasPve {
+  readonly fc: Medicion;
+  readonly pas: Medicion;
+  readonly pad: Medicion;
+  readonly fr: Medicion;
+  readonly spo2: Medicion;
+  readonly gcs: Medicion;
+  readonly volMinuto: Medicion;
+  /** Vocabulario por ratificar con la jefatura (la hoja solo dice "Trabajo respiratorio"). */
+  readonly trabajoResp: string;
+  readonly secreciones: string;
+}
+
+export type FasePveControl = "INICIAL" | "30MIN";
+export type MomentoPostExtub = "EXTUB" | "30MIN" | "60MIN" | "120MIN" | "48H";
+
 export type EventoClinico =
+  /**
+   * Checklist previo a la PVE ("INICIO PVE cumple con 8 criterios" del protocolo de
+   * weaning). `criterios` va en el orden de CRITERIOS_PVE; `apto` = los 8 cumplen.
+   */
+  | (EventoBase & {
+      readonly tipo: "EVALUACION_PVE";
+      readonly criterios: readonly boolean[];
+      readonly apto: boolean;
+      /** Hb, PaFi u otro dato que acompana al criterio (texto corto, opcional). */
+      readonly datos: string;
+      readonly extubacionFueraProtocolo: boolean;
+    })
+  | (EventoBase & { readonly tipo: "CONTROL_PVE"; readonly fase: FasePveControl; readonly lecturas: LecturasPve })
+  | (EventoBase & {
+      readonly tipo: "REEVAL_POST_EXTUB";
+      readonly momento: MomentoPostExtub;
+      readonly fc: Medicion;
+      readonly pam: Medicion;
+      readonly gcs: Medicion;
+      readonly fr: Medicion;
+      readonly fio2: Medicion;
+      readonly spo2: Medicion;
+      readonly trabajoResp: string;
+      readonly manejoSecreciones: string;
+    })
+  | (EventoBase & { readonly tipo: "FALLA_POST_EXTUB"; readonly falla: boolean; readonly hipotesis: string; readonly observaciones: string })
   | (EventoBase & { readonly tipo: "INICIO_PVE"; readonly duracionMin: number })
   | (EventoBase & { readonly tipo: "FIN_PVE"; readonly exitosa: boolean })
   | (EventoBase & { readonly tipo: "EXTUBACION_PROGRAMADA"; readonly dispositivo: DispositivoPosterior })

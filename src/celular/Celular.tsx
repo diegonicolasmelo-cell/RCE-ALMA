@@ -25,12 +25,14 @@ import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
 import { TabEventos } from "./TabEventos";
 import { TabKine } from "./TabKine";
+import { TabPve } from "./TabPve";
 
 const TABS: readonly (readonly [TabCelular, string])[] = [
   ["control", "Control"],
   ["conciencia", "Conciencia"],
   ["kine", "Kine · APK"],
-  ["eventos", "Eventos"]
+  ["eventos", "Eventos"],
+  ["pve", "PVE"]
 ];
 
 /** A que pestana pertenece cada campo que falta, para llevar al usuario hasta el. */
@@ -109,7 +111,7 @@ export function Celular() {
     void sync.ciclo();
   };
 
-  const cuerpo = tab === "control" ? <TabControl ctx={ctx} /> : tab === "conciencia" ? <TabConciencia ctx={ctx} /> : tab === "kine" ? <TabKine ctx={ctx} /> : <TabEventos ctx={ctx} />;
+  const cuerpo = tab === "control" ? <TabControl ctx={ctx} /> : tab === "conciencia" ? <TabConciencia ctx={ctx} /> : tab === "kine" ? <TabKine ctx={ctx} /> : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
 
   return (
     <div className="app-cel">

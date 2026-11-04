@@ -7,8 +7,7 @@ import {
   bnmVigente,
   describirEvento,
   esViaAereaArtificial,
-  estadoProno,
-  estadoPve
+  estadoProno
 } from "@core/index";
 import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo } from "@core/index";
 import { useApp } from "../app/store";
@@ -47,7 +46,6 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
   const [abierto, setAbierto] = useState<string | null>(null);
   const [valores, setValores] = useState<Record<string, string>>({});
 
-  const pve = estadoPve(eventos, ahora);
   const prono = estadoProno(eventos, ahora);
   const bnm = bnmVigente(eventos);
 
@@ -55,7 +53,6 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
     {
       titulo: "Vía aérea",
       items: [
-        { k: "pve", texto: "Iniciar PVE (30 min)", req: "art", deshabilitado: pve.activa, crear: (_v, b) => ({ ...b, tipo: "INICIO_PVE", duracionMin: 30 }) },
         { k: "extub", texto: "Extubación programada", req: "art", campos: [{ id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }], crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
         { k: "reint", texto: "Reintubación / IOT", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre" }, { id: "fij", etiqueta: "Fijación (cm a la comisura)" }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["fij"] ?? "" }) },
         { k: "traq", texto: "Traqueostomía", req: "art", campos: [{ id: "cal", etiqueta: "Calibre" }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
@@ -120,18 +117,6 @@ export function TabEventos({ ctx }: { ctx: ContextoCama }) {
 
   return (
     <>
-      {pve.activa && (
-        <div className="notice acc">
-          <div className="small">PVE en curso</div>
-          <div className="timer mono">
-            {pve.minutosTranscurridos} / {pve.duracionMin} min {pve.completa && "· cumplida"}
-          </div>
-          <div className="row mt">
-            <button type="button" className="btn sm" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), tipo: "FIN_PVE", exitosa: true })}>Fin · tolerada</button>
-            <button type="button" className="btn sm" onClick={() => void repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), tipo: "FIN_PVE", exitosa: false })}>Fin · no tolerada</button>
-          </div>
-        </div>
-      )}
       {(prono.enProno || bnm) && (
         <div className="row">
           {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}

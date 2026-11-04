@@ -6,6 +6,7 @@ import {
   calcularPbw,
   equipoEnUso,
   estadoProno,
+  estadoFlujoPve,
   estadoPve,
   etiquetaEquipo,
   etiquetaEventoRiesgo,
@@ -48,6 +49,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
   const soporte = u ? usaSoporteCardiovascular(u.infusiones) : false;
   const prono = estadoProno(eventos, ahora);
   const pve = estadoPve(eventos, ahora);
+  const pendientes = estadoFlujoPve(eventos, ahora).bloque?.momentos.filter((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H") ?? [];
   const apk = apkVigente(apks, ep.id, ahora);
   const equipo = equipoEnUso(ep.equipos);
   const minutos = u ? Math.max(0, Math.round((ahora.getTime() - Date.parse(u.registradoEn)) / 60000)) : null;
@@ -73,6 +75,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
         {sem ? <Pildora tipo={sem.tipo}>{sem.t}</Pildora> : soporte ? <Pildora tipo="warn">Soporte CV</Pildora> : u ? <Pildora>Sin DVA</Pildora> : null}
         {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
         {pve.activa && <Pildora tipo="acc">PVE en curso</Pildora>}
+        {pendientes.length > 0 && <Pildora tipo="warn">Post extub. {pendientes[0]?.etiqueta} pendiente</Pildora>}
         {bnmVigente(eventos) && <Pildora tipo="crit">BNM</Pildora>}
         {equipo && <Pildora>{etiquetaEquipo(equipo)}</Pildora>}
         <Pildora tipo={ep.transcritoAlma ? "good" : ""}>

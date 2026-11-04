@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/client" />
 
 interface ImportMetaEnv {
   /** URL del web app de Apps Script (/exec). Sin ella la app funciona en modo local. */

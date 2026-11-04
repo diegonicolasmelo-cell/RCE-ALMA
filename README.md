@@ -12,41 +12,50 @@ UCI Adulto — Hospital San Pablo de Coquimbo.
 ALMA es el registro oficial y no se puede cambiar. Lo que sí se puede cambiar es
 cómo llegamos a él. Hoy: se compite por un computador, se registra en papel que
 después hay que eliminar, y se transcribe a mano a un formulario que no muestra
-tendencias. UPC-Pulse ataca los tres cuellos de botella:
+tendencias.
 
 | | |
 |---|---|
-| **Captura** | Celular a pie de cama. Un control en menos de 60 s, con una mano. |
-| **Lectura** | Sábana de 24 h y tendencias en el PC de la estación. |
-| **Transcripción** | Evolución estructurada lista para pegar en ALMA, en un clic. |
+| **Captura** | Celular a pie de cama (PWA, funciona sin señal). |
+| **Lectura** | Tablero, sábana y tendencias en cualquier PC de la UCI. |
+| **Transcripción** | Evolución estructurada y panel paso a paso para ALMA. |
 
-## Dos instancias, un solo código
+## Dos vistas, un solo código
 
-- **Móvil** (`/`) — captura. Muestra **solo el número de cama**. El servidor no
-  le entrega la hoja de identidad (token distinto), así que si se pierde el
-  teléfono no hay datos identificables en él.
-- **PC de la UCI** (`/estacion`) — visualización, en cualquiera de los PC (pasillo
-  o estación). Muestra nombre y RUT y un botón que abre Sinapse con ese RUT.
-
-## Arquitectura en una línea
-
-PWA estática (GitHub Pages) → Google Sheets vía Apps Script, con **dos canales y
-dos tokens**: el clínico (celular, sin identidad) y el de identidad (solo PC,
-purgado al alta). Apps Script no puede filtrar por IP; el riesgo de guardar
-nombre y RUT en Google fue aceptado por el equipo. Detalle en
-`docs/PLAN-MAESTRO.md` cap. 1.
+- **Celular** (`#celular`) — captura. Muestra **solo la cama**: el servidor no le
+  entrega la identidad del paciente (otra llave).
+- **PC de la UCI** (`#estacion`) — visualización. Muestra nombre y RUT, abre
+  Sinapse por RUT, arma la evolución para ALMA y el informe de riesgo.
 
 ## Estado
 
-| Fase | Entregable | Estado |
-|---|---|---|
-| 0 | Plan maestro y decisiones de arquitectura | ✅ |
-| 1 | Núcleo clínico con tests | ✅ 153 tests |
-| 2 | Repositorios: Dexie local + cola de sincronía | ⬜ |
-| 3 | Apps Script: API, hoja, hash de PIN, deploy | 🔨 código listo, sin desplegar |
-| 4 | Móvil: login, 6 camas, control, APK, eventos | ⬜ |
-| 5 | Estación: sábana 24 h, tendencias, nota ALMA, riesgo | ⬜ |
-| 6 | PWA, REM 28, marcha blanca con datos ficticios | ⬜ |
+| Parte | Estado |
+|---|---|
+| Núcleo clínico (`src/core`) | ✅ 300+ tests |
+| Capa de datos: IndexedDB, cola offline, sincronía idempotente | ✅ |
+| App del celular | ✅ |
+| Vista del PC | ✅ |
+| PWA instalable y sin conexión | ✅ |
+| Prueba de punta a punta en navegador (`e2e/`) | ✅ 21 pruebas |
+| Backend Apps Script (`backend/apps-script`) | 🔨 código listo, **sin desplegar ni probar contra Google** |
+| Envío del informe de riesgo por correo a coordinación | ⬜ |
+
+Nunca se probó contra una hoja de Google real: el cliente HTTP y el backend están
+probados por separado (con un servidor simulado). El primer ensayo real de punta a
+punta hay que hacerlo con datos ficticios.
+
+### Por definir (decisiones de la unidad clínica pendientes)
+
+- **Tabla real de escalones de sedación.** Hoy se interpolan entre los extremos 1 y
+  6; lorazepam solo admite dosis libre.
+- **Unidad de la amiodarona** (hoy `mg/h`, marcada “por confirmar”).
+- **Turnos**: se asumen Día 08–20 y Noche 20–08 (`src/core/turnos.ts`).
+- **TI, flujo e I:E** por modalidad (`src/core/catalogos.ts`), y los valores
+  rápidos de la franja del teclado.
+- **Criterios de la pauta APK**: transcripción de un formato en papel que debe
+  ratificar la jefatura de kinesiología.
+- Formato de la URL de **Sinapse** (`VITE_SINAPSE_URL`).
+- RUT de la dotación: son marcadores de posición (`src/core/dotacion.ts`).
 
 ## Desarrollo
 
@@ -54,64 +63,91 @@ nombre y RUT en Google fue aceptado por el equipo. Detalle en
 npm install
 ```
 
-```bash
-npm test
-```
-
-```bash
-npm run typecheck
-```
+Sin configurar nada, la app arranca en **modo demostración**: ocho camas con
+pacientes inventados, todo en el dispositivo. Ingreso: cualquier RUT de la
+dotación y el PIN `0000`.
 
 ```bash
 npm run dev
 ```
 
-## El núcleo clínico
+```bash
+npm run check
+```
 
-`src/core/` no importa React, ni Dexie, ni nada de red. Es la regla que mantiene
-el proyecto sano: la corrección clínica vive en funciones puras que se testean en
-milisegundos y se razonan sin levantar un navegador.
+`check` corre el chequeo de tipos y todos los tests. La prueba de punta a punta
+levanta el build en un navegador real (requiere Playwright):
 
-| Módulo | Qué resuelve |
+```bash
+npm run build && NODE_PATH=$(npm root -g) npm run e2e
+```
+
+## Configuración y despliegue
+
+La app se publica como sitio estático (GitHub Pages, ver
+`.github/workflows/desplegar.yml`). **La URL del backend y los tokens no van en el
+código publicado**: cada dispositivo los recibe una vez por un enlace de
+configuración y los guarda en su navegador. Pasos y enlaces en
+`backend/apps-script/README.md`.
+
+| Qué | Cómo |
 |---|---|
-| `tipos.ts` | Episodio / Control / EventoClínico / APK como entidades separadas |
-| `fisiologia.ts` | PBW, PAM, PPC, ΔP, Crs, Vt/kg, Tobin, ROX, Glasgow condicionado |
-| `validez.ts` | **Candado de mecánica**: invalida plateau, ΔP y compliance si hay asincronía en modo controlado |
-| `borrador.ts` | **Regla anti-sesgo**: las variables dinámicas nacen en blanco |
-| `eventos.ts` | Vía aérea vigente, cronómetro de PVE, horas de prono, BNM |
-| `sedacion.ts` | Escalones 1–6 con dosis libre |
-| `apk.ts` | Pauta condicional por vía aérea + aserción atestiguada |
-| `nota-alma.ts` | Generador de evolución y casillas discretas |
-| `rem28.ts` | Agregación estadística (se calcula, no se acumula) |
-| `sanitizar.ts` | **Frontera de canales**: clínico sin identidad, identidad en canal propio |
-| `sinapse.ts` | RUT (dígito verificador) y enlace directo a Sinapse |
+| Backend | Apps Script sobre una hoja de Google, ver `backend/apps-script/` |
+| Conexión de un dispositivo | `#config?u=<URL codificada>&a=<APP_TOKEN>` |
+| Llave de estación (solo PC) | `#estacion?t=<STATION_TOKEN>` |
+| Enlace a Sinapse | variable `VITE_SINAPSE_URL` con `{rut}`, `{rutPuntos}`, `{cuerpo}`, `{dv}` |
 
-### Tres decisiones que conviene conocer
+## Arquitectura
 
-**La mecánica ventilatoria se bloquea, no se reporta a medias.** Si el modo es
-VCV o PCV y el paciente está asincrónico, el plateau está contaminado por
-esfuerzo muscular activo. La nota para ALMA no reporta ΔP ni compliance, y dice
-por qué. Un dato falso es peor que un dato ausente.
+```
+CELULAR  ── llave de app ──▶  hojas: episodios · controles · eventos · apk   (sin identidad)
+PC UCI   ── llave de app ──▶  (lo mismo)
+PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · se borra al alta
+```
 
-**Los signos vitales nacen en blanco.** El prototipo los heredaba del control
-anterior, que es el sesgo de arrastre que había que eliminar. Lo que se hereda
-es el estado continuo (infusiones, modo ventilatorio); lo que se lee de un
-monitor se pide fresco.
+- **Local primero.** Cada escritura se guarda en IndexedDB y se encola; la subida
+  es idempotente (el servidor ignora ids repetidos) con reintentos de espera
+  creciente.
+- **Append-only.** Nunca se edita ni se borra un control. Un episodio que cambia
+  (vía aérea, transcrito a ALMA) es una versión nueva; gana la más reciente.
+- **Identidad aparte.** Apps Script corre fuera del hospital y no puede filtrar
+  por IP. Riesgo aceptado por el equipo: nombre y RUT viven en Google para estar
+  disponibles en cualquier PC. Defensas: llave distinta (el celular nunca los
+  recibe), hoja aparte, purga al alta y guarda doble (`src/core/sanitizar.ts` y
+  el servidor) que rechaza identidad en el canal clínico.
+- **Borradores a salvo.** Un control a medio llenar sobrevive a que el sistema
+  cierre la app (12 h de vigencia).
 
-**La APK no marca casillas de a una.** Un clic que marca N criterios de
-seguridad como verificados hace que el registro afirme revisiones que quizá
-nadie hizo, con una firma nominal detrás. En su lugar se registra una aserción
-global atestiguada, con vía rápida de excepción si un criterio falla. Mismo
-clic, registro verdadero. Ver `docs/PLAN-MAESTRO.md` cap. 6.
+## Reglas clínicas que el código hace cumplir
 
-## Documentación
+- **Lo que se lee de un monitor nace en blanco**, sin botón para copiar el valor
+  anterior; los ajustes del ventilador y las infusiones se heredan.
+- **El modo ventilatorio decide qué se registra**, separando lo programado de lo
+  que hace el paciente. “Sig. ›” se detiene en el Modo.
+- **Candado de mecánica:** con asincronía en modalidad controlada, plateau, ΔP y
+  compliance se bloquean (en pantalla, sábana, tendencias y nota). Una sola fuente
+  de verdad: `src/core/validez.ts`.
+- **Tobin solo en espontáneas** (CPAP+PS). En PCV sin plateau, la ΔP usa la
+  presión pico y lo declara.
+- **Guía de protección pulmonar** en ml/kg de peso ideal (6–8 protector, menos de
+  6 ultraprotector); la franja ofrece 6, 7 y 8 ml/kg ya calculados.
+- **APK una vez por turno**, vale para los controles siguientes. El toque único
+  registra una aserción global firmada, no N criterios marcados.
+- **Vía aérea fija por episodio:** solo la cambia un evento.
 
-- `docs/PLAN-MAESTRO.md` — arquitectura clínica y técnica, decisiones y riesgos
-- `backend/apps-script/README.md` — instalación del backend y contrato de la API
+## Estructura
 
-## Pendiente no técnico, y no menor
+```
+src/core/        Dominio puro (sin React ni red): fisiología, candado, borrador,
+                 infusiones, APK, equipos, nota ALMA, informe de riesgo, REM 28
+src/datos/       IndexedDB, cola de subida, sincronía, cliente de Apps Script
+src/celular/     Pantallas de captura y franja sobre el teclado
+src/estacion/    Tablero, detalle, Para ALMA, estado
+src/app/         Raíz, estado de interfaz, persistencia de borradores
+backend/         Apps Script
+e2e/             Prueba de punta a punta en navegador
+docs/            Plan maestro y demo de diseño (docs/demo)
+```
 
-Esto es un registro paralelo con datos de pacientes. Hay que presentarlo a
-jefatura de UPC y a calidad/informática **antes** de la marcha blanca. La
-minimización de datos y el encuadre como herramienta de trabajo son
-precisamente los argumentos que hacen viable esa conversación.
+`docs/demo/upc-pulse-demo.html` es la maqueta interactiva con la que se acordó el
+diseño; no es parte de la aplicación.

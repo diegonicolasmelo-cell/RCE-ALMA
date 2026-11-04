@@ -2,6 +2,7 @@ import { useServicios } from "../app/contexto";
 import { useConsulta, useOnline } from "../app/hooks";
 import { useApp } from "../app/store";
 import { leerMeta } from "../datos/db";
+import { CLAVE_CONEXION, CLAVE_TOKEN_ESTACION } from "../datos/servicios";
 import { Aviso, Pildora } from "../celular/componentes";
 import type { DatosUnidad } from "./datos";
 
@@ -17,6 +18,11 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
   const sincronizar = async (): Promise<void> => {
     const r = await sync.ciclo();
     avisar(r.empuje.error || r.lectura.error ? `No se pudo sincronizar (${r.empuje.error ?? r.lectura.error}).` : "Sincronizado.");
+  };
+
+  const olvidar = async (): Promise<void> => {
+    await db.meta.bulkDelete([CLAVE_CONEXION, CLAVE_TOKEN_ESTACION, "sesion"]);
+    window.location.reload();
   };
 
   return (
@@ -49,6 +55,12 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
           <Aviso tipo="warn" pequeno>
             Este equipo no tiene la llave de estación, así que ve la unidad sin nombres. Abre el marcador de estación (<span className="mono">…/#estacion?t=&lt;llave&gt;</span>) una vez: la llave se guarda en este navegador.
           </Aviso>
+        )}
+        {!local && (
+          <div className="row">
+            <button type="button" className="btn sm" onClick={() => void olvidar()}>Borrar la configuración y las llaves de este equipo</button>
+            <span className="small muted">Úsalo si el equipo cambia de lugar o de responsable.</span>
+          </div>
         )}
         <p className="small muted">
           Riesgo aceptado por el equipo: nombre y RUT viven en Google para estar disponibles en cualquier PC y abrir Sinapse. El celular nunca los recibe (otra llave) y se borran al dar de alta.

@@ -29,12 +29,25 @@
 7. `Implementar → Nueva implementación → Aplicación web`:
    - *Ejecutar como*: **Yo**
    - *Quién tiene acceso*: **Cualquier persona**
-8. Copia la URL `/exec` resultante. Esa URL y el `APP_TOKEN` van en el archivo
-   `.env` del frontend, nunca en el repositorio.
-9. **Para los PC:** crea un marcador `https://…/estacion#t=<STATION_TOKEN>`. El
-   fragmento (`#…`) no viaja al servidor; la app lo guarda en el navegador al
-   primer uso. Así cualquier PC de la UCI queda listo con un clic y no se
-   re-tipea nada por turno.
+8. Copia la URL `/exec` resultante.
+9. **Arma los dos enlaces de configuración** (cada uno se usa una vez por dispositivo):
+
+   | Para | Enlace |
+   |---|---|
+   | **Celulares** | `https://<sitio>/#config?u=<URL /exec codificada>&a=<APP_TOKEN>` |
+   | **PC de la UCI** | `https://<sitio>/#config?u=<URL /exec codificada>&a=<APP_TOKEN>` y después `https://<sitio>/#estacion?t=<STATION_TOKEN>` |
+
+   La URL va codificada (`encodeURIComponent`). Todo viaja en el fragmento
+   (`#…`), que el navegador **nunca envía al servidor**: la app lo guarda en ese
+   dispositivo y lo borra de la barra de direcciones. Así **ni la URL ni los
+   tokens quedan dentro del código publicado** (un sitio público los mostraría a
+   cualquiera) y no hay que re-tipear nada por turno.
+
+   Para despliegues privados se pueden poner en `.env` (`VITE_API_URL`,
+   `VITE_APP_TOKEN`), pero en un sitio público **no lo hagas**.
+
+   Para olvidar la configuración de un equipo: pestaña *Estado* del PC →
+   “Borrar la configuración y las llaves de este equipo”.
 
 ## Por qué "cualquier persona" y qué implica
 

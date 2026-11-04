@@ -10,6 +10,7 @@ import { iniciarServicios } from "../datos/servicios";
 import type { Servicios } from "../datos/servicios";
 import { Estacion } from "../estacion/Estacion";
 import { ServiciosContext } from "./contexto";
+import { persistirBorradores, restaurarBorradores } from "./persistencia";
 import { useApp } from "./store";
 import { Toast } from "./Toast";
 
@@ -64,8 +65,10 @@ export function App() {
       const guardada = sesionVigente(await leerMeta<SesionGuardada>(servicios.db, CLAVE_SESION));
       const prof = guardada ? buscarProfesional(guardada.rut) : undefined;
       if (prof) setSesion({ rut: prof.rut, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
+      await restaurarBorradores(servicios.db);
       setLista(true);
     })();
+    return persistirBorradores(servicios.db);
   }, [servicios, setSesion]);
 
   useCicloDeSincronia(servicios);

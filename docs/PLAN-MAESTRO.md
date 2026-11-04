@@ -7,6 +7,34 @@ Documento de arquitectura clínica y técnica · v1.0
 
 ---
 
+## Revisión 2 — decisiones posteriores a la v1.1
+
+Este plan se escribió antes de construir. Las decisiones que lo cambian, tomadas
+con la unidad clínica, están implementadas en `src/`; donde algo de abajo las
+contradice, **manda esta lista**.
+
+| Tema | Decisión |
+|---|---|
+| **APK** | Una por **turno** (dos al día, por profesionales distintos); lo firmado vale para los controles siguientes del turno. Guardar con kine respiratoria exige la APK del turno. |
+| **Modalidades** | ACVC, PCV, CPAP+PS, CNAF. El modo decide qué se registra, separando **programado** de **lo que hace el paciente** (FR total, Vt espirado, presiones). |
+| **Vt/kg** | Es una **guía de titulación** (protector 6–8, ultraprotector < 6 ml/kg de peso ideal), no solo un resultante. La franja del teclado ofrece 6/7/8 ml/kg ya calculados. Exige talla de ingreso (medida o estimada). |
+| **Tobin** | Solo en espontáneas (CPAP+PS). La v1 lo calculaba también en controladas: error corregido. |
+| **PCV** | Sin plateau medible, la ΔP usa la presión pico y se declara. En CPAP+PS importa la presión pico, no la media. |
+| **Volumen minuto** | Calculado por defecto (Vt espirado × FR total) y **editable** con lo que muestra el ventilador. |
+| **Infusiones** | Un solo modelo (sedantes, DVA, inotrópicos, antiarrítmicos): apagadas por defecto, Iniciar → titular → Suspender, con deshacer. Midazolam y lorazepam como infusión; lorazepam solo dosis libre. Vasopresina en UI/min. |
+| **Equipos** | Estado del episodio por modelo y número (`Savina 1`, `Vela 8`, `Meckis 3`; el Servo U es único), con evento de cambio para conservar el historial. |
+| **Neuromonitoreo** | Capnografía, PIC (PPC calculado) y altura de DVE, activos por episodio. |
+| **Glasgow** | Se registra aunque haya sedación; la nota lo marca “bajo sedación”. |
+| **SAS / vigilia** | Evaluaciones: nacen en blanco (la v1 del prototipo las heredaba). |
+| **Identidad** | Hoja propia con llave de estación (cap. 1, rev. 1.1). La URL y los tokens **no van en el código publicado**: se entregan por enlace de configuración. |
+| **Kine** | Respiratoria sí/no con aspiración (No, TrachCare, Set) y secreciones (aspecto, reología, cantidad). Terapia física engloba KTM + IMT. |
+
+**Sigue pendiente de la unidad:** tabla real de escalones, unidad de la amiodarona,
+horarios de turno, TI/flujo/I:E por modalidad, criterios de la APK y URL de
+Sinapse (lista en el README).
+
+---
+
 ## 0. Qué problema resuelve y qué NO es
 
 **El problema real.** ALMA (TrakCare, InterSystems) es el registro oficial y no se

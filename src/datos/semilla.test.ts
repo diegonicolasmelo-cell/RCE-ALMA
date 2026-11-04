@@ -5,7 +5,7 @@ import { Sincronizador } from "./sync";
 import { Repositorio } from "./repositorio";
 import { sembrarSiVacia } from "./semilla";
 import { crearApiLocal } from "./api";
-import { parsearHash } from "./config";
+import { combinarConfig, modoLocal, parsearHash } from "./config";
 import { calcularDerivados, calcularPbw, contieneDatoIdentificable, apkVigente, turnoDe, turnoAnterior, validarRut } from "@core/index";
 
 async function sembrada() {
@@ -71,14 +71,35 @@ describe("datos de demostración", () => {
 });
 
 describe("parsearHash", () => {
-  it("separa la ruta del token de estación y lo quita de la barra", () => {
-    expect(parsearHash("#estacion?t=ABC123")).toEqual({ ruta: "estacion", token: "ABC123", sinToken: "#estacion" });
+  it("separa la ruta de la llave de estación y la quita de la barra", () => {
+    expect(parsearHash("#estacion?t=ABC123")).toMatchObject({ ruta: "estacion", token: "ABC123", limpio: "#estacion" });
   });
-  it("sin token deja el hash como está", () => {
-    expect(parsearHash("#celular")).toEqual({ ruta: "celular", token: null, sinToken: "#celular" });
-    expect(parsearHash("")).toEqual({ ruta: "", token: null, sinToken: "" });
+  it("sin parámetros deja el hash como está", () => {
+    expect(parsearHash("#celular")).toMatchObject({ ruta: "celular", token: null, limpio: "#celular" });
+    expect(parsearHash("")).toMatchObject({ ruta: "", token: null, limpio: "" });
   });
-  it("acepta el token solo", () => {
-    expect(parsearHash("#t=XYZ")).toEqual({ ruta: "", token: "XYZ", sinToken: "" });
+  it("acepta la llave sola", () => {
+    expect(parsearHash("#t=XYZ")).toMatchObject({ ruta: "", token: "XYZ", limpio: "" });
+  });
+  it("el enlace de configuración trae URL y token y deja la barra limpia", () => {
+    const url = encodeURIComponent("https://script.google.com/macros/s/AKfyc/exec");
+    const h = parsearHash(`#config?u=${url}&a=APP123`);
+    expect(h.apiUrl).toBe("https://script.google.com/macros/s/AKfyc/exec");
+    expect(h.appToken).toBe("APP123");
+    expect(h.limpio).toBe("");
+  });
+  it("conserva parámetros que no son secretos", () => {
+    expect(parsearHash("#estacion?t=ABC&vista=alma").limpio).toBe("#estacion?vista=alma");
+  });
+});
+
+describe("combinarConfig", () => {
+  const entorno = { apiUrl: "https://build/exec", appToken: "BUILD", sinapseUrl: "" };
+  it("la conexión guardada en el dispositivo manda sobre la del build", () => {
+    expect(combinarConfig(entorno, { apiUrl: "https://disp/exec", appToken: "DISP", sinapseUrl: "https://s/{rut}" })).toEqual({ apiUrl: "https://disp/exec", appToken: "DISP", sinapseUrl: "https://s/{rut}" });
+  });
+  it("sin conexión guardada usa la del build, y sin ninguna queda en modo local", () => {
+    expect(combinarConfig(entorno, undefined)).toEqual(entorno);
+    expect(modoLocal(combinarConfig({ apiUrl: null, appToken: null, sinapseUrl: "" }, undefined))).toBe(true);
   });
 });

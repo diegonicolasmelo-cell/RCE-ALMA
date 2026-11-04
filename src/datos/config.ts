@@ -26,21 +26,61 @@ export const modoLocal = (c: ConfigApp): boolean => c.apiUrl === null || c.appTo
 export interface HashParseado {
   /** Ruta sin parametros, p. ej. "estacion". */
   readonly ruta: string;
+  /** Llave de estacion (t). */
   readonly token: string | null;
-  /** El mismo hash sin el token, para dejar en la barra de direcciones. */
-  readonly sinToken: string;
+  /** URL del web app de Apps Script (u). */
+  readonly apiUrl: string | null;
+  /** Token de aplicacion (a). */
+  readonly appToken: string | null;
+  /** URL de la plantilla de Sinapse (s). */
+  readonly sinapseUrl: string | null;
+  /** El mismo hash sin ninguno de los parametros secretos, para dejar en la barra de direcciones. */
+  readonly limpio: string;
 }
 
-/** "#estacion?t=ABC" -> { ruta: "estacion", token: "ABC", sinToken: "#estacion" }. */
+const PARAMETROS_SECRETOS = ["t", "u", "a", "s"] as const;
+
+/**
+ * "#estacion?t=ABC" -> { ruta: "estacion", token: "ABC", limpio: "#estacion" }.
+ * "#config?u=<url>&a=<token>" configura la conexion de un dispositivo.
+ *
+ * Los parametros viajan en el fragmento (#...), que el navegador nunca envia al
+ * servidor, y se borran de la barra de direcciones apenas se guardan.
+ */
 export function parsearHash(hash: string): HashParseado {
   const sinNumeral = hash.startsWith("#") ? hash.slice(1) : hash;
   const [ruta = "", consulta = ""] = sinNumeral.split("?");
   const params = new URLSearchParams(consulta);
-  const token = params.get("t");
-  params.delete("t");
-  const resto = params.toString();
-  const rutaLimpia = ruta.startsWith("t=") ? "" : ruta;
-  const sinToken = `#${rutaLimpia}${resto ? `?${resto}` : ""}`;
   const tokenDirecto = ruta.startsWith("t=") ? ruta.slice(2) : null;
-  return { ruta: rutaLimpia, token: token ?? tokenDirecto, sinToken: sinToken === "#" ? "" : sinToken };
+  const leer = (k: string): string | null => {
+    const v = params.get(k);
+    return v !== null && v !== "" ? v : null;
+  };
+  const resultado = {
+    ruta: ruta.startsWith("t=") ? "" : ruta,
+    token: leer("t") ?? tokenDirecto,
+    apiUrl: leer("u"),
+    appToken: leer("a"),
+    sinapseUrl: leer("s")
+  };
+  for (const k of PARAMETROS_SECRETOS) params.delete(k);
+  const resto = params.toString();
+  const limpio = `#${resultado.ruta}${resto ? `?${resto}` : ""}`;
+  return { ...resultado, limpio: limpio === "#" || limpio === "#config" ? "" : limpio };
+}
+
+/** Conexion guardada en el dispositivo (no viaja en el codigo publicado). */
+export interface ConexionDispositivo {
+  readonly apiUrl: string;
+  readonly appToken: string;
+  readonly sinapseUrl?: string;
+}
+
+/** La conexion del dispositivo manda sobre la del build; el build sirve para despliegues privados. */
+export function combinarConfig(entorno: ConfigApp, dispositivo: ConexionDispositivo | undefined): ConfigApp {
+  return {
+    apiUrl: dispositivo?.apiUrl ?? entorno.apiUrl,
+    appToken: dispositivo?.appToken ?? entorno.appToken,
+    sinapseUrl: dispositivo?.sinapseUrl ?? entorno.sinapseUrl
+  };
 }

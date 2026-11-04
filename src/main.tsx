@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import { App } from "./app/App";
 import "./estilos.css";
 
@@ -11,3 +12,6 @@ createRoot(raiz).render(
     <App />
   </StrictMode>
 );
+
+// Service worker: instalable y utilizable sin senal. Se actualiza solo.
+registerSW({ immediate: true });

@@ -108,6 +108,18 @@ details.crit-list ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(-
 .chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:4px 0}
 .timer{font-family:var(--font-data);font-size:26px;font-weight:600}
 
+.pickbtn{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;min-height:42px;font-weight:700;font-size:14px;text-align:left;padding:0 10px;cursor:pointer}
+.pickbtn::after{content:"\25BE";float:right;color:var(--muted)}
+.kb{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--panel-2);border-top:1px solid var(--line);box-shadow:0 -6px 16px rgba(0,0,0,.14)}
+.qstrip{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+.qlbl{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;margin-right:2px}
+.qchip{flex:none;border:1px solid var(--line);background:var(--panel-2);border-radius:8px;padding:8px 14px;min-height:40px;font-family:var(--font-data);font-weight:600;font-size:14px;cursor:pointer}
+.qchip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.qchip.prev{border-style:dashed}
+.qchip.nxt{background:none;color:var(--accent);border-color:transparent}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px))}
+.keys button{min-height:46px;border:0;border-radius:8px;background:var(--panel);font-family:var(--font-data);font-size:20px;font-weight:600;cursor:pointer;box-shadow:0 1px 0 var(--line)}
+.keys .done{grid-column:1/-1;background:var(--accent);color:var(--on-accent);font-family:var(--font-ui);font-size:15px}
 .side-note{display:flex;flex-direction:column;gap:14px}
 .mirror{border:1px dashed var(--line)}
 
@@ -244,7 +256,7 @@ const last=b=>b.controles[b.controles.length-1]||null;
 const nowFor=b=>Math.max(Date.now(),(last(b)?.ts||0)+5*60000);
 
 /* ============ estado de la demo ============ */
-const S={tab:'celular',phoneBed:'UCI-01',phoneTab:'control',pcBed:'UCI-01',filtro:'mias',almaCtl:null,almaIdx:0,notaModo:'turno',online:true,queue:[],log:[],drafts:{},apkNo:false,evForm:null,apiTest:null};
+const S={tab:'celular',phoneBed:'UCI-01',phoneTab:'control',pcBed:'UCI-01',filtro:'mias',almaCtl:null,almaIdx:0,notaModo:'turno',online:true,queue:[],log:[],drafts:{},apkNo:false,evForm:null,apiTest:null,kb:null};
 const DRAFT_BLANK={fc:'',pas:'',pad:'',spo2:'',fr:'',vt:'',pico:'',plat:'',pmed:''};
 function draftFor(b){
   if(!S.drafts[b.id]){const u=last(b);
@@ -297,13 +309,13 @@ function derivedHTML(b,d){
 function phoneControl(b,d){
   const u=last(b);const ph=k=>u&&u[k]!=null?'ant. '+u[k]:'';
   const bloq=d.asinc&&CONTROLADOS.includes(d.modo);
-  const inp=(k,l,ph2,dis)=>`<div class="f"><label for="in-${k}">${l}</label><input id="in-${k}" data-k="${k}" inputmode="decimal" value="${esc(d[k])}" placeholder="${ph2||ph(k)}" ${dis?'disabled':''}></div>`;
+  const inp=(k,l,ph2,dis)=>`<div class="f"><label for="in-${k}">${l}</label><input id="in-${k}" data-k="${k}" inputmode="none" autocomplete="off" value="${esc(d[k])}" placeholder="${ph2||ph(k)}" ${dis?'disabled':''}></div>`;
   const noVM=!artificial(b)&&d.modo!=='CNAF'&&false;
   return `<div class="notice acc small">Los signos vitales nacen <b>en blanco</b>: se lee el monitor y el ventilador de nuevo cada vez. En gris queda el control anterior.</div>
   <div><h3>Signos vitales</h3><div class="fgrid">${inp('fc','FC')}${inp('pas','PAS')}${inp('pad','PAD')}${inp('spo2','SpO₂ %')}${inp('fr','FR')}${inp('vt','Vt ml')}</div></div>
   <div><h3>Ventilador</h3>
    <div class="fgrid">
-    <div class="f"><label for="in-modo">Modo</label><select id="in-modo" data-k="modo">${['ACVC','PCV','CPAP+PS','CNAF'].map(m=>`<option ${d.modo===m?'selected':''}>${m}</option>`).join('')}</select></div>
+    <div class="f"><label for="in-modo">Modo</label><button type="button" class="pickbtn" id="in-modo" data-act="pickmodo">${d.modo}</button></div>
     ${inp('peep','PEEP','')}${inp('fio','FiO₂ %','')}
     ${inp('pico','P. pico')}${inp('plat','P. plateau',bloq?'bloqueado':'',bloq)}${inp('pmed','P. media')}
     ${['CPAP+PS','PCV'].includes(d.modo)?inp('ps',d.modo==='PCV'?'P. control':'P. soporte',''):''}
@@ -323,7 +335,7 @@ function phoneConsc(b,d){
    <div class="row" style="margin-top:6px"><span class="mono">${num(d.fent)>0?d.fent+' mcg/kg/h':'sin infusión'}</span><button class="btn sm" data-act="stopfent">⏹ Suspender</button></div></div>`
   :`<div><h3>Estado de vigilia</h3><div class="stack" style="gap:6px">${VIG.map(v=>`<button class="chip" style="text-align:left;font-family:var(--font-ui)" data-act="vig" data-v="${v}" aria-pressed="${d.vig===v}">${v}</button>`).join('')}</div></div>`}
   <div><h3>Noradrenalina (mcg/kg/min)</h3>
-   <div class="row"><div class="f" style="width:110px"><input id="in-nad" data-k="nad" inputmode="decimal" value="${esc(d.nad)}" placeholder="0" aria-label="Noradrenalina"></div>
+   <div class="row"><div class="f" style="width:110px"><input id="in-nad" data-k="nad" inputmode="none" autocomplete="off" value="${esc(d.nad)}" placeholder="0" aria-label="Noradrenalina"></div>
    <span class="pill ${sd.k==='none'?'':sd.k}" id="dvaPill"><i class="dot ${sd.k==='none'?'':sd.k}"></i>${sd.t}</span></div>
    <p class="small muted" style="margin-top:6px">Hereda la dosis anterior. Semáforo: baja &lt; 0,1 · media 0,1–0,3 · alta &gt; 0,3.</p></div>`}
 function phoneKine(b,d){
@@ -365,9 +377,37 @@ function renderPhone(){
    <div class="ph-body" id="phBody">${body}</div>
    <div class="ph-save"><button class="btn primary" data-act="save">Guardar control</button></div>
    <nav class="ph-beds" aria-label="Camas">${beds.map(x=>`<button class="chip ${x.mine?'':'apoyo'}" data-bed="${x.id}" aria-pressed="${x.id===S.phoneBed}" title="${x.mine?'Cama asignada':'Cama de apoyo'}">${x.id.slice(-2)}${x.controles.length?'':'·'}</button>`).join('')}</nav>`;
-  tickPve()}
+  renderKb();tickPve()}
 function tickPve(){const b=bed(S.phoneBed),el=$('#pveT');if(!el||!b.pve)return;const s=Math.min(30*60,Math.floor((Date.now()-b.pve)/1000)*60);el.textContent=pad2(Math.floor(s/60))+':'+pad2(s%60)+' / 30:00'+(s>=1800?'  ✓ cumplida':'')}
 setInterval(tickPve,500);
+
+/* ---- franja sobre el teclado ---- */
+const QUICK={peep:[5,6,8,10,12,14],fio:[30,35,40,50,60,100],nad:[0.05,0.1,0.2,0.3],ps:[5,6,7,8,10,12]};
+const KLAB={fc:'FC',pas:'PAS',pad:'PAD',spo2:'SpO₂ %',fr:'FR',vt:'Vt ml',pico:'P. pico',plat:'P. plateau',pmed:'P. media',peep:'PEEP',fio:'FiO₂ %',ps:'P. soporte',nad:'Noradrenalina'};
+function renderKb(){
+  let el=$('#kb');const body=$('#phBody');
+  if(!S.kb){if(el)el.remove();if(body)body.style.paddingBottom='';return}
+  const b=bed(S.phoneBed),d=draftFor(b),u=last(b);let chips,keys=true,label;
+  if(S.kb==='modo'){keys=false;label='Modo';chips=['ACVC','PCV','CPAP+PS','CNAF'].map(m=>`<button class="qchip ${d.modo===m?'on':''}" data-act="kbchip" data-v="${m}">${m}</button>`)}
+  else{label=KLAB[S.kb]||'';
+    const prev=u&&u[S.kb]!=null?[`<button class="qchip prev" data-act="kbchip" data-v="${u[S.kb]}">ant. ${u[S.kb]}</button>`]:[];
+    chips=[...prev,...(QUICK[S.kb]||[]).map(v=>`<button class="qchip ${String(d[S.kb])===String(v)?'on':''}" data-act="kbchip" data-v="${v}">${v}</button>`),'<button class="qchip nxt" data-act="kbnext">Sig. ›</button>']}
+  const pad=['1','2','3','4','5','6','7','8','9',',','0','back'];
+  const html=`<div class="qstrip"><span class="qlbl">${label}</span>${chips.join('')}</div>${keys?`<div class="keys">${pad.map(k=>`<button data-act="kbkey" data-v="${k}" aria-label="${k==='back'?'Borrar':k}">${k==='back'?'⌫':k}</button>`).join('')}<button class="done" data-act="kbdone">Listo</button></div>`:''}`;
+  if(!el){el=document.createElement('div');el.id='kb';el.className='kb';$('#phone').appendChild(el)}
+  el.innerHTML=html;if(body)body.style.paddingBottom=(keys?290:90)+'px'}
+function closeKb(){S.kb=null;renderKb()}
+function setField(k,v){const d=draftFor(bed(S.phoneBed));d[k]=String(v);const el=$('#in-'+k);if(el){el.value=d[k];el.dispatchEvent(new Event('input',{bubbles:true}))}}
+function kbAct(a,v){
+  const b=bed(S.phoneBed),d=draftFor(b);
+  if(a==='pickmodo'){S.kb='modo';renderKb();return}
+  if(a==='kbchip'){if(S.kb==='modo'){d.modo=v;S.kb=null;renderPhone();return}setField(S.kb,v);kbAct('kbnext');return}
+  if(a==='kbnext'){const ins=$$('#phBody input[data-k]:not([disabled])'),i=ins.findIndex(x=>x.id==='in-'+S.kb);if(ins[i+1])ins[i+1].focus();else closeKb();return}
+  if(a==='kbdone'){if(document.activeElement)document.activeElement.blur();closeKb();return}
+  if(a==='kbkey'){let cur=d[S.kb]||'';if(v==='back')cur=cur.slice(0,-1);else if(v===','){if(!/[,.]/.test(cur))cur+=cur===''?'0,':','}else cur+=v;setField(S.kb,cur)}}
+document.addEventListener('focusin',e=>{const t=e.target;if(t.matches&&t.matches('#phone input[data-k]')){S.kb=t.dataset.k;renderKb();t.scrollIntoView({block:'center',behavior:'smooth'})}});
+document.addEventListener('mousedown',e=>{if(e.target.closest&&e.target.closest('#kb'))e.preventDefault()});
+document.addEventListener('pointerdown',e=>{if(S.kb&&!e.target.closest('#kb,#phone input[data-k],#in-modo'))closeKb()});
 
 function saveControl(){
   const b=bed(S.phoneBed),d=draftFor(b);const miss=[];
@@ -394,6 +434,7 @@ document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset&&t.dataset.act==='act'){const d=draftFor(bed(S.phoneBed)),k=KINE[+t.dataset.v];d.acts=t.checked?[...d.acts,k]:d.acts.filter(x=>x!==k)}});
 
 function phoneAct(a,v){
+  if(a==='pickmodo'||a.startsWith('kb')){kbAct(a,v);return}
   const b=bed(S.phoneBed),d=draftFor(b);
   switch(a){
    case'asinc':d.asinc=v==='1';renderPhone();break;
@@ -423,7 +464,7 @@ function phoneAct(a,v){
   if(a!=='save')syncSide()}
 
 function renderCelular(){
-  $('#view').innerHTML=`<p class="intro">Así lo ve el kinesiólogo a pie de cama. Prueba: <b>rellena signos de ejemplo</b>, cambia a <i>Asincrónico = Sí</i> en modo ACVC, guarda, y revisa el tablero del PC. Marca <i>Sin señal</i> para ver la cola.</p>
+  $('#view').innerHTML=`<p class="intro">Así lo ve el kinesiólogo a pie de cama. Prueba: <b>rellena signos de ejemplo</b>, cambia a <i>Asincrónico = Sí</i> en modo ACVC, guarda, y revisa el tablero del PC. Marca <i>Sin señal</i> para ver la cola. <b>Toca un casillero (FiO₂, PEEP) o el Modo:</b> la franja de opciones aparece sobre el teclado.</p>
   <div class="celular"><div id="phone" class="phone"></div><div class="side-note" id="side"></div></div>`;
   renderPhone();syncSide()}
 function syncSide(){
@@ -432,7 +473,8 @@ function syncSide(){
   <div class="card mirror"><h3>Mientras tanto, en el PC</h3>${cardHTML(b,true)}<p class="small muted" style="margin-top:8px">${S.queue.length?`${S.queue.length} control(es) esperando señal: el PC todavía no los ve.`:'Se actualiza al guardar.'}</p></div>
   <div class="card"><h3>Reglas que ya están aplicadas</h3><ul class="small ink2" style="margin:0;padding-left:18px;display:grid;gap:4px">
    <li>Signos vitales nacen vacíos; infusiones y modo ventilatorio se heredan.</li><li>La vía aérea (franja azul) está fija; solo la cambia un evento.</li>
-   <li>Asincronía en modo controlado bloquea plateau, ΔP y compliance.</li><li>Con sedación se exige SAS; sin sedación, estado de vigilia.</li></ul></div>`}
+   <li>Asincronía en modo controlado bloquea plateau, ΔP y compliance.</li><li>Con sedación se exige SAS; sin sedación, estado de vigilia.</li></ul></div>
+  <div class="card"><h3>Franja sobre el teclado</h3><p class="small ink2">En esta demo el teclado numérico es dibujado para poder mostrarlo. En el teléfono real queda el teclado del sistema y la franja se pega encima con <span class="mono">visualViewport</span>. No va dentro de la barra de sugerencias del propio teclado: eso no lo permite ni iOS ni Android.</p></div>`}
 
 /* ============ vista: TABLERO PC ============ */
 function cardHTML(b,mini){

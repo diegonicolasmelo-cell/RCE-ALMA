@@ -1,0 +1,597 @@
+<title>UPC-Pulse</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Concepto: tablero clínico sobrio. Neutros fríos, un solo acento azul, semáforo clínico
+   reservado para estados. Naranja marca solo "idea de tu colega". Datos en mono tabular. */
+:root{
+  --bg:#eef1f4; --panel:#fcfcfb; --panel-2:#f3f5f7; --ink:#0f1a24; --ink-2:#465463; --muted:#7a8794;
+  --line:#dde3e9; --accent:#2a78d6; --accent-soft:#e3eefb; --on-accent:#ffffff;
+  --new:#eb6834; --new-soft:#fdece4; --new-ink:#a33e12;
+  --good:#0ca30c; --good-ink:#006300; --good-soft:#e6f5e6;
+  --warn:#fab219; --warn-ink:#7a5200; --warn-soft:#fff4d9;
+  --serious:#ec835a; --crit:#d03b3b; --crit-ink:#b02a2a; --crit-soft:#fbe9e9;
+  --bezel:#1b242c; --shadow:0 1px 2px rgba(15,26,36,.06),0 8px 24px rgba(15,26,36,.08);
+  --font-ui:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-data:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1318; --panel:#161c22; --panel-2:#1c242b; --ink:#eaeef2; --ink-2:#b7c1cb; --muted:#8895a2;
+  --line:#2a343d; --accent:#3987e5; --accent-soft:#16283d; --new:#d95926; --new-soft:#33211a; --new-ink:#f0a483;
+  --good:#0ca30c; --good-ink:#4cc84c; --good-soft:#15301a; --warn:#fab219; --warn-ink:#fab219; --warn-soft:#352b12;
+  --crit:#d03b3b; --crit-ink:#ef7676; --crit-soft:#3a1d1d; --bezel:#05080b; --shadow:0 8px 24px rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --panel:#161c22; --panel-2:#1c242b; --ink:#eaeef2; --ink-2:#b7c1cb; --muted:#8895a2;
+  --line:#2a343d; --accent:#3987e5; --accent-soft:#16283d; --new:#d95926; --new-soft:#33211a; --new-ink:#f0a483;
+  --good:#0ca30c; --good-ink:#4cc84c; --good-soft:#15301a; --warn:#fab219; --warn-ink:#fab219; --warn-soft:#352b12;
+  --crit:#d03b3b; --crit-ink:#ef7676; --crit-soft:#3a1d1d; --bezel:#05080b; --shadow:0 8px 24px rgba(0,0,0,.4); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.45;
+  padding-block:20px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:0}
+h2{font-size:15px;font-weight:700;margin:0 0 8px;text-wrap:balance}
+h3{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+p{margin:0}
+.mono{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-bottom:14px}
+.brand small{display:block;color:var(--ink-2);font-size:13px;font-weight:500;margin-top:2px}
+.demo-tag{font-size:12px;font-weight:600;color:var(--new-ink);background:var(--new-soft);padding:4px 10px;border-radius:999px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font-weight:600;color:var(--ink-2);cursor:pointer;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.intro{color:var(--ink-2);max-width:72ch;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--panel-2);color:var(--ink-2);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good-ink)} .pill.warn{background:var(--warn-soft);color:var(--warn-ink)}
+.pill.crit{background:var(--crit-soft);color:var(--crit-ink)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.pill.new{background:var(--new-soft);color:var(--new-ink)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.good{background:var(--good)} .dot.warn{background:var(--warn)} .dot.serious{background:var(--serious)} .dot.crit{background:var(--crit)}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:9px 14px;font-weight:600;cursor:pointer;min-height:40px}
+.btn:hover{background:var(--panel-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)} .btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{background:var(--crit);border-color:var(--crit);color:#fff}
+.btn.sm{padding:5px 10px;min-height:30px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 11px;font-weight:600;cursor:pointer;min-height:38px;font-family:var(--font-data);font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chip.apoyo{border-style:dashed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stack{display:flex;flex-direction:column;gap:12px}
+.muted{color:var(--muted)} .ink2{color:var(--ink-2)}
+.small{font-size:12px}
+.tag-new{font-size:11px;font-weight:700;color:var(--new-ink);background:var(--new-soft);border-left:3px solid var(--new);padding:1px 7px;border-radius:2px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+
+/* celular */
+.celular{display:grid;grid-template-columns:minmax(0,392px) minmax(0,1fr);gap:24px;align-items:start}
+.phone{width:100%;max-width:392px;height:780px;background:var(--panel);border:10px solid var(--bezel);border-radius:34px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.ph-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:12px;font-weight:600}
+.ph-top label{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.airway{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:13px}
+.airway b{font-size:16px}
+.ph-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.ph-tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:9px 2px;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.ph-tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.ph-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+.ph-save{padding:8px 14px;border-top:1px solid var(--line);background:var(--panel)}
+.ph-save .btn{width:100%;min-height:46px;font-size:15px}
+.ph-beds{display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));overflow-x:auto;border-top:1px solid var(--line);background:var(--panel-2)}
+.ph-beds .chip{flex:none;padding:7px 10px}
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.f label{display:block;font-size:11px;font-weight:600;color:var(--ink-2);margin-bottom:3px}
+.f input,.f select{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 8px;font-family:var(--font-data);font-size:15px;min-height:42px;text-align:center}
+.f input::placeholder{color:var(--muted);opacity:.65}
+.f input[disabled]{background:var(--crit-soft);border-style:dashed;color:var(--crit-ink)}
+.f select{text-align:left;font-family:var(--font-ui);font-size:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{background:var(--panel);border:0;padding:8px 14px;font-weight:700;cursor:pointer;min-height:38px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.derived{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--panel-2);border-radius:9px;padding:8px}
+.derived div{text-align:center} .derived b{display:block;font-family:var(--font-data);font-size:15px} .derived span{font-size:10.5px;color:var(--ink-2);font-weight:600}
+.notice{border-radius:9px;padding:9px 11px;font-size:13px}
+.notice.crit{background:var(--crit-soft);color:var(--crit-ink)} .notice.good{background:var(--good-soft);color:var(--good-ink)}
+.notice.warn{background:var(--warn-soft);color:var(--warn-ink)} .notice.acc{background:var(--accent-soft);color:var(--ink)}
+.notice.new{background:var(--new-soft);border-left:3px solid var(--new);color:var(--ink)}
+.escalones{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.escalones .chip{padding:6px 0;text-align:center}
+.sas{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.sas .chip{padding:6px 0;text-align:center}
+.apk-text{font-size:13px;background:var(--panel-2);border-radius:9px;padding:10px 12px}
+details.crit-list{border:1px solid var(--line);border-radius:9px;padding:8px 12px}
+details.crit-list summary{cursor:pointer;font-weight:600;font-size:13px}
+details.crit-list ul{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2)}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;padding:4px 0}
+.timer{font-family:var(--font-data);font-size:26px;font-weight:600}
+
+.side-note{display:flex;flex-direction:column;gap:14px}
+.mirror{border:1px dashed var(--line)}
+
+/* PC */
+.pc-bar{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;margin-bottom:12px}
+.camas{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:16px}
+.cama{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:7px;cursor:pointer;text-align:left}
+.cama.mini{border:0;padding:0;cursor:default;background:none;box-shadow:none}
+.cama[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.cama.alerta{border-color:var(--crit);box-shadow:0 0 0 2px var(--crit-soft)}
+.cama header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cama .id{font-family:var(--font-data);font-weight:600;font-size:15px}
+.cama .nm{font-weight:700}
+.cama .meta{color:var(--ink-2);font-size:13px}
+.cama .pills{display:flex;flex-wrap:wrap;gap:5px}
+.detail{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.detail-head{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:center}
+.sparks{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.spark{background:var(--panel-2);border-radius:10px;padding:10px 12px;position:relative}
+.spark .lbl{display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--ink-2)}
+.spark .val{font-family:var(--font-data);font-size:20px;font-weight:600;margin:2px 0}
+.spark svg{display:block;width:100%;height:56px;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:3px 8px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-100%);z-index:3}
+.scroll-x{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table.sab{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
+table.sab th,table.sab td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+table.sab th:first-child,table.sab td:first-child{text-align:left;position:sticky;left:0;background:var(--panel);font-weight:600;color:var(--ink-2)}
+table.sab thead th{background:var(--panel-2);font-family:var(--font-data)}
+table.sab td.v{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.lockc{color:var(--crit-ink);display:inline-flex;gap:4px;align-items:center;font-size:12px;font-weight:600}
+pre.nota{margin:0;white-space:pre-wrap;font-family:var(--font-data);font-size:12.5px;line-height:1.55;background:var(--panel-2);border-radius:10px;padding:12px 14px;max-height:420px;overflow:auto}
+.alma{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+.step-val{font-family:var(--font-data);font-size:34px;font-weight:600;word-break:break-word;margin:4px 0 2px}
+.bar{height:6px;background:var(--panel-2);border-radius:999px;overflow:hidden} .bar i{display:block;height:100%;background:var(--accent)}
+.flist{list-style:none;margin:0;padding:0;font-size:13px}
+.flist li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--line)}
+.flist li.on{font-weight:700;color:var(--accent)} .flist li.done{color:var(--muted)}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.flow .node{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel)}
+.flow .node h2{display:flex;align-items:center;gap:8px}
+.sheet{font-family:var(--font-data);font-size:12px}
+.keyline{font-family:var(--font-data);font-size:12px;background:var(--panel-2);border-radius:8px;padding:8px 10px;overflow-x:auto;white-space:pre}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;box-shadow:var(--shadow);z-index:20;max-width:calc(100vw - 32px)}
+@media (max-width:900px){.celular,.alma{grid-template-columns:minmax(0,1fr)}.phone{margin-inline:auto}}
+@media (prefers-reduced-motion:no-preference){.cama,.btn,.chip{transition:background .12s,border-color .12s}}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <h1>UPC-Pulse</h1>
+      <small>Captura a pie de cama · tablero en el PC · evolución para ALMA</small>
+    </div>
+    <span class="demo-tag">Demo con datos inventados · nada se guarda</span>
+  </div>
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-tab="celular">1 · Celular</button>
+    <button class="tab" role="tab" data-tab="tablero">2 · PC: tablero</button>
+    <button class="tab" role="tab" data-tab="alma">3 · PC: Para ALMA</button>
+    <button class="tab" role="tab" data-tab="datos">4 · Dónde viven los datos</button>
+  </div>
+  <main id="view"></main>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ============ utilidades ============ */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{if(v===null||v===undefined||v==='')return null;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n};
+const fmt=v=>v===null||v===undefined||v===''?'--':String(v);
+const pad2=n=>String(n).padStart(2,'0');
+const hhmm=ts=>{const d=new Date(ts);return pad2(d.getHours())+':'+pad2(d.getMinutes())};
+const ic={
+  lock:'<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>',
+  check:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>',
+  alert:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.6v.4"/></svg>'
+};
+let toastT;
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
+async function copiar(texto,msg){try{await navigator.clipboard.writeText(texto);toast(msg)}catch(e){toast('El navegador bloqueó el portapapeles: selecciona el texto y copia con Ctrl+C')}}
+
+/* RUT ficticio con dígito verificador real (módulo 11) */
+function dv(b){let s=0,f=2;for(let i=String(b).length-1;i>=0;i--){s+=+String(b)[i]*f;f=f===7?2:f+1}const r=11-(s%11);return r===11?'0':r===10?'K':String(r)}
+const rutN=b=>b+'-'+dv(b);
+const rutF=b=>String(b).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+dv(b);
+
+/* ============ dominio (espejo simplificado de src/core) ============ */
+const CONTROLADOS=['ACVC','PCV'];
+const pbw=b=>Math.max(30,Math.round(((b.sexo==='F'?45.5:50)+0.91*(b.talla-152.4))*10)/10);
+const pamC=c=>c.pas!=null&&c.pad!=null&&c.pas>c.pad?Math.round(c.pad+(c.pas-c.pad)/3):null;
+const controlado=c=>CONTROLADOS.includes(c.modo);
+const mecBloq=c=>c.asinc&&controlado(c);
+const dpC=c=>!mecBloq(c)&&c.plat!=null&&c.peep!=null&&c.plat>c.peep?c.plat-c.peep:null;
+const crsC=c=>{const d=dpC(c);return d&&c.vt?Math.round(c.vt/d*10)/10:null};
+const tobinC=c=>c.fr&&c.vt?Math.round(c.fr/(c.vt/1000)):null;
+const vtkg=(c,b)=>c.vt?Math.round(c.vt/pbw(b)*10)/10:null;
+function semDva(nad){if(!nad||nad<=0)return{k:'none',t:'Sin DVA'};if(nad<0.1)return{k:'good',t:'DVA baja'};if(nad<=0.3)return{k:'warn',t:'DVA media'};return{k:'crit',t:'DVA alta'}}
+const artificial=b=>b.via==='TET'||b.via==='TQT';
+const SAS={1:'No despertable',2:'Muy sedado',3:'Sedado',4:'Calmado y cooperador',5:'Agitado',6:'Muy agitado',7:'Agitación peligrosa'};
+const VIG=['Vigil / Alerta','Somnoliento','Estuporoso','Coma'];
+const FENT=n=>Math.round((0.6+0.6*(n-1))*100)/100; /* escalón 1..6 → 0.6..3.6 mcg/kg/h */
+const KINE=['Giros en cama / posicionamiento','Movilización pasiva / activo-asistida','Sedestación al borde de cama','Bipedestación asistida','Marcha asistida en el box'];
+const PAUTA_ART=['PAM ≥ 65 mmHg y DVA sin escalada en la última hora','SpO2 ≥ 90% con FiO2 ≤ 60%','PEEP ≤ 12 cmH2O','Presión de cuff en rango (20–30 cmH2O)','Vía aérea permeable y fijación verificada','Sin sangrado activo de vía aérea','PIC < 20 mmHg si hay neuromonitoreo'];
+const PAUTA_NAT=['PAM ≥ 65 mmHg sin DVA en ascenso','SpO2 ≥ 90% con el soporte actual','Conciencia compatible con el procedimiento','Tos efectiva o asistencia de la tos disponible','Sin riesgo de aspiración no controlado'];
+const pauta=b=>artificial(b)?PAUTA_ART:PAUTA_NAT;
+
+/* ============ datos de ejemplo ============ */
+const T0=new Date();const at=(h,m)=>{const d=new Date(T0);d.setHours(h,m,0,0);return d.getTime()};
+const ctl=(h,m,o)=>({id:'c'+Math.random().toString(36).slice(2,8),ts:at(h,m),hora:pad2(h)+':'+pad2(m),fc:90,pas:118,pad:66,spo2:96,fr:18,vt:440,pico:24,plat:19,pmed:11,modo:'ACVC',peep:8,fio:40,ps:null,asinc:false,sedOn:true,sas:4,vig:null,fent:0,nad:0,aspira:true,acts:[],ims:null,firma:'DM',...o});
+const beds=[
+ {id:'UCI-01',mine:true,nombre:'Paciente Prueba Uno',rutB:12345678,edad:64,sexo:'M',talla:172,dx:'Shock séptico / SDRA en resolución',via:'TET',cal:'8.0',fij:'22',diasVM:4,controles:[
+   ctl(8,10,{fc:96,pas:112,pad:62,spo2:95,fr:20,vt:430,pico:25,plat:20,peep:10,fio:45,nad:.08,sas:3,fent:1.2,acts:[KINE[0]],ims:1}),
+   ctl(10,30,{fc:92,pas:116,pad:66,spo2:95,fr:22,vt:420,pico:27,plat:28,peep:10,fio:45,asinc:true,nad:.08,sas:3,fent:1.2,acts:[KINE[1]],ims:1}),
+   ctl(12,0,{fc:88,pas:120,pad:68,spo2:96,fr:20,vt:440,pico:24,plat:19,peep:8,fio:40,nad:.05,sas:4,fent:.6,acts:[KINE[2]],ims:3}),
+   ctl(13,10,{fc:84,pas:124,pad:70,spo2:97,fr:18,vt:460,pico:14,plat:null,pmed:8,modo:'CPAP+PS',ps:7,peep:5,fio:35,nad:.03,sas:4,fent:.6,acts:[KINE[2],KINE[3]],ims:3})],
+   eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:null},
+ {id:'UCI-02',mine:true,nombre:'Paciente Prueba Dos',rutB:9876543,edad:39,sexo:'F',talla:162,dx:'TEC grave / neuromonitoreo',via:'TET',cal:'7.5',fij:'21',diasVM:6,controles:[
+   ctl(9,40,{fc:74,pas:138,pad:76,spo2:98,fr:18,vt:350,pico:21,plat:16,peep:6,fio:35,nad:.08,sas:1,fent:2.4,acts:[],ims:0})],
+   eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:null},
+ {id:'UCI-03',mine:true,nombre:'Paciente Prueba Tres',rutB:15432109,edad:71,sexo:'M',talla:168,dx:'EPOC reagudizado / destete prolongado',via:'TQT',cal:'8.0',fij:'Collarín',diasVM:12,controles:[
+   ctl(10,15,{fc:82,pas:128,pad:72,spo2:94,fr:19,vt:420,pico:12,plat:11,modo:'CPAP+PS',ps:6,peep:5,fio:35,sedOn:false,sas:null,vig:'Vigil / Alerta',acts:[KINE[1]],ims:3})],
+   eventos:[],apk:[],transc:'12:40',alerta:null,pve:null,prono:null},
+ {id:'UCI-04',mine:true,nombre:'Paciente Prueba Cuatro',rutB:8765432,edad:52,sexo:'M',talla:178,dx:'SDRA grave, en prono',via:'TET',cal:'8.5',fij:'23',diasVM:3,controles:[
+   ctl(11,0,{fc:104,pas:104,pad:58,spo2:92,fr:26,vt:380,pico:30,plat:27,peep:12,fio:70,nad:.35,sas:2,fent:2.4,acts:[],ims:0})],
+   eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:Date.now()-18*3600000},
+ {id:'UCI-05',mine:true,nombre:'Paciente Prueba Cinco',rutB:14000001,edad:58,sexo:'F',talla:158,dx:'Neumonía grave, posextubación',via:'NATURAL',cal:null,fij:null,diasVM:0,controles:[],eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:null},
+ {id:'UCI-06',mine:true,nombre:'Paciente Prueba Seis',rutB:17000002,edad:45,sexo:'M',talla:175,dx:'Postoperatorio abdominal',via:'TET',cal:'8.0',fij:'22',diasVM:1,controles:[],eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:null},
+ {id:'UCI-07',mine:false,nombre:'Paciente Prueba Siete',rutB:13000003,edad:67,sexo:'F',talla:160,dx:'Insuficiencia cardiaca descompensada',via:'NATURAL',cal:null,fij:null,diasVM:0,controles:[ctl(9,0,{fc:80,pas:130,pad:74,spo2:95,fr:20,vt:null,pico:null,plat:null,modo:'CNAF',peep:null,fio:40,sedOn:false,sas:null,vig:'Vigil / Alerta',firma:'KG'})],eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:null},
+ {id:'UCI-08',mine:false,nombre:'Paciente Prueba Ocho',rutB:16000004,edad:77,sexo:'M',talla:170,dx:'Sepsis urinaria',via:'NATURAL',cal:null,fij:null,diasVM:0,controles:[],eventos:[],apk:[],transc:null,alerta:null,pve:null,prono:null}
+];
+const bed=id=>beds.find(b=>b.id===id);
+const last=b=>b.controles[b.controles.length-1]||null;
+const nowFor=b=>Math.max(Date.now(),(last(b)?.ts||0)+5*60000);
+
+/* ============ estado de la demo ============ */
+const S={tab:'celular',phoneBed:'UCI-01',phoneTab:'control',pcBed:'UCI-01',filtro:'mias',almaCtl:null,almaIdx:0,notaModo:'turno',online:true,queue:[],log:[],drafts:{},apkNo:false,evForm:null,apiTest:null};
+const DRAFT_BLANK={fc:'',pas:'',pad:'',spo2:'',fr:'',vt:'',pico:'',plat:'',pmed:''};
+function draftFor(b){
+  if(!S.drafts[b.id]){const u=last(b);
+    S.drafts[b.id]={...DRAFT_BLANK,modo:u?.modo||(artificial(b)?'CPAP+PS':'CNAF'),peep:u?.peep??'',fio:u?.fio??'',ps:u?.ps??'',asinc:false,
+      sedOn:u?u.sedOn:false,sas:u?.sas??null,vig:u?.vig??null,fent:u?.fent??0,nad:u?.nad??'',aspira:false,acts:[],ims:'',obs:''}}
+  return S.drafts[b.id]}
+const resetDraft=b=>{delete S.drafts[b.id]};
+const logRow=(b,c)=>({id:c.id,cama:b.id,ep:'ep-'+b.id.slice(-2),guardado:c.hora,fc:c.fc,pa:c.pas+'/'+c.pad,spo2:c.spo2,modo:c.modo,peep:c.peep,firma:c.firma});
+beds.forEach(b=>b.controles.forEach(c=>S.log.push(logRow(b,c))));
+
+/* ============ gráficos ============ */
+function spark(vals,labels,opt={}){
+  const W=260,H=56,P=6,xs=vals.map((_,i)=>vals.length===1?W/2:P+i*(W-2*P)/(vals.length-1));
+  const ok=vals.filter(v=>v!=null);if(!ok.length)return'<div class="small muted" style="height:56px;display:flex;align-items:center">Sin datos</div>';
+  let lo=Math.min(...ok,opt.ref??Infinity),hi=Math.max(...ok,opt.ref??-Infinity);if(lo===hi){lo-=1;hi+=1}
+  const pad=(hi-lo)*.15;lo-=pad;hi+=pad;const y=v=>H-P-((v-lo)/(hi-lo))*(H-2*P);
+  let d='',gap=true;vals.forEach((v,i)=>{if(v==null){gap=true;return}d+=(gap?'M':'L')+xs[i].toFixed(1)+' '+y(v).toFixed(1)+' ';gap=false});
+  const li=vals.map((v,i)=>v!=null?i:-1).filter(i=>i>=0).pop();
+  const iso=vals.map((v,i)=>v!=null&&(i===0||vals[i-1]==null)&&(i===vals.length-1||vals[i+1]==null)&&i!==li?`<circle cx="${xs[i]}" cy="${y(v)}" r="3.5" fill="var(--accent)" stroke="var(--panel-2)" stroke-width="1.5"/>`:'').join('');
+  const marks=iso+vals.map((v,i)=>v==null?(opt.lockAt&&opt.lockAt[i]?`<text x="${xs[i]}" y="${H/2+3}" text-anchor="middle" font-size="11" fill="var(--crit-ink)" font-weight="700">bloq.</text>`:''):'').join('');
+  const ref=opt.ref!=null?`<line x1="${P}" x2="${W-P}" y1="${y(opt.ref)}" y2="${y(opt.ref)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>`:'';
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-vals='${JSON.stringify(vals)}' data-labels='${JSON.stringify(labels)}' data-xs='${JSON.stringify(xs)}' data-unit="${esc(opt.unit||'')}">
+    <line x1="${P}" x2="${W-P}" y1="${H-P}" y2="${H-P}" stroke="var(--line)"/>${ref}
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${marks}
+    ${li!=null?`<circle cx="${xs[li]}" cy="${y(vals[li])}" r="4.5" fill="var(--accent)" stroke="var(--panel-2)" stroke-width="2"/>`:''}</svg>`;
+}
+document.addEventListener('pointermove',e=>{
+  const svg=e.target.closest&&e.target.closest('.spark svg');$$('.tip').forEach(t=>t.remove());if(!svg)return;
+  const r=svg.getBoundingClientRect(),vals=JSON.parse(svg.dataset.vals),xs=JSON.parse(svg.dataset.xs),lb=JSON.parse(svg.dataset.labels);
+  const px=(e.clientX-r.left)/r.width*260;let bi=-1,bd=1e9;xs.forEach((x,i)=>{const dd=Math.abs(x-px);if(dd<bd){bd=dd;bi=i}});if(bi<0)return;
+  const card=svg.closest('.spark'),cr=card.getBoundingClientRect(),t=document.createElement('div');t.className='tip mono';
+  t.textContent=lb[bi]+' · '+(vals[bi]==null?'bloqueado / sin dato':vals[bi]+' '+svg.dataset.unit);
+  t.style.left=(r.left-cr.left+xs[bi]/260*r.width)+'px';t.style.top=(r.top-cr.top-4)+'px';card.appendChild(t)});
+document.addEventListener('pointerleave',()=>$$('.tip').forEach(t=>t.remove()),true);
+
+/* ============ vista: CELULAR ============ */
+function airwayHTML(b){
+  const lockTxt=b.via==='NATURAL'?`Vía aérea natural${b.extub?' · '+esc(b.extub):''}`:`<b>${b.via}</b> ${esc(b.cal)} · ${esc(b.fij)}${/\d/.test(b.fij||'')?' cm':''} · VM día ${b.diasVM}`;
+  const pr=b.prono?` · <span class="pill warn">Prono ${Math.floor((Date.now()-b.prono)/3600000)} h</span>`:'';
+  return `<div class="airway"><span>${ic.lock}</span><span>${lockTxt}</span>${pr}</div>`}
+function derivedHTML(b,d){
+  const c={pas:num(d.pas),pad:num(d.pad),vt:num(d.vt),fr:num(d.fr),peep:num(d.peep),plat:num(d.plat),modo:d.modo,asinc:d.asinc};
+  const pam=pamC(c),dp=dpC(c),crs=crsC(c),tb=tobinC(c),vk=vtkg(c,b);
+  const lockd=mecBloq(c);
+  return `<div class="derived" id="derived">
+   <div><b>${fmt(pam)}</b><span>PAM</span></div>
+   <div><b>${fmt(vk)}</b><span>Vt ml/kg</span></div>
+   <div><b>${lockd?'🔒':fmt(dp)}</b><span>ΔP</span></div>
+   <div><b>${lockd?'🔒':fmt(crs)}</b><span>Crs</span></div></div>`.replace(/🔒/g,ic.lock)}
+function phoneControl(b,d){
+  const u=last(b);const ph=k=>u&&u[k]!=null?'ant. '+u[k]:'';
+  const bloq=d.asinc&&CONTROLADOS.includes(d.modo);
+  const inp=(k,l,ph2,dis)=>`<div class="f"><label for="in-${k}">${l}</label><input id="in-${k}" data-k="${k}" inputmode="decimal" value="${esc(d[k])}" placeholder="${ph2||ph(k)}" ${dis?'disabled':''}></div>`;
+  const noVM=!artificial(b)&&d.modo!=='CNAF'&&false;
+  return `<div class="notice acc small">Los signos vitales nacen <b>en blanco</b>: se lee el monitor y el ventilador de nuevo cada vez. En gris queda el control anterior.</div>
+  <div><h3>Signos vitales</h3><div class="fgrid">${inp('fc','FC')}${inp('pas','PAS')}${inp('pad','PAD')}${inp('spo2','SpO₂ %')}${inp('fr','FR')}${inp('vt','Vt ml')}</div></div>
+  <div><h3>Ventilador</h3>
+   <div class="fgrid">
+    <div class="f"><label for="in-modo">Modo</label><select id="in-modo" data-k="modo">${['ACVC','PCV','CPAP+PS','CNAF'].map(m=>`<option ${d.modo===m?'selected':''}>${m}</option>`).join('')}</select></div>
+    ${inp('peep','PEEP','')}${inp('fio','FiO₂ %','')}
+    ${inp('pico','P. pico')}${inp('plat','P. plateau',bloq?'bloqueado':'',bloq)}${inp('pmed','P. media')}
+    ${['CPAP+PS','PCV'].includes(d.modo)?inp('ps',d.modo==='PCV'?'P. control':'P. soporte',''):''}
+   </div>
+   <div class="row" style="margin-top:8px"><span class="small ink2">¿Paciente asincrónico?</span>
+    <div class="seg" role="group" aria-label="Asincronía"><button data-act="asinc" data-v="0" aria-pressed="${!d.asinc}">No</button><button data-act="asinc" data-v="1" aria-pressed="${d.asinc}">Sí</button></div></div>
+   ${bloq?`<div class="notice crit small" style="margin-top:8px"><b>Plateau, ΔP y compliance quedan invalidados:</b> hay asincronía en modo controlado y el plateau está contaminado por esfuerzo del paciente.</div>`:''}
+  </div>
+  <div id="derivedWrap">${derivedHTML(b,d)}</div>
+  <div class="row" style="justify-content:space-between"><span class="small muted">Para probar rápido:</span><button class="btn sm" data-act="demofill">Rellenar signos de ejemplo</button></div>`}
+function phoneConsc(b,d){
+  const sd=semDva(num(d.nad));
+  return `<div><h3>Sedoanalgesia activa</h3><div class="seg"><button data-act="sed" data-v="1" aria-pressed="${d.sedOn}">Sí</button><button data-act="sed" data-v="0" aria-pressed="${!d.sedOn}">No</button></div></div>
+  ${d.sedOn?`<div><h3>Escala SAS</h3><div class="sas">${[1,2,3,4,5,6,7].map(n=>`<button class="chip" data-act="sas" data-v="${n}" aria-pressed="${d.sas===n}">${n}</button>`).join('')}</div>
+   <p class="small ink2" style="margin-top:6px">${d.sas?`${d.sas} · ${SAS[d.sas]}`:'Elige el nivel observado'}</p></div>
+   <div><h3>Fentanilo · escalón</h3><div class="escalones">${[1,2,3,4,5,6].map(n=>`<button class="chip" data-act="esc" data-v="${n}" aria-pressed="${num(d.fent)===FENT(n)}">${n}</button>`).join('')}</div>
+   <div class="row" style="margin-top:6px"><span class="mono">${num(d.fent)>0?d.fent+' mcg/kg/h':'sin infusión'}</span><button class="btn sm" data-act="stopfent">⏹ Suspender</button></div></div>`
+  :`<div><h3>Estado de vigilia</h3><div class="stack" style="gap:6px">${VIG.map(v=>`<button class="chip" style="text-align:left;font-family:var(--font-ui)" data-act="vig" data-v="${v}" aria-pressed="${d.vig===v}">${v}</button>`).join('')}</div></div>`}
+  <div><h3>Noradrenalina (mcg/kg/min)</h3>
+   <div class="row"><div class="f" style="width:110px"><input id="in-nad" data-k="nad" inputmode="decimal" value="${esc(d.nad)}" placeholder="0" aria-label="Noradrenalina"></div>
+   <span class="pill ${sd.k==='none'?'':sd.k}" id="dvaPill"><i class="dot ${sd.k==='none'?'':sd.k}"></i>${sd.t}</span></div>
+   <p class="small muted" style="margin-top:6px">Hereda la dosis anterior. Semáforo: baja &lt; 0,1 · media 0,1–0,3 · alta &gt; 0,3.</p></div>`}
+function phoneKine(b,d){
+  const ap=b.apk[b.apk.length-1];
+  const pa=pauta(b);
+  return `<div><h3>Kinesiterapia</h3>
+    <div class="row" style="margin-bottom:8px"><span class="small ink2">Aspiración de secreciones</span><div class="seg"><button data-act="asp" data-v="1" aria-pressed="${d.aspira}">Sí</button><button data-act="asp" data-v="0" aria-pressed="${!d.aspira}">No</button></div></div>
+    ${KINE.map((k,i)=>`<label class="chk"><input type="checkbox" data-act="act" data-v="${i}" ${d.acts.includes(k)?'checked':''}> ${k}</label>`).join('')}</div>
+  <div><h3>Pauta APK <span class="small muted" style="text-transform:none;letter-spacing:0">· perfil ${artificial(b)?'vía aérea artificial':'vía aérea natural'}</span></h3>
+   <details class="crit-list"><summary>Ver los ${pa.length} criterios</summary><ul>${pa.map(c=>`<li>${c}</li>`).join('')}</ul></details>
+   ${ap?`<div class="notice ${ap.ok?'good':'crit'}" style="margin-top:8px"><b>${ap.ok?'Cumple':'No cumple'} · ${ap.hora}</b><br><span class="small">${esc(ap.texto)}</span></div>`:''}
+   <div class="row" style="margin-top:8px"><button class="btn primary" data-act="apk">Firmar: cumple la pauta</button><button class="btn" data-act="apkno">Un criterio no cumple</button></div>
+   ${S.apkNo?`<div class="stack" style="margin-top:8px;gap:2px">${pa.map((c,i)=>`<label class="chk"><input type="checkbox" data-act="apkchk" data-v="${i}"> ${c}</label>`).join('')}<button class="btn danger" data-act="apkno-ok" style="margin-top:6px">Registrar “no cumple”</button></div>`:''}
+   <p class="small muted" style="margin-top:8px">Un toque no marca criterios uno por uno: deja <b>una declaración firmada</b>. Si un criterio falla, se nombra cuál.</p></div>`}
+function phoneEventos(b,d){
+  const pve=b.pve?`<div class="notice acc"><div class="small">PVE en curso (demo: 1 s = 1 min)</div><div class="timer" id="pveT">--:--</div><div class="row" style="margin-top:6px"><button class="btn sm" data-act="pvefin" data-v="1">Fin · tolerada</button><button class="btn sm" data-act="pvefin" data-v="0">Fin · no tolerada</button></div></div>`:'';
+  const f=S.evForm;
+  return `${pve}<div class="stack" style="gap:8px">
+    <button class="btn" data-act="pvestart" ${b.pve||!artificial(b)?'disabled':''}>Iniciar PVE (30 min)</button>
+    <button class="btn" data-act="${b.prono?'supinar':'prono'}" ${artificial(b)?'':'disabled'}>${b.prono?'Supinar':'Iniciar prono'}</button>
+    <button class="btn" data-act="evform" data-v="ajuste" ${artificial(b)?'':'disabled'}>Ajustar posición del tubo</button>
+    <button class="btn danger" data-act="evform" data-v="autoext" ${artificial(b)?'':'disabled'}>Autoextubación</button></div>
+   ${f==='ajuste'?`<div class="card stack" style="padding:12px;gap:8px"><div class="f"><label for="ev-cm">Centímetros a la comisura</label><input id="ev-cm" value="${esc(b.fij)}" inputmode="decimal"></div>
+     <div class="f"><label for="ev-mot">Motivo</label><select id="ev-mot"><option>Desplazamiento superficial</option><option>Control radiológico</option></select></div>
+     <button class="btn primary" data-act="ajuste-ok">Registrar ajuste</button><p class="small muted">No cuenta como intubación en la estadística.</p></div>`:''}
+   ${f==='autoext'?`<div class="card stack" style="padding:12px;gap:8px;border-color:var(--crit)"><div class="f"><label for="ev-hora">Hora exacta</label><input id="ev-hora" value="${hhmm(nowFor(b))}"></div>
+     <div class="f"><label for="ev-disp">Queda en</label><select id="ev-disp"><option>CNAF</option><option>VMNI</option><option>Aire ambiental</option></select></div>
+     <div class="f"><label for="ev-txt">Qué pasó (breve)</label><input id="ev-txt" style="text-align:left;font-family:var(--font-ui)" placeholder="Ej: tracciona el TET durante el aseo"></div>
+     <button class="btn danger" data-act="autoext-ok">Registrar evento</button><p class="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p></div>`:''}`}
+function renderPhone(){
+  const b=bed(S.phoneBed),d=draftFor(b);
+  const tabs=[['control','Control'],['consc','Conciencia'],['kine','Kine · APK'],['eventos','Eventos']];
+  const body={control:phoneControl,consc:phoneConsc,kine:phoneKine,eventos:phoneEventos}[S.phoneTab](b,d);
+  $('#phone').innerHTML=`
+   <div class="ph-top"><span>Klgo. Diego Melo · Turno 3</span><label><input type="checkbox" id="net" ${S.online?'':'checked'}> Sin señal${S.queue.length?` · <b>${S.queue.length} en cola</b>`:''}</label></div>
+   <div class="airway" style="background:var(--panel);border-bottom:0;padding-bottom:0"><b class="mono" style="font-size:20px">${b.id}</b>${b.mine?'':'<span class="pill">control de apoyo</span>'}</div>
+   ${airwayHTML(b)}
+   <div class="ph-tabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" data-ptab="${k}" aria-selected="${S.phoneTab===k}">${l}</button>`).join('')}</div>
+   <div class="ph-body" id="phBody">${body}</div>
+   <div class="ph-save"><button class="btn primary" data-act="save">Guardar control</button></div>
+   <nav class="ph-beds" aria-label="Camas">${beds.map(x=>`<button class="chip ${x.mine?'':'apoyo'}" data-bed="${x.id}" aria-pressed="${x.id===S.phoneBed}" title="${x.mine?'Cama asignada':'Cama de apoyo'}">${x.id.slice(-2)}${x.controles.length?'':'·'}</button>`).join('')}</nav>`;
+  tickPve()}
+function tickPve(){const b=bed(S.phoneBed),el=$('#pveT');if(!el||!b.pve)return;const s=Math.min(30*60,Math.floor((Date.now()-b.pve)/1000)*60);el.textContent=pad2(Math.floor(s/60))+':'+pad2(s%60)+' / 30:00'+(s>=1800?'  ✓ cumplida':'')}
+setInterval(tickPve,500);
+
+function saveControl(){
+  const b=bed(S.phoneBed),d=draftFor(b);const miss=[];
+  [['fc','FC'],['pas','PAS'],['pad','PAD'],['spo2','SpO₂'],['fr','FR']].forEach(([k,l])=>{if(num(d[k])==null)miss.push(l)});
+  if(d.sedOn&&!d.sas)miss.push('SAS');if(!d.sedOn&&!d.vig)miss.push('estado de vigilia');
+  if(miss.length){toast('Falta: '+miss.join(', ')+'. Lee el monitor, no se hereda.');return}
+  const u=last(b);const ts=Math.max(Date.now(),(u?.ts||0)+20*60000);
+  const c={id:'c'+Math.random().toString(36).slice(2,8),ts,hora:hhmm(ts),fc:num(d.fc),pas:num(d.pas),pad:num(d.pad),spo2:num(d.spo2),fr:num(d.fr),vt:num(d.vt),pico:num(d.pico),plat:num(d.plat),pmed:num(d.pmed),
+    modo:d.modo,peep:num(d.peep),fio:num(d.fio),ps:num(d.ps),asinc:d.asinc,sedOn:d.sedOn,sas:d.sedOn?d.sas:null,vig:d.sedOn?null:d.vig,fent:d.sedOn?num(d.fent)||0:0,nad:num(d.nad)||0,aspira:d.aspira,acts:[...d.acts],ims:null,firma:'DM'};
+  b.controles.push(c);resetDraft(b);
+  if(S.online){S.log.unshift(logRow(b,c));toast(`Guardado ${b.id} ${c.hora}. Ya aparece en el tablero del PC.`)}
+  else{S.queue.push({b:b.id,c});toast('Sin señal: guardado en el teléfono. Se sube cuando vuelva la conexión.')}
+  S.phoneTab='control';renderPhone();syncSide()}
+function flushQueue(){if(!S.online||!S.queue.length)return;const n=S.queue.length;S.queue.forEach(q=>S.log.unshift(logRow(bed(q.b),q.c)));S.queue=[];toast(`Volvió la señal: se subieron ${n} control(es), sin duplicar.`)}
+
+document.addEventListener('input',e=>{
+  const b=bed(S.phoneBed),d=draftFor(b),t=e.target;
+  if(t.dataset&&t.dataset.k&&t.closest('#phone')){d[t.dataset.k]=t.value;
+    if(t.dataset.k==='modo'){renderPhone()}
+    else if(t.dataset.k==='nad'){const s=semDva(num(d.nad));const p=$('#dvaPill');if(p){p.className='pill '+(s.k==='none'?'':s.k);p.innerHTML=`<i class="dot ${s.k==='none'?'':s.k}"></i>${s.t}`}}
+    else{const w=$('#derivedWrap');if(w)w.innerHTML=derivedHTML(b,d)}}});
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.id==='net'){S.online=!t.checked;flushQueue();renderPhone();return}
+  if(t.dataset&&t.dataset.act==='act'){const d=draftFor(bed(S.phoneBed)),k=KINE[+t.dataset.v];d.acts=t.checked?[...d.acts,k]:d.acts.filter(x=>x!==k)}});
+
+function phoneAct(a,v){
+  const b=bed(S.phoneBed),d=draftFor(b);
+  switch(a){
+   case'asinc':d.asinc=v==='1';renderPhone();break;
+   case'demofill':Object.assign(d,{fc:'86',pas:'122',pad:'68',spo2:'97',fr:'18',vt:'450',pico:'22',plat:'18',pmed:'10'});renderPhone();break;
+   case'sed':d.sedOn=v==='1';renderPhone();break;
+   case'sas':d.sas=+v;renderPhone();break;
+   case'vig':d.vig=v;renderPhone();break;
+   case'esc':d.fent=FENT(+v);renderPhone();break;
+   case'stopfent':d.fent=0;renderPhone();break;
+   case'asp':d.aspira=v==='1';renderPhone();break;
+   case'apk':{const t=`Declaro haber verificado los criterios de seguridad de la pauta APK (perfil ${artificial(b)?'vía aérea artificial':'vía aérea natural'}) y no encontrar contraindicación. Klgo. Diego Melo · ${hhmm(nowFor(b))} hrs.`;
+     b.apk.push({ok:true,hora:hhmm(nowFor(b)),texto:t});toast('APK firmada con tu sesión, un solo toque.');renderPhone();break}
+   case'apkno':S.apkNo=!S.apkNo;renderPhone();break;
+   case'apkno-ok':{const ch=$$('[data-act="apkchk"]:checked').map(x=>pauta(b)[+x.dataset.v]);
+     if(!ch.length){toast('Marca qué criterio no se cumple.');break}
+     b.apk.push({ok:false,hora:hhmm(nowFor(b)),texto:`NO CUMPLE. Impide el procedimiento: ${ch.join('; ')}. Kinesiterapia diferida.`});S.apkNo=false;renderPhone();break}
+   case'pvestart':b.pve=Date.now();b.eventos.push({t:'INICIO_PVE',hora:hhmm(nowFor(b))});renderPhone();break;
+   case'pvefin':b.eventos.push({t:'FIN_PVE',ok:v==='1',hora:hhmm(nowFor(b))});b.pve=null;toast('PVE '+(v==='1'?'tolerada':'no tolerada')+' registrada.');renderPhone();break;
+   case'prono':b.prono=Date.now();b.eventos.push({t:'INICIO_PRONO',hora:hhmm(nowFor(b))});renderPhone();break;
+   case'supinar':b.prono=null;b.eventos.push({t:'SUPINACION',hora:hhmm(nowFor(b))});renderPhone();break;
+   case'evform':S.evForm=v;renderPhone();break;
+   case'ajuste-ok':{b.fij=$('#ev-cm').value;b.eventos.push({t:'AJUSTE_TUBO',hora:hhmm(nowFor(b)),cm:b.fij,mot:$('#ev-mot').value});S.evForm=null;toast('Ajuste registrado. No suma como intubación.');renderPhone();break}
+   case'autoext-ok':{const h=$('#ev-hora').value,txt=$('#ev-txt').value||'Sin descripción',disp=$('#ev-disp').value;
+     const uu=last(b);b.alerta={hora:h,txt,disp,ctx:uu,por:'Klgo. Diego Melo'};b.eventos.push({t:'AUTOEXTUBACION',hora:h});b.via='NATURAL';b.extub='autoextubado '+h;b.pve=null;S.evForm=null;
+     toast('Evento registrado. El PC ya muestra la alerta con el informe pre-llenado.');renderPhone();break}
+   case'save':saveControl();break}
+  if(a!=='save')syncSide()}
+
+function renderCelular(){
+  $('#view').innerHTML=`<p class="intro">Así lo ve el kinesiólogo a pie de cama. Prueba: <b>rellena signos de ejemplo</b>, cambia a <i>Asincrónico = Sí</i> en modo ACVC, guarda, y revisa el tablero del PC. Marca <i>Sin señal</i> para ver la cola.</p>
+  <div class="celular"><div id="phone" class="phone"></div><div class="side-note" id="side"></div></div>`;
+  renderPhone();syncSide()}
+function syncSide(){
+  const el=$('#side');if(!el)return;const b=bed(S.phoneBed),u=last(b);
+  el.innerHTML=`<div class="card"><h3>Lo que ve el celular</h3><p>Solo <b class="mono">${b.id}</b>. Ni nombre ni RUT: el servidor no se los entrega a este equipo.</p></div>
+  <div class="card mirror"><h3>Mientras tanto, en el PC</h3>${cardHTML(b,true)}<p class="small muted" style="margin-top:8px">${S.queue.length?`${S.queue.length} control(es) esperando señal: el PC todavía no los ve.`:'Se actualiza al guardar.'}</p></div>
+  <div class="card"><h3>Reglas que ya están aplicadas</h3><ul class="small ink2" style="margin:0;padding-left:18px;display:grid;gap:4px">
+   <li>Signos vitales nacen vacíos; infusiones y modo ventilatorio se heredan.</li><li>La vía aérea (franja azul) está fija; solo la cambia un evento.</li>
+   <li>Asincronía en modo controlado bloquea plateau, ΔP y compliance.</li><li>Con sedación se exige SAS; sin sedación, estado de vigilia.</li></ul></div>`}
+
+/* ============ vista: TABLERO PC ============ */
+function cardHTML(b,mini){
+  const u=last(b),sd=semDva(u?.nad),pam=u?pamC(u):null;
+  return `<${mini?'div':'button'} class="cama ${mini?'mini':''} ${b.alerta?'alerta':''}" ${mini?'':`data-pcbed="${b.id}" aria-current="${S.pcBed===b.id}"`}>
+   <header><span class="id">${b.id}</span><span class="small muted">${u?'último '+u.hora:'sin registro'}</span></header>
+   ${b.alerta?`<span class="pill crit">${ic.alert} Autoextubación ${esc(b.alerta.hora)}</span>`:''}
+   <div><div class="nm">${esc(b.nombre)}</div><div class="meta">${b.edad} a · ${b.sexo} · ${esc(b.dx)}</div></div>
+   <div class="pills"><span class="pill acc">${b.via==='NATURAL'?'Vía natural':b.via}</span>
+    ${u?`<span class="pill"><span class="mono">PAM ${fmt(pam)}</span></span><span class="pill ${sd.k==='none'?'':sd.k}"><i class="dot ${sd.k==='none'?'':sd.k}"></i>${sd.t}</span>`:''}
+    ${b.prono?`<span class="pill warn">Prono ${Math.floor((Date.now()-b.prono)/3600000)} h</span>`:''}
+    ${b.pve?'<span class="pill acc">PVE en curso</span>':''}
+    <span class="pill ${b.transc?'good':''}">${b.transc?ic.check+' Transcrito '+b.transc:'Pendiente'}</span>
+    ${b.mine?'':'<span class="pill">apoyo</span>'}</div></${mini?'div':'button'}>`}
+function notaTexto(b,modo){
+  const cs=b.controles;if(!cs.length)return`[SIN CONTROLES REGISTRADOS EN EL TURNO PARA ${b.id}]`;
+  const f=cs[0],u=cs[cs.length-1];
+  const resp=c=>{if(c.modo==='CNAF')return`CNAF, FiO2 ${fmt(c.fio)}%, FR ${fmt(c.fr)} rpm`;
+    const p=[`VMI ${c.modo}`,`FiO2 ${fmt(c.fio)}%`,`PEEP ${fmt(c.peep)}`,`Vt ${fmt(c.vt)} ml (${fmt(vtkg(c,b))} ml/kg PBW)`,`FR ${fmt(c.fr)} rpm`,`P.pico ${fmt(c.pico)}`];
+    if(dpC(c)!=null)p.push(`P.plateau ${c.plat}`,`driving pressure ${dpC(c)}`,`compliance estática ${fmt(crsC(c))}`);else if(mecBloq(c))p.push('mecánica estática no valorable (asincronía paciente-ventilador en modo controlado)');
+    if(tobinC(c))p.push(`índice de Tobin ${tobinC(c)}`);return p.join(', ')};
+  const cons=c=>c.sedOn?`SAS ${c.sas} (${SAS[c.sas]})${c.fent>0?`, fentanilo ${c.fent} mcg/kg/h`:''}`:`estado de vigilia ${String(c.vig||'--').toLowerCase()}`;
+  const dva=c=>c.nad>0?`Noradrenalina ${c.nad} mcg/kg/min`:'Sin requerimiento de DVA';
+  const via=artificial(b)?`${b.via} ${b.cal} (fijación ${b.fij}${/\d/.test(b.fij)?' cm':''})`:'vía aérea natural';
+  if(modo==='ultima')return`[CONTROL KINESIOLOGÍA UPC · ${b.id} · ${u.hora} hrs]
+1. HEMODINAMIA: FC ${u.fc} lpm, PA ${u.pas}/${u.pad} (PAM ${fmt(pamC(u))}). ${dva(u)}.
+2. CONCIENCIA: ${cons(u)}.
+3. RESPIRATORIO: ${via}, ${resp(u)}. SpO2 ${u.spo2}%.
+4. KINESITERAPIA: ${u.acts.length?u.acts.join(', ').toLowerCase():'sin actividades motoras'}${u.aspira?'; aspiración realizada':''}.`;
+  const evs=b.eventos.map(e=>`  · [${e.hora}] ${({INICIO_PVE:'Inicio de PVE',FIN_PVE:'Fin de PVE: '+(e.ok?'tolerada':'no tolerada'),INICIO_PRONO:'Inicio de prono',SUPINACION:'Supinación',AJUSTE_TUBO:'Ajuste de tubo a '+e.cm+' cm ('+e.mot+')',AUTOEXTUBACION:'AUTOEXTUBACIÓN NO PLANIFICADA'})[e.t]}`).join('\n');
+  return`[EVOLUCIÓN KINESIOLOGÍA UPC · RESUMEN DE TURNO · ${b.id}]
+Dx: ${b.dx} | ${b.edad} a | PBW ${pbw(b)} kg | Día de VM: ${b.diasVM}
+
+1. HEMODINAMIA: inicia (${f.hora}) con PAM ${fmt(pamC(f))}; cierra (${u.hora}) con FC ${u.fc} lpm, PA ${u.pas}/${u.pad} (PAM ${fmt(pamC(u))}). ${dva(u)}.
+2. CONCIENCIA Y SEDACIÓN: ${cons(f)} → ${cons(u)}.
+3. SOPORTE AL CIERRE: ${via}, ${resp(u)}. SpO2 ${u.spo2}%.
+4. PRODUCCIÓN (${cs.length} controles): kine respiratoria ${cs.length} · aspiraciones ${cs.filter(c=>c.aspira).length} · kine motora ${cs.filter(c=>c.acts.length).length} · APK firmadas ${b.apk.filter(a=>a.ok).length}${b.apk.some(a=>!a.ok)?` (no cumple: ${b.apk.filter(a=>!a.ok).length})`:''}
+5. CRONOLOGÍA:
+${cs.map(c=>`  · [${c.hora}] ${c.acts.length?c.acts.join(' + '):'Sin kine motora'}`).join('\n')}${evs?'\n   Eventos:\n'+evs:''}
+${b.alerta?'\n6. EVENTO DE SEGURIDAD: autoextubación a las '+b.alerta.hora+'. Notificado para gestión de riesgo.\n':''}
+PLAN / ENTREGA: ${b.alerta?'Reevaluar vía aérea y criterios de reintubación.':'Mantener esquema de sedoanalgesia y metas de PAM ≥ 65.'}`}
+function riesgoTexto(b){const a=b.alerta,u=a.ctx;
+  return`INFORME PRELIMINAR DE GESTIÓN DE RIESGO (pre-llenado)
+Evento: Autoextubación no planificada
+Hora: ${a.hora}   Cama: ${b.id}
+Paciente: ${b.nombre} · RUT ${rutF(b.rutB)} · ${b.edad} a
+Descripción inicial (celular): ${a.txt}
+Queda en: ${a.disp}
+Registrado por: ${a.por}
+Contexto de las horas previas (último control ${u?u.hora:'--'}):
+  ${u?`${u.sedOn?'SAS '+u.sas:'Vigilia '+u.vig} · ${u.nad>0?'NAD '+u.nad+' mcg/kg/min':'sin DVA'} · ${u.modo} PEEP ${fmt(u.peep)} FiO2 ${fmt(u.fio)}%`:'sin controles previos en el turno'}
+Pendiente: notificar a coordinación y completar análisis de seguridad.`}
+
+function renderTablero(){
+  const lista=beds.filter(b=>S.filtro==='todas'||b.mine);const b=bed(S.pcBed)||beds[0];
+  $('#view').innerHTML=`<p class="intro">Cualquier PC de la UCI (pasillo o estación) muestra esto. Es solo lectura. Si guardaste controles en el celular, aparecen aquí.</p>
+  <div class="pc-bar"><div class="row"><button class="chip" data-filtro="mias" aria-pressed="${S.filtro==='mias'}">Mis 6 camas</button><button class="chip" data-filtro="todas" aria-pressed="${S.filtro==='todas'}">Toda la unidad</button></div>
+   <span class="small muted">${beds.filter(x=>x.transc).length} de ${beds.length} camas transcritas a ALMA</span></div>
+  <div class="camas">${lista.map(x=>cardHTML(x)).join('')}</div>
+  <div class="card detail" id="detail">${detalleHTML(b)}</div>`}
+function detalleHTML(b){
+  const cs=b.controles,lb=cs.map(c=>c.hora);
+  const sp=(t,vals,unit,o={})=>`<div class="spark"><div class="lbl"><span>${t}</span><span>${unit}</span></div><div class="val">${vals.filter(v=>v!=null).slice(-1)[0]??'--'}</div>${spark(vals,lb,{unit,...o})}</div>`;
+  const dps=cs.map(dpC),lockAt={};cs.forEach((c,i)=>{if(mecBloq(c))lockAt[i]=1});
+  const tabla=cs.length?`<div class="scroll-x"><table class="sab"><thead><tr><th>Parámetro</th>${cs.map(c=>`<th>${c.hora}</th>`).join('')}</tr></thead><tbody>
+   ${[['FC','fc'],['PA (PAM)',c=>`${c.pas}/${c.pad} (${fmt(pamC(c))})`],['SpO₂','spo2'],['Modo','modo'],['FR','fr'],['Vt (ml/kg)',c=>c.vt?`${c.vt} (${fmt(vtkg(c,b))})`:'--'],['PEEP','peep'],['FiO₂','fio'],['P. pico','pico'],
+     ['P. plateau',c=>mecBloq(c)?'L':fmt(c.plat)],['ΔP',c=>mecBloq(c)?'L':fmt(dpC(c))],['Compliance',c=>mecBloq(c)?'L':fmt(crsC(c))],['Tobin',c=>fmt(tobinC(c))],
+     ['SAS / vigilia',c=>c.sedOn?'SAS '+c.sas:(c.vig||'--')],['NAD',c=>c.nad>0?c.nad:'—'],['Firma','firma']].map(([l,k])=>`<tr><td>${l}</td>${cs.map(c=>{const v=typeof k==='function'?k(c):fmt(c[k]);return v==='L'?`<td class="v"><span class="lockc" title="Invalidado: asincronía en modo controlado">${ic.lock} bloq.</span></td>`:`<td class="v">${esc(v)}</td>`}).join('')}</tr>`).join('')}
+   </tbody></table></div>`:'<p class="muted">Todavía no hay controles de esta cama.</p>';
+  return`<div class="detail-head"><div><h2 style="margin:0">${b.id} · ${esc(b.nombre)}</h2><div class="small ink2">RUT <span class="mono">${rutF(b.rutB)}</span> · ${b.edad} a · ${esc(b.dx)}</div></div>
+   <div class="row"><button class="btn" disabled title="Falta el formato de URL de Sinapse (VITE_SINAPSE_URL)">Abrir Sinapse · URL pendiente</button></div></div>
+  ${b.alerta?`<div class="notice crit"><b>${ic.alert} Autoextubación a las ${esc(b.alerta.hora)}.</b> El informe preliminar ya está armado con lo que dejó el kinesiólogo desde el celular.
+    <pre class="nota" style="margin-top:8px;max-height:240px">${esc(riesgoTexto(b))}</pre>
+    <div class="row" style="margin-top:8px"><button class="btn primary sm" data-act="copy-riesgo">Copiar informe</button><span class="small">El correo a coordinación va en la versión real.</span></div></div>`:''}
+  ${cs.length?`<div><h3>Tendencia del turno</h3><div class="sparks">${sp('PAM',cs.map(pamC),'mmHg',{ref:65})}${sp('FC',cs.map(c=>c.fc),'lpm')}${sp('SpO₂',cs.map(c=>c.spo2),'%')}${sp('Driving pressure',dps,'cmH₂O',{lockAt})}</div>
+   <p class="small muted" style="margin-top:6px">Línea punteada: PAM 65. En ΔP, “bloq.” marca un control con asincronía en modo controlado: no se dibuja un dato falso.</p></div>`:''}
+  <div><h3>Sábana del turno</h3>${tabla}</div>`}
+
+/* ============ vista: PARA ALMA ============ */
+const clsModo=m=>m==='ACVC'?'ac':m==='PCV'?'pc':m==='CPAP+PS'?'ps':null;
+function almaCampos(c){
+  const k=clsModo(c.modo),f=[['SAS',c.sedOn?c.sas:'—'],['Modo',c.modo]];
+  if(k==='ps')f.push(['FR total',c.fr]);else if(k)f.push(['FR programada',c.fr]);
+  if(k==='ac')f.push(['Vol. Corriente Programado',c.vt]);else if(k)f.push(['Espirado',c.vt]);
+  f.push(['Vol. Minuto',c.vt&&c.fr?Math.round(c.vt*c.fr/100)/10:null],['P. Pico',c.pico],['Meseta (Pº Media)',c.pmed]);
+  if(k==='ps')f.push(['Soporte',c.ps]);else if(k==='pc')f.push(['Control',c.ps]);
+  f.push(['PEEP Programado',c.peep],['FiO2 Programado',c.fio],['I:E',null],['Compliance Estática',mecBloq(c)?'no valorable (asincronía)':crsC(c)],['Auto PEEP',null],['SpO2',c.spo2],
+   ['Comentarios',[c.plat!=null&&!mecBloq(c)?'P. Plateau '+c.plat:'',dpC(c)!=null?'P. Distensión '+dpC(c):''].filter(Boolean).join(' · ')]);
+  return f.map(([l,v])=>[l,v==null||v===''?'en blanco':String(v)])}
+function renderAlma(){
+  const b=bed(S.pcBed);const cs=b.controles;
+  if(!cs.find(c=>c.id===S.almaCtl))S.almaCtl=cs[cs.length-1]?.id||null;
+  const c=cs.find(x=>x.id===S.almaCtl);const camp=c?almaCampos(c):[];const i=Math.min(S.almaIdx,camp.length);const fin=c&&i>=camp.length;
+  $('#view').innerHTML=`<p class="intro">Dos formas de pasar la información a ALMA: <b>paso a paso</b> (un panel angosto al lado de ALMA, un registro por control) o <b>copiar la evolución</b> completa. <span class="tag-new">idea de tu colega: panel paso a paso</span></p>
+  <div class="pc-bar"><div class="row">${beds.filter(x=>x.mine).map(x=>`<button class="chip" data-pcbed2="${x.id}" aria-pressed="${x.id===b.id}">${x.id}</button>`).join('')}</div></div>
+  <div class="alma"><div class="card stack">
+    <h2>Para ALMA · ${b.id}</h2>
+    ${cs.length?`<div class="row">${cs.map(x=>`<button class="chip" data-almactl="${x.id}" aria-pressed="${x.id===S.almaCtl}">${x.hora}</button>`).join('')}</div>`:'<p class="muted">Esta cama no tiene controles.</p>'}
+    ${c?`${fin?`<div class="notice good"><b>Control de las ${c.hora} revisado.</b><br>Falta firmar en ALMA con tu usuario.</div><button class="btn" data-act="alma-reset">Empezar de nuevo</button>`
+     :`<div><div class="small muted">${i+1} de ${camp.length}</div><div class="bar"><i style="width:${(i/camp.length)*100}%"></i></div><div class="small ink2" style="margin-top:8px">Campo de ALMA</div><div style="font-weight:700">${camp[i][0]}</div><div class="step-val ${camp[i][1]==='en blanco'?'muted':''}">${esc(camp[i][1])}</div></div>
+      <div class="row"><button class="btn" data-act="alma-prev" ${i===0?'disabled':''}>Atrás</button><button class="btn primary" data-act="alma-next">Listo, siguiente</button></div>`}
+     <ul class="flist">${camp.map(([l,v],j)=>`<li class="${j===i&&!fin?'on':j<i?'done':''}"><span>${j<i?ic.check+' ':''}${l}</span><span class="mono">${esc(v)}</span></li>`).join('')}</ul>
+     <p class="small muted">Orden de campos y regla por modo (ACVC / PCV / CPAP+PS) tomados de la propuesta de tu colega. Es un esquema, no la pantalla real de ALMA.</p>`:''}
+  </div>
+  <div class="card stack"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Evolución para copiar</h2>
+    <div class="seg"><button data-nota="turno" aria-pressed="${S.notaModo==='turno'}">Turno completo</button><button data-nota="ultima" aria-pressed="${S.notaModo==='ultima'}">Última atención</button></div></div>
+   <pre class="nota" id="notaTxt">${esc(notaTexto(b,S.notaModo))}</pre>
+   <div class="row"><button class="btn primary" data-act="copy-nota" ${cs.length?'':'disabled'}>Copiar evolución para ALMA</button>
+    <span class="pill ${b.transc?'good':''}">${b.transc?ic.check+' Transcrito '+b.transc:'Pendiente'}</span></div>
+   <p class="small muted">Copiarla deja la cama en “Transcrito” con la hora. Dice que se copió, no que ALMA la recibió.</p></div></div>`}
+
+/* ============ vista: DATOS ============ */
+function renderDatos(){
+  const ids=beds.map(b=>({ep:'ep-'+b.id.slice(-2),cama:b.id,nombre:b.nombre,rut:rutF(b.rutB)}));
+  $('#view').innerHTML=`<p class="intro">Qué se guarda y dónde. Todo vive en una hoja de Google, en <b>dos canales con llaves distintas</b>. Lo que guardaste en la pestaña 1 aparece abajo, en la hoja de controles.</p>
+  <div class="flow">
+   <div class="node"><h2><span class="pill acc">Celular</span> llave de app</h2><p class="small ink2">Escribe controles, eventos y APK. Lee solo lo clínico. No tiene la llave de estación.</p></div>
+   <div class="node"><h2><span class="pill acc">PC de la UCI</span> llave de estación</h2><p class="small ink2">Lee todo y además la hoja de identidad. La llave se guarda en el navegador desde un marcador, sin tipearla por turno.</p></div>
+   <div class="node"><h2><span class="pill">Alta del paciente</span> purga</h2><p class="small ink2">Se borra su fila de identidad. Lo clínico queda sin nombre para las estadísticas.</p></div></div>
+  <div class="card stack" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Hoja CONTROLES · sin nombre ni RUT</h2><span class="pill">${S.log.length} filas</span></div>
+   <div class="scroll-x"><table class="sab sheet"><thead><tr>${['ID_CONTROL','ID_CAMA','PATIENT_ID','GUARDADO','FC','PA','SPO2','MODO','PEEP','FIRMA'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>
+    ${S.log.slice(0,8).map(r=>`<tr><td>${r.id}</td><td>${r.cama}</td><td>${r.ep}</td><td>${r.guardado}</td><td>${fmt(r.fc)}</td><td>${r.pa}</td><td>${fmt(r.spo2)}</td><td>${r.modo}</td><td>${fmt(r.peep)}</td><td>${r.firma}</td></tr>`).join('')}</tbody></table></div>
+   <p class="small muted">El ID del control nace en el teléfono: si la subida se corta y se reintenta, no se duplica. Nada se borra; una corrección es una fila nueva que anula la anterior. <span class="tag-new">idea de tu colega</span></p></div>
+  <div class="card stack" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Hoja IDENTIDAD · solo con llave de estación</h2><span class="pill crit">${ic.lock} sensible</span></div>
+   <div class="scroll-x"><table class="sab sheet"><thead><tr>${['PATIENT_ID','ID_CAMA','NOMBRE','RUT'].map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${ids.slice(0,5).map(r=>`<tr><td>${r.ep}</td><td>${r.cama}</td><td>${r.nombre}</td><td>${r.rut}</td></tr>`).join('')}</tbody></table></div>
+   <div class="row"><button class="btn" data-act="api-cel">Pedir identidad desde un celular</button><button class="btn" data-act="api-pc">Pedir identidad desde un PC</button><span class="small muted">Simulación</span></div>
+   ${S.apiTest?`<div class="keyline">${esc(S.apiTest)}</div>`:''}
+   <p class="small muted">Riesgo aceptado por el equipo: la identidad vive en Google para estar disponible en cualquier PC y abrir Sinapse por RUT. Apps Script no puede filtrar por IP, por eso las defensas son la llave aparte, la hoja aparte y la purga.</p></div>
+  <div class="card" style="margin-top:16px"><h2>Qué tomé de la propuesta de tu colega, y qué queda por decidir</h2>
+   <div class="sparks" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div><h3>Lo que incorporé</h3><ul class="small ink2" style="margin:0;padding-left:18px;display:grid;gap:4px"><li>Hojas CONTROLES y HOJA_DIA nuevas, sin tocar las existentes.</li><li>ID desde el teléfono y anulación sin borrar.</li><li>Panel “Para ALMA” paso a paso, con regla por modo.</li><li>Interruptor para apagar todo y volver a como está hoy.</li></ul></div>
+    <div><h3>Por decidir</h3><ul class="small ink2" style="margin:0;padding-left:18px;display:grid;gap:4px"><li>DVA: casilleros libres de tu colega o dosis numérica con semáforo, como aquí.</li><li>Eventos: tu colega los deja solo en la evolución; aquí cuentan para REM y para el informe de riesgo.</li><li>Formato de URL de Sinapse para el botón.</li></ul></div></div></div>`}
+
+/* ============ eventos globales y arranque ============ */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button,[data-tab],[data-pcbed]');if(!t)return;const ds=t.dataset;
+  if(ds.tab){go(ds.tab);return}
+  if(ds.ptab){S.phoneTab=ds.ptab;S.evForm=null;renderPhone();return}
+  if(ds.bed){S.phoneBed=ds.bed;S.phoneTab='control';S.evForm=null;S.apkNo=false;renderPhone();syncSide();return}
+  if(ds.pcbed){S.pcBed=ds.pcbed;S.almaIdx=0;S.almaCtl=null;renderTablero();return}
+  if(ds.pcbed2){S.pcBed=ds.pcbed2;S.almaIdx=0;S.almaCtl=null;renderAlma();return}
+  if(ds.filtro){S.filtro=ds.filtro;renderTablero();return}
+  if(ds.almactl){S.almaCtl=ds.almactl;S.almaIdx=0;renderAlma();return}
+  if(ds.nota){S.notaModo=ds.nota;renderAlma();return}
+  const a=ds.act;if(!a)return;
+  if(t.closest('#phone')){phoneAct(a,ds.v);return}
+  const b=bed(S.pcBed);
+  switch(a){
+   case'copy-riesgo':copiar(riesgoTexto(b),'Informe de riesgo copiado');break;
+   case'copy-nota':copiar(notaTexto(b,S.notaModo),'Evolución copiada. Pégala en ALMA.');b.transc=hhmm(nowFor(b));renderAlma();break;
+   case'alma-next':S.almaIdx++;renderAlma();break;
+   case'alma-prev':S.almaIdx=Math.max(0,S.almaIdx-1);renderAlma();break;
+   case'alma-reset':S.almaIdx=0;renderAlma();break;
+   case'api-cel':S.apiTest='GET ?recurso=identidad&token=APP_TOKEN\n→ {"ok":false,"error":"TOKEN_INVALIDO"}';renderDatos();break;
+   case'api-pc':S.apiTest='GET ?recurso=identidad&token=STATION_TOKEN\n→ {"ok":true,"identidades":['+beds.length+' filas]}';renderDatos();break}});
+
+function go(tab){S.tab=tab;if(location.hash!=='#'+tab)history.replaceState(null,'','#'+tab);
+  $$('.tab').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===tab)));
+  ({celular:renderCelular,tablero:renderTablero,alma:renderAlma,datos:renderDatos})[tab]()}
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(['celular','tablero','alma','datos'].includes(h)&&h!==S.tab)go(h)});
+go(['celular','tablero','alma','datos'].includes(location.hash.slice(1))?location.hash.slice(1):'celular');
+</script>

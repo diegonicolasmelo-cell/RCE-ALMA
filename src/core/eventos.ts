@@ -73,6 +73,8 @@ export function viaAereaVigente(
       case "EVENTO_CENTINELA":
       case "ASISTENCIA_FBC":
       case "CAMBIO_HMEF":
+      case "CAMBIO_FILTRO":
+      case "EVALUACION_PUNTUAL":
       case "CAMBIO_EQUIPOS":
       case "ASISTENCIA_PROCEDIMIENTO":
       case "TOMA_CULTIVO":

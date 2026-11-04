@@ -13,6 +13,7 @@
 import { buscarProfesional } from "./dotacion";
 import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD } from "./catalogos";
 import { apkVigente } from "./apk";
+import { nombreEscala } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
 import { describirEquipos, equipoEnUso, etiquetaEquipo } from "./equipos";
 import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiologia";
@@ -63,8 +64,8 @@ function etiquetaVia(e: Episodio): string {
 
 function textoGlasgow(c: Control, pbw: number): string {
   const d = calcularDerivados(c, pbw);
-  if (!d.glasgow) return "";
-  return `Glasgow ${d.glasgow.completo}${d.glasgowBajoSedacion ? " (registrado bajo sedación)" : ""}`;
+  if (!d.glasgow) return c.s5q !== null ? `S5Q ${c.s5q}/5` : "";
+  return `Glasgow ${d.glasgow.completo}${d.glasgowBajoSedacion ? " (registrado bajo sedación)" : ""}${c.s5q !== null ? `, S5Q ${c.s5q}/5` : ""}`;
 }
 
 function textoConciencia(c: Control, pbw: number): string {
@@ -207,7 +208,11 @@ export function describirEvento(ev: EventoClinico): string {
     case "TRASLADO_IMAGEN":
       return `Traslado a ${ev.destino}`;
     case "CAMBIO_HMEF":
-      return "Cambio de filtro HMEF";
+      return "Cambio de filtro HME";
+    case "EVALUACION_PUNTUAL":
+      return `Evaluación ${nombreEscala(ev.escala)}${ev.total !== null ? `: ${ev.total}` : ""}`;
+    case "CAMBIO_FILTRO":
+      return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
     case "CAMBIO_EQUIPOS":
       return `Cambio de equipos: ${describirEquipos(ev.equipos)}`;
     default: {
@@ -384,7 +389,7 @@ export function camposAlma(
       etiqueta: "Compliance Estática",
       valor: mecanicaBloqueadaPorAsincronia(v) ? "no valorable (asincronía)" : texto(d.compliance)
     },
-    { etiqueta: "Auto PEEP", valor: null },
+    { etiqueta: "Auto PEEP", valor: esModalidadControlada(v.modalidad) ? texto(v.autoPeep) : "—" },
     { etiqueta: "SpO2", valor: texto(control.spo2) },
     { etiqueta: "Comentarios", valor: comentarios.length > 0 ? comentarios.join(" · ") : null }
   );

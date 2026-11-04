@@ -97,7 +97,8 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("vtEspirado", "Vt espirado", "ml"),
     o("pPico", "P. pico", "cmH₂O"),
     o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
-    o("pMedia", "P. media", "cmH₂O")
+    o("pMedia", "P. media", "cmH₂O"),
+    o("autoPeep", "Auto PEEP", "cmH₂O")
   ],
   PCV: [
     p("frProgramada", "FR programada", "rpm"),
@@ -109,7 +110,8 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("vtEspirado", "Vt espirado", "ml"),
     o("pPico", "P. pico", "cmH₂O"),
     o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
-    o("pMedia", "P. media", "cmH₂O")
+    o("pMedia", "P. media", "cmH₂O"),
+    o("autoPeep", "Auto PEEP", "cmH₂O")
   ],
   // En espontaneas importa la presion pico, no la media.
   CPAP_PS: [

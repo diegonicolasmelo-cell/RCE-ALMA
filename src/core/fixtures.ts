@@ -53,6 +53,7 @@ export function unaVentilacion(over: Partial<Ventilacion> = {}): Ventilacion {
     pPico: 25,
     pPlateau: 20,
     pMedia: 12,
+    autoPeep: null,
     volMinuto: null,
     ...over
   };
@@ -95,6 +96,7 @@ export function unControl(over: Partial<Control> = {}): Control {
     sas: 3,
     vigilia: null,
     glasgow: null,
+    s5q: null,
     kineResp: KINE_BASE,
     terapiaFisica: TF_BASE,
     observaciones: "Queda acoplado a VMI protectora.",

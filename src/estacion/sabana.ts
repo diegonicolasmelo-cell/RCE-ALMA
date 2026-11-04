@@ -9,6 +9,7 @@ import {
   calcularGlasgow,
   describirCardiovasculares,
   describirInfusiones,
+  esModalidadControlada,
   mecanicaBloqueadaPorAsincronia,
   sedoanalgesiaActiva
 } from "@core/index";
@@ -34,52 +35,56 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
   const bloq = (c: Control): boolean => mecanicaBloqueadaPorAsincronia(c.ventilacion);
   const mec = (c: Control, valor: string): Celda => (bloq(c) ? { texto: "bloq.", bloqueado: true } : t(valor));
 
+  const glasgowDe = (c: Control): Celda => {
+    if (!c.glasgow) return t("--");
+    const g = calcularGlasgow(c.glasgow, c.viaAerea);
+    return t(`${g.display}${d(c).glasgowBajoSedacion ? "*" : ""}`);
+  };
+  const dve = (c: Control): Celda => {
+    const x = c.neuro;
+    if (!x || x.dveAlturaCmH2O === null) return t("--");
+    return t(`${x.dveAlturaCmH2O} cmH₂O ${x.dveAbierta === null ? "" : x.dveAbierta ? "abierta" : "cerrada"}`.trim());
+  };
+
+  // Mismo orden que la hoja de papel "Cuidados respiratorios": primero Monitorizacion,
+  // despues Terapia ventilatoria. Lo que el papel no tiene va al final.
   const filas: FilaSabana[] = [
-    { etiqueta: "FC", celda: (c) => t(n(c.fc)) },
-    { etiqueta: "PA (PAM)", celda: (c) => t(`${n(c.pas)}/${n(c.pad)} (${n(d(c).pam)})`) },
-    { etiqueta: "SpO₂", celda: (c) => t(n(c.spo2)) },
-    { etiqueta: "Modo", celda: (c) => t(`${ETIQUETA_MODALIDAD[c.ventilacion.modalidad]}${c.ventilacion.asincronico ? " (asinc.)" : ""}`) },
-    { etiqueta: "FR prog.", celda: (c) => t(n(c.ventilacion.frProgramada)) },
-    { etiqueta: "FR total", celda: (c) => t(n(c.ventilacion.frTotal)) },
-    { etiqueta: "Vt prog.", celda: (c) => t(n(c.ventilacion.vtProgramado)) },
-    { etiqueta: "Vt esp. (ml/kg)", celda: (c) => t(c.ventilacion.vtEspirado === null ? "--" : `${c.ventilacion.vtEspirado} (${n(d(c).vtEspiradoPorKg)})`) },
-    { etiqueta: "Vol. minuto", celda: (c) => t(`${n(d(c).volumenMinuto)}${d(c).volumenMinutoOrigen === "EDITADO" ? "*" : ""}`) },
-    { etiqueta: "I:E", celda: (c) => t(n(d(c).relacionIE)) },
-    { etiqueta: "PEEP", celda: (c) => t(n(c.ventilacion.peep)) },
-    { etiqueta: "FiO₂", celda: (c) => t(n(c.ventilacion.fio2)) },
-    { etiqueta: "P. pico", celda: (c) => t(n(c.ventilacion.pPico)) },
-    { etiqueta: "P. plateau", celda: (c) => mec(c, n(c.ventilacion.pPlateau)) },
-    { etiqueta: "ΔP", celda: (c) => mec(c, `${n(d(c).drivingPressure)}${d(c).origenDriving === "PICO" ? " (pico)" : ""}`) },
-    { etiqueta: "Compliance", celda: (c) => mec(c, n(d(c).compliance)) },
-    { etiqueta: "Tobin", celda: (c) => t(n(d(c).tobin)) },
-    { etiqueta: "SAS / vigilia", celda: (c) => t(sedoanalgesiaActiva(c.infusiones) ? `SAS ${n(c.sas)}` : c.vigilia ? c.vigilia.toLowerCase().replace("_", " ") : "--") },
-    { etiqueta: "Sedación", celda: (c) => t(describirInfusiones(c.infusiones, "SEDANTE") || "—") },
-    { etiqueta: "DVA / inotrópicos", celda: (c) => t(describirCardiovasculares(c.infusiones).replace("sin requerimiento de DVA ni inotrópicos", "—")) },
-    {
-      etiqueta: "Glasgow",
-      celda: (c) => {
-        if (!c.glasgow) return t("--");
-        const g = calcularGlasgow(c.glasgow, c.viaAerea);
-        return t(`${g.display}${d(c).glasgowBajoSedacion ? "*" : ""}`);
-      }
-    }
+    // --- Monitorizacion ---
+    { etiqueta: "Frec. cardiaca", celda: (c) => t(n(c.fc)) },
+    { etiqueta: "P. arterial (PAM)", celda: (c) => t(`${n(c.pas)}/${n(c.pad)} (${n(d(c).pam)})`) }
   ];
+  if (monitoreo.pic) filas.push({ etiqueta: "PIC / PPC", celda: (c) => t(`${n(c.neuro?.pic)} / ${n(d(c).ppc)}`) });
+  filas.push(
+    { etiqueta: "Glasgow", celda: glasgowDe },
+    { etiqueta: "S5Q", celda: (c) => t(n(c.s5q)) },
+    { etiqueta: "SAS / escalón", celda: (c) => t(sedoanalgesiaActiva(c.infusiones) ? `SAS ${n(c.sas)}` : c.vigilia ? c.vigilia.toLowerCase().replace("_", " ") : "--") },
+    { etiqueta: "DVA / inotrópicos", celda: (c) => t(describirCardiovasculares(c.infusiones).replace("sin requerimiento de DVA ni inotrópicos", "—")) },
+    // --- Terapia ventilatoria ---
+    { etiqueta: "Modo", celda: (c) => t(`${ETIQUETA_MODALIDAD[c.ventilacion.modalidad]}${c.ventilacion.asincronico ? " (asinc.)" : ""}`) },
+    { etiqueta: "Vol. tidal prog.", celda: (c) => t(n(c.ventilacion.vtProgramado)) },
+    { etiqueta: "Vol. tidal esp. (ml/kg)", celda: (c) => t(c.ventilacion.vtEspirado === null ? "--" : `${c.ventilacion.vtEspirado} (${n(d(c).vtEspiradoPorKg)})`) },
+    { etiqueta: "F max / T ins", celda: (c) => t(`${n(c.ventilacion.flujo)} / ${n(c.ventilacion.ti)}`) },
+    { etiqueta: "Frecuencia prog.", celda: (c) => t(n(c.ventilacion.frProgramada)) },
+    { etiqueta: "Frecuencia total", celda: (c) => t(n(c.ventilacion.frTotal)) },
+    { etiqueta: "PEEP / EPAP", celda: (c) => t(n(c.ventilacion.peep)) },
+    { etiqueta: "P. sop / IPAP / control", celda: (c) => t(n(c.ventilacion.presion)) },
+    { etiqueta: "P. máxima", celda: (c) => t(n(c.ventilacion.pPico)) },
+    { etiqueta: "P. media", celda: (c) => t(n(c.ventilacion.pMedia)) },
+    { etiqueta: "P. plateau", celda: (c) => mec(c, n(c.ventilacion.pPlateau)) },
+    { etiqueta: "P. distensión (ΔP)", celda: (c) => mec(c, `${n(d(c).drivingPressure)}${d(c).origenDriving === "PICO" ? " (pico)" : ""}`) },
+    { etiqueta: "Compliance", celda: (c) => mec(c, n(d(c).compliance)) },
+    { etiqueta: "Auto PEEP", celda: (c) => t(esModalidadControlada(c.ventilacion.modalidad) ? n(c.ventilacion.autoPeep) : "—") },
+    { etiqueta: "Relación I:E", celda: (c) => t(n(d(c).relacionIE)) },
+    { etiqueta: "I. Tobin", celda: (c) => t(n(d(c).tobin)) },
+    { etiqueta: "Vol. minuto", celda: (c) => t(`${n(d(c).volumenMinuto)}${d(c).volumenMinutoOrigen === "EDITADO" ? "*" : ""}`) },
+    { etiqueta: "FiO₂", celda: (c) => t(n(c.ventilacion.fio2)) },
+    { etiqueta: "SpO₂", celda: (c) => t(n(c.spo2)) },
+    // --- Lo que el papel no trae ---
+    { etiqueta: "Sedación", celda: (c) => t(describirInfusiones(c.infusiones, "SEDANTE") || "—") }
+  );
 
   if (monitoreo.capnografia) filas.push({ etiqueta: "EtCO₂", celda: (c) => t(n(c.neuro?.etco2)) });
-  if (monitoreo.pic) {
-    filas.push({ etiqueta: "PIC", celda: (c) => t(n(c.neuro?.pic)) });
-    filas.push({ etiqueta: "PPC", celda: (c) => t(n(d(c).ppc)) });
-  }
-  if (monitoreo.dve) {
-    filas.push({
-      etiqueta: "DVE",
-      celda: (c) => {
-        const x = c.neuro;
-        if (!x || x.dveAlturaCmH2O === null) return t("--");
-        return t(`${x.dveAlturaCmH2O} cmH₂O ${x.dveAbierta === null ? "" : x.dveAbierta ? "abierta" : "cerrada"}`.trim());
-      }
-    });
-  }
+  if (monitoreo.dve) filas.push({ etiqueta: "DVE", celda: dve });
 
   filas.push(
     { etiqueta: "Kine resp.", celda: (c) => t(c.kineResp.realizada ? `Sí${c.kineResp.aspiracion !== "NO" ? ` · ${c.kineResp.aspiracion === "TRACHCARE" ? "TrachCare" : "set"}` : ""}` : "No") },

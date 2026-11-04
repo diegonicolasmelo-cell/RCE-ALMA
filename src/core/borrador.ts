@@ -66,6 +66,7 @@ export const CAMPOS_VENT_OBSERVADOS: readonly CampoVent[] = [
   "pPico",
   "pPlateau",
   "pMedia",
+  "autoPeep",
   "volMinuto"
 ];
 
@@ -97,6 +98,8 @@ export interface BorradorControl {
   vigilia: EstadoVigilia | null;
   /** Se registra aunque haya sedacion. Los tres componentes o ninguno. */
   glasgow: { ocular: Glasgow["ocular"] | null; verbal: Glasgow["verbal"] | null; motora: Glasgow["motora"] | null };
+  /** S5Q 0 a 5, como texto. Nace en blanco. */
+  s5q: string;
 
   /** Neuromonitoreo: solo lo que el episodio tiene activo. Nace en blanco. */
   neuro: { etco2: string; pic: string; dveAltura: string; dveAbierta: boolean | null };
@@ -187,6 +190,7 @@ export function crearBorradorNuevoControl(
     sas: null,
     vigilia: null,
     glasgow: { ocular: null, verbal: null, motora: null },
+    s5q: "",
     neuro: { etco2: "", pic: "", dveAltura: "", dveAbierta: null },
     equipos: episodio.equipos,
 
@@ -342,6 +346,7 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     pPico: campo("pPico"),
     pPlateau: campo("pPlateau"),
     pMedia: campo("pMedia"),
+    autoPeep: campo("autoPeep"),
     // Volumen minuto editable: vacio = se calcula; escrito = lo leido del ventilador.
     volMinuto: b.modalidad === "CNAF" ? null : medicionDe(b.vent.volMinuto)
   };
@@ -400,6 +405,7 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     sas: sedada ? b.sas : null,
     vigilia: sedada ? null : b.vigilia,
     glasgow,
+    s5q: medicionDe(b.s5q),
 
     kineResp: {
       realizada: kine,

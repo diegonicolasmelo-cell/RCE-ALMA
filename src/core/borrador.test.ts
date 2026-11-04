@@ -14,6 +14,7 @@ import {
   suspenderInfusion,
   validarBorrador
 } from "./borrador";
+import { CAMPOS_POR_MODALIDAD } from "./catalogos";
 import type { BorradorControl } from "./borrador";
 import { firmarApk, firmarApkCumple } from "./apk";
 import { unControl, unEpisodio, unaVentilacion } from "./fixtures";
@@ -59,7 +60,16 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   });
 
   it("cubre exactamente lo observado", () => {
-    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["frTotal", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
+    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "frTotal", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
+  });
+
+  it("el S5Q nace en blanco", () => {
+    expect(b.s5q).toBe("");
+  });
+
+  it("Auto PEEP solo existe en modalidades controladas", () => {
+    const tiene = (m: keyof typeof CAMPOS_POR_MODALIDAD): boolean => CAMPOS_POR_MODALIDAD[m].some((d) => d.campo === "autoPeep");
+    expect([tiene("ACVC"), tiene("PCV"), tiene("CPAP_PS"), tiene("CNAF")]).toEqual([true, true, false, false]);
   });
 
   it("la asincronía es del momento: no se hereda", () => {

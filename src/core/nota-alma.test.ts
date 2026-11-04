@@ -131,7 +131,7 @@ describe("eventos en la nota", () => {
     const n = nota({ eventos: evs });
     expect(n).toContain("Asistencia en fibrobroncoscopía");
     expect(n).toContain("Toma de cultivo (Aspirado traqueal)");
-    expect(n).toContain("Cambio de filtro HMEF");
+    expect(n).toContain("Cambio de filtro HME");
   });
 });
 

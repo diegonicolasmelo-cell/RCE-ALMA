@@ -24,3 +24,5 @@ export * from "./sanitizar";
 export * from "./sinapse";
 export * from "./apk-documento";
 export * from "./pve";
+export * from "./filtros";
+export * from "./evaluaciones";

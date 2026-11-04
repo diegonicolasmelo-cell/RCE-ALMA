@@ -156,6 +156,7 @@ export function serializarControlParaNube(c: Control): Record<string, unknown> {
     sas: c.sas,
     vigilia: c.vigilia,
     glasgow: c.glasgow === null ? null : { ...c.glasgow },
+    s5q: c.s5q,
     kineResp: { ...c.kineResp },
     terapiaFisica: { ...c.terapiaFisica, actividades: [...c.terapiaFisica.actividades] },
     observaciones: c.observaciones,

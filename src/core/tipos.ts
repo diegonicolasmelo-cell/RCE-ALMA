@@ -47,6 +47,8 @@ export type CampoVent =
   | "pPico"
   | "pPlateau"
   | "pMedia"
+  /** Solo en modalidades controladas (ACVC, PCV). */
+  | "autoPeep"
   /** Volumen minuto leido del ventilador. Opcional: por defecto se calcula (Vt espirado x FR total). */
   | "volMinuto";
 
@@ -63,6 +65,7 @@ export const CAMPOS_VENT: readonly CampoVent[] = [
   "pPico",
   "pPlateau",
   "pMedia",
+  "autoPeep",
   "volMinuto"
 ];
 
@@ -268,6 +271,8 @@ export interface Control {
   readonly vigilia: EstadoVigilia | null;
   /** Se registra aunque haya sedacion; la nota lo marca "bajo sedacion". */
   readonly glasgow: Glasgow | null;
+  /** Standardized 5 Questions (0 a 5). Nace en blanco. */
+  readonly s5q: Medicion;
 
   readonly kineResp: KineRespiratoria;
   readonly terapiaFisica: TerapiaFisica;
@@ -303,6 +308,11 @@ export interface LecturasPve {
   readonly trabajoResp: string;
   readonly secreciones: string;
 }
+
+/** Escalas de la hoja neuromuscular y de weaning. Ver evaluaciones.ts. */
+export type IdEscala = "MRC_SS" | "FSS_ICU" | "FUERZA_RESPIRATORIA" | "VISAGE" | "VIA_AEREA" | "FRAGILIDAD" | "BARTHEL";
+
+export type ElementoFiltro = "TRACHCARE" | "HEPA";
 
 export type FasePveControl = "INICIAL" | "30MIN";
 export type MomentoPostExtub = "EXTUB" | "30MIN" | "60MIN" | "120MIN" | "48H";
@@ -352,7 +362,11 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "ASISTENCIA_PROCEDIMIENTO"; readonly procedimiento: string })
   | (EventoBase & { readonly tipo: "TOMA_CULTIVO"; readonly muestra: string })
   | (EventoBase & { readonly tipo: "TRASLADO_IMAGEN"; readonly destino: string })
+  /** Evaluacion puntual de una escala (MRC-ss, FSS-ICU, PIM/PEF, VISAGE...). Todo nace en blanco. */
+  | (EventoBase & { readonly tipo: "EVALUACION_PUNTUAL"; readonly escala: IdEscala; readonly valores: Readonly<Record<string, number | null>>; readonly total: number | null })
   | (EventoBase & { readonly tipo: "CAMBIO_HMEF" })
+  /** Cambio de TrachCare (sonda de circuito cerrado) o filtro HEPA. El HME va como CAMBIO_HMEF. No va atado a un control. */
+  | (EventoBase & { readonly tipo: "CAMBIO_FILTRO"; readonly elemento: ElementoFiltro })
   /** Cambio en los equipos de la sala (rastreo de la ubicacion de ventiladores). */
   | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[] });
 

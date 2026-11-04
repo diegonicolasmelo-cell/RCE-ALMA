@@ -37,6 +37,7 @@ function vent(over: Partial<Ventilacion> = {}): Ventilacion {
     pPico: 25,
     pPlateau: 20,
     pMedia: 12,
+    autoPeep: null,
     volMinuto: null,
     ...over
   };
@@ -74,6 +75,7 @@ function control(d: DatosControl): Control {
     sas: 4,
     vigilia: null,
     glasgow: null,
+    s5q: null,
     kineResp: { realizada: true, aspiracion: "TRACHCARE", aspecto: "MUCOPURULENTA", reologia: "ESPESA", cantidad: "MODERADA" },
     terapiaFisica: { estado: "NO", actividades: [], ims: null, motivoContraindicacion: null },
     observaciones: "",

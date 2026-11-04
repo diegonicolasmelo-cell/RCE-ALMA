@@ -1,11 +1,10 @@
 /**
  * Frontera de minimizacion de datos.
  *
- * Google Apps Script y Sheets corren FUERA de la red del hospital, en servidores
- * de Google, y Apps Script no puede leer la IP del cliente: no existe allowlist
- * por IP. Por eso ningun dato identificable de paciente puede cruzar esta
- * frontera. La identidad vive solo en IndexedDB del PC de la estacion y nunca se
- * sincroniza. Ver docs/PLAN-MAESTRO.md cap. 1 y 3.
+ * Google Apps Script y Sheets corren FUERA de la red del hospital y Apps Script no
+ * puede leer la IP del cliente. Por eso el canal CLINICO (el que usa el celular)
+ * nunca lleva identidad: esta guarda la rechaza. La identidad tiene su propio
+ * canal, serializarIdentidadParaNube(), con token distinto. Ver cap. 3 del plan.
  *
  * ESTRATEGIA: allowlist, no blocklist.
  * Se construye un objeto nuevo campo por campo. No se hace `delete obj.nombre`
@@ -18,7 +17,13 @@
  * justo antes de hacer POST.
  */
 
-import type { Control, Episodio, EventoClinico, ValidacionApk } from "./tipos";
+import type {
+  Control,
+  Episodio,
+  EventoClinico,
+  IdentidadPaciente,
+  ValidacionApk
+} from "./tipos";
 
 /**
  * Llaves que jamas deben aparecer en un payload hacia la nube.
@@ -65,6 +70,30 @@ export interface EpisodioNube {
   readonly horaTranscripcion: string | null;
   readonly pendienteEntrega: string;
   readonly activo: boolean;
+}
+
+/**
+ * Canal de identidad: unico lugar donde nombre y RUT pueden salir, hacia la hoja
+ * "identidad", con el token de estacion. El celular no tiene ese token, asi que
+ * el servidor no le entrega esta hoja aunque el cliente tenga un bug.
+ *
+ * DECISION DEL USUARIO (riesgo aceptado): la identidad vive en Google Sheets para
+ * estar disponible en cualquier PC de la UCI y habilitar el enlace a Sinapse por
+ * RUT. Apps Script no puede restringir por IP; la proteccion es el token de
+ * estacion, la separacion de hojas y la purga al alta.
+ */
+export function serializarIdentidadParaNube(
+  i: IdentidadPaciente,
+  ahora: Date
+): Record<string, unknown> {
+  return {
+    id: i.episodioId,
+    episodioId: i.episodioId,
+    registradoEn: ahora.toISOString(),
+    nombre: i.nombre,
+    rut: i.rut,
+    ficha: i.ficha
+  };
 }
 
 /**

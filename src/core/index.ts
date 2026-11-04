@@ -19,3 +19,4 @@ export * from "./borrador";
 export * from "./rem28";
 export * from "./nota-alma";
 export * from "./sanitizar";
+export * from "./sinapse";

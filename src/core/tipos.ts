@@ -113,8 +113,9 @@ export interface Episodio {
 }
 
 /**
- * Identidad del paciente. NUNCA se serializa hacia Apps Script.
- * Persiste solo en IndexedDB del PC de la estacion.
+ * Identidad del paciente. Viaja por un canal propio (hoja "identidad", token de
+ * estacion) y NUNCA por el canal clinico que usa el celular. Se purga al alta.
+ * Ver src/core/sanitizar.ts y docs/PLAN-MAESTRO.md cap. 3.
  */
 export interface IdentidadPaciente {
   readonly episodioId: Uuid;

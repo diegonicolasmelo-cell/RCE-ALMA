@@ -1,10 +1,15 @@
 # Backend Apps Script — instalación
 
 > **Lee esto primero.** Este backend corre en servidores de Google, **no** en la
-> intranet del hospital, y Apps Script **no puede restringir por IP**. Por eso la
-> hoja solo almacena datos des-identificados: cama, edad, sexo, talla y
-> fisiología. El nombre y el RUT del paciente viven únicamente en el PC de la
-> estación. Ver `docs/PLAN-MAESTRO.md` cap. 1 y 3.
+> intranet del hospital, y Apps Script **no puede restringir por IP**. Por
+> decisión del equipo (riesgo aceptado), el nombre y el RUT del paciente se
+> guardan en la hoja `identidad` para estar disponibles en cualquier PC y abrir
+> Sinapse por RUT. Las defensas: **dos tokens** (el celular nunca recibe esa
+> hoja), **hojas separadas** y **purga al alta**. Ver `docs/PLAN-MAESTRO.md` cap. 1 y 3.
+>
+> **Quién ve la hoja de cálculo:** cualquiera con acceso de edición al archivo
+> ve la hoja `identidad`. Mantén el archivo con el mínimo de personas y, si se
+> puede, en una cuenta institucional y no personal.
 
 ## Pasos
 
@@ -13,8 +18,10 @@
    `backend/apps-script/Codigo.gs`.
 3. Ejecuta la función `inicializarLibro` una vez. Crea las hojas, los
    encabezados, el `APP_TOKEN` y la pimienta de los PIN.
-4. Abre `Ver → Registro` y **copia el `APP_TOKEN`**. Es el token que la app
-   envía en cada petición.
+4. Abre `Ver → Registro` y copia los dos tokens:
+   - `APP_TOKEN` → celulares.
+   - `STATION_TOKEN` → solo PC. **Nunca** va en un celular: es lo que impide que
+     un teléfono lea la identidad.
 5. Ejecuta `cargarDotacion` una vez. Carga a los 16 profesionales sin PIN; cada
    uno define el suyo en su primer ingreso.
 6. **Reemplaza los RUT de marcador de posición** por los reales, en la hoja
@@ -24,6 +31,10 @@
    - *Quién tiene acceso*: **Cualquier persona**
 8. Copia la URL `/exec` resultante. Esa URL y el `APP_TOKEN` van en el archivo
    `.env` del frontend, nunca en el repositorio.
+9. **Para los PC:** crea un marcador `https://…/estacion#t=<STATION_TOKEN>`. El
+   fragmento (`#…`) no viaja al servidor; la app lo guarda en el navegador al
+   primer uso. Así cualquier PC de la UCI queda listo con un clic y no se
+   re-tipea nada por turno.
 
 ## Por qué "cualquier persona" y qué implica
 
@@ -68,6 +79,11 @@ trae un dato identificable. **Esto es una red de seguridad, no el control
 primario**: el cliente ya filtra con `src/core/sanitizar.ts`.
 → `{ ok: false, error: "OCUPADO_REINTENTAR" }` ante contención del lock;
 el cliente reintenta con backoff.
+
+### Identidad (token de estación)
+- `POST { accion: "guardarIdentidad", token: STATION_TOKEN, identidades[] }` — upsert por `episodioId` (un nombre mal tipeado se corrige).
+- `POST { accion: "purgarIdentidad", token: STATION_TOKEN, episodioIds[] }` — se llama al alta.
+- `GET ?recurso=identidad&token=STATION_TOKEN` — el celular, con `APP_TOKEN`, recibe `TOKEN_INVALIDO`.
 
 ### `GET` · `?token=...&desde=<ISO 8601>`
 Lectura incremental para la estación. Sin `desde` devuelve todo.

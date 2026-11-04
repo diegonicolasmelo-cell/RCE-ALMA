@@ -22,26 +22,26 @@ tendencias. UPC-Pulse ataca los tres cuellos de botella:
 
 ## Dos instancias, un solo código
 
-- **Móvil** (`/`) — captura. Muestra **solo el número de cama**, nunca datos del
-  paciente. Si se pierde el teléfono, no hay un solo dato identificable en él.
-- **Estación** (`/estacion`) — visualización. Muestra los datos personales,
-  dentro del hospital, cruzando los datos clínicos con un mapa de identidad que
-  vive **solo en ese PC** y nunca se sincroniza.
+- **Móvil** (`/`) — captura. Muestra **solo el número de cama**. El servidor no
+  le entrega la hoja de identidad (token distinto), así que si se pierde el
+  teléfono no hay datos identificables en él.
+- **PC de la UCI** (`/estacion`) — visualización, en cualquiera de los PC (pasillo
+  o estación). Muestra nombre y RUT y un botón que abre Sinapse con ese RUT.
 
 ## Arquitectura en una línea
 
-PWA estática (GitHub Pages) → datos **des-identificados** en Google Sheets vía
-Apps Script → identidad del paciente **solo** en IndexedDB del PC de la estación.
-
-El detalle, y por qué la protección "bajo la IP del hospital" no es
-implementable en Apps Script, está en `docs/PLAN-MAESTRO.md` cap. 1.
+PWA estática (GitHub Pages) → Google Sheets vía Apps Script, con **dos canales y
+dos tokens**: el clínico (celular, sin identidad) y el de identidad (solo PC,
+purgado al alta). Apps Script no puede filtrar por IP; el riesgo de guardar
+nombre y RUT en Google fue aceptado por el equipo. Detalle en
+`docs/PLAN-MAESTRO.md` cap. 1.
 
 ## Estado
 
 | Fase | Entregable | Estado |
 |---|---|---|
 | 0 | Plan maestro y decisiones de arquitectura | ✅ |
-| 1 | Núcleo clínico con tests | ✅ 143 tests |
+| 1 | Núcleo clínico con tests | ✅ 153 tests |
 | 2 | Repositorios: Dexie local + cola de sincronía | ⬜ |
 | 3 | Apps Script: API, hoja, hash de PIN, deploy | 🔨 código listo, sin desplegar |
 | 4 | Móvil: login, 6 camas, control, APK, eventos | ⬜ |
@@ -83,7 +83,8 @@ milisegundos y se razonan sin levantar un navegador.
 | `apk.ts` | Pauta condicional por vía aérea + aserción atestiguada |
 | `nota-alma.ts` | Generador de evolución y casillas discretas |
 | `rem28.ts` | Agregación estadística (se calcula, no se acumula) |
-| `sanitizar.ts` | **Frontera de minimización**: lo que puede y no puede salir del hospital |
+| `sanitizar.ts` | **Frontera de canales**: clínico sin identidad, identidad en canal propio |
+| `sinapse.ts` | RUT (dígito verificador) y enlace directo a Sinapse |
 
 ### Tres decisiones que conviene conocer
 

@@ -46,54 +46,65 @@ esperar meses un ticket mata el proyecto. Apps Script es la salida legítima par
 clínico sin presupuesto de infraestructura. La solución no es pelear con tu elección,
 es **hacerla segura por diseño**.
 
-### La arquitectura que sí funciona: separación de identidad
+### La arquitectura adoptada: dos canales, dos tokens
 
-El punto clave es que *la información clínica y la identidad del paciente no tienen por
-qué viajar juntas*. Se separan en dos almacenes con destinos físicos distintos:
+> **Revisión v1.1.** La v1.0 guardaba la identidad en el IndexedDB de *un* PC de
+> estación. Era un error de topología: en la UCI hay un PC afuera de cada sala y
+> varios en la estación, y se usa cualquiera. IndexedDB es almacenamiento local
+> de un navegador en un equipo; no se comparte entre PC. Se reemplaza por lo siguiente.
+
+**Decisión del equipo, riesgo aceptado:** nombre y RUT del paciente se guardan en
+Google Sheets para estar disponibles en cualquier PC y abrir Sinapse por RUT desde
+la tarjeta. Es comparable al uso habitual de planillas en el hospital, con una
+diferencia que conviene tener presente: aquí el alojamiento es Google y no hay
+filtro por IP. Por eso se agregan tres defensas que no cambian el flujo de trabajo.
 
 ```
-┌─────────────────────────┐        ┌──────────────────────────────┐
-│  CELULAR (pie de cama)  │        │  PC ESTACIÓN (mesón UPC)     │
-│  PWA instalada          │        │  mismo PWA, ruta /estacion   │
-│                         │        │                              │
-│  Ve: "UCI-03"           │        │  Ve: "UCI-03 · Rojas, P."    │
-│  Escribe: fisiología    │        │  Solo lectura                │
-└───────────┬─────────────┘        └──────┬──────────────┬────────┘
-            │ POST (sin identidad)        │ GET          │ join local
-            ▼                             ▼              ▼
-    ┌───────────────────────────────────────────┐  ┌──────────────────┐
-    │  GOOGLE SHEETS (vía Apps Script)          │  │ IndexedDB del PC │
-    │  Datos DES-IDENTIFICADOS                  │  │ Mapa cama→paciente│
-    │  episodio_uuid | UCI-03 | FC | PEEP | SAS │  │ UCI-03 → Rojas,P.│
-    │  Sin nombre. Sin RUT. Sin ficha.          │  │ RUT / ficha       │
-    │  Una fuga = números sobre "UCI-03"        │  │ NUNCA se sube     │
-    └───────────────────────────────────────────┘  └──────────────────┘
-                     ↑ fuera del hospital              ↑ nunca sale del PC
+┌──────────────────────┐                  ┌───────────────────────────┐
+│ CELULAR              │                  │ CUALQUIER PC DE LA UCI    │
+│ token: APP_TOKEN     │                  │ token: STATION_TOKEN      │
+│ Ve: "UCI-03"         │                  │ Ve: "UCI-03 · Rojas, P."  │
+│ Escribe: fisiología  │                  │ + botón "Abrir Sinapse"   │
+└─────────┬────────────┘                  └───────┬──────────┬────────┘
+          │ canal clínico                  clínico │          │ identidad
+          ▼                                        ▼          ▼
+  ┌────────────────────────────────────────────────────┐ ┌──────────────┐
+  │ hojas: episodios · controles · eventos · apk       │ │ hoja:        │
+  │ SIN nombre / RUT (el servidor lo rechaza)          │ │ identidad    │
+  └────────────────────────────────────────────────────┘ │ nombre · RUT │
+                                                         │ se purga al  │
+   El celular recibe TOKEN_INVALIDO si pide ───────────▶ │ alta         │
+   la hoja de identidad                                  └──────────────┘
 ```
 
-**Esto te entrega literalmente lo que pediste** —el celular muestra solo número de cama,
-la estación muestra datos personales— y además:
+1. **Dos tokens.** El celular solo tiene `APP_TOKEN`. La hoja `identidad` solo se
+   entrega con `STATION_TOKEN`, que únicamente tienen los PC. Lo impone el
+   *servidor*: un bug del celular no puede leer ni escribir identidad.
+2. **Canal clínico limpio.** `sincronizar` rechaza cualquier llave identificable.
+   La identidad tiene su propio canal (`guardarIdentidad`).
+3. **Purga al alta.** `purgarIdentidad` borra la fila al dar de alta. Lo clínico
+   queda des-identificado para el REM 28; la hoja no acumula pacientes históricos.
 
-- La protección ya no depende de una IP que no se puede verificar, sino de un hecho
-  físico más fuerte: **los datos identificables nunca salen del PC de la estación.**
-- Una filtración de la hoja de Sheets expone "PEEP 8, SAS 4, cama UCI-03". Sin la tabla
-  de identidad, que vive en otra parte, eso no identifica a nadie.
-- Si pierdes o te roban el celular, no hay un solo dato de paciente en él.
+**Qué sigue sin protegerse, dicho sin maquillaje:** el token de estación es una
+credencial compartida; quien lo tenga (o quien tenga acceso de edición al archivo
+de Sheets) lee la identidad. Se mitiga con el mínimo de personas con acceso al
+archivo y con una cuenta institucional en lugar de una personal.
 
-### Respuesta directa a tu pregunta sobre el RUT
+**Distribución sin re-tipear:** marcador `…/estacion#t=<STATION_TOKEN>`. El
+fragmento no viaja al servidor; la app lo guarda en el navegador en el primer uso.
 
-**En la hoja de Sheets: no.** **En el mapa local de la estación: sí, si lo necesitas.**
-Ese mapa vive en el navegador de ese PC, dentro del hospital, y no se sincroniza a
-ninguna parte. Si quieres el RUT para cruzar sin ambigüedad contra ALMA al transcribir,
-ahí es el lugar correcto y no hay objeción.
+**Enlace a Sinapse.** `enlaceSinapse(rut, plantilla)` arma la URL desde el RUT.
+Si el RUT tiene dígito verificador inválido no se muestra el botón, para no abrir
+la ficha de otra persona por un error de tipeo. La plantilla se configura en
+`VITE_SINAPSE_URL` porque su formato depende de la instalación del hospital.
 
 ### Dónde vive cada pieza
 
 | Pieza | Dónde | Por qué ahí |
 |---|---|---|
 | App (HTML/JS/CSS) | GitHub Pages, estática | Es solo código, no hay datos. Público es irrelevante. Da HTTPS gratis y, sobre todo, **service worker** → PWA instalable y offline. |
-| Datos clínicos | Google Sheets + Apps Script | Tu elección. Des-identificados, por eso es aceptable. |
-| Identidad paciente | IndexedDB del PC estación | Nunca sale del hospital. |
+| Datos clínicos | Google Sheets + Apps Script | Hojas sin identidad; las escribe el celular. |
+| Identidad paciente | Hoja `identidad` (token de estación) | Disponible en cualquier PC; el celular no puede leerla; se purga al alta. |
 | Cola de escritura | IndexedDB del celular | El WiFi de la UCI se cae; la app no. |
 | PIN de los 18 profesionales | Hash (bcrypt) en hoja aparte + ScriptProperties | El PIN plano nunca viaja ni se guarda. |
 
@@ -125,7 +136,7 @@ entregue un equipo, es trabajo de horas, no de meses.
 | Ruta | `/` | `/estacion` |
 | Dónde | Celular, pie de cama / post-box | PC mesón UPC, intranet |
 | Operación | Pulgar. Objetivo: < 60 s por control | Mouse y pantalla grande. Lectura. |
-| Identidad del paciente | **Nunca.** Solo "UCI-03" | Nombre, edad, (RUT opcional) |
+| Identidad del paciente | **Nunca** (el servidor no se la entrega). Solo "UCI-03" | Nombre y RUT + botón Sinapse |
 | Permisos | Escribe controls, APK, eventos | **Solo lectura** + nota ALMA + informe de riesgo |
 | Red | Datos móviles o WiFi, tolera caídas | Intranet |
 
@@ -136,29 +147,24 @@ apps que divergen, que es la forma clásica en que estos proyectos mueren.
 
 ---
 
-## 3. Minimización de datos (la regla que hace todo lo demás posible)
+## 3. Minimización de datos
 
-Regla única y verificable en código:
+Regla verificable en código, ajustada a la decisión del equipo:
 
-> **Ningún campo que identifique a un paciente puede cruzar la frontera hacia Apps Script.**
+> **Ningún dato identificable viaja por el canal clínico (el del celular).** La
+> identidad tiene un canal propio, con otro token, que el celular no posee.
 
-Implementación: la función que serializa un control hacia la nube se construye con una
-*allowlist* explícita de campos. No es un `delete paciente.nombre` sobre el objeto
-completo (que se rompe el día que alguien agrega un campo), sino lo contrario: solo los
-campos declarados salen. Un test automatizado verifica que el payload serializado no
-contenga las llaves prohibidas. Si alguien agrega `nombrePaciente` al modelo, el test
-falla antes del deploy.
-
-- **Sube:** `episodioId` (UUID), `cama`, `edad`, `sexo`, `tallaCm`, diagnóstico
-  *categorizado* (no texto libre), y toda la fisiología.
-- **No sube:** nombre, apellido, iniciales, RUT, ficha, fecha de nacimiento, texto libre
-  del campo observaciones que pueda contener nombres.
-- **Caso especial — observaciones de texto libre:** es el agujero más probable. Un
-  kinesiólogo escribirá "se coordina con Dr. Pérez por la esposa del paciente, Sra.
-  González". Mitigación: la observación **sí sube** (es información clínica necesaria para
-  la nota ALMA) pero la pantalla advierte explícitamente "no escriba nombres" y el campo
-  se marca como `texto_libre_revisado` en el modelo. Es un control administrativo, no
-  técnico, y hay que ser honesto en que es el punto más débil del diseño.
+- **Canal clínico** (`serializarEpisodioParaNube`, `serializarControlParaNube`…):
+  construido por *allowlist*, campo por campo. Un test verifica que el payload no
+  contenga llaves como `nombre` o `rut`; si alguien las agrega al modelo clínico,
+  el test falla antes del deploy. El servidor repite la validación.
+- **Canal de identidad** (`serializarIdentidadParaNube`): único lugar donde salen
+  nombre y RUT. Un test comprueba que ese mismo payload *es rechazado* por el
+  canal clínico, de modo que no puede colarse por el celular.
+- **Retención:** la identidad se purga al alta del paciente.
+- **Texto libre de observaciones:** sigue siendo el vector débil (alguien puede
+  escribir el nombre de un familiar). Es un control administrativo: la pantalla
+  advierte "no escriba nombres".
 
 ---
 

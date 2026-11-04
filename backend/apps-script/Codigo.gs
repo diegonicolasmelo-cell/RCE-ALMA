@@ -5,15 +5,16 @@
  * ---------------------------------------------------
  * Este script corre en servidores de Google, NO en la intranet del hospital.
  * Apps Script no puede leer la IP del cliente: no existe allowlist por IP.
- * Por lo tanto NINGUN dato identificable de paciente puede almacenarse aqui.
  *
- * La identidad del paciente (nombre, RUT, ficha) vive exclusivamente en el
- * IndexedDB del PC de la estacion, dentro del hospital, y nunca se sincroniza.
+ * DECISION DEL USUARIO (riesgo aceptado): nombre y RUT del paciente se guardan
+ * en la hoja "identidad" para estar disponibles en cualquier PC de la UCI y
+ * abrir Sinapse por RUT. Las defensas son estas tres:
+ *   1. Dos tokens. El celular solo tiene APP_TOKEN y el servidor NUNCA le
+ *      entrega la hoja de identidad. Solo los PC tienen STATION_TOKEN.
+ *   2. Hojas separadas. El canal clinico rechaza cualquier llave identificable
+ *      (validarSinIdentidad), asi un bug del celular no puede escribir un nombre.
+ *   3. Purga al alta (purgarIdentidad): la hoja no acumula pacientes historicos.
  * Ver docs/PLAN-MAESTRO.md capitulos 1 y 3.
- *
- * `validarSinIdentidad()` de abajo es la contraparte de servidor de
- * src/core/sanitizar.ts: defensa en profundidad para que ni un cliente con un
- * bug pueda escribir un nombre en la hoja.
  *
  * MODELO: APPEND-ONLY
  * -------------------
@@ -34,6 +35,7 @@ var HOJAS = {
   EVENTOS: "eventos",
   APK: "apk",
   USUARIOS: "usuarios",
+  IDENTIDAD: "identidad",
   AUDITORIA: "auditoria"
 };
 
@@ -60,11 +62,21 @@ function doPost(e) {
   try {
     var cuerpo = JSON.parse(e.postData.contents);
 
-    if (!tokenValido(cuerpo.token)) {
+    // El canal de identidad exige el token de estacion; el resto, el de app.
+    var esAccionIdentidad =
+      cuerpo.accion === "guardarIdentidad" || cuerpo.accion === "purgarIdentidad";
+    var autorizado = esAccionIdentidad
+      ? tokenEstacionValido(cuerpo.token)
+      : tokenValido(cuerpo.token);
+    if (!autorizado) {
       return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
     }
 
     switch (cuerpo.accion) {
+      case "guardarIdentidad":
+        return respuesta(guardarIdentidad(cuerpo.identidades));
+      case "purgarIdentidad":
+        return respuesta(purgarIdentidad(cuerpo.episodioIds));
       case "login":
         return respuesta(login(cuerpo.rut, cuerpo.pin));
       case "definirPin":
@@ -81,6 +93,12 @@ function doPost(e) {
 
 function doGet(e) {
   try {
+    if (e.parameter.recurso === "identidad") {
+      if (!tokenEstacionValido(e.parameter.token)) {
+        return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
+      }
+      return respuesta({ ok: true, identidades: leerHoja(HOJAS.IDENTIDAD, "") });
+    }
     if (!tokenValido(e.parameter.token)) {
       return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
     }
@@ -108,6 +126,16 @@ function respuesta(obj) {
  */
 function tokenValido(token) {
   var esperado = PropertiesService.getScriptProperties().getProperty("APP_TOKEN");
+  return Boolean(esperado) && token === esperado;
+}
+
+/**
+ * Token de estacion: solo lo tienen los PC. Se distribuye como marcador
+ * (`.../estacion#t=TOKEN`): el fragmento no viaja al servidor y la app lo
+ * guarda en el navegador al primer uso, asi no se re-tipea en cada turno.
+ */
+function tokenEstacionValido(token) {
+  var esperado = PropertiesService.getScriptProperties().getProperty("STATION_TOKEN");
   return Boolean(esperado) && token === esperado;
 }
 
@@ -313,6 +341,76 @@ function sincronizar(cuerpo) {
 }
 
 // ---------------------------------------------------------------------------
+// Identidad del paciente (canal separado, solo token de estacion)
+// ---------------------------------------------------------------------------
+
+/** Mapa episodioId -> numero de fila, para actualizar en vez de duplicar. */
+function filasPorEpisodio(hoja) {
+  var ultima = hoja.getLastRow();
+  var mapa = {};
+  if (ultima < 2) return mapa;
+  var ids = hoja.getRange(2, 1, ultima - 1, 1).getValues();
+  for (var i = 0; i < ids.length; i++) mapa[String(ids[i][0])] = i + 2;
+  return mapa;
+}
+
+/** Upsert: la identidad si se corrige (un nombre mal tipeado), a diferencia de lo clinico. */
+function guardarIdentidad(identidades) {
+  if (!identidades || identidades.length === 0) return { ok: true, guardadas: 0 };
+  if (identidades.length > MAX_REGISTROS_POR_LOTE) throw new Error("Lote demasiado grande");
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
+  try {
+    var hoja = hojaPorNombre(HOJAS.IDENTIDAD);
+    var filas = filasPorEpisodio(hoja);
+    var nuevas = [];
+
+    for (var i = 0; i < identidades.length; i++) {
+      var d = identidades[i];
+      if (!d || !d.episodioId) throw new Error("Identidad sin episodioId");
+      var fila = [d.episodioId, d.episodioId, d.registradoEn || "", JSON.stringify(d)];
+      if (filas[String(d.episodioId)]) {
+        hoja.getRange(filas[String(d.episodioId)], 1, 1, 4).setValues([fila]);
+      } else {
+        nuevas.push(fila);
+      }
+    }
+    if (nuevas.length > 0) {
+      hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, 4).setValues(nuevas);
+    }
+    registrarAuditoria("", "identidad_guardada", String(identidades.length));
+    return { ok: true, guardadas: identidades.length };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Al alta del paciente se borra su identidad; lo clinico des-identificado queda. */
+function purgarIdentidad(episodioIds) {
+  if (!episodioIds || episodioIds.length === 0) return { ok: true, purgadas: 0 };
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
+  try {
+    var hoja = hojaPorNombre(HOJAS.IDENTIDAD);
+    var filas = filasPorEpisodio(hoja);
+    var aBorrar = [];
+    for (var i = 0; i < episodioIds.length; i++) {
+      var f = filas[String(episodioIds[i])];
+      if (f) aBorrar.push(f);
+    }
+    // De abajo hacia arriba para que los indices no se corran.
+    aBorrar.sort(function (a, b) { return b - a; });
+    for (var j = 0; j < aBorrar.length; j++) hoja.deleteRow(aBorrar[j]);
+    registrarAuditoria("", "identidad_purgada", String(aBorrar.length));
+    return { ok: true, purgadas: aBorrar.length };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Lectura
 // ---------------------------------------------------------------------------
 
@@ -378,6 +476,7 @@ function inicializarLibro() {
   esquema[HOJAS.CONTROLES] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.EVENTOS] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.APK] = ["id", "episodioId", "registradoEn", "json"];
+  esquema[HOJAS.IDENTIDAD] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.USUARIOS] = ["rut", "sal", "hashPin", "nombre", "turno"];
   esquema[HOJAS.AUDITORIA] = ["registradoEn", "rut", "accion", "detalle"];
 
@@ -394,8 +493,11 @@ function inicializarLibro() {
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty("APP_TOKEN")) props.setProperty("APP_TOKEN", Utilities.getUuid());
   if (!props.getProperty("PIN_PEPPER")) props.setProperty("PIN_PEPPER", Utilities.getUuid());
+  if (!props.getProperty("STATION_TOKEN")) props.setProperty("STATION_TOKEN", Utilities.getUuid());
 
-  Logger.log("Listo. APP_TOKEN = " + props.getProperty("APP_TOKEN"));
+  Logger.log("APP_TOKEN (celulares)  = " + props.getProperty("APP_TOKEN"));
+  Logger.log("STATION_TOKEN (PC)     = " + props.getProperty("STATION_TOKEN"));
+  Logger.log("No pongas el STATION_TOKEN en los celulares: es lo que les impide leer la identidad.");
 }
 
 /**

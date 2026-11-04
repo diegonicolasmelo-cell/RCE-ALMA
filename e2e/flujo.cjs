@@ -295,6 +295,10 @@ async function esperarServidor() {
       await cel.click('button:has-text("Guardar control")');
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Guardado UCI-01/);
+      await cel.waitForSelector('article[aria-label^="Cama"]');
+      assert.equal(await cel.locator("#cuerpo .seg").count(), 0, "al guardar vuelve a las tarjetas de las camas");
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
+      await cel.waitForSelector(".seg");
     });
 
     await prueba("el control siguiente hereda ajustes e infusiones, pero no las lecturas ni la APK ya firmada", async () => {

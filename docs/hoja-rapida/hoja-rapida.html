@@ -1,0 +1,265 @@
+<title>Hoja Rápida UCI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@400;600;700&display=swap">
+<style>
+/* Layout: la hoja de papel "Cuidados respiratorios" tal cual — filas = parametros, columnas = controles.
+   La primera columna (nombres) queda fija; la segunda es el control nuevo; a la derecha, los anteriores. */
+:root{
+  --papel:#fbfcfd; --tinta:#14243a; --tinta-2:#4c5b6e; --regla:#d6dfe9; --banda:#eef3f8;
+  --acento:#1f5fa8; --acento-suave:#e2ecf8; --error:#b3261e;
+  --f-ui:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --papel:#0f151c; --tinta:#e6edf5; --tinta-2:#9fb0c3; --regla:#27313d; --banda:#16202a;
+  --acento:#6aa6ea; --acento-suave:#17283b; --error:#f2b8b5; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --papel:#0f151c; --tinta:#e6edf5; --tinta-2:#9fb0c3; --regla:#27313d; --banda:#16202a;
+  --acento:#6aa6ea; --acento-suave:#17283b; --error:#f2b8b5; color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--papel);color:var(--tinta);font:15px/1.35 var(--f-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 96px}
+header{display:flex;flex-wrap:wrap;align-items:end;gap:10px 16px;margin-bottom:10px}
+h1{font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:0;text-wrap:balance}
+header .sub{color:var(--tinta-2);font-size:13px}
+.ctl{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--tinta-2);letter-spacing:.04em;text-transform:uppercase}
+.ctl select,.ctl input{font:600 15px var(--f-ui);color:var(--tinta);background:var(--papel);border:1px solid var(--regla);border-radius:6px;padding:6px 8px;min-height:38px}
+
+.tabla{overflow-x:auto;border:1px solid var(--regla);border-radius:8px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:100%}
+th,td{border-bottom:1px solid var(--regla);border-right:1px solid var(--regla);padding:0;height:40px;vertical-align:middle}
+thead th{position:sticky;top:0;background:var(--banda);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tinta-2);padding:4px 8px;white-space:nowrap;z-index:2}
+th.nom{position:sticky;left:0;z-index:1;background:var(--papel);text-align:left;font-weight:600;font-size:14px;padding:0 10px;white-space:nowrap;min-width:9.5em}
+thead th.nom{z-index:3;background:var(--banda)}
+tr.grupo th{background:var(--banda);text-align:left;padding:4px 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acento);position:sticky;left:0}
+td.nuevo{background:var(--acento-suave);min-width:6.5em}
+td.nuevo input,td.nuevo select{width:100%;height:39px;border:0;background:transparent;color:var(--tinta);font:600 16px var(--f-num);text-align:center;padding:0 4px}
+td.nuevo .par{display:flex;align-items:center}
+td.nuevo .par input{width:50%}
+td.nuevo .par span{color:var(--tinta-2)}
+td.nuevo input:focus,td.nuevo select:focus{outline:2px solid var(--acento);outline-offset:-2px;background:var(--papel)}
+td.calc{font:600 15px var(--f-num);text-align:center;color:var(--tinta-2);padding:0 6px}
+td.prev{font:15px var(--f-num);text-align:center;padding:0 8px;white-space:nowrap;min-width:5.5em}
+td.prev.calc,td.prev{color:var(--tinta)}
+.ej{font:600 10px var(--f-ui);color:var(--tinta-2);letter-spacing:.06em;display:block}
+
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--papel);border-top:1px solid var(--regla);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+button{font:600 15px var(--f-ui);border-radius:8px;min-height:44px;padding:0 16px;cursor:pointer;border:1px solid var(--regla);background:var(--papel);color:var(--tinta)}
+button.pri{background:var(--acento);border-color:var(--acento);color:var(--papel)}
+button:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.msg{font-size:13px;color:var(--tinta-2);margin-left:auto}
+.msg.err{color:var(--error)}
+.confirma{display:flex;gap:8px;align-items:center}
+@media (prefers-reduced-motion:no-preference){td.nuevo input{transition:background .12s}}
+</style>
+
+<header>
+  <div>
+    <h1>Cuidados respiratorios</h1>
+    <div class="sub">UCI Adulto · casillas en el orden de la hoja · <span id="fecha"></span></div>
+  </div>
+  <label class="ctl" for="cama">Cama
+    <select id="cama"></select>
+  </label>
+</header>
+
+<div class="tabla">
+  <table id="hoja" aria-label="Hoja de controles">
+    <thead><tr id="cabeza"></tr></thead>
+    <tbody id="cuerpo"></tbody>
+  </table>
+</div>
+
+<div class="barra">
+  <button class="pri" id="guardar" type="button">Guardar control</button>
+  <button id="limpiar" type="button">Limpiar casillas</button>
+  <span class="confirma" id="zona-borrar"><button id="borrar" type="button">Borrar la cama</button></span>
+  <span class="msg" id="msg" role="status"></span>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // Filas de la hoja de papel, en su orden. tipo: n = numero, p = par de numeros, t = texto, s = seleccion, c = calculado.
+  var FILAS = [
+    { g: "Monitorización" },
+    { id: "hora", l: "Hora", t: "time" },
+    { id: "fc", l: "Frec. Cardiaca", t: "n" },
+    { id: "pa", l: "P. Arterial", t: "p", a: "pas", b: "pad" },
+    { id: "pam", l: "P. A. Media", t: "c" },
+    { id: "pic", l: "PIC / PPC", t: "n", calc: "ppc" },
+    { id: "gcs", l: "Glasgow", t: "n" },
+    { id: "s5q", l: "S5Q", t: "n" },
+    { id: "sas", l: "SAS / Escalón", t: "p", a: "sas", b: "esc" },
+    { id: "dva", l: "DVA", t: "n" },
+    { g: "Terapia ventilatoria" },
+    { id: "modo", l: "Modo", t: "s", op: ["", "ACVC", "PCV", "CPAP+PS", "CNAF", "VMNI"] },
+    { id: "vt", l: "Vol. Tidal", t: "n" },
+    { id: "fmax", l: "F Max / T ins", t: "p", a: "fmax", b: "tins" },
+    { id: "fr", l: "Frecuencia", t: "n" },
+    { id: "peep", l: "PEEP / EPAP", t: "n" },
+    { id: "psop", l: "P Sop / IPAP", t: "n" },
+    { id: "pmax", l: "P. Máxima", t: "n" },
+    { id: "pmed", l: "P. Media", t: "n" },
+    { id: "pplat", l: "P. Plateau", t: "n" },
+    { id: "dp", l: "P. Distensión", t: "c" },
+    { id: "comp", l: "Compliance", t: "c" },
+    { id: "autopeep", l: "Auto PEEP", t: "n" },
+    { id: "ie", l: "Relación I:E", t: "t" },
+    { id: "tobin", l: "I. Tobin", t: "c" },
+    { id: "vmin", l: "Vol. Minuto", t: "n" },
+    { id: "fio2", l: "FiO₂", t: "n" },
+    { id: "spo2", l: "SpO₂", t: "n" },
+    { id: "firma", l: "Firma", t: "t" }
+  ];
+  var CAMAS = Array.from({ length: 18 }, function (_, i) { return "UCI-" + String(i + 1).padStart(2, "0"); });
+  var CLAVE = "hoja-rapida-v1";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var num = function (v) { var n = Number(String(v == null ? "" : v).replace(",", ".")); return v === "" || v == null || !isFinite(n) ? null : n; };
+  var r1 = function (x) { return x == null ? "" : String(Math.round(x * 10) / 10); };
+
+  // Calculados: los mismos de la hoja, a partir de lo anotado.
+  function calcular(c) {
+    var pas = num(c.pas), pad = num(c.pad), pic = num(c.pic), vt = num(c.vt), fr = num(c.fr), peep = num(c.peep), pplat = num(c.pplat);
+    var pam = pas != null && pad != null ? Math.round((pas + 2 * pad) / 3) : null;
+    var dp = pplat != null && peep != null ? pplat - peep : null;
+    return {
+      pam: pam,
+      ppc: pam != null && pic != null ? pam - pic : null,
+      dp: dp,
+      comp: vt != null && dp != null && dp > 0 ? Math.round(vt / dp * 10) / 10 : null,
+      tobin: c.modo === "CPAP+PS" && vt && fr ? Math.round(fr / (vt / 1000)) : null
+    };
+  }
+
+  var datos = {};
+  function leer() { try { datos = JSON.parse(localStorage.getItem(CLAVE) || "{}") || {}; } catch (e) { datos = {}; } }
+  function escribir() { try { localStorage.setItem(CLAVE, JSON.stringify(datos)); return true; } catch (e) { return false; } }
+
+  // Primera vez: dos controles de ejemplo en UCI-01, marcados como ejemplo.
+  function sembrar() {
+    if (datos._sembrado) return;
+    datos["UCI-01"] = [
+      { ejemplo: true, hora: "08:10", fc: "92", pas: "118", pad: "64", gcs: "9", s5q: "", sas: "3", esc: "2", dva: "0.08", modo: "ACVC", vt: "430", fmax: "50", tins: "1", fr: "20", peep: "10", psop: "", pmax: "26", pmed: "14", pplat: "20", autopeep: "0", ie: "1:2", vmin: "8.6", fio2: "45", spo2: "95", firma: "DM" },
+      { ejemplo: true, hora: "12:05", fc: "86", pas: "122", pad: "68", gcs: "10", s5q: "2", sas: "4", esc: "1", dva: "0.05", modo: "CPAP+PS", vt: "460", fmax: "", tins: "", fr: "18", peep: "5", psop: "7", pmax: "14", pmed: "", pplat: "", autopeep: "", ie: "", vmin: "8.3", fio2: "35", spo2: "97", firma: "DM" }
+    ];
+    datos._sembrado = true;
+    escribir();
+  }
+
+  var cama = "UCI-01";
+  var actual = {};
+
+  function hoyTexto() { return new Date().toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" }); }
+  function horaAhora() { var d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+
+  function dibujar() {
+    var lista = (datos[cama] || []).slice().reverse();
+    var cab = '<th class="nom" scope="col">Parámetro</th><th scope="col">Nuevo</th>';
+    lista.forEach(function (c) { cab += '<th scope="col">' + (c.hora || "—") + (c.ejemplo ? '<span class="ej">ejemplo</span>' : "") + "</th>"; });
+    $("cabeza").innerHTML = cab;
+
+    var calcN = calcular(actual);
+    var calcs = lista.map(calcular);
+    var html = "";
+    FILAS.forEach(function (f) {
+      if (f.g) { html += '<tr class="grupo"><th colspan="' + (2 + lista.length) + '" scope="colgroup">' + f.g + "</th></tr>"; return; }
+      html += '<tr><th class="nom" scope="row">' + f.l + "</th>";
+      if (f.t === "c") html += '<td class="nuevo calc" id="calc-' + f.id + '">' + r1(calcN[f.id]) + "</td>";
+      else html += '<td class="nuevo">' + celda(f) + "</td>";
+      lista.forEach(function (c, i) { html += '<td class="prev">' + previo(f, c, calcs[i]) + "</td>"; });
+      html += "</tr>";
+    });
+    $("cuerpo").innerHTML = html;
+    actualizarCalc();
+  }
+
+  function attrs(id, modo) {
+    return ' id="in-' + id + '" data-k="' + id + '" autocomplete="off" enterkeyhint="next" inputmode="' + modo + '" value="' + (actual[id] == null ? "" : String(actual[id]).replace(/"/g, "&quot;")) + '"';
+  }
+  function celda(f) {
+    if (f.t === "n") return "<input" + attrs(f.id, "decimal") + ' aria-label="' + f.l + '">';
+    if (f.t === "time") return '<input type="time" id="in-hora" data-k="hora" aria-label="Hora" value="' + (actual.hora || "") + '">';
+    if (f.t === "t") return "<input" + attrs(f.id, "text") + ' aria-label="' + f.l + '">';
+    if (f.t === "p") return '<div class="par"><input' + attrs(f.a, "decimal") + ' aria-label="' + f.l + ' (1)"><span>/</span><input' + attrs(f.b, "decimal") + ' aria-label="' + f.l + ' (2)"></div>';
+    if (f.t === "s") return '<select id="in-' + f.id + '" data-k="' + f.id + '" aria-label="' + f.l + '">' + f.op.map(function (o) { return '<option value="' + o + '"' + (actual[f.id] === o ? " selected" : "") + ">" + (o || "—") + "</option>"; }).join("") + "</select>";
+    return "";
+  }
+  function previo(f, c, k) {
+    if (f.t === "c") return r1(k[f.id]);
+    if (f.t === "p") { var a = c[f.a] || "", b = c[f.b] || ""; return a || b ? a + "/" + b : ""; }
+    if (f.id === "pic") return c.pic ? c.pic + " / " + r1(k.ppc) : "";
+    return c[f.id] == null ? "" : String(c[f.id]).replace(/[<>&]/g, "");
+  }
+  function actualizarCalc() {
+    var k = calcular(actual);
+    ["pam", "dp", "comp", "tobin"].forEach(function (id) { var el = $("calc-" + id); if (el) el.textContent = r1(k[id]); });
+  }
+
+  // Enter = casilla siguiente, como en la hoja.
+  function campos() { return Array.prototype.slice.call(document.querySelectorAll("td.nuevo input, td.nuevo select")); }
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !e.target.matches("td.nuevo input, td.nuevo select")) return;
+    e.preventDefault();
+    var l = campos(), i = l.indexOf(e.target);
+    if (l[i + 1]) l[i + 1].focus(); else $("guardar").focus();
+  });
+  document.addEventListener("input", function (e) {
+    var k = e.target.dataset && e.target.dataset.k;
+    if (!k) return;
+    actual[k] = e.target.value;
+    guardarBorrador();
+    actualizarCalc();
+  });
+  document.addEventListener("change", function (e) {
+    var k = e.target.dataset && e.target.dataset.k;
+    if (k) { actual[k] = e.target.value; guardarBorrador(); actualizarCalc(); }
+  });
+
+  function guardarBorrador() { datos["_borrador:" + cama] = actual; escribir(); }
+  function nuevoActual() {
+    var firma = ""; try { firma = localStorage.getItem(CLAVE + ":firma") || ""; } catch (e) {}
+    actual = datos["_borrador:" + cama] || { hora: horaAhora(), firma: firma };
+  }
+
+  function aviso(t, err) { var m = $("msg"); m.textContent = t; m.className = "msg" + (err ? " err" : ""); }
+
+  $("guardar").addEventListener("click", function () {
+    var lleno = Object.keys(actual).some(function (k) { return k !== "hora" && k !== "firma" && actual[k] !== "" && actual[k] != null; });
+    if (!lleno) { aviso("Escribe al menos un valor antes de guardar.", true); return; }
+    var c = Object.assign({}, actual);
+    if (!c.hora) c.hora = horaAhora();
+    (datos[cama] = datos[cama] || []).push(c);
+    try { if (c.firma) localStorage.setItem(CLAVE + ":firma", c.firma); } catch (e) {}
+    delete datos["_borrador:" + cama];
+    var ok = escribir();
+    nuevoActual();
+    dibujar();
+    aviso(ok ? "Control de las " + c.hora + " guardado en " + cama + "." : "Guardado solo en esta pantalla: el navegador no permite almacenar.", !ok);
+    var primero = $("in-fc"); if (primero) primero.focus();
+  });
+
+  $("limpiar").addEventListener("click", function () {
+    delete datos["_borrador:" + cama]; escribir(); nuevoActual(); dibujar(); aviso("Casillas en blanco.");
+  });
+
+  // Confirmacion dentro de la pagina (sin dialogos del navegador).
+  function zonaBorrar(confirmando) {
+    var z = $("zona-borrar");
+    if (!confirmando) { z.innerHTML = '<button id="borrar" type="button">Borrar la cama</button>'; $("borrar").onclick = function () { zonaBorrar(true); }; return; }
+    z.innerHTML = '<span>¿Borrar los controles de ' + cama + '?</span><button id="si" type="button">Sí, borrar</button><button id="no" type="button">No</button>';
+    $("si").onclick = function () { delete datos[cama]; delete datos["_borrador:" + cama]; escribir(); nuevoActual(); dibujar(); zonaBorrar(false); aviso("Controles de " + cama + " borrados."); };
+    $("no").onclick = function () { zonaBorrar(false); };
+  }
+
+  $("cama").innerHTML = CAMAS.map(function (c) { return '<option value="' + c + '">' + c + "</option>"; }).join("");
+  $("cama").addEventListener("change", function (e) { cama = e.target.value; nuevoActual(); dibujar(); aviso(""); });
+  $("fecha").textContent = hoyTexto();
+
+  leer(); sembrar(); nuevoActual(); dibujar(); zonaBorrar(false);
+})();
+</script>

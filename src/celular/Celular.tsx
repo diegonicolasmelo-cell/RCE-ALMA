@@ -233,6 +233,8 @@ export function Celular() {
     useApp.getState().descartar(ep.id);
     franja.cerrar();
     setTab("monitoreo");
+    // Guardado el control, de vuelta a las tarjetas de las camas.
+    irA("camas");
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.` : `Guardado ${ep.cama} ${control.hora}. Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };

@@ -141,10 +141,6 @@ export function TabControl({ ctx }: { ctx: ContextoCama }) {
 
   return (
     <>
-      <Aviso tipo="acc" pequeno>
-        Los valores que se leen del monitor nacen <b>en blanco</b>. Los ajustes del ventilador y las infusiones se heredan.
-      </Aviso>
-
       <section>
         <h3>Signos vitales</h3>
         <div className="fgrid2">

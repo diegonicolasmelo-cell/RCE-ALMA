@@ -3,6 +3,9 @@ import { columnasApk, documentoApkHtml, formatearRut } from "@core/index";
 import type { Episodio, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { guardarMeta, leerMeta } from "../datos/db";
 import { useServicios } from "../app/contexto";
+import { useConsulta } from "../app/hooks";
+import { CLAVE_CARPETA_APK, escribirHtml, permisoConcedido } from "./archivoLocal";
+import type { CarpetaHandle } from "./archivoLocal";
 import logoAcreditacion from "./logo-acreditacion.jpg?inline";
 import logoGobierno from "./logo-gobierno.jpg?inline";
 
@@ -60,4 +63,43 @@ export function useArchivoApk(
       cancelado = true;
     };
   }, [api, db, local, tokenEstacion, episodios, apks, identidades]);
+}
+
+const claveLocal = (episodioId: string): string => `apkLocal:${episodioId}`;
+
+/**
+ * Copia en paralelo a una carpeta de este PC (si se eligio una). Independiente de
+ * Drive: si una falla, la otra sigue. Se vuelve a escribir cuando cambian las firmas.
+ */
+export function useArchivoApkLocal(
+  episodios: readonly Episodio[],
+  apks: ReadonlyMap<string, readonly ValidacionApk[]>,
+  identidades: ReadonlyMap<string, IdentidadPaciente>
+): void {
+  const { db } = useServicios();
+  const carpeta = useConsulta(() => leerMeta<CarpetaHandle>(db, CLAVE_CARPETA_APK), [db], undefined);
+  useEffect(() => {
+    if (!carpeta) return;
+    let cancelado = false;
+    void (async () => {
+      if (!(await permisoConcedido(carpeta))) return;
+      for (const ep of episodios) {
+        const lista = apks.get(ep.id) ?? [];
+        const identidad = identidades.get(ep.id) ?? null;
+        if (lista.length === 0 || !identidad) continue;
+        const firma = lista.map((a) => a.id).sort().join(",");
+        if ((await leerMeta<string>(db, claveLocal(ep.id))) === firma) continue;
+        try {
+          await escribirHtml(carpeta, nombreArchivoApk(ep, identidad), htmlApk(ep, identidad, lista));
+        } catch {
+          return; // carpeta movida o sin permiso: se reintenta en el proximo cambio
+        }
+        if (cancelado) return;
+        await guardarMeta(db, claveLocal(ep.id), firma);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [db, carpeta, episodios, apks, identidades]);
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useServicios } from "../app/contexto";
 import { useConsulta, useOnline } from "../app/hooks";
 import { useApp } from "../app/store";
@@ -5,6 +6,7 @@ import { leerMeta } from "../datos/db";
 import { CLAVE_CONEXION, CLAVE_TOKEN_ESTACION } from "../datos/servicios";
 import { Aviso, Pildora } from "../celular/componentes";
 import type { DatosUnidad } from "./datos";
+import { archivoLocalSoportado, elegirCarpeta, leerCarpeta, pedirPermiso, permisoConcedido } from "./archivoLocal";
 
 /** Estado de la sincronizacion y de la identidad en este equipo. */
 export function Estado({ datos }: { datos: DatosUnidad }) {
@@ -14,6 +16,20 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
   const pendientes = useConsulta(() => sync.pendientes(), [sync], 0);
   const bloqueadas = useConsulta(() => sync.bloqueadas(), [sync], []);
   const ultima = useConsulta(() => leerMeta<number>(db, "ultimaSubida"), [db], undefined);
+
+  const carpeta = useConsulta(() => leerCarpeta(db), [db], undefined);
+  const [permiso, setPermiso] = useState<boolean | null>(null);
+  const comprobar = async (): Promise<void> => setPermiso(carpeta ? await permisoConcedido(carpeta) : null);
+  const elegir = async (): Promise<void> => {
+    const h = await elegirCarpeta(db);
+    if (h) {
+      setPermiso(true);
+      avisar(`Las hojas APK se copiarán en la carpeta «${h.name}» de este equipo.`);
+    }
+  };
+  const reautorizar = async (): Promise<void> => {
+    if (carpeta) setPermiso(await pedirPermiso(carpeta));
+  };
 
   const sincronizar = async (): Promise<void> => {
     const r = await sync.ciclo();
@@ -42,6 +58,28 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
           </Aviso>
         )}
         <p className="small muted">Cada cambio se guarda primero en este equipo y se sube en segundo plano. Si se corta a medias, reintentar no duplica nada.</p>
+      </div>
+
+      <div className="card stack">
+        <h2>Copia local de las hojas APK</h2>
+        {!archivoLocalSoportado() ? (
+          <Aviso tipo="warn" pequeno>Este navegador no permite guardar en una carpeta. Usa Chrome o Edge en el PC que hará de respaldo.</Aviso>
+        ) : (
+          <>
+            <div className="row">
+              <Pildora tipo={carpeta ? "good" : ""}>{carpeta ? `Carpeta: ${carpeta.name}` : "Sin carpeta elegida"}</Pildora>
+              {carpeta && permiso === false && <Pildora tipo="warn">Falta confirmar el permiso</Pildora>}
+            </div>
+            <div className="row">
+              <button type="button" className="btn" onClick={() => void elegir()}>{carpeta ? "Cambiar carpeta" : "Elegir carpeta"}</button>
+              {carpeta && <button type="button" className="btn" onClick={() => void reautorizar()}>Confirmar permiso</button>}
+              {carpeta && <button type="button" className="btn sm" onClick={() => void comprobar()}>Comprobar</button>}
+            </div>
+          </>
+        )}
+        <p className="small muted">
+          Se elige en el PC que queda siempre encendido. Mientras la estación esté abierta ahí, cada firma de APK actualiza el archivo del paciente en esa carpeta, además de Drive. Si el navegador se reinicia, puede pedir confirmar el permiso con un clic. La carpeta contiene RUN: debe estar en un disco protegido y con respaldo.
+        </p>
       </div>
 
       <div className="card stack">

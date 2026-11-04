@@ -66,6 +66,11 @@ punta hay que hacerlo con datos ficticios.
   **no se borra al alta**; decidir cuánto tiempo se conserva. El PDF lo arma Apps
   Script desde el HTML y puede salir en vertical: el HTML (apaisado, fiel) es la
   copia de referencia. No está probado contra Google.
+- **Copia local en paralelo**: en Estado, un PC siempre encendido (Chrome o Edge)
+  elige una carpeta y ahí se copia cada hoja APK, además de Drive. Solo escribe con
+  la estación abierta y puede pedir confirmar el permiso tras reiniciar el
+  navegador. Sin prueba automática (el selector de carpeta no se automatiza):
+  probar a mano.
 - Formato de la URL de **Sinapse** (`VITE_SINAPSE_URL`).
 - RUT de la dotación: son marcadores de posición (`src/core/dotacion.ts`).
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServicios } from "../app/contexto";
 import { useAhora } from "../app/hooks";
-import { useArchivoApk } from "./apkDocumento";
+import { useArchivoApk, useArchivoApkLocal } from "./apkDocumento";
 import { useDatosUnidad } from "./datos";
 import { Estado } from "./Estado";
 import { ParaAlma } from "./ParaAlma";
@@ -37,6 +37,7 @@ export function Estacion() {
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   useIdentidades();
   useArchivoApk(datos.episodios, datos.apks, datos.identidades);
+  useArchivoApkLocal(datos.episodios, datos.apks, datos.identidades);
 
   return (
     <div className="estacion">

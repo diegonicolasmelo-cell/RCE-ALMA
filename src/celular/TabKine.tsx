@@ -17,7 +17,7 @@ import {
 import type { MarcaApk } from "@core/index";
 import type { AspectoSecreciones, CantidadSecreciones, ReologiaSecreciones } from "@core/index";
 import { useApp } from "../app/store";
-import type { PasoId } from "./pasos";
+import type { SegmentoId } from "./pasos";
 import { useServicios } from "../app/contexto";
 import { nuevoId } from "../app/util";
 import { Aviso, CampoNum, Fichas, Seg } from "./componentes";
@@ -30,7 +30,7 @@ const nombreProfesional = (rut: string): string => {
   return p ? `Klgo. ${p.nombre}` : `RUT ${rut}`;
 };
 
-export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
+export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) {
   const { ep, b, editar, apks, ahora, rutAutor } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);

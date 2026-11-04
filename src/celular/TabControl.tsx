@@ -31,7 +31,7 @@ import {
 import type { CampoVent, CampoVentDef, Modalidad } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
-import type { PasoId } from "./pasos";
+import type { SegmentoId } from "./pasos";
 import { textoNum } from "../app/util";
 import { Aviso, CampoNum, Pildora, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
@@ -46,7 +46,7 @@ const BANDA = {
   SOBRE_META: { tipo: "warn" as const, t: "Sobre la meta" }
 };
 
-export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
+export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) {
   const { ep, ultimo, b, editar, pbw } = ctx;
   const { local } = useServicios();
   const f = useFranja();
@@ -151,6 +151,16 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
         </div>
       </section>
 
+      <section>
+        <h3>Inotrópicos y antiarrítmicos</h3>
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="grpt">Inotrópicos</div>
+          {tarjetas("INOTROPO")}
+          <div className="grpt">Antiarrítmicos</div>
+          {tarjetas("ANTIARRITMICO")}
+        </div>
+      </section>
+
       {local && (
         <div className="row" style={{ justifyContent: "space-between" }}>
           <span className="small muted">Modo demostración:</span>
@@ -162,6 +172,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
         </>
       )}
       {paso === "pa" && (
+        <>
       <section>
         <h3>Presión arterial</h3>
         <div className="fgrid">
@@ -173,19 +184,14 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: PasoId }) {
           </div>
         </div>
       </section>
-      )}
-      {paso === "dva" && (
+      
       <section>
-        <h3>DVA, inotrópicos y antiarrítmicos</h3>
+        <h3>Drogas vasoactivas</h3>
         <div className="stack" style={{ gap: 6 }}>
-          <div className="grpt">DVA</div>
           {tarjetas("DVA")}
-          <div className="grpt">Inotrópicos</div>
-          {tarjetas("INOTROPO")}
-          <div className="grpt">Antiarrítmicos</div>
-          {tarjetas("ANTIARRITMICO")}
         </div>
       </section>
+        </>
       )}
       {paso === "modo" && (
       <section>

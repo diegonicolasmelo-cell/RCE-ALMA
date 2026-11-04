@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Lock, Wifi, WifiOff } from "lucide-react";
 import {
   apkVigente,
@@ -22,7 +22,8 @@ import { nuevoId } from "../app/util";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { EVENTO_FIN_PESTANA, enfocarPrimero, useFranja } from "./franja";
-import { PASOS, pasoDeCampo } from "./pasos";
+import { ORDEN_TABS, SEGMENTOS, ubicacionDeCampo } from "./pasos";
+import type { SegmentoId, TabControl as TabDeControl } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
 import { TabEventos } from "./TabEventos";
@@ -33,7 +34,9 @@ import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 
 const TABS: readonly (readonly [TabCelular, string])[] = [
-  ["control", "Control"],
+  ["monitoreo", "Monitoreo"],
+  ["ventilacion", "Ventilación"],
+  ["kine", "Kine · APK"],
   ["pve", "PVE"],
   ["eventos", "Eventos"]
 ];
@@ -49,8 +52,9 @@ export function Celular() {
   const irA = useApp((s) => s.irA);
   const tab = useApp((s) => s.tab);
   const setTab = useApp((s) => s.setTab);
-  const paso = useApp((s) => s.paso);
-  const setPaso = useApp((s) => s.setPaso);
+  const segPedido = useApp((s) => s.segPedido);
+  const pedirSegmento = useApp((s) => s.pedirSegmento);
+  const [segActual, setSegActual] = useState(0);
   const borradores = useApp((s) => s.borradores);
   const avisar = useApp((s) => s.avisar);
   const setSesion = useApp((s) => s.setSesion);
@@ -85,20 +89,65 @@ export function Celular() {
     [ep?.id, ultimo?.id, sesion.rut, misCamas]
   );
 
-  useEffect(() => {
-    document.querySelector('.paso-chip[aria-current="step"]')?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [paso, vista]);
+  // --- Segmentos: una pantalla larga por pestana; "Siguiente" lleva al segmento que sigue ---
+  const segmentos = useCallback((): HTMLElement[] => [...document.querySelectorAll<HTMLElement>("#cuerpo [data-seg]")], []);
+  const marcar = useCallback((i: number): void => {
+    segmentos().forEach((el, k) => (k === i ? el.setAttribute("data-activo", "true") : el.removeAttribute("data-activo")));
+    setSegActual(i);
+  }, [segmentos]);
+  const irASeg = useCallback((i: number): void => {
+    const el = segmentos()[i];
+    if (!el) return;
+    franja.cerrar();
+    marcar(i);
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [segmentos, marcar, franja]);
 
-  // "Sig." al terminar los casilleros de un bloque pasa al bloque siguiente (no salta ninguno).
+  // Al cambiar de pestana (o de cama): arriba y primer segmento, o el segmento pedido.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const lista = segmentos();
+      const i = segPedido ? lista.findIndex((el) => el.dataset["seg"] === segPedido) : 0;
+      document.getElementById("cuerpo")?.scrollTo({ top: 0 });
+      if (i > 0) irASeg(i);
+      else marcar(0);
+      if (segPedido) pedirSegmento(null);
+    }, 30);
+    return () => clearTimeout(t);
+  }, [tab, camaId, vista, segPedido]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // El segmento activo sigue al scroll y al foco.
+  useEffect(() => {
+    const cuerpo = document.getElementById("cuerpo");
+    if (!cuerpo) return;
+    const alScroll = (): void => {
+      const tope = cuerpo.getBoundingClientRect().top + 90;
+      const lista = segmentos();
+      let idx = 0;
+      lista.forEach((el, k) => { if (el.getBoundingClientRect().top <= tope) idx = k; });
+      if (cuerpo.scrollTop + cuerpo.clientHeight >= cuerpo.scrollHeight - 4) idx = Math.max(idx, lista.length - 1);
+      marcar(idx);
+    };
+    const alFoco = (e: FocusEvent): void => {
+      const seg = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-seg]");
+      const i = seg ? segmentos().indexOf(seg) : -1;
+      if (i >= 0) marcar(i);
+    };
+    cuerpo.addEventListener("scroll", alScroll, { passive: true });
+    cuerpo.addEventListener("focusin", alFoco);
+    return () => {
+      cuerpo.removeEventListener("scroll", alScroll);
+      cuerpo.removeEventListener("focusin", alFoco);
+    };
+  }, [tab, vista, ep?.id, segmentos, marcar]);
+
+  // "Sig." del teclado al terminar los casilleros de Monitoreo sigue en Ventilacion.
   useEffect(() => {
     const alFin = (e: Event): void => {
       const st = useApp.getState();
-      if (st.vista !== "cama" || st.tab !== "control") return;
-      const i = PASOS.findIndex((p) => p.id === st.paso);
-      const sig = PASOS[i + 1];
-      if (!sig) return;
+      if (st.vista !== "cama" || st.tab !== "monitoreo") return;
       e.preventDefault();
-      st.setPaso(sig.id);
+      st.setTab("ventilacion");
       setTimeout(() => {
         if (!enfocarPrimero()) franja.cerrar();
       }, 80);
@@ -128,8 +177,9 @@ export function Celular() {
     if (problemas.length > 0) {
       const primero = problemas[0];
       if (primero) {
-        setTab("control");
-        setPaso(pasoDeCampo(primero.campo));
+        const u = ubicacionDeCampo(primero.campo);
+        setTab(u.tab);
+        pedirSegmento(u.seg);
       }
       avisar(`Falta: ${problemas.map((p) => p.mensaje).join(", ")}.`);
       return;
@@ -139,27 +189,36 @@ export function Celular() {
     await repo.guardarControl(control);
     useApp.getState().descartar(ep.id);
     franja.cerrar();
-    setTab("control");
-    setPaso("fc");
+    setTab("monitoreo");
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.` : `Guardado ${ep.cama} ${control.hora}. Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
 
-  const idxPaso = Math.max(0, PASOS.findIndex((p) => p.id === paso));
-  const defPaso = PASOS[idxPaso]!;
-  const ultimoPaso = idxPaso === PASOS.length - 1;
-  const irAPaso = (i: number): void => {
-    const p = PASOS[Math.min(PASOS.length - 1, Math.max(0, i))];
-    if (!p) return;
-    franja.cerrar();
-    setPaso(p.id);
-    document.getElementById("cuerpo")?.scrollTo({ top: 0 });
+  const enTabControl = ORDEN_TABS.includes(tab as TabDeControl);
+  const defsSeg = enTabControl ? SEGMENTOS[tab as TabDeControl] : [];
+  const iTab = ORDEN_TABS.indexOf(tab as TabDeControl);
+  const ultimoSeg = enTabControl && iTab === ORDEN_TABS.length - 1 && segActual >= defsSeg.length - 1;
+  const siguiente = (): void => {
+    if (segActual < defsSeg.length - 1) return irASeg(segActual + 1);
+    const prox = ORDEN_TABS[iTab + 1];
+    if (prox) { franja.cerrar(); setTab(prox); }
   };
-  const cuerpoControl =
-    ["fc", "pa", "dva", "modo", "vent", "spo2"].includes(paso) ? <TabControl ctx={ctx} paso={paso} /> :
-    ["neuro", "glasgow", "sas", "sedacion"].includes(paso) ? <TabConciencia ctx={ctx} paso={paso} /> :
-    <TabKine ctx={ctx} paso={paso} />;
-  const cuerpo = tab === "control" ? cuerpoControl : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
+  const atras = (): void => {
+    if (segActual > 0) return irASeg(segActual - 1);
+    const prev = ORDEN_TABS[iTab - 1];
+    if (prev) { franja.cerrar(); const ult = SEGMENTOS[prev].at(-1); if (ult) pedirSegmento(ult.id); setTab(prev); }
+  };
+  const renderSeg = (id: SegmentoId): JSX.Element =>
+    ["fc", "pa", "modo", "vent", "spo2"].includes(id) ? <TabControl ctx={ctx} paso={id} /> :
+    ["neuro", "glasgow", "sas"].includes(id) ? <TabConciencia ctx={ctx} paso={id} /> :
+    <TabKine ctx={ctx} paso={id} />;
+  const cuerpoSegmentos = (
+    <>
+      {defsSeg.map((d) => <div key={d.id} className="seg" data-seg={d.id}>{renderSeg(d.id)}</div>)}
+      <div className="seg-relleno" aria-hidden />
+    </>
+  );
+  const cuerpo = enTabControl ? cuerpoSegmentos : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
 
   const cabecera = (
       <div className="cel-top">
@@ -244,18 +303,14 @@ export function Celular() {
         ))}
       </div>
 
-      {tab === "control" && (
-        <div className="pasos" role="navigation" aria-label="Bloques del control">
+      {enTabControl && (
+        <div className="pasos" role="navigation" aria-label="Secciones">
           <div className="pasos-lista">
-            {PASOS.map((p, i) => (
-              <button key={p.id} type="button" className="paso-chip" aria-current={p.id === paso ? "step" : undefined} data-hecho={i < idxPaso} onClick={() => irAPaso(i)}>
-                {i + 1}·{p.corto}
+            {defsSeg.map((d, i) => (
+              <button key={d.id} type="button" className="paso-chip" aria-current={i === segActual ? "step" : undefined} onClick={() => irASeg(i)}>
+                {d.corto}
               </button>
             ))}
-          </div>
-          <div className="row" style={{ justifyContent: "space-between", padding: "4px 14px 0" }}>
-            <b>{defPaso.titulo}</b>
-            <span className="small muted">Bloque {idxPaso + 1} de {PASOS.length}</span>
           </div>
         </div>
       )}
@@ -266,14 +321,14 @@ export function Celular() {
 
       <div className="cel-pie">
         <div className="cel-guardar" style={{ display: "flex", gap: 8 }}>
-          {tab === "control" ? (
+          {enTabControl ? (
             <>
-              <button type="button" className="btn" disabled={idxPaso === 0} onClick={() => irAPaso(idxPaso - 1)}>‹ Atrás</button>
-              {ultimoPaso ? (
+              <button type="button" className="btn" disabled={iTab === 0 && segActual === 0} onClick={atras}>‹ Atrás</button>
+              {ultimoSeg ? (
                 <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
               ) : (
                 <>
-                  <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => irAPaso(idxPaso + 1)}>Siguiente ›</button>
+                  <button type="button" className="btn primary" style={{ flex: 1 }} onClick={siguiente}>Siguiente ›</button>
                   <button type="button" className="btn" onClick={() => void guardar()}>Guardar control</button>
                 </>
               )}

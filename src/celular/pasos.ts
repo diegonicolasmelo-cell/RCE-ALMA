@@ -1,47 +1,59 @@
 /**
- * El control se llena bloque por bloque, en el orden de la hoja de papel. Un bloque
- * se muestra solo y se pasa al siguiente con "Siguiente" (o con "Sig." del teclado
- * al terminar sus casilleros): nunca se salta un bloque porque este vacio, asi lo que
- * estaba apagado y hoy esta en curso (o al reves) siempre se ve.
+ * El control se llena por SECCIONES, como la hoja de papel. Cada pestana es una
+ * pantalla larga con scroll libre dividida en segmentos; "Siguiente" lleva al
+ * segmento que sigue y lo deja arriba, marcado. Nunca se salta uno por estar vacio.
+ *
+ *   Monitoreo:   FC + inotropicos/antiarritmicos · PA + vasoactivos · neuromonitoreo ·
+ *                Glasgow y S5Q · SAS y escalones de sedacion
+ *   Ventilacion: modo · terapia ventilatoria · saturacion
+ *   Kine:        kinesiterapia · APK · terapia fisica
  */
 
-export type PasoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "sedacion" | "dva" | "modo" | "vent" | "spo2" | "kine" | "apk" | "tf";
+export type TabControl = "monitoreo" | "ventilacion" | "kine";
+export type SegmentoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "modo" | "vent" | "spo2" | "kine" | "apk" | "tf";
 
-export interface DefPaso {
-  readonly id: PasoId;
+export interface DefSegmento {
+  readonly id: SegmentoId;
   readonly corto: string;
-  readonly titulo: string;
 }
 
-export const PASOS: readonly DefPaso[] = [
-  { id: "fc", corto: "FC", titulo: "Frecuencia cardiaca" },
-  { id: "pa", corto: "PA", titulo: "Presión arterial" },
-  { id: "neuro", corto: "PIC", titulo: "Neuromonitoreo" },
-  { id: "glasgow", corto: "Glasgow", titulo: "Glasgow y S5Q" },
-  { id: "sas", corto: "SAS", titulo: "SAS / estado de vigilia" },
-  { id: "sedacion", corto: "Sedación", titulo: "Sedoanalgesia y bloqueo neuromuscular" },
-  { id: "dva", corto: "DVA", titulo: "DVA, inotrópicos y antiarrítmicos" },
-  { id: "modo", corto: "Modo", titulo: "Ventilador y modo" },
-  { id: "vent", corto: "Ventilación", titulo: "Terapia ventilatoria" },
-  { id: "spo2", corto: "SpO₂", titulo: "Saturación" },
-  { id: "kine", corto: "Kine", titulo: "Kinesiterapia respiratoria" },
-  { id: "apk", corto: "APK", titulo: "Pauta APK" },
-  { id: "tf", corto: "Terapia física", titulo: "Terapia física" }
-];
+export const SEGMENTOS: Readonly<Record<TabControl, readonly DefSegmento[]>> = {
+  monitoreo: [
+    { id: "fc", corto: "FC" },
+    { id: "pa", corto: "PA" },
+    { id: "neuro", corto: "PIC" },
+    { id: "glasgow", corto: "Glasgow" },
+    { id: "sas", corto: "SAS" }
+  ],
+  ventilacion: [
+    { id: "modo", corto: "Modo" },
+    { id: "vent", corto: "Ventilación" },
+    { id: "spo2", corto: "SpO₂" }
+  ],
+  kine: [
+    { id: "kine", corto: "Kine" },
+    { id: "apk", corto: "APK" },
+    { id: "tf", corto: "Terapia física" }
+  ]
+};
+
+export const ORDEN_TABS: readonly TabControl[] = ["monitoreo", "ventilacion", "kine"];
 
 const SEDANTES = ["fentanilo", "propofol", "midazolam", "dexmedetomidina", "lorazepam"];
 
-/** A que bloque pertenece un campo que falta, para llevar a la persona hasta el. */
-export function pasoDeCampo(campo: string): PasoId {
-  if (campo === "fc") return "fc";
-  if (campo === "pas" || campo === "pad") return "pa";
-  if (campo === "glasgow") return "glasgow";
-  if (campo === "sas" || campo === "vigilia") return "sas";
-  if (campo.startsWith("infusion:")) return SEDANTES.includes(campo.slice("infusion:".length)) ? "sedacion" : "dva";
-  if (campo === "frTotal") return "vent";
-  if (campo === "spo2") return "spo2";
-  if (campo === "kine") return "kine";
-  if (campo === "apk") return "apk";
-  if (campo === "terapiaFisica") return "tf";
-  return "fc";
+/** Donde esta un campo que falta, para llevar a la persona hasta el. */
+export function ubicacionDeCampo(campo: string): { tab: TabControl; seg: SegmentoId } {
+  if (campo === "fc") return { tab: "monitoreo", seg: "fc" };
+  if (campo === "pas" || campo === "pad") return { tab: "monitoreo", seg: "pa" };
+  if (campo === "glasgow") return { tab: "monitoreo", seg: "glasgow" };
+  if (campo === "sas" || campo === "vigilia") return { tab: "monitoreo", seg: "sas" };
+  if (campo.startsWith("infusion:")) {
+    return SEDANTES.includes(campo.slice("infusion:".length)) ? { tab: "monitoreo", seg: "sas" } : { tab: "monitoreo", seg: /amiodarona|dobutamina|milrinona/.test(campo) ? "fc" : "pa" };
+  }
+  if (campo === "frTotal") return { tab: "ventilacion", seg: "vent" };
+  if (campo === "spo2") return { tab: "ventilacion", seg: "spo2" };
+  if (campo === "kine") return { tab: "kine", seg: "kine" };
+  if (campo === "apk") return { tab: "kine", seg: "apk" };
+  if (campo === "terapiaFisica") return { tab: "kine", seg: "tf" };
+  return { tab: "monitoreo", seg: "fc" };
 }

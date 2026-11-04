@@ -21,7 +21,7 @@ import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
 import { kineRespiratoriaPermitida } from "./apk";
 import { CAMPOS_VENT } from "./tipos";
 import type {
-  Aspiracion,
+  HallazgoAuscultacion,
   AspectoSecreciones,
   CampoVent,
   CantidadSecreciones,
@@ -106,8 +106,8 @@ export interface BorradorControl {
   /** Equipos de la sala: se heredan del episodio; un cambio genera un evento. */
   equipos: readonly EquipoEnSala[];
 
-  kineRealizada: boolean | null;
-  aspiracion: Aspiracion;
+  /** Auscultacion y secreciones: evaluaciones, nacen en blanco. */
+  auscultacion: HallazgoAuscultacion[];
   aspecto: AspectoSecreciones | null;
   reologia: ReologiaSecreciones | null;
   cantidad: CantidadSecreciones | null;
@@ -194,8 +194,7 @@ export function crearBorradorNuevoControl(
     neuro: { etco2: "", pic: "", dveAltura: "", dveAbierta: null },
     equipos: episodio.equipos,
 
-    kineRealizada: null,
-    aspiracion: "NO",
+    auscultacion: [],
     aspecto: null,
     reologia: null,
     cantidad: null,
@@ -289,15 +288,13 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
   const nGlasgow = [g.ocular, g.verbal, g.motora].filter((x) => x !== null).length;
   if (nGlasgow > 0 && nGlasgow < 3) falta("glasgow", "Glasgow completo (O, V y M)");
 
-  if (b.kineRealizada === null) falta("kine", "kine respiratoria sí/no");
   if (b.terapiaFisica === null) falta("terapiaFisica", "terapia física");
 
-  if (b.kineRealizada === true) {
-    if (!kineRespiratoriaPermitida(ctx.apkVigente)) {
-      falta("apk", "la APK de este turno no cumple: la kine respiratoria queda diferida");
-    } else if (ctx.apkVigente === null) {
-      falta("apk", "firmar la APK de este turno");
-    }
+  // Cada control es una atencion: exige la APK firmada por quien guarda, valida para todo su turno.
+  if (!kineRespiratoriaPermitida(ctx.apkVigente)) {
+    falta("apk", "la APK no cumple: la kinesiterapia respiratoria queda diferida");
+  } else if (ctx.apkVigente === null) {
+    falta("apk", "firmar la APK");
   }
 
   return problemas;
@@ -375,7 +372,6 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
   }
 
   const sedada = sedoanalgesiaActivaEnBorrador(b);
-  const kine = b.kineRealizada === true;
   const tf = b.terapiaFisica ?? "NO";
 
   const hora = `${String(datos.ahora.getHours()).padStart(2, "0")}:${String(datos.ahora.getMinutes()).padStart(2, "0")}`;
@@ -407,11 +403,10 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     s5q: medicionDe(b.s5q),
 
     kineResp: {
-      realizada: kine,
-      aspiracion: kine ? b.aspiracion : "NO",
-      aspecto: kine ? b.aspecto : null,
-      reologia: kine ? b.reologia : null,
-      cantidad: kine ? b.cantidad : null
+      auscultacion: [...b.auscultacion],
+      aspecto: b.aspecto,
+      reologia: b.reologia,
+      cantidad: b.cantidad
     },
     terapiaFisica: {
       estado: tf,

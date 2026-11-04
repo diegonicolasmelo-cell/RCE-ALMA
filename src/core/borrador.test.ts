@@ -37,7 +37,6 @@ function completo(over: Partial<BorradorControl> = {}): BorradorControl {
     pad: "68",
     vent: { ...b.vent, frTotal: "20", vtEspirado: "430", pPico: "25", pPlateau: "20", pMedia: "12" },
     sas: 3,
-    kineRealizada: true,
     terapiaFisica: "NO",
     ...over
   };
@@ -80,7 +79,7 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   it("las evaluaciones (SAS, vigilia, kine, terapia física) nacen en blanco", () => {
     expect(b.sas).toBeNull();
     expect(b.vigilia).toBeNull();
-    expect(b.kineRealizada).toBeNull();
+    expect(b.auscultacion).toEqual([]);
     expect(b.terapiaFisica).toBeNull();
     expect(b.actividades).toEqual([]);
     expect(b.ims).toBe("");
@@ -178,7 +177,7 @@ describe("validarBorrador", () => {
   it("un borrador recién creado reporta todo lo obligatorio", () => {
     const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
     const c = campos(b);
-    expect(c).toEqual(expect.arrayContaining(["fc", "spo2", "pas", "pad", "frTotal", "kine", "terapiaFisica"]));
+    expect(c).toEqual(expect.arrayContaining(["fc", "spo2", "pas", "pad", "frTotal", "terapiaFisica"]));
   });
 
   it("un borrador completo con APK vigente no reporta nada", () => {
@@ -199,7 +198,7 @@ describe("validarBorrador", () => {
     expect(campos(b, { apkVigente: apkOk() })).toContain("infusion:propofol");
   });
 
-  it("kine respiratoria hecha exige la APK de este turno", () => {
+  it("cada control es una atención: exige la APK firmada del turno", () => {
     const m = validarBorrador(completo(), sinApk).find((p) => p.campo === "apk");
     expect(m?.mensaje).toContain("firmar la APK");
   });
@@ -209,8 +208,11 @@ describe("validarBorrador", () => {
     expect(m?.mensaje).toContain("no cumple");
   });
 
-  it("si no hizo kine respiratoria no se exige APK", () => {
-    expect(campos(completo({ kineRealizada: false }), sinApk)).not.toContain("apk");
+  it("no se pregunta si hubo kine respiratoria ni aspiración: nada de eso es un campo", () => {
+    const b = completo() as unknown as Record<string, unknown>;
+    expect("kineRealizada" in b).toBe(false);
+    expect("aspiracion" in b).toBe(false);
+    expect(campos(completo(), { apkVigente: apkOk() })).not.toContain("kine");
   });
 });
 
@@ -278,10 +280,11 @@ describe("materializarControl", () => {
     expect(c.vigilia).toBe("VIGIL_ALERTA");
   });
 
-  it("si no hizo kine respiratoria descarta aspiración y secreciones", () => {
-    const c = materializarControl(completo({ kineRealizada: false, aspiracion: "SET", aspecto: "PURULENTA" }), datos);
-    expect(c.kineResp).toEqual({ realizada: false, aspiracion: "NO", aspecto: null, reologia: null, cantidad: null });
+  it("auscultación y secreciones se guardan tal cual en el control", () => {
+    const c = materializarControl(completo({ auscultacion: ["CREPITOS", "RONCUS"], aspecto: "PURULENTA" }), datos);
+    expect(c.kineResp).toEqual({ auscultacion: ["CREPITOS", "RONCUS"], aspecto: "PURULENTA", reologia: null, cantidad: null });
   });
+
 
   it("terapia física contraindicada descarta actividades e IMS y guarda el motivo", () => {
     const c = materializarControl(

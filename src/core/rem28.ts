@@ -14,7 +14,6 @@ export type ConteoPorNivel = Readonly<Record<1 | 2 | 3 | 4, number>>;
 export interface ResumenTurno {
   readonly totalControles: number;
   readonly kineRespiratoria: number;
-  readonly aspiraciones: number;
   readonly terapiaFisicaRealizada: number;
   readonly terapiaFisicaContraindicada: number;
   /** Sesiones que incluyeron al menos una actividad de cada nivel. */
@@ -66,8 +65,8 @@ export function resumirTurno(
 
   return {
     totalControles: controles.length,
-    kineRespiratoria: controles.filter((c) => c.kineResp.realizada).length,
-    aspiraciones: controles.filter((c) => c.kineResp.realizada && c.kineResp.aspiracion !== "NO").length,
+    // Cada control es una atencion kinesica.
+    kineRespiratoria: controles.length,
     terapiaFisicaRealizada: controles.filter((c) => c.terapiaFisica.estado === "REALIZADA").length,
     terapiaFisicaContraindicada: controles.filter((c) => c.terapiaFisica.estado === "CONTRAINDICADA").length,
     movilizacionPorNivel: porNivel,
@@ -105,7 +104,6 @@ export function consolidarRem28(resumenes: readonly ResumenTurno[]): ResumenTurn
   return {
     totalControles: sumar((r) => r.totalControles),
     kineRespiratoria: sumar((r) => r.kineRespiratoria),
-    aspiraciones: sumar((r) => r.aspiraciones),
     terapiaFisicaRealizada: sumar((r) => r.terapiaFisicaRealizada),
     terapiaFisicaContraindicada: sumar((r) => r.terapiaFisicaContraindicada),
     movilizacionPorNivel: porNivel,

@@ -44,7 +44,7 @@ describe("nota de turno completo", () => {
     const apk = firmarApkCumple({ id: "a", episodioId: "ep-1", via: "TET", rutAutor: "x", siglas: "XX", ahora: new Date(2026, 10, 4, 15, 5) });
     const n = nota({ apk: [apk], ahora: new Date(2026, 10, 4, 16, 0) });
     expect(n).toContain("APK de este turno: firmada 15:05");
-    expect(n).toContain("Kinesiterapia respiratoria: 1 | Aspiraciones: 1");
+    expect(n).toContain("Atenciones kinésicas (controles): 1");
   });
 
   it("avisa si no hay controles en vez de generar una nota vacía", () => {
@@ -136,9 +136,10 @@ describe("eventos en la nota", () => {
 });
 
 describe("kine y secreciones", () => {
-  it("la última atención informa aspiración, secreciones y terapia física", () => {
+  it("la última atención informa auscultación, secreciones y terapia física", () => {
     const n = nota({ modo: "ULTIMA_ATENCION" });
-    expect(n).toContain("Kinesiterapia respiratoria realizada con aspiración (TrachCare)");
+    expect(n).toContain("Auscultación: Crépitos");
+    expect(n).not.toMatch(/aspiración|TrachCare/);
     expect(n).toContain("Secreciones moderada, mucopurulenta, espesa");
     expect(n).toContain("Giros en cama / posicionamiento (IMS 1)");
   });

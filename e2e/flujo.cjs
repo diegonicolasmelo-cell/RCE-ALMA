@@ -234,18 +234,25 @@ async function esperarServidor() {
       assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /FC/);
       await cel.click('button:has-text("Rellenar signos de ejemplo")');
       await cel.click('button:has-text("Guardar control")');
-      assert.match(await aviso(), /kine respiratoria/);
+      assert.match(await aviso(), /terapia física/);
       assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Kine/);
     });
 
     await prueba("la APK se exige una vez por turno y vale para los controles siguientes", async () => {
-      await cel.click('.seg button:has-text("Sí")');
+      const kine = await cel.textContent(".app-cel");
+      assert.ok(kine.includes("Auscultación") && kine.includes("Secreciones"), "la kine respiratoria pide auscultacion y secreciones");
+      assert.ok(!/Aspiración|TrachCare|Set\b/.test(await cel.textContent('.seg[data-seg="kine"]')), "ya no se pregunta por aspiracion");
+      assert.equal(await cel.locator('[aria-label="Kinesiterapia respiratoria"]').count(), 0, "cada control es una atencion: no hay Si/No de kine");
+      await cel.click('.chip:has-text("Crépitos")');
       await cel.locator('[aria-label="Terapia física"]').locator('button:has-text("No")').click();
       await cel.click('button:has-text("Guardar control")');
       assert.match(await aviso(), /APK/);
-      assert.ok((await cel.locator("text=Alimentación suspendida (*)").count()) >= 1, "la hoja muestra las filas de la pauta de papel");
+      await cel.waitForTimeout(500);
+      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /APK/, "lleva a la APK: " + (await cel.textContent('.paso-chip[aria-current="step"]')) + " / " + (await aviso()));
+      assert.equal(await cel.locator(".seg[data-seg=apk] .seg, .seg[data-seg=apk] [aria-label=\"Alimentación suspendida (*)\"]").count(), 0, "solo firmar: sin formulario criterio por criterio");
       await cel.click('button:has-text("Firmar APK")');
-      assert.match(await cel.textContent(".notice.good"), /Este turno: firmada/);
+      assert.match(await cel.textContent(".notice.good"), /APK firmada · \d\d\/\d\d\/\d{4} \d\d:\d\d · DM/, "queda con fecha, hora y siglas de quien inicio sesion");
+      assert.match(await cel.textContent(".notice.good"), /todos tus controles de este turno/);
       await cel.click('button:has-text("Guardar control")');
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Guardado UCI-01/);

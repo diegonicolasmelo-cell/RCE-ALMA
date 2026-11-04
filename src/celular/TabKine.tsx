@@ -1,20 +1,18 @@
-import { useState } from "react";
 import {
   MOTIVOS_CONTRAINDICACION_MOTORA,
   NIVELES_TERAPIA_FISICA,
   apkDelTurno,
   buscarProfesional,
   esViaAereaArtificial,
-  CRITERIOS_APK,
-  LEYENDA_APK,
+  HALLAZGOS_AUSCULTACION,
+  apkVigente,
   criteriosNoCumplidos,
   firmarApk,
   inicialesDe,
   marcasPorDefecto,
-  turnoAnterior,
   turnoDe
 } from "@core/index";
-import type { MarcaApk } from "@core/index";
+import type { HallazgoAuscultacion } from "@core/index";
 import type { AspectoSecreciones, CantidadSecreciones, ReologiaSecreciones } from "@core/index";
 import { useApp } from "../app/store";
 import type { SegmentoId } from "./pasos";
@@ -34,20 +32,30 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
   const { ep, b, editar, apks, ahora, rutAutor } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
-  const turno = turnoDe(ahora);
-  const apk = apkDelTurno(apks, ep.id, turno.clave);
-  const previa = apkDelTurno(apks, ep.id, turnoAnterior(ahora).clave);
-  const noCumple = apk?.resultado === "NO_CUMPLE";
-  const [marcas, setMarcas] = useState<MarcaApk[]>(() => marcasPorDefecto(ep.viaAereaActual));
-  const [iniciales, setIniciales] = useState(() => inicialesDe(buscarProfesional(rutAutor)?.nombre ?? ""));
+
+  // La APK es de cada kinesiologo: la que firmaste en este turno vale para todos tus controles.
+  const turnoActual = turnoDe(ahora).clave;
+  const mia = apkVigente(apks, ep.id, ahora, rutAutor);
+  const deOtro = apkDelTurno(apks.filter((a) => a.rutAutor !== rutAutor), ep.id, turnoActual);
+  const noCumple = mia?.resultado === "NO_CUMPLE";
 
   const firmar = async (): Promise<void> => {
-    if (iniciales.trim() === "") return avisar("Escribe tus siglas: van en la última fila de la hoja.");
-    const v = firmarApk({ id: nuevoId(), episodioId: ep.id, rutAutor, siglas: iniciales, ahora: new Date(), marcas });
+    const prof = buscarProfesional(rutAutor);
+    const v = firmarApk({
+      id: nuevoId(),
+      episodioId: ep.id,
+      rutAutor,
+      siglas: inicialesDe(prof?.nombre ?? ""),
+      ahora: new Date(),
+      // Todo en 1; lo invasivo y la alimentacion quedan N/A si no hay via aerea artificial.
+      marcas: marcasPorDefecto(ep.viaAereaActual)
+    });
     await repo.firmarApk(v);
-    if (v.resultado === "NO_CUMPLE") editar((x) => ({ ...x, kineRealizada: false, aspiracion: "NO" }));
-    else avisar("APK de este turno firmada. Vale para los controles siguientes.");
+    avisar("APK firmada. Vale para todos tus controles de este turno.");
   };
+
+  const alternarHallazgo = (h: HallazgoAuscultacion): void =>
+    editar((x) => ({ ...x, auscultacion: x.auscultacion.includes(h) ? x.auscultacion.filter((y) => y !== h) : [...x.auscultacion, h] }));
 
   const sec = <K extends "aspecto" | "reologia" | "cantidad">(clave: K, valor: NonNullable<(typeof b)[K]>): void =>
     editar((x) => ({ ...x, [clave]: x[clave] === valor ? null : valor }));
@@ -67,16 +75,18 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
   return (
     <>
       {paso === "kine" && (
-      <section>
-        <h3>Kinesiterapia respiratoria</h3>
-        <Seg ancho etiqueta="Kinesiterapia respiratoria" valor={b.kineRealizada} opciones={[{ valor: true, texto: "Sí", deshabilitada: noCumple }, { valor: false, texto: "No" }]}
-          onCambio={(v) => editar((x) => ({ ...x, kineRealizada: v, ...(v ? {} : { aspiracion: "NO" as const, aspecto: null, reologia: null, cantidad: null }) }))} />
-        {noCumple && <div className="mt"><Aviso tipo="crit" pequeno>La APK de este turno no cumple: la kinesiterapia respiratoria queda diferida.</Aviso></div>}
-        {b.kineRealizada && (
-          <div className="stack mt" style={{ gap: 10 }}>
+        <section>
+          <h3>Auscultación y secreciones</h3>
+          <div className="stack" style={{ gap: 10 }}>
             <div>
-              <div className="small ink2">Aspiración</div>
-              <Fichas etiqueta="Aspiración" valor={b.aspiracion} opciones={[{ valor: "NO", texto: "No" }, { valor: "TRACHCARE", texto: "TrachCare" }, { valor: "SET", texto: "Set" }]} onCambio={(v) => editar((x) => ({ ...x, aspiracion: v }))} />
+              <div className="small ink2">Auscultación</div>
+              <div className="row" style={{ gap: 6, flexWrap: "wrap" }} role="group" aria-label="Auscultación">
+                {HALLAZGOS_AUSCULTACION.map((h) => (
+                  <button key={h.val} type="button" className="chip" style={{ fontFamily: "var(--font-ui)" }} aria-pressed={b.auscultacion.includes(h.val)} onClick={() => alternarHallazgo(h.val)}>
+                    {h.label}
+                  </button>
+                ))}
+              </div>
             </div>
             {FILAS.map((fila) => (
               <div key={fila.clave}>
@@ -85,49 +95,30 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
       )}
+
       {paso === "apk" && (
-      <section>
-        <h3>Pauta APK <span className="small muted" style={{ textTransform: "none", letterSpacing: 0 }}>· cotejo previo a la KTR</span></h3>
-        <p className="small ink2">Una por turno, dos al día, por profesionales distintos. Al firmar se llena una columna de la hoja de papel, con fecha y tus siglas, y queda archivada.</p>
-        {previa && (
-          <div className="small muted mt">
-            Turno anterior: {previa.resultado === "CUMPLE" ? "firmada" : "no cumple"} {previa.hora} · {nombreProfesional(previa.rutAutor)}
-          </div>
-        )}
-        <div className="mt">
-          {apk ? (
-            <Aviso tipo={apk.resultado === "CUMPLE" ? "good" : "crit"}>
-              <b>Este turno: {apk.resultado === "CUMPLE" ? "firmada" : "no cumple"} · {apk.fecha.split("-").reverse().join("/")} {apk.hora} · {apk.siglas}</b>
-              {noCumple && <><br /><span className="small">No cumple: {criteriosNoCumplidos(apk).join("; ")}. Kinesiterapia respiratoria diferida.</span></>}
+        <section>
+          <h3>Pauta APK</h3>
+          {mia ? (
+            <Aviso tipo={noCumple ? "crit" : "good"}>
+              <b>{noCumple ? "APK que no cumple" : "APK firmada"} · {mia.fecha.split("-").reverse().join("/")} {mia.hora} · {mia.siglas}</b>
+              <br />
+              <span className="small">{noCumple ? `No cumple: ${criteriosNoCumplidos(mia).join("; ")}.` : "Vale para todos tus controles de este turno."}</span>
             </Aviso>
           ) : (
             <>
-              {b.kineRealizada && <div style={{ marginBottom: 8 }}><Aviso tipo="warn" pequeno>Hiciste kinesiterapia respiratoria: falta firmar la APK de este turno.</Aviso></div>}
-              <div className="stack" style={{ gap: 10 }}>
-                {CRITERIOS_APK.map((c, i) => (
-                  <div key={c.texto}>
-                    <div className="small ink2">{c.texto}</div>
-                    <Seg ancho etiqueta={c.texto} valor={marcas[i] ?? null}
-                      opciones={[{ valor: "1" as MarcaApk, texto: "1 · Sí" }, { valor: "NA" as MarcaApk, texto: "N/A" }, { valor: "0" as MarcaApk, texto: "0 · No" }]}
-                      onCambio={(v) => setMarcas((m) => m.map((x, j) => (j === i ? v : x)))} />
-                  </div>
-                ))}
-                <label className="small ink2">
-                  Iniciales del profesional que ejecuta KTR
-                  <input style={{ marginTop: 4, maxWidth: 120, textTransform: "uppercase" }} value={iniciales} maxLength={6} onChange={(e) => setIniciales(e.target.value)} aria-label="Iniciales del profesional" />
-                </label>
-                <p className="small muted">{LEYENDA_APK}</p>
-                <button type="button" className="btn primary" onClick={() => void firmar()}>Firmar APK</button>
-              </div>
+              {deOtro && <div style={{ marginBottom: 8 }}><Aviso tipo="warn" pequeno>Este turno ya la firmó {nombreProfesional(deOtro.rutAutor)} ({deOtro.hora}). Cada kinesiólogo firma la suya.</Aviso></div>}
+              <button type="button" className="btn primary grande" onClick={() => void firmar()}>Firmar APK</button>
+              <p className="small muted mt">
+                Queda con la fecha, la hora y tus siglas ({nombreProfesional(rutAutor)}), y completa la hoja de papel de este paciente. Todo en 1{esViaAereaArtificial(ep.viaAereaActual) ? "" : "; lo invasivo y la alimentación quedan N/A (sin vía aérea artificial)"}.
+              </p>
             </>
           )}
-        </div>
-        {!esViaAereaArtificial(ep.viaAereaActual) && !apk && <p className="small muted mt">Vía aérea natural: las filas de lo invasivo y la alimentación parten en N/A; cámbialas si corresponde.</p>}
-      </section>
+        </section>
       )}
+
       {paso === "tf" && (
       <section>
         <h3>

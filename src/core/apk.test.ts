@@ -111,6 +111,26 @@ describe("una APK por turno: lo firmado vale para los controles siguientes", () 
   });
 });
 
+describe("la APK es de cada kinesiólogo", () => {
+  it("lo firmado por una persona vale para todos sus controles del turno", () => {
+    const mia = firmar("a1", f(4, 9, 5), "RUT-A");
+    expect(apkVigente([mia], "ep-1", f(4, 9, 30), "RUT-A")?.id).toBe("a1");
+    expect(apkVigente([mia], "ep-1", f(4, 19, 50), "RUT-A")?.id).toBe("a1");
+  });
+
+  it("lo que firmó un colega no la reemplaza: cada uno firma la suya", () => {
+    const deColega = firmar("c1", f(4, 9, 5), "RUT-B");
+    expect(apkVigente([deColega], "ep-1", f(4, 10), "RUT-A")).toBeNull();
+    expect(apkVigente([deColega], "ep-1", f(4, 10), "RUT-B")?.id).toBe("c1");
+    expect(apkVigente([deColega], "ep-1", f(4, 10))?.id).toBe("c1");
+  });
+
+  it("al cambiar el turno hay que firmar de nuevo", () => {
+    const mia = firmar("a1", f(4, 9, 5), "RUT-A");
+    expect(apkVigente([mia], "ep-1", f(4, 21), "RUT-A")).toBeNull();
+  });
+});
+
 describe("kinesiterapia respiratoria y APK", () => {
   it("permitida sin APK registrada o con APK que cumple; diferida si no cumple", () => {
     expect(kineRespiratoriaPermitida(null)).toBe(true);

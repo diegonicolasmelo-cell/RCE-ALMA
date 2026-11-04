@@ -123,13 +123,20 @@ export function apkDelTurno(
   return delTurno[delTurno.length - 1] ?? null;
 }
 
-/** APK vigente ahora: la del turno en curso. Lo firmado vale para los controles siguientes. */
+/**
+ * APK vigente ahora: la del turno en curso. Lo firmado vale para todos los controles
+ * siguientes del turno. Con `rutAutor`, solo cuenta la firmada por esa persona: cada
+ * kinesiologo firma la suya (nadie hace dos turnos el mismo dia).
+ */
 export function apkVigente(
   apks: readonly ValidacionApk[],
   episodioId: Uuid,
-  ahora: Date
+  ahora: Date,
+  rutAutor?: string
 ): ValidacionApk | null {
-  return apkDelTurno(apks, episodioId, turnoDe(ahora).clave);
+  const clave = turnoDe(ahora).clave;
+  const propias = rutAutor === undefined ? apks : apks.filter((a) => a.rutAutor === rutAutor);
+  return apkDelTurno(propias, episodioId, clave);
 }
 
 /** Con una APK "no cumple" vigente, la kinesiterapia respiratoria queda diferida. */

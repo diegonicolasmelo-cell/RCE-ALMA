@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD } from "./catalogos";
+import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, HALLAZGOS_AUSCULTACION } from "./catalogos";
 import { apkVigente } from "./apk";
 import { nombreEscala } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
@@ -92,24 +92,20 @@ function textoNeuro(c: Control, pbw: number): string {
   return partes.join(", ");
 }
 
-const ASPIRACION: Readonly<Record<Control["kineResp"]["aspiracion"], string>> = {
-  NO: "",
-  TRACHCARE: "TrachCare",
-  SET: "set"
-};
-
 function textoSecreciones(c: Control): string {
   const k = c.kineResp;
-  if (!k.realizada || (!k.aspecto && !k.reologia && !k.cantidad)) return "";
+  if (!k.aspecto && !k.reologia && !k.cantidad) return "";
   const partes = [k.cantidad, k.aspecto, k.reologia].filter((x): x is NonNullable<typeof x> => x !== null);
   return `Secreciones ${partes.join(", ").toLowerCase()}`;
 }
 
+function textoAuscultacion(c: Control): string {
+  const h = c.kineResp.auscultacion;
+  return h.length === 0 ? "" : `Auscultación: ${h.map((x) => HALLAZGOS_AUSCULTACION.find((d) => d.val === x)?.label ?? x).join(", ")}`;
+}
+
 function textoKine(c: Control): string {
-  const k = c.kineResp;
-  if (!k.realizada) return "Kinesiterapia respiratoria no realizada.";
-  const asp = k.aspiracion !== "NO" ? ` con aspiración (${ASPIRACION[k.aspiracion]})` : "";
-  return `Kinesiterapia respiratoria realizada${asp}.`;
+  return [textoAuscultacion(c), textoSecreciones(c)].filter(Boolean).join(". ") || "Sin hallazgos respiratorios registrados";
 }
 
 function textoTerapiaFisica(c: Control): string {
@@ -288,7 +284,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
       : []),
     ``,
     `4. PRODUCCIÓN KINÉSICA DEL TURNO (${stats.totalControles} controles)`,
-    `  · Kinesiterapia respiratoria: ${stats.kineRespiratoria} | Aspiraciones: ${stats.aspiraciones}`,
+    `  · Atenciones kinésicas (controles): ${stats.kineRespiratoria}`,
     `  · Terapia física realizada: ${stats.terapiaFisicaRealizada} (contraindicada: ${stats.terapiaFisicaContraindicada}) | IMS al cierre: ${fmt(ultimo.terapiaFisica.ims)}`,
     `  · Movilización por nivel: N1 ${stats.movilizacionPorNivel[1]} · N2 ${stats.movilizacionPorNivel[2]} · N3 ${stats.movilizacionPorNivel[3]} · N4 ${stats.movilizacionPorNivel[4]}`,
     `  · APK de este turno: ${apkTurno ? `${apkTurno.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkTurno.hora}` : "no registrada"}`,

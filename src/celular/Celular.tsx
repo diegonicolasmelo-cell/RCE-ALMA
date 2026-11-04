@@ -106,18 +106,26 @@ export function Celular() {
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [segmentos, marcar, franja]);
 
-  // Al cambiar de pestana (o de cama): arriba y primer segmento, o el segmento pedido.
+  // Al cambiar de pestana (o de cama): arriba y primer segmento, salvo que haya uno pedido.
   useEffect(() => {
     const t = setTimeout(() => {
-      const lista = segmentos();
-      const i = segPedido ? lista.findIndex((el) => el.dataset["seg"] === segPedido) : 0;
+      if (useApp.getState().segPedido) return;
       document.getElementById("cuerpo")?.scrollTo({ top: 0 });
-      if (i > 0) irASeg(i);
-      else marcar(0);
-      if (segPedido) pedirSegmento(null);
+      marcar(0);
     }, 30);
     return () => clearTimeout(t);
-  }, [tab, camaId, vista, segPedido]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, camaId, vista]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Llevar la pantalla a un segmento pedido (p. ej. el dato que falta al guardar).
+  useEffect(() => {
+    if (!segPedido) return;
+    const t = setTimeout(() => {
+      const i = segmentos().findIndex((el) => el.dataset["seg"] === segPedido);
+      pedirSegmento(null);
+      if (i >= 0) irASeg(i);
+    }, 40);
+    return () => clearTimeout(t);
+  }, [segPedido]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // El segmento activo sigue al scroll y al foco.
   useEffect(() => {
@@ -177,7 +185,7 @@ export function Celular() {
   const turno = turnoDe(ahora);
 
   const guardar = async (): Promise<void> => {
-    const problemas = validarBorrador(b, { apkVigente: apkVigente(apks, ep.id, new Date()) });
+    const problemas = validarBorrador(b, { apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut) });
     if (problemas.length > 0) {
       const primero = problemas[0];
       if (primero) {

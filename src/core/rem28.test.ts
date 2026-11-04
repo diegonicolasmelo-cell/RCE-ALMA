@@ -11,18 +11,10 @@ const conTf = (acts: string[], ims: number | null = null, estado: Control["terap
   unControl({ terapiaFisica: { estado, actividades: acts, ims, motivoContraindicacion: null } });
 
 describe("resumirTurno", () => {
-  it("cuenta kinesiterapia respiratoria y aspiraciones", () => {
-    const r = resumirTurno(
-      [
-        unControl(),
-        unControl({ kineResp: { realizada: false, aspiracion: "NO", aspecto: null, reologia: null, cantidad: null } }),
-        unControl({ kineResp: { realizada: true, aspiracion: "NO", aspecto: null, reologia: null, cantidad: null } })
-      ],
-      []
-    );
+  it("cada control es una atención kinésica", () => {
+    const r = resumirTurno([unControl(), unControl(), unControl()], []);
     expect(r.totalControles).toBe(3);
-    expect(r.kineRespiratoria).toBe(2);
-    expect(r.aspiraciones).toBe(1);
+    expect(r.kineRespiratoria).toBe(3);
   });
 
   it("separa terapia física realizada de contraindicada", () => {

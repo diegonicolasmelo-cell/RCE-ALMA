@@ -37,7 +37,7 @@ describe("serializacion hacia la nube", () => {
     expect(payload.fc).toBe(96);
     expect(payload.ventilacion).toMatchObject({ peep: 10, vtEspirado: 430, vtProgramado: 430 });
     expect(payload.infusiones).toMatchObject({ fentanilo: { dosis: 1.2, escalon: 2 } });
-    expect(payload.kineResp).toMatchObject({ realizada: true, aspiracion: "TRACHCARE" });
+    expect(payload.kineResp).toMatchObject({ auscultacion: ["CREPITOS"], cantidad: "MODERADA" });
   });
 
   it("marca el texto libre para revision: es el unico vector real de fuga", () => {

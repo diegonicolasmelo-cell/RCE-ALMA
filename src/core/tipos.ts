@@ -135,14 +135,18 @@ export interface Glasgow {
 // Kinesiterapia
 // ---------------------------------------------------------------------------
 
-export type Aspiracion = "NO" | "TRACHCARE" | "SET";
+/** Hallazgos de la auscultacion. Vocabulario provisorio: la hoja de papel solo dice "Auscultacion". */
+export type HallazgoAuscultacion = "MP_CONSERVADO" | "MP_DISMINUIDO" | "CREPITOS" | "SIBILANCIAS" | "RONCUS" | "ABOLIDO";
 export type AspectoSecreciones = "MUCOSA" | "MUCOPURULENTA" | "PURULENTA" | "HEMATICA";
 export type ReologiaSecreciones = "FLUIDA" | "ESPESA" | "ADHERENTE";
 export type CantidadSecreciones = "ESCASA" | "MODERADA" | "ABUNDANTE";
 
+/**
+ * Cada control ES una atencion kinesica (asi se cuenta para la estadistica): no se
+ * pregunta si hubo kine respiratoria ni si se aspiro.
+ */
 export interface KineRespiratoria {
-  readonly realizada: boolean;
-  readonly aspiracion: Aspiracion;
+  readonly auscultacion: readonly HallazgoAuscultacion[];
   readonly aspecto: AspectoSecreciones | null;
   readonly reologia: ReologiaSecreciones | null;
   readonly cantidad: CantidadSecreciones | null;

@@ -150,7 +150,12 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
   presión pico y lo declara.
 - **Guía de protección pulmonar** en ml/kg de peso ideal (6–8 protector, menos de
   6 ultraprotector); la franja ofrece 6, 7 y 8 ml/kg ya calculados.
-- **APK una vez por turno**, vale para los controles siguientes. Es la pauta de
+- **Cada control es una atención kinésica** (así se cuenta en la estadística): no se
+  pregunta si hubo kine respiratoria ni aspiración; se registran auscultación y
+  secreciones (calidad, reología, cantidad). Los hallazgos de auscultación son provisorios.
+- **APK una vez por turno y por kinesiólogo**: se firma con un toque (fecha, hora y
+  siglas de quien inició sesión) y vale para todos sus controles del turno; un colega
+  firma la suya. Es la pauta de
   papel del hospital (8 filas + siglas), con marca por fila: **1** sí, **N/A** no
   aplica, **0** no. Con vía aérea artificial parte todo en 1; con vía natural, lo
   invasivo y la alimentación parten en N/A. Al firmar se llena una columna de la

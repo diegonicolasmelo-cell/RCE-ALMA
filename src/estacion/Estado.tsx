@@ -6,6 +6,7 @@ import { leerMeta } from "../datos/db";
 import { CLAVE_CONEXION, CLAVE_TOKEN_ESTACION } from "../datos/servicios";
 import { Aviso, Pildora } from "../celular/componentes";
 import type { DatosUnidad } from "./datos";
+import { useIdentidadesEnMemoria } from "./identidades";
 import { PanelClave } from "./PanelClave";
 import { PanelRespaldo } from "./PanelRespaldo";
 import { archivoLocalSoportado, elegirCarpeta, leerCarpeta, pedirPermiso, permisoConcedido } from "./archivoLocal";
@@ -41,6 +42,7 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
   const olvidar = async (): Promise<void> => {
     await db.meta.bulkDelete([CLAVE_CONEXION, CLAVE_TOKEN_ESTACION, "sesion", "claveUnidad"]);
     await db.identidades.clear();
+    useIdentidadesEnMemoria.getState().vaciar();
     window.location.reload();
   };
 

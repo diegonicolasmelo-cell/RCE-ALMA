@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { purgaDeIdentidadLista } from "@core/index";
 import type { Episodio, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
+import { useIdentidadesEnMemoria } from "./identidades";
 import type { BaseLocal } from "../datos/db";
 import type { ClienteApi } from "../datos/api";
 
@@ -13,6 +14,7 @@ export async function borrarIdentidad(api: ClienteApi, db: BaseLocal, episodioId
   const r = await api.purgarReferencias([episodioId]);
   if (!r.ok) return r;
   await db.identidades.delete(episodioId);
+  useIdentidadesEnMemoria.getState().quitar(episodioId);
   return { ok: true };
 }
 

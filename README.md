@@ -69,7 +69,10 @@ punta hay que hacerlo con datos ficticios.
   columnas que digan nombre ni RUT, y el servidor rechaza todo lo que no sea un bloque
   cifrado. La contraseña es una sola para los 12 PC, se escribe una vez en cada uno
   (Estado) y no va al Sheet, a Drive ni al código; solo la guarda una persona, en papel.
-  Un PC sin la contraseña ve las camas sin nombre. Sin prueba contra Google real.
+  Un PC sin la contraseña ve las camas sin nombre. **Los nombres descifrados viven solo en
+  la memoria de la página**: nunca se escriben en el disco del navegador; al cerrar la
+  pestaña desaparecen y al abrir la estación se descargan y descifran de nuevo (por eso
+  hace falta red para ver nombres). Sin prueba contra Google real.
 - **Hojas APK solo en la carpeta local** del PC de respaldo (Chrome o Edge, perfil
   exclusivo con la estación abierta; sin Drive). Si estuvo cerrado, se pone al día al
   abrir. **El alta no borra la identidad hasta que ese PC confirme que guardó la hoja

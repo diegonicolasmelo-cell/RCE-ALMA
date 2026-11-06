@@ -4,6 +4,7 @@ import type { BaseLocal } from "../datos/db";
 import type { ClienteApi } from "../datos/api";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
+import { useIdentidadesEnMemoria } from "./identidades";
 
 /** La clave derivada (no la contrasena) queda en este navegador, sin poder exportarse. */
 export const META_CLAVE_UNIDAD = "claveUnidad";
@@ -52,8 +53,9 @@ export async function instalarContrasena(
   return { ok: true, primera };
 }
 
-/** Quita la clave y las identidades descifradas de este PC. */
+/** Quita la clave y los nombres descifrados de este PC (memoria y, por si quedaron, disco). */
 export async function olvidarClave(db: BaseLocal): Promise<void> {
   await borrarMeta(db, META_CLAVE_UNIDAD);
   await db.identidades.clear();
+  useIdentidadesEnMemoria.getState().vaciar();
 }

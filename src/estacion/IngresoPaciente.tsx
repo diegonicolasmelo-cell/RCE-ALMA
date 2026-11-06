@@ -6,6 +6,7 @@ import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
 import { Seg } from "../celular/componentes";
 import { useClaveUnidad } from "./claveUnidad";
+import { useIdentidadesEnMemoria } from "./identidades";
 
 /**
  * Ingreso de un paciente a la unidad. La identidad (nombre y RUT) va por su propio
@@ -65,7 +66,9 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
     // En produccion la identidad solo sube CIFRADA; sin la clave de la unidad no se ingresa.
     if (!local && !clave) return setError("Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.");
     await repo.guardarEpisodio(ep);
-    await db.identidades.put(identidad);
+    // En produccion el nombre queda solo en memoria; en demostracion, en la base local.
+    if (local) await db.identidades.put(identidad);
+    else useIdentidadesEnMemoria.getState().poner(identidad);
     const r = local || !clave ? await api.guardarReferencias([]) : await api.guardarReferencias([await cifrarIdentidad(clave, identidad, new Date())]);
     avisar(r.ok ? `Paciente ingresado en ${camaTxt}.` : `Ingresado en ${camaTxt}, pero la identidad no se pudo subir (${r.error ?? "sin conexión"}): reintenta desde Estado.`);
     onListo();

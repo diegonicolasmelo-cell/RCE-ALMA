@@ -2,6 +2,7 @@ import { normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
+import { useIdentidadesEnMemoria } from "./identidades";
 
 export interface DatosUnidad {
   readonly episodios: readonly Episodio[];
@@ -35,7 +36,9 @@ function ultimaVersion(eps: readonly Episodio[]): Episodio[] {
 
 /** Toda la unidad, en vivo desde IndexedDB: se actualiza sola cuando llega algo nuevo. */
 export function useDatosUnidad(): DatosUnidad {
-  const { db, repo } = useServicios();
+  const { db, repo, local } = useServicios();
+  // En produccion los nombres viven solo en memoria; en demostracion, en la base local.
+  const enMemoria = useIdentidadesEnMemoria((s) => s.mapa);
   return useConsulta(
     async () => {
       const [episodios, todos, controles, eventos, apks, ids] = await Promise.all([
@@ -44,7 +47,7 @@ export function useDatosUnidad(): DatosUnidad {
         db.controles.toArray(),
         db.eventos.toArray(),
         db.apk.toArray(),
-        db.identidades.toArray()
+        local ? db.identidades.toArray() : Promise.resolve([...enMemoria.values()])
       ]);
       return {
         episodios,
@@ -55,7 +58,7 @@ export function useDatosUnidad(): DatosUnidad {
         pendientesPurga: ultimaVersion(todos).filter((e) => !e.activo && ids.some((i) => i.episodioId === e.id))
       };
     },
-    [db, repo],
+    [db, repo, local, enMemoria],
     VACIO
   );
 }

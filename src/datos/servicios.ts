@@ -60,5 +60,7 @@ async function crear(): Promise<Servicios> {
   const repo = new Repositorio(db, sync);
 
   if (local) await sembrarSiVacia(db, repo);
+  // En produccion ningun nombre se guarda en el disco: se borran restos de versiones anteriores.
+  else await db.identidades.clear();
   return { db, api, sync, repo, config, local, tokenEstacion };
 }

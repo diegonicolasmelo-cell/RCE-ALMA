@@ -4,6 +4,7 @@ import { useAhora } from "../app/hooks";
 import { descifrarIdentidad, soloEpisodios } from "@core/index";
 import { useArchivoApkLocal } from "./apkDocumento";
 import { useClaveUnidad } from "./claveUnidad";
+import { useIdentidadesEnMemoria } from "./identidades";
 import { usePurgasPendientes } from "./purga";
 import { useDatosUnidad } from "./datos";
 import { Estado } from "./Estado";
@@ -13,8 +14,8 @@ import { Tablero } from "./Tablero";
 type Vista = "tablero" | "alma" | "estado";
 
 /**
- * Trae las referencias cifradas, las descifra con la clave de este PC y refresca la
- * cache local cada minuto. Sin la clave, no se ve ningun nombre.
+ * Trae las referencias cifradas, las descifra con la clave de este PC y las refresca
+ * cada minuto, solo en memoria. Sin la clave, no se ve ningun nombre.
  */
 function useIdentidades(): void {
   const { api, db, local, tokenEstacion } = useServicios();
@@ -26,10 +27,8 @@ function useIdentidades(): void {
       const r = await api.leerReferencias();
       if (!r.ok) return;
       const leidas = await Promise.all(soloEpisodios(r.referencias).map((ref) => descifrarIdentidad(clave, ref)));
-      await db.transaction("rw", db.identidades, async () => {
-        await db.identidades.clear();
-        await db.identidades.bulkPut(leidas.filter((x): x is NonNullable<typeof x> => x !== null));
-      });
+      // Solo en memoria: nada legible queda en el disco de este PC.
+      useIdentidadesEnMemoria.getState().reemplazar(leidas.filter((x): x is NonNullable<typeof x> => x !== null));
     };
     void traer();
     const t = setInterval(() => void traer(), 60_000);

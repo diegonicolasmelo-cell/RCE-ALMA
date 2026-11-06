@@ -60,7 +60,7 @@ export function PanelClave({ datos }: { datos: DatosUnidad }) {
         </div>
       )}
       <p className="small muted">
-        El nombre y el RUT se cifran en este equipo antes de subirse. La contraseña no se guarda en el Sheet, en Drive ni en el código: solo la derivación queda en este navegador. La misma contraseña va en los 12 PC; la guarda una sola persona, en papel.
+        El nombre y el RUT se cifran en este equipo antes de subirse, y al leerlos se descifran solo en la memoria de la página: no quedan en el disco. La contraseña no se guarda en el Sheet, en Drive ni en el código: solo la derivación queda en este navegador. La misma contraseña va en los 12 PC; la guarda una sola persona, en papel.
       </p>
 
       {datos.pendientesPurga.length > 0 && (

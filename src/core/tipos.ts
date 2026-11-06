@@ -142,7 +142,23 @@ export interface Glasgow {
 // Kinesiterapia
 // ---------------------------------------------------------------------------
 
-export type AspectoSecreciones = "MUCOSA" | "MUCOPURULENTA" | "PURULENTA" | "HEMATICA";
+/** NINGUNA = se evaluo y no hay secreciones (la cantidad y la reologia quedan sin efecto). */
+export type AspectoSecreciones =
+  | "NINGUNA"
+  | "MUCOSA"
+  | "MUCOSA_ROSADA"
+  | "MUCOPURULENTA"
+  | "PURULENTA"
+  | "HEMATICA"
+  | "MUCOHEMATICA"
+  | "MUCOPURULENTA_TINTE_HEMATICO"
+  | "HEMOPURULENTA"
+  | "HERRUMBROSA"
+  | "CARBONIZADA"
+  | "BILIOSA"
+  | "CONTENIDO_ALIMENTICIO";
+export type EficienciaTos = "EFICIENTE" | "DEFICIENTE";
+export type Deglucion = "PRESENTE" | "ESPORADICA" | "AUSENTE";
 export type ReologiaSecreciones = "FLUIDA" | "ESPESA" | "ADHERENTE";
 export type CantidadSecreciones = "ESCASA" | "MODERADA" | "ABUNDANTE";
 
@@ -156,6 +172,10 @@ export interface KineRespiratoria {
   readonly aspecto: AspectoSecreciones | null;
   readonly reologia: ReologiaSecreciones | null;
   readonly cantidad: CantidadSecreciones | null;
+  /** Manejo de secreciones: tos, flujo pico de tos (L/min) y deglucion. Se evalua, nace en blanco. */
+  readonly tos: EficienciaTos | null;
+  readonly flujoPicoTos: Medicion;
+  readonly deglucion: Deglucion | null;
 }
 
 export type EstadoTerapiaFisica = "REALIZADA" | "NO" | "CONTRAINDICADA";

@@ -4,7 +4,10 @@ import {
   apkDelTurno,
   buscarProfesional,
   esViaAereaArtificial,
+  ASPECTOS_SECRECIONES,
+  OPCIONES_DEGLUCION,
   SUGERENCIAS_AUSCULTACION,
+  hayAspectoDeSecreciones,
   apkVigente,
   criteriosNoCumplidos,
   firmarApk,
@@ -58,11 +61,18 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
     onElegir: (v) => editar((x) => ({ ...x, ims: v }))
   });
 
-  const FILAS: { titulo: string; clave: "aspecto" | "reologia" | "cantidad"; opciones: readonly { valor: string; texto: string }[] }[] = [
-    { titulo: "Secreciones · aspecto", clave: "aspecto", opciones: [{ valor: "MUCOSA", texto: "Mucosa" }, { valor: "MUCOPURULENTA", texto: "Mucopurulenta" }, { valor: "PURULENTA", texto: "Purulenta" }, { valor: "HEMATICA", texto: "Hemática" }] },
-    { titulo: "Secreciones · reología", clave: "reologia", opciones: [{ valor: "FLUIDA", texto: "Fluida" }, { valor: "ESPESA", texto: "Espesa" }, { valor: "ADHERENTE", texto: "Adherente" }] },
-    { titulo: "Secreciones · cantidad", clave: "cantidad", opciones: [{ valor: "ESCASA", texto: "Escasa" }, { valor: "MODERADA", texto: "Moderada" }, { valor: "ABUNDANTE", texto: "Abundante" }] }
+  const hay = hayAspectoDeSecreciones(b.aspecto);
+  const FILAS: { titulo: string; clave: "aspecto" | "reologia" | "cantidad"; opciones: readonly { valor: string; texto: string }[]; habilitada: boolean }[] = [
+    { titulo: "Secreciones: aspecto", clave: "aspecto", opciones: ASPECTOS_SECRECIONES.map((a) => ({ valor: a.val, texto: a.label })), habilitada: true },
+    { titulo: "Secreciones: reología", clave: "reologia", opciones: [{ valor: "FLUIDA", texto: "Fluida" }, { valor: "ESPESA", texto: "Espesa" }, { valor: "ADHERENTE", texto: "Adherente" }], habilitada: hay },
+    { titulo: "Secreciones: cantidad", clave: "cantidad", opciones: [{ valor: "ESCASA", texto: "Escasa" }, { valor: "MODERADA", texto: "Moderada" }, { valor: "ABUNDANTE", texto: "Abundante" }], habilitada: hay }
   ];
+  const cambiarAspecto = (v: string): void =>
+    editar((x) => {
+      const aspecto = v === "" ? null : (v as typeof x.aspecto);
+      // Sin secreciones no hay reologia ni cantidad: se limpian.
+      return { ...x, aspecto, ...(hayAspectoDeSecreciones(aspecto) ? {} : { reologia: null, cantidad: null }) };
+    });
 
   return (
     <>
@@ -81,13 +91,33 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
             {FILAS.map((fila) => (
               <div className="f" key={fila.clave}>
                 <label htmlFor={`sel-${fila.clave}`}>{fila.titulo.replace("Secreciones · ", "Secreciones: ")}</label>
-                <select id={`sel-${fila.clave}`} value={b[fila.clave] ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }}
-                  onChange={(e) => editar((x) => ({ ...x, [fila.clave]: e.target.value === "" ? null : e.target.value }))}>
+                <select id={`sel-${fila.clave}`} value={b[fila.clave] ?? ""} disabled={!fila.habilitada} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }}
+                  onChange={(e) => (fila.clave === "aspecto" ? cambiarAspecto(e.target.value) : editar((x) => ({ ...x, [fila.clave]: e.target.value === "" ? null : e.target.value })))}>
                   <option value="">—</option>
                   {fila.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                 </select>
               </div>
             ))}
+          </div>
+          <h3 style={{ marginTop: 14 }}>Manejo de secreciones</h3>
+          <div className="fgrid2">
+            <div className="f">
+              <label htmlFor="sel-tos">Tos</label>
+              <select id="sel-tos" value={b.tos ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => editar((x) => ({ ...x, tos: e.target.value === "" ? null : (e.target.value as typeof x.tos) }))}>
+                <option value="">—</option>
+                <option value="EFICIENTE">Eficiente</option>
+                <option value="DEFICIENTE">Deficiente</option>
+              </select>
+            </div>
+            <CampoNum clave="pef-tos" etiqueta="Flujo pico de tos (PEF)" unidad="L/min" valor={b.flujoPicoTos} onCambio={(v) => editar((x) => ({ ...x, flujoPicoTos: v }))}
+              franja={() => ({ etiqueta: "Flujo pico de tos", opciones: [], onElegir: () => undefined })} />
+            <div className="f">
+              <label htmlFor="sel-deglucion">Deglución</label>
+              <select id="sel-deglucion" value={b.deglucion ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => editar((x) => ({ ...x, deglucion: e.target.value === "" ? null : (e.target.value as typeof x.deglucion) }))}>
+                <option value="">—</option>
+                {OPCIONES_DEGLUCION.map((d) => <option key={d.val} value={d.val}>{d.label}</option>)}
+              </select>
+            </div>
           </div>
         </section>
       )}

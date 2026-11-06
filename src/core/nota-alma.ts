@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD } from "./catalogos";
+import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto } from "./catalogos";
 import { apkVigente } from "./apk";
 import { nombreEscala } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
@@ -95,9 +95,21 @@ function textoNeuro(c: Control, pbw: number): string {
 
 function textoSecreciones(c: Control): string {
   const k = c.kineResp;
-  if (!k.aspecto && !k.reologia && !k.cantidad) return "";
-  const partes = [k.cantidad, k.aspecto, k.reologia].filter((x): x is NonNullable<typeof x> => x !== null);
-  return `Secreciones ${partes.join(", ").toLowerCase()}`;
+  if (!k.aspecto) return "";
+  if (k.aspecto === "NINGUNA") return "Sin secreciones";
+  const partes = [etiquetaAspecto(k.aspecto).toLowerCase()];
+  if (k.cantidad) partes.push(`cantidad ${k.cantidad.toLowerCase()}`);
+  if (k.reologia) partes.push(`reología ${k.reologia.toLowerCase()}`);
+  return `Secreciones ${partes.join(", ")}`;
+}
+
+function textoManejoSecreciones(c: Control): string {
+  const k = c.kineResp;
+  const partes: string[] = [];
+  if (k.tos) partes.push(`tos ${k.tos === "EFICIENTE" ? "eficiente" : "deficiente"}${k.flujoPicoTos !== null ? ` (flujo pico de tos ${k.flujoPicoTos} L/min)` : ""}`);
+  else if (k.flujoPicoTos !== null) partes.push(`flujo pico de tos ${k.flujoPicoTos} L/min`);
+  if (k.deglucion) partes.push(`deglución ${OPCIONES_DEGLUCION.find((d) => d.val === k.deglucion)?.label.toLowerCase() ?? k.deglucion}`);
+  return partes.length === 0 ? "" : `Manejo de secreciones: ${partes.join(", ")}`;
 }
 
 function textoAuscultacion(c: Control): string {
@@ -106,7 +118,7 @@ function textoAuscultacion(c: Control): string {
 }
 
 function textoKine(c: Control): string {
-  return [textoAuscultacion(c), textoSecreciones(c)].filter(Boolean).join(". ") || "Sin hallazgos respiratorios registrados";
+  return [textoAuscultacion(c), textoSecreciones(c), textoManejoSecreciones(c)].filter(Boolean).join(". ") || "Sin hallazgos respiratorios registrados";
 }
 
 function textoTerapiaFisica(c: Control): string {

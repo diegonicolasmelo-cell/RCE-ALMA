@@ -285,7 +285,7 @@ describe("materializarControl", () => {
 
   it("auscultación y secreciones se guardan tal cual en el control", () => {
     const c = materializarControl(completo({ auscultacion: "  Crépitos bibasales, roncus  ", aspecto: "PURULENTA" }), datos);
-    expect(c.kineResp).toEqual({ auscultacion: "Crépitos bibasales, roncus", aspecto: "PURULENTA", reologia: null, cantidad: null });
+    expect(c.kineResp).toEqual({ auscultacion: "Crépitos bibasales, roncus", aspecto: "PURULENTA", reologia: null, cantidad: null, tos: null, flujoPicoTos: null, deglucion: null });
   });
 
 
@@ -424,5 +424,33 @@ describe("auscultación en texto libre", () => {
     const c = unControl() as unknown as Record<string, unknown>;
     c["kineResp"] = { auscultacion: ["MP_DISMINUIDO"], aspecto: null, reologia: null, cantidad: null };
     expect(normalizarControl(c as never).kineResp.auscultacion).toBe("MP_DISMINUIDO");
+  });
+});
+
+describe("secreciones y manejo de secreciones", () => {
+  const dat = { id: "z", numero: 1, ahora: new Date(), viaAerea: "TET" as const, monitoreo: { capnografia: false, pic: false, dve: false } };
+
+  it("el aspecto tiene los 12 tipos de la unidad más 'sin secreciones'", async () => {
+    const { ASPECTOS_SECRECIONES } = await import("./catalogos");
+    expect(ASPECTOS_SECRECIONES.map((a) => a.label)).toEqual([
+      "Sin secreciones", "Mucosas", "Mucosas rosadas", "Mucopurulentas", "Purulentas", "Hemáticas", "Mucohemáticas",
+      "Mucopurulentas con tinte hemático", "Hemopurulentas", "Herrumbrosas", "Carbonizadas", "Biliosas", "Contenido alimenticio"
+    ]);
+  });
+
+  it("la cantidad y la reología solo cuentan si hay secreciones", () => {
+    const con = materializarControl(completo({ aspecto: "BILIOSA", reologia: "FLUIDA", cantidad: "ESCASA" }), dat);
+    expect(con.kineResp).toMatchObject({ aspecto: "BILIOSA", reologia: "FLUIDA", cantidad: "ESCASA" });
+    const sin = materializarControl(completo({ aspecto: "NINGUNA", reologia: "FLUIDA", cantidad: "ESCASA" }), dat);
+    expect(sin.kineResp).toMatchObject({ aspecto: "NINGUNA", reologia: null, cantidad: null });
+    const nada = materializarControl(completo({ aspecto: null, cantidad: "ESCASA" }), dat);
+    expect(nada.kineResp.cantidad).toBeNull();
+  });
+
+  it("tos, flujo pico de tos y deglución nacen en blanco y se guardan", () => {
+    const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
+    expect([b.tos, b.flujoPicoTos, b.deglucion]).toEqual([null, "", null]);
+    const c = materializarControl(completo({ tos: "DEFICIENTE", flujoPicoTos: "55", deglucion: "ESPORADICA" }), dat);
+    expect(c.kineResp).toMatchObject({ tos: "DEFICIENTE", flujoPicoTos: 55, deglucion: "ESPORADICA" });
   });
 });

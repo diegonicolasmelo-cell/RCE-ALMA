@@ -5,6 +5,8 @@
 
 import {
   CORTE_S5Q,
+  OPCIONES_DEGLUCION,
+  etiquetaAspecto,
   ETIQUETA_MODALIDAD,
   calcularDerivados,
   calcularGlasgow,
@@ -92,7 +94,9 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
 
   filas.push(
     { etiqueta: "Auscultación", celda: (c) => t(c.kineResp.auscultacion.trim() === "" ? "--" : c.kineResp.auscultacion) },
-    { etiqueta: "Secreciones", celda: (c) => { const k = c.kineResp; const p = [k.cantidad, k.aspecto, k.reologia].filter((x): x is NonNullable<typeof x> => x !== null); return t(p.length === 0 ? "--" : p.join(", ").toLowerCase()); } },
+    { etiqueta: "Secreciones", celda: (c) => { const k = c.kineResp; if (!k.aspecto) return t("--"); if (k.aspecto === "NINGUNA") return t("sin secreciones"); return t([etiquetaAspecto(k.aspecto).toLowerCase(), k.cantidad?.toLowerCase(), k.reologia?.toLowerCase()].filter(Boolean).join(", ")); } },
+    { etiqueta: "Tos / PEF", celda: (c) => t(c.kineResp.tos === null && c.kineResp.flujoPicoTos === null ? "--" : `${c.kineResp.tos === "EFICIENTE" ? "eficiente" : c.kineResp.tos === "DEFICIENTE" ? "deficiente" : "—"}${c.kineResp.flujoPicoTos !== null ? ` · ${c.kineResp.flujoPicoTos} L/min` : ""}`) },
+    { etiqueta: "Deglución", celda: (c) => t(OPCIONES_DEGLUCION.find((d) => d.val === c.kineResp.deglucion)?.label ?? "--") },
     { etiqueta: "Terapia física", celda: (c) => t(c.terapiaFisica.estado === "REALIZADA" ? `Sí${c.terapiaFisica.ims !== null ? ` · IMS ${c.terapiaFisica.ims}` : ""}` : c.terapiaFisica.estado === "CONTRAINDICADA" ? "Contraind." : "No") },
     { etiqueta: "Firma", celda: (c) => t(iniciales(c.rutAutor)) }
   );

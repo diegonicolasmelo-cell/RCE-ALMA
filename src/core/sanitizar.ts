@@ -219,7 +219,10 @@ export function normalizarControl(c: Control): Control {
       auscultacion: typeof k.auscultacion === "string" ? k.auscultacion : Array.isArray(k.auscultacion) ? (k.auscultacion as string[]).join(", ") : "",
       aspecto: k.aspecto ?? null,
       reologia: k.reologia ?? null,
-      cantidad: k.cantidad ?? null
+      cantidad: k.cantidad ?? null,
+      tos: k.tos ?? null,
+      flujoPicoTos: k.flujoPicoTos ?? null,
+      deglucion: k.deglucion ?? null
     },
     infusiones: c.infusiones ?? {}
   };

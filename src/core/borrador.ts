@@ -15,13 +15,15 @@
  * a cero) son clinicamente distintos y no deben colapsar.
  */
 
-import { CAMPOS_POR_MODALIDAD, INFUSIONES } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, INFUSIONES, hayAspectoDeSecreciones } from "./catalogos";
 import { esViaAereaArtificial } from "./fisiologia";
 import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
 import { kineRespiratoriaPermitida } from "./apk";
 import { CAMPOS_VENT } from "./tipos";
 import type {
   AspectoSecreciones,
+  Deglucion,
+  EficienciaTos,
   CampoVent,
   CantidadSecreciones,
   Control,
@@ -113,6 +115,10 @@ export interface BorradorControl {
   aspecto: AspectoSecreciones | null;
   reologia: ReologiaSecreciones | null;
   cantidad: CantidadSecreciones | null;
+  /** Manejo de secreciones: evaluacion, nace en blanco. */
+  tos: EficienciaTos | null;
+  flujoPicoTos: string;
+  deglucion: Deglucion | null;
 
   terapiaFisica: EstadoTerapiaFisica | null;
   actividades: string[];
@@ -201,6 +207,9 @@ export function crearBorradorNuevoControl(
     aspecto: null,
     reologia: null,
     cantidad: null,
+    tos: null,
+    flujoPicoTos: "",
+    deglucion: null,
 
     terapiaFisica: null,
     actividades: [],
@@ -409,8 +418,12 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     kineResp: {
       auscultacion: b.auscultacion.trim(),
       aspecto: b.aspecto,
-      reologia: b.reologia,
-      cantidad: b.cantidad
+      // Reologia y cantidad solo tienen sentido si hay secreciones.
+      reologia: hayAspectoDeSecreciones(b.aspecto) ? b.reologia : null,
+      cantidad: hayAspectoDeSecreciones(b.aspecto) ? b.cantidad : null,
+      tos: b.tos,
+      flujoPicoTos: medicionDe(b.flujoPicoTos),
+      deglucion: b.deglucion
     },
     terapiaFisica: {
       estado: tf,

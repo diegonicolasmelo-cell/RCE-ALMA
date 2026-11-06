@@ -140,8 +140,15 @@ describe("kine y secreciones", () => {
     const n = nota({ modo: "ULTIMA_ATENCION" });
     expect(n).toContain("Auscultación: Crépitos");
     expect(n).not.toMatch(/aspiración|TrachCare/);
-    expect(n).toContain("Secreciones moderada, mucopurulenta, espesa");
+    expect(n).toContain("Secreciones mucopurulentas, cantidad moderada, reología espesa");
     expect(n).toContain("Giros en cama / posicionamiento (IMS 1)");
+  });
+
+  it("el manejo de secreciones (tos, flujo pico de tos y deglución) va en la nota", () => {
+    const c = unControl({ kineResp: { auscultacion: "", aspecto: "NINGUNA", reologia: null, cantidad: null, tos: "DEFICIENTE", flujoPicoTos: 55, deglucion: "AUSENTE" } });
+    const n = nota({ modo: "ULTIMA_ATENCION", controles: [c] });
+    expect(n).toContain("Sin secreciones");
+    expect(n).toContain("Manejo de secreciones: tos deficiente (flujo pico de tos 55 L/min), deglución ausente");
   });
 
   it("terapia física contraindicada deja el motivo", () => {

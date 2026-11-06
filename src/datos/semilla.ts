@@ -79,7 +79,7 @@ function control(d: DatosControl): Control {
     vigilia: null,
     glasgow: null,
     s5q: null,
-    kineResp: { auscultacion: "MP disminuido, crépitos bibasales", aspecto: "MUCOPURULENTA", reologia: "ESPESA", cantidad: "MODERADA" },
+    kineResp: { auscultacion: "MP disminuido, crépitos bibasales", aspecto: "MUCOPURULENTA", reologia: "ESPESA", cantidad: "MODERADA", tos: "DEFICIENTE", flujoPicoTos: 60, deglucion: "ESPORADICA" },
     terapiaFisica: { estado: "NO", actividades: [], ims: null, motivoContraindicacion: null },
     observaciones: "",
     ...d.over
@@ -187,7 +187,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
 
     c("ep-07", 1, 240, { fc: 80, pas: 130, pad: 74, spo2: 95, viaAerea: "NATURAL",
       ventilacion: vent({ modalidad: "CNAF", frProgramada: null, vtProgramado: null, ti: null, peep: null, flujo: 40, fio2: 40, frTotal: 20, vtEspirado: null, pPico: null, pPlateau: null, pMedia: null }),
-      sas: null, vigilia: "VIGIL_ALERTA", kineResp: { auscultacion: "MP conservado", aspecto: null, reologia: null, cantidad: null } }, RUT_KAREN)
+      sas: null, vigilia: "VIGIL_ALERTA", kineResp: { auscultacion: "MP conservado", aspecto: null, reologia: null, cantidad: null, tos: "EFICIENTE", flujoPicoTos: 120, deglucion: "PRESENTE" } }, RUT_KAREN)
   ];
 
   EXTRAS.forEach((x, i) => {

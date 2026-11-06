@@ -66,7 +66,10 @@ const KINE_BASE: KineRespiratoria = {
   auscultacion: "Crépitos",
   aspecto: "MUCOPURULENTA",
   reologia: "ESPESA",
-  cantidad: "MODERADA"
+  cantidad: "MODERADA",
+  tos: null,
+  flujoPicoTos: null,
+  deglucion: null
 };
 
 const TF_BASE: TerapiaFisica = {

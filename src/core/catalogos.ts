@@ -233,6 +233,34 @@ export const ETIQUETA_TIPO_EQUIPO: Readonly<Record<TipoEquipo, string>> = {
   NEBULIZADOR: "Nebulizador"
 };
 
+/** Aspecto de las secreciones. "Sin secreciones" deshabilita reologia y cantidad. */
+export const ASPECTOS_SECRECIONES: readonly { readonly val: import("./tipos").AspectoSecreciones; readonly label: string }[] = [
+  { val: "NINGUNA", label: "Sin secreciones" },
+  { val: "MUCOSA", label: "Mucosas" },
+  { val: "MUCOSA_ROSADA", label: "Mucosas rosadas" },
+  { val: "MUCOPURULENTA", label: "Mucopurulentas" },
+  { val: "PURULENTA", label: "Purulentas" },
+  { val: "HEMATICA", label: "Hemáticas" },
+  { val: "MUCOHEMATICA", label: "Mucohemáticas" },
+  { val: "MUCOPURULENTA_TINTE_HEMATICO", label: "Mucopurulentas con tinte hemático" },
+  { val: "HEMOPURULENTA", label: "Hemopurulentas" },
+  { val: "HERRUMBROSA", label: "Herrumbrosas" },
+  { val: "CARBONIZADA", label: "Carbonizadas" },
+  { val: "BILIOSA", label: "Biliosas" },
+  { val: "CONTENIDO_ALIMENTICIO", label: "Contenido alimenticio" }
+];
+export const etiquetaAspecto = (v: import("./tipos").AspectoSecreciones): string => ASPECTOS_SECRECIONES.find((a) => a.val === v)?.label ?? v;
+
+/** Hay secreciones que describir (reologia y cantidad solo se habilitan en ese caso). */
+export const hayAspectoDeSecreciones = (v: import("./tipos").AspectoSecreciones | null): boolean => v !== null && v !== "NINGUNA";
+
+/** Deglucion: clasificacion sencilla. Provisoria, a confirmar con la unidad. */
+export const OPCIONES_DEGLUCION: readonly { readonly val: import("./tipos").Deglucion; readonly label: string }[] = [
+  { val: "PRESENTE", label: "Presente" },
+  { val: "ESPORADICA", label: "Esporádica" },
+  { val: "AUSENTE", label: "Ausente" }
+];
+
 /** Sugerencias para escribir la auscultacion (el campo es texto libre). Provisorias. */
 export const SUGERENCIAS_AUSCULTACION: readonly string[] = [
   "MP conservado",

@@ -264,7 +264,21 @@ async function esperarServidor() {
       assert.equal(await cel.inputValue("#in-auscultacion"), "Crépitos bibasales, roncus", "la auscultacion es texto libre");
       assert.ok((await cel.locator("#sugerencias-auscultacion option").count()) >= 5, "con sugerencias desplegables");
       assert.equal(await cel.locator("#in-auscultacion[type=checkbox], .desplegable input[type=checkbox]").count(), 0, "ya no hay casillas de verificacion");
+      // reologia y cantidad solo se habilitan si hay secreciones
+      assert.equal(await cel.locator("#sel-cantidad").isDisabled(), true, "sin aspecto, la cantidad esta deshabilitada");
+      assert.equal(await cel.locator("#sel-reologia").isDisabled(), true);
+      assert.equal(await cel.locator("#sel-aspecto option").count(), 14, "13 aspectos mas el vacio");
+      await cel.selectOption("#sel-aspecto", "MUCOPURULENTA_TINTE_HEMATICO");
+      assert.equal(await cel.locator("#sel-cantidad").isDisabled(), false);
       await cel.selectOption("#sel-cantidad", "MODERADA");
+      await cel.selectOption("#sel-aspecto", "NINGUNA");
+      assert.equal(await cel.locator("#sel-cantidad").isDisabled(), true, "sin secreciones se vuelve a deshabilitar");
+      assert.equal(await cel.inputValue("#sel-cantidad"), "", "y se limpia");
+      // manejo de secreciones: tos, flujo pico de tos y deglucion
+      await cel.selectOption("#sel-tos", "DEFICIENTE");
+      await cel.fill("#in-pef-tos", "55");
+      await cel.click('.franja .qchip:has-text("Listo")');
+      await cel.selectOption("#sel-deglucion", "ESPORADICA");
       // la kine motora va aparte y no es obligatoria
       assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 0, "la terapia fisica no esta en kine respiratoria");
       await cel.click('[role=tab]:has-text("Kine motora")');

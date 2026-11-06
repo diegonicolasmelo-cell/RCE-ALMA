@@ -233,13 +233,14 @@ export const ETIQUETA_TIPO_EQUIPO: Readonly<Record<TipoEquipo, string>> = {
   NEBULIZADOR: "Nebulizador"
 };
 
-export const HALLAZGOS_AUSCULTACION: readonly { readonly val: import("./tipos").HallazgoAuscultacion; readonly label: string }[] = [
-  { val: "MP_CONSERVADO", label: "MP conservado" },
-  { val: "MP_DISMINUIDO", label: "MP disminuido" },
-  { val: "CREPITOS", label: "Crépitos" },
-  { val: "SIBILANCIAS", label: "Sibilancias" },
-  { val: "RONCUS", label: "Roncus" },
-  { val: "ABOLIDO", label: "Abolido" }
+/** Sugerencias para escribir la auscultacion (el campo es texto libre). Provisorias. */
+export const SUGERENCIAS_AUSCULTACION: readonly string[] = [
+  "MP conservado",
+  "MP disminuido",
+  "Crépitos",
+  "Sibilancias",
+  "Roncus",
+  "Abolido"
 ];
 
 /** Corte del S5Q (0 a 5) para la lectura en el PC. POR CONFIRMAR con la unidad. */

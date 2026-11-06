@@ -81,7 +81,7 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   it("las evaluaciones (SAS, vigilia, kine, terapia física) nacen en blanco", () => {
     expect(b.sas).toBeNull();
     expect(b.vigilia).toBeNull();
-    expect(b.auscultacion).toEqual([]);
+    expect(b.auscultacion).toBe("");
     expect(b.terapiaFisica).toBeNull();
     expect(b.actividades).toEqual([]);
     expect(b.ims).toBe("");
@@ -284,8 +284,8 @@ describe("materializarControl", () => {
   });
 
   it("auscultación y secreciones se guardan tal cual en el control", () => {
-    const c = materializarControl(completo({ auscultacion: ["CREPITOS", "RONCUS"], aspecto: "PURULENTA" }), datos);
-    expect(c.kineResp).toEqual({ auscultacion: ["CREPITOS", "RONCUS"], aspecto: "PURULENTA", reologia: null, cantidad: null });
+    const c = materializarControl(completo({ auscultacion: "  Crépitos bibasales, roncus  ", aspecto: "PURULENTA" }), datos);
+    expect(c.kineResp).toEqual({ auscultacion: "Crépitos bibasales, roncus", aspecto: "PURULENTA", reologia: null, cantidad: null });
   });
 
 
@@ -392,7 +392,7 @@ describe("compatibilidad con datos de versiones anteriores", () => {
     viejo["infusiones"] = inf;
     const b = completarBorrador(viejo as never, base);
     expect(b.fc).toBe("88");
-    expect(b.auscultacion).toEqual([]);
+    expect(b.auscultacion).toBe("");
     expect(b.musculaturaAccesoria).toBeNull();
     expect(b.s5q).toBe("");
     expect(b.vent.temperatura).toBe("");
@@ -410,8 +410,19 @@ describe("compatibilidad con datos de versiones anteriores", () => {
     c["ventilacion"] = v;
     const n = normalizarControl(c as never);
     expect(n.s5q).toBeNull();
-    expect(n.kineResp.auscultacion).toEqual([]);
+    expect(n.kineResp.auscultacion).toBe("");
     expect(n.ventilacion.temperatura).toBeNull();
     expect(n.ventilacion.musculaturaAccesoria).toBeNull();
+  });
+});
+
+describe("auscultación en texto libre", () => {
+  it("un control o borrador viejo con la lista de opciones se lee como texto", () => {
+    const base = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
+    const viejoBorrador = { ...base, auscultacion: ["CREPITOS", "RONCUS"] } as unknown as Parameters<typeof completarBorrador>[0];
+    expect(completarBorrador(viejoBorrador, base).auscultacion).toBe("CREPITOS, RONCUS");
+    const c = unControl() as unknown as Record<string, unknown>;
+    c["kineResp"] = { auscultacion: ["MP_DISMINUIDO"], aspecto: null, reologia: null, cantidad: null };
+    expect(normalizarControl(c as never).kineResp.auscultacion).toBe("MP_DISMINUIDO");
   });
 });

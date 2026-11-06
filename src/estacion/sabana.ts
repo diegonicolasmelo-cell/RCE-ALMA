@@ -5,7 +5,6 @@
 
 import {
   CORTE_S5Q,
-  HALLAZGOS_AUSCULTACION,
   ETIQUETA_MODALIDAD,
   calcularDerivados,
   calcularGlasgow,
@@ -92,7 +91,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
   if (monitoreo.dve) filas.push({ etiqueta: "DVE", celda: dve });
 
   filas.push(
-    { etiqueta: "Auscultación", celda: (c) => t(c.kineResp.auscultacion.length === 0 ? "--" : c.kineResp.auscultacion.map((h) => HALLAZGOS_AUSCULTACION.find((d) => d.val === h)?.label ?? h).join(", ")) },
+    { etiqueta: "Auscultación", celda: (c) => t(c.kineResp.auscultacion.trim() === "" ? "--" : c.kineResp.auscultacion) },
     { etiqueta: "Secreciones", celda: (c) => { const k = c.kineResp; const p = [k.cantidad, k.aspecto, k.reologia].filter((x): x is NonNullable<typeof x> => x !== null); return t(p.length === 0 ? "--" : p.join(", ").toLowerCase()); } },
     { etiqueta: "Terapia física", celda: (c) => t(c.terapiaFisica.estado === "REALIZADA" ? `Sí${c.terapiaFisica.ims !== null ? ` · IMS ${c.terapiaFisica.ims}` : ""}` : c.terapiaFisica.estado === "CONTRAINDICADA" ? "Contraind." : "No") },
     { etiqueta: "Firma", celda: (c) => t(iniciales(c.rutAutor)) }

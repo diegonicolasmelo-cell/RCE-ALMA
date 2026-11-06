@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, HALLAZGOS_AUSCULTACION } from "./catalogos";
+import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD } from "./catalogos";
 import { apkVigente } from "./apk";
 import { nombreEscala } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
@@ -101,8 +101,8 @@ function textoSecreciones(c: Control): string {
 }
 
 function textoAuscultacion(c: Control): string {
-  const h = c.kineResp.auscultacion;
-  return h.length === 0 ? "" : `Auscultación: ${h.map((x) => HALLAZGOS_AUSCULTACION.find((d) => d.val === x)?.label ?? x).join(", ")}`;
+  const h = c.kineResp.auscultacion.trim();
+  return h === "" ? "" : `Auscultación: ${h}`;
 }
 
 function textoKine(c: Control): string {

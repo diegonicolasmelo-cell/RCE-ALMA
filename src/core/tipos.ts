@@ -142,8 +142,6 @@ export interface Glasgow {
 // Kinesiterapia
 // ---------------------------------------------------------------------------
 
-/** Hallazgos de la auscultacion. Vocabulario provisorio: la hoja de papel solo dice "Auscultacion". */
-export type HallazgoAuscultacion = "MP_CONSERVADO" | "MP_DISMINUIDO" | "CREPITOS" | "SIBILANCIAS" | "RONCUS" | "ABOLIDO";
 export type AspectoSecreciones = "MUCOSA" | "MUCOPURULENTA" | "PURULENTA" | "HEMATICA";
 export type ReologiaSecreciones = "FLUIDA" | "ESPESA" | "ADHERENTE";
 export type CantidadSecreciones = "ESCASA" | "MODERADA" | "ABUNDANTE";
@@ -153,7 +151,8 @@ export type CantidadSecreciones = "ESCASA" | "MODERADA" | "ABUNDANTE";
  * pregunta si hubo kine respiratoria ni si se aspiro.
  */
 export interface KineRespiratoria {
-  readonly auscultacion: readonly HallazgoAuscultacion[];
+  /** Texto libre ("crepitos bibasales, roncus"); las sugerencias solo ayudan a escribir. */
+  readonly auscultacion: string;
   readonly aspecto: AspectoSecreciones | null;
   readonly reologia: ReologiaSecreciones | null;
   readonly cantidad: CantidadSecreciones | null;

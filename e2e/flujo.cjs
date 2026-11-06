@@ -260,11 +260,10 @@ async function esperarServidor() {
       assert.ok(!/Aspiración|TrachCare|Set\b/.test(await cel.textContent('.segmento[data-seg="kine"]')), "ya no se pregunta por aspiracion");
       assert.equal(await cel.locator('[aria-label="Kinesiterapia respiratoria"]').count(), 0, "cada control es una atencion: no hay Si/No de kine");
       // auscultacion y secreciones en listas desplegables
-      await cel.click('summary[aria-label="Auscultación"]');
-      await cel.click('.desplegable label:has-text("Crépitos")');
-      await cel.click('.desplegable label:has-text("Roncus")');
-      assert.match(await cel.textContent('summary[aria-label="Auscultación"]'), /Crépitos, Roncus/);
-      await cel.click('summary[aria-label="Auscultación"]');
+      await cel.fill("#in-auscultacion", "Crépitos bibasales, roncus");
+      assert.equal(await cel.inputValue("#in-auscultacion"), "Crépitos bibasales, roncus", "la auscultacion es texto libre");
+      assert.ok((await cel.locator("#sugerencias-auscultacion option").count()) >= 5, "con sugerencias desplegables");
+      assert.equal(await cel.locator("#in-auscultacion[type=checkbox], .desplegable input[type=checkbox]").count(), 0, "ya no hay casillas de verificacion");
       await cel.selectOption("#sel-cantidad", "MODERADA");
       // la kine motora va aparte y no es obligatoria
       assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 0, "la terapia fisica no esta en kine respiratoria");

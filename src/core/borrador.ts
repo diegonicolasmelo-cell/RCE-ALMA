@@ -21,7 +21,6 @@ import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
 import { kineRespiratoriaPermitida } from "./apk";
 import { CAMPOS_VENT } from "./tipos";
 import type {
-  HallazgoAuscultacion,
   AspectoSecreciones,
   CampoVent,
   CantidadSecreciones,
@@ -110,7 +109,7 @@ export interface BorradorControl {
   equipos: readonly EquipoEnSala[];
 
   /** Auscultacion y secreciones: evaluaciones, nacen en blanco. */
-  auscultacion: HallazgoAuscultacion[];
+  auscultacion: string;
   aspecto: AspectoSecreciones | null;
   reologia: ReologiaSecreciones | null;
   cantidad: CantidadSecreciones | null;
@@ -198,7 +197,7 @@ export function crearBorradorNuevoControl(
     neuro: { etco2: "", pic: "", dveAltura: "", dveAbierta: null },
     equipos: episodio.equipos,
 
-    auscultacion: [],
+    auscultacion: "",
     aspecto: null,
     reologia: null,
     cantidad: null,
@@ -408,7 +407,7 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     s5q: medicionDe(b.s5q),
 
     kineResp: {
-      auscultacion: [...b.auscultacion],
+      auscultacion: b.auscultacion.trim(),
       aspecto: b.aspecto,
       reologia: b.reologia,
       cantidad: b.cantidad
@@ -443,7 +442,7 @@ export function completarBorrador(guardado: Partial<BorradorControl> | undefined
     infusiones,
     glasgow: { ...base.glasgow, ...(g.glasgow ?? {}) },
     neuro: { ...base.neuro, ...(g.neuro ?? {}) },
-    auscultacion: Array.isArray(g.auscultacion) ? g.auscultacion : base.auscultacion,
+    auscultacion: typeof g.auscultacion === "string" ? g.auscultacion : Array.isArray(g.auscultacion) ? (g.auscultacion as string[]).join(", ") : base.auscultacion,
     actividades: Array.isArray(g.actividades) ? g.actividades : base.actividades
   };
   // Campos que ya no existen en el modelo.

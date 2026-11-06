@@ -215,7 +215,8 @@ export function normalizarControl(c: Control): Control {
       musculaturaAccesoria: v.musculaturaAccesoria ?? null
     },
     kineResp: {
-      auscultacion: Array.isArray(k.auscultacion) ? k.auscultacion : [],
+      // Antes era una lista de opciones; ahora es texto libre.
+      auscultacion: typeof k.auscultacion === "string" ? k.auscultacion : Array.isArray(k.auscultacion) ? (k.auscultacion as string[]).join(", ") : "",
       aspecto: k.aspecto ?? null,
       reologia: k.reologia ?? null,
       cantidad: k.cantidad ?? null

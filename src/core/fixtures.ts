@@ -63,7 +63,7 @@ export function unaVentilacion(over: Partial<Ventilacion> = {}): Ventilacion {
 }
 
 const KINE_BASE: KineRespiratoria = {
-  auscultacion: ["CREPITOS"],
+  auscultacion: "Crépitos",
   aspecto: "MUCOPURULENTA",
   reologia: "ESPESA",
   cantidad: "MODERADA"

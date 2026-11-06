@@ -162,7 +162,8 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
   6 ultraprotector); la franja ofrece 6, 7 y 8 ml/kg ya calculados.
 - **Cada control es una atención kinésica** (así se cuenta en la estadística): no se
   pregunta si hubo kine respiratoria ni aspiración; se registran auscultación y
-  secreciones (calidad, reología, cantidad). Los hallazgos de auscultación son provisorios.
+  secreciones (aspecto, reología y cantidad, en listas desplegables). La auscultación es
+  texto libre con sugerencias desplegables (las sugerencias son provisorias).
 - **Kine motora aparte**: la terapia física tiene su pestaña y solo se registra
   cuando se hace (no es obligatoria para guardar).
 - **Teclado**: mientras se escribe se ocultan la cabecera y el pie para ver el cuadro

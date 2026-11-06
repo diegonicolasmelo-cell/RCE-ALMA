@@ -4,7 +4,7 @@ import {
   apkDelTurno,
   buscarProfesional,
   esViaAereaArtificial,
-  HALLAZGOS_AUSCULTACION,
+  SUGERENCIAS_AUSCULTACION,
   apkVigente,
   criteriosNoCumplidos,
   firmarApk,
@@ -12,7 +12,6 @@ import {
   marcasPorDefecto,
   turnoDe
 } from "@core/index";
-import type { HallazgoAuscultacion } from "@core/index";
 import { useApp } from "../app/store";
 import type { SegmentoId } from "./pasos";
 import { useServicios } from "../app/contexto";
@@ -53,9 +52,6 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
     avisar("APK firmada. Vale para todos tus controles de este turno.");
   };
 
-  const alternarHallazgo = (h: HallazgoAuscultacion): void =>
-    editar((x) => ({ ...x, auscultacion: x.auscultacion.includes(h) ? x.auscultacion.filter((y) => y !== h) : [...x.auscultacion, h] }));
-
   const franjaIms = (): DescriptorFranja => ({
     etiqueta: "Nivel IMS",
     opciones: opcionesNumericas([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], b.ims),
@@ -75,19 +71,12 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
           <h3>Auscultación y secreciones</h3>
           <div className="fgrid2">
             <div className="f">
-              <label>Auscultación</label>
-              <details className="desplegable">
-                <summary aria-label="Auscultación">
-                  {b.auscultacion.length === 0 ? "Elegir…" : b.auscultacion.map((h) => HALLAZGOS_AUSCULTACION.find((d) => d.val === h)?.label ?? h).join(", ")}
-                </summary>
-                <div className="desplegable-lista">
-                  {HALLAZGOS_AUSCULTACION.map((h) => (
-                    <label key={h.val} className="chk">
-                      <input type="checkbox" checked={b.auscultacion.includes(h.val)} onChange={() => alternarHallazgo(h.val)} /> {h.label}
-                    </label>
-                  ))}
-                </div>
-              </details>
+              <label htmlFor="in-auscultacion">Auscultación</label>
+              <input id="in-auscultacion" list="sugerencias-auscultacion" autoComplete="off" placeholder="Escribe o elige…" value={b.auscultacion}
+                style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => editar((x) => ({ ...x, auscultacion: e.target.value }))} />
+              <datalist id="sugerencias-auscultacion">
+                {SUGERENCIAS_AUSCULTACION.map((h) => <option key={h} value={h} />)}
+              </datalist>
             </div>
             {FILAS.map((fila) => (
               <div className="f" key={fila.clave}>

@@ -13,6 +13,7 @@ import {
   bandaProteccion,
   calcularDerivados,
   calcularPam,
+  camposSugeribles,
   cambiarModalidad,
   describirEquipos,
   equipoEnUso,
@@ -26,6 +27,7 @@ import {
   opcionesVolumenObjetivo,
   ponerEnUso,
   quitarEquipo,
+  sugerirAnterior,
   suspenderInfusion
 } from "@core/index";
 import type { CampoVent, CampoVentDef, Modalidad } from "@core/index";
@@ -96,6 +98,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
 
   const sinFranja = (etiqueta: string) => (): DescriptorFranja => ({ etiqueta, opciones: [], onElegir: () => undefined });
   const campos = CAMPOS_POR_MODALIDAD[b.modalidad];
+  const sugeribles = camposSugeribles(b, ultimo);
   const grupo = (g: "PROGRAMADO" | "OBSERVADO") =>
     campos
       .filter((c) => c.grupo === g)
@@ -233,7 +236,14 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         <>
       <section>
         <h3>Terapia ventilatoria · {ETIQUETA_MODALIDAD[b.modalidad]}</h3>
-        <div className="subg">Programado</div>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="subg" style={{ margin: 0 }}>Programado</div>
+          {sugeribles.length > 0 && (
+            <button type="button" className="btn sm" onClick={() => editar((x) => sugerirAnterior(x, ultimo))}>
+              Usar lo anterior
+            </button>
+          )}
+        </div>
         <div className="fgrid">{grupo("PROGRAMADO")}</div>
         <div className="subg">Lo que hace el paciente</div>
         <div className="fgrid">

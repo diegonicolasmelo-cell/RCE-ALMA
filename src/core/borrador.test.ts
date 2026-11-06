@@ -4,6 +4,7 @@ import {
   CAMPOS_VENT_PROGRAMADOS,
   CAMPOS_VITALES,
   alternarDosisLibre,
+  camposSugeribles,
   cambiarModalidad,
   crearBorradorNuevoControl,
   dosisEfectiva,
@@ -11,6 +12,7 @@ import {
   iniciarInfusion,
   materializarControl,
   medicionDe,
+  sugerirAnterior,
   suspenderInfusion,
   validarBorrador
 } from "./borrador";
@@ -96,10 +98,22 @@ describe("herencia deliberada de ajustes e infusiones", () => {
   });
   const b = crearBorradorNuevoControl(episodio, previo, episodio.rutTitular);
 
-  it("hereda los ajustes programados del ventilador", () => {
-    for (const c of CAMPOS_VENT_PROGRAMADOS) expect(b.vent[c]).toBe(String(previo.ventilacion[c] ?? ""));
-    expect(b.vent.peep).toBe("8");
-    expect(b.vent.vtProgramado).toBe("600");
+  it("del ventilador solo se hereda el modo y la FiO2; el resto de los ajustes nace en blanco", () => {
+    expect(b.vent.fio2).toBe("40");
+    for (const c of CAMPOS_VENT_PROGRAMADOS.filter((x) => x !== "fio2")) expect(b.vent[c], `"${c}" debe nacer vacio`).toBe("");
+  });
+
+  it("'Usar lo anterior' rellena solo lo que sigue vacío y solo con la misma modalidad", () => {
+    expect(camposSugeribles(b, previo).sort()).toEqual(["flujo", "frProgramada", "peep", "ti", "vtProgramado"].sort());
+    const escrito = { ...b, vent: { ...b.vent, peep: "10" } };
+    const s = sugerirAnterior(escrito, previo);
+    expect(s.vent.peep).toBe("10"); // lo escrito no se pisa
+    expect(s.vent.vtProgramado).toBe("600");
+    expect(s.vent.frProgramada).toBe("16");
+    const otroModo = cambiarModalidad(b, "PCV");
+    expect(camposSugeribles(otroModo, previo)).toEqual([]);
+    expect(sugerirAnterior(otroModo, previo)).toBe(otroModo);
+    expect(sugerirAnterior(b, null)).toBe(b);
   });
 
   it("hereda la modalidad", () => expect(b.modalidad).toBe("ACVC"));

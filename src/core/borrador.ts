@@ -49,7 +49,7 @@ import type {
 export const CAMPOS_VITALES = ["fc", "spo2", "pas", "pad"] as const;
 export type CampoVital = (typeof CAMPOS_VITALES)[number];
 
-/** Ajustes del ventilador: se heredan del control anterior. */
+/** Ajustes del ventilador. */
 export const CAMPOS_VENT_PROGRAMADOS: readonly CampoVent[] = [
   "frProgramada",
   "vtProgramado",
@@ -159,9 +159,9 @@ export function crearBorradorNuevoControl(
   const modalidad: Modalidad = ultimo?.ventilacion.modalidad ?? (artificial ? "CPAP_PS" : "CNAF");
 
   const vent = Object.fromEntries(CAMPOS_VENT.map((c) => [c, ""])) as Record<CampoVent, string>;
-  if (ultimo) {
-    for (const c of CAMPOS_VENT_PROGRAMADOS) vent[c] = textoDe(ultimo.ventilacion[c]);
-  }
+  // Solo el modo y la FiO2 se heredan. El resto de los ajustes nace en blanco: se repite con
+  // "Usar lo anterior" (sugerirAnterior) o se escribe, pero nunca queda pre-rellenado.
+  if (ultimo) vent.fio2 = textoDe(ultimo.ventilacion.fio2);
 
   const infusiones = Object.fromEntries(
     INFUSIONES.map((def) => {
@@ -463,4 +463,26 @@ export function completarBorrador(guardado: Partial<BorradorControl> | undefined
   delete sobrante["kineRealizada"];
   delete sobrante["aspiracion"];
   return limpio;
+}
+
+/** Ajustes programados (menos FiO2, que ya se hereda) en que el control anterior puede sugerir algo. */
+const CAMPOS_SUGERIBLES: readonly CampoVent[] = CAMPOS_VENT_PROGRAMADOS.filter((c) => c !== "fio2");
+
+/**
+ * Campos programados vacios que el control anterior puede rellenar. Solo vale si la
+ * modalidad es la misma: los ajustes de otro modo no se pueden "repetir".
+ */
+export function camposSugeribles(b: BorradorControl, ultimo: Control | null): CampoVent[] {
+  if (!ultimo || ultimo.ventilacion.modalidad !== b.modalidad) return [];
+  const aplica = new Set(CAMPOS_POR_MODALIDAD[b.modalidad].map((d) => d.campo));
+  return CAMPOS_SUGERIBLES.filter((c) => aplica.has(c) && b.vent[c].trim() === "" && ultimo.ventilacion[c] !== null);
+}
+
+/** "Usar lo anterior": rellena SOLO los casilleros programados que siguen vacios. */
+export function sugerirAnterior(b: BorradorControl, ultimo: Control | null): BorradorControl {
+  const campos = camposSugeribles(b, ultimo);
+  if (!ultimo || campos.length === 0) return b;
+  const vent = { ...b.vent };
+  for (const c of campos) vent[c] = textoDe(ultimo.ventilacion[c]);
+  return { ...b, vent };
 }

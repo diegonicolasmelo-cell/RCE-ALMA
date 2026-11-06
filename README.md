@@ -150,7 +150,10 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
 ## Reglas clínicas que el código hace cumplir
 
 - **Lo que se lee de un monitor nace en blanco**, sin botón para copiar el valor
-  anterior; los ajustes del ventilador y las infusiones se heredan.
+  anterior. De un control a otro solo se hereda el **modo ventilatorio y la FiO₂**, y las
+  **infusiones en curso** (si no, un control nuevo las daría por suspendidas). El resto de
+  los ajustes del ventilador nace en blanco; «Usar lo anterior» rellena solo los que siguen
+  vacíos y solo con la misma modalidad.
 - **El modo ventilatorio decide qué se registra**, separando lo programado de lo
   que hace el paciente. “Sig. ›” se detiene en el Modo.
 - **Candado de mecánica:** con asincronía en modalidad controlada, plateau, ΔP y

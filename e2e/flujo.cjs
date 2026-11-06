@@ -386,6 +386,27 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".app-cel"), /Filtro HME.*vence/);
     });
 
+    await prueba("un control nuevo hereda solo el modo y la FiO2; los demas ajustes nacen en blanco y se repiten con 'Usar lo anterior'", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
+      await cel.waitForSelector(".hoja-ctl");
+      assert.equal(await cel.inputValue("#in-vent-fio2"), "35", "la FiO2 se hereda");
+      for (const id of ["peep", "vtProgramado", "frProgramada", "flujo", "ti"]) {
+        const n = await cel.locator(`#in-vent-${id}`).count();
+        if (n) assert.equal(await cel.inputValue(`#in-vent-${id}`), "", id + " nace en blanco");
+      }
+      const boton = cel.locator('button:has-text("Usar lo anterior")');
+      if (await boton.count()) {
+        await boton.click();
+        let alguno = false;
+        for (const id of ["peep", "vtProgramado", "frProgramada", "flujo", "ti"]) {
+          if ((await cel.locator(`#in-vent-${id}`).count()) && (await cel.inputValue(`#in-vent-${id}`)) !== "") alguno = true;
+        }
+        assert.ok(alguno, "el boton repite los ajustes anteriores");
+        assert.equal(await cel.locator('button:has-text("Usar lo anterior")').count(), 0, "una vez usado, ya no hay nada que sugerir");
+      }
+    });
+
     await prueba("CNAF: flujo, temperatura, FiO2, FR, SpO2 y musculatura accesoria en el mismo cuadro", async () => {
       await cel.click('.cel-camas button:text-is("05")');
       await cel.click('[role=tab]:has-text("Control")');

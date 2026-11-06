@@ -119,6 +119,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     horaTranscripcion: null,
     pendienteEntrega: "",
     activo: true,
+    apkArchivada: null,
     ...p
   });
 

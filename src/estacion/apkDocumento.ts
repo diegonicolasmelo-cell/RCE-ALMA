@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { columnasApk, documentoApkHtml, formatearRut } from "@core/index";
+import { columnasApk, documentoApkHtml, firmaApk, formatearRut } from "@core/index";
 import type { Episodio, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { guardarMeta, leerMeta } from "../datos/db";
 import { useServicios } from "../app/contexto";
@@ -31,75 +31,47 @@ export function htmlApk(ep: Episodio, identidad: IdentidadPaciente | null, apks:
 export const nombreArchivoApk = (ep: Episodio, identidad: IdentidadPaciente | null): string =>
   `APK ${ep.cama} ${runParaApk(identidad) || ep.id.slice(0, 8)}`;
 
-const claveArchivo = (episodioId: string): string => `apkArchivada:${episodioId}`;
-
-/**
- * Al firmarse una APK en cualquier celular, la estacion rellena la hoja y la deja
- * en la carpeta de Drive. Solo la estacion puede: el documento lleva RUN, que
- * nunca pasa por el celular. Reintenta sola si la nube no responde.
- */
-export function useArchivoApk(
-  episodios: readonly Episodio[],
-  apks: ReadonlyMap<string, readonly ValidacionApk[]>,
-  identidades: ReadonlyMap<string, IdentidadPaciente>
-): void {
-  const { api, db, local, tokenEstacion } = useServicios();
-  useEffect(() => {
-    if (local || !tokenEstacion) return;
-    let cancelado = false;
-    void (async () => {
-      for (const ep of episodios) {
-        const lista = apks.get(ep.id) ?? [];
-        const identidad = identidades.get(ep.id) ?? null;
-        if (lista.length === 0 || !identidad) continue;
-        const firma = lista.map((a) => a.id).sort().join(",");
-        if ((await leerMeta<string>(db, claveArchivo(ep.id))) === firma) continue;
-        const r = await api.guardarDocumentoApk(nombreArchivoApk(ep, identidad), htmlApk(ep, identidad, lista));
-        if (cancelado) return;
-        if (r.ok) await guardarMeta(db, claveArchivo(ep.id), firma);
-      }
-    })();
-    return () => {
-      cancelado = true;
-    };
-  }, [api, db, local, tokenEstacion, episodios, apks, identidades]);
-}
-
 const claveLocal = (episodioId: string): string => `apkLocal:${episodioId}`;
 
 /**
- * Copia en paralelo a una carpeta de este PC (si se eligio una). Independiente de
- * Drive: si una falla, la otra sigue. Se vuelve a escribir cuando cambian las firmas.
+ * Copia de las hojas APK en la carpeta de ESTE PC (el PC de respaldo). Es el unico
+ * archivo: ya no hay copia en la nube. Escribe cuando cambian las firmas y, al terminar,
+ * deja constancia en el episodio (`apkArchivada`) para que otros PC sepan que ya puede
+ * borrarse la identidad. Si el PC estuvo cerrado, se pone al dia al abrir.
  */
 export function useArchivoApkLocal(
   episodios: readonly Episodio[],
+  pendientes: readonly Episodio[],
   apks: ReadonlyMap<string, readonly ValidacionApk[]>,
   identidades: ReadonlyMap<string, IdentidadPaciente>
 ): void {
-  const { db } = useServicios();
+  const { db, repo } = useServicios();
   const carpeta = useConsulta(() => leerMeta<CarpetaHandle>(db, CLAVE_CARPETA_APK), [db], undefined);
   useEffect(() => {
     if (!carpeta) return;
     let cancelado = false;
     void (async () => {
       if (!(await permisoConcedido(carpeta))) return;
-      for (const ep of episodios) {
+      for (const ep of [...episodios, ...pendientes]) {
         const lista = apks.get(ep.id) ?? [];
         const identidad = identidades.get(ep.id) ?? null;
         if (lista.length === 0 || !identidad) continue;
-        const firma = lista.map((a) => a.id).sort().join(",");
-        if ((await leerMeta<string>(db, claveLocal(ep.id))) === firma) continue;
-        try {
-          await escribirHtml(carpeta, nombreArchivoApk(ep, identidad), htmlApk(ep, identidad, lista));
-        } catch {
-          return; // carpeta movida o sin permiso: se reintenta en el proximo cambio
+        const firma = firmaApk(lista, ep.id);
+        if ((await leerMeta<string>(db, claveLocal(ep.id))) !== firma) {
+          try {
+            await escribirHtml(carpeta, nombreArchivoApk(ep, identidad), htmlApk(ep, identidad, lista));
+          } catch {
+            return; // carpeta movida o sin permiso: se reintenta en el proximo cambio
+          }
+          if (cancelado) return;
+          await guardarMeta(db, claveLocal(ep.id), firma);
         }
-        if (cancelado) return;
-        await guardarMeta(db, claveLocal(ep.id), firma);
+        // Constancia para los demas PC: la hoja con estas firmas ya esta guardada.
+        if (ep.apkArchivada !== firma) await repo.guardarEpisodio({ ...ep, apkArchivada: firma });
       }
     })();
     return () => {
       cancelado = true;
     };
-  }, [db, carpeta, episodios, apks, identidades]);
+  }, [db, repo, carpeta, episodios, pendientes, apks, identidades]);
 }

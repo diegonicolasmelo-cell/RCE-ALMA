@@ -150,3 +150,24 @@ export function criteriosNoCumplidos(v: ValidacionApk): string[] {
 export function columnasApk(apks: readonly ValidacionApk[], episodioId: Uuid): ValidacionApk[] {
   return apks.filter((a) => a.episodioId === episodioId).sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
 }
+
+/** Firma de las APK de un episodio: cambia cada vez que se firma una nueva. */
+export function firmaApk(apks: readonly ValidacionApk[], episodioId: Uuid): string {
+  return apks
+    .filter((a) => a.episodioId === episodioId)
+    .map((a) => a.id)
+    .sort()
+    .join(",");
+}
+
+/**
+ * Al dar el alta, la identidad se borra de inmediato solo si la hoja APK final ya esta
+ * en la carpeta del PC de respaldo. Sin APK firmadas no hay hoja que esperar.
+ */
+export function purgaDeIdentidadLista(
+  ep: { readonly id: Uuid; readonly apkArchivada: string | null },
+  apks: readonly ValidacionApk[]
+): boolean {
+  const firma = firmaApk(apks, ep.id);
+  return firma === "" || ep.apkArchivada === firma;
+}

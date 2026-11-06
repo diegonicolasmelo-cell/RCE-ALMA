@@ -32,6 +32,7 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
     horaTranscripcion: null,
     pendienteEntrega: "Candidato a extubación si supera PVE vespertina.",
     activo: true,
+    apkArchivada: null,
     ...over
   };
 }

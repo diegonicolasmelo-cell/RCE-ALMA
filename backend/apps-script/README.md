@@ -3,7 +3,7 @@
 > **Lee esto primero.** Este backend corre en servidores de Google, **no** en la
 > intranet del hospital, y Apps Script **no puede restringir por IP**. Por
 > decisión del equipo (riesgo aceptado), el nombre y el RUT del paciente se
-> guardan en la hoja `identidad` para estar disponibles en cualquier PC y abrir
+> guardan **cifrados** (un solo bloque ilegible, hoja `referencia`) para estar disponibles en cualquier PC con la clave y abrir
 > Sinapse por RUT. Las defensas: **dos tokens** (el celular nunca recibe esa
 > hoja), **hojas separadas** y **purga al alta**. Ver `docs/PLAN-MAESTRO.md` cap. 1 y 3.
 >
@@ -93,10 +93,14 @@ primario**: el cliente ya filtra con `src/core/sanitizar.ts`.
 → `{ ok: false, error: "OCUPADO_REINTENTAR" }` ante contención del lock;
 el cliente reintenta con backoff.
 
-### Identidad (token de estación)
-- `POST { accion: "guardarIdentidad", token: STATION_TOKEN, identidades[] }` — upsert por `episodioId` (un nombre mal tipeado se corrige).
-- `POST { accion: "purgarIdentidad", token: STATION_TOKEN, episodioIds[] }` — se llama al alta.
-- `GET ?recurso=identidad&token=STATION_TOKEN` — el celular, con `APP_TOKEN`, recibe `TOKEN_INVALIDO`.
+### Referencias cifradas (token de estación)
+La identidad del paciente (nombre y RUT) **no se guarda en claro**: el PC la cifra en el
+navegador con la contraseña de la unidad y el servidor solo ve un bloque `v1.<iv>.<datos>`.
+- `POST { accion: "guardarReferencia", token: STATION_TOKEN, referencias[] }` — upsert por `episodioId`. Rechaza con `DATO_NO_CIFRADO` todo lo que no tenga forma de bloque cifrado.
+- `POST { accion: "purgarReferencia", token: STATION_TOKEN, episodioIds[] }` — se llama al alta (cuando la hoja APK final ya fue guardada por el PC de respaldo).
+- `GET ?recurso=referencia&token=STATION_TOKEN` — el celular, con `APP_TOKEN`, recibe `TOKEN_INVALIDO`.
+- La fila `_verificacion` sirve para comprobar que la contraseña escrita en un PC es la correcta.
+- Las hojas APK **ya no se guardan en Drive**: viven solo en la carpeta local del PC de respaldo.
 
 ### `GET` · `?token=...&desde=<ISO 8601>`
 Lectura incremental para la estación. Sin `desde` devuelve todo.

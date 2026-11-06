@@ -28,7 +28,7 @@ contradice, **manda esta lista**.
 | **Neuromonitoreo** | Capnografía, PIC (PPC calculado) y altura de DVE, activos por episodio. |
 | **Glasgow** | Se registra aunque haya sedación; la nota lo marca “bajo sedación”. |
 | **SAS / vigilia** | Evaluaciones: nacen en blanco (la v1 del prototipo las heredaba). |
-| **Identidad** | Hoja propia con llave de estación (cap. 1, rev. 1.1). La URL y los tokens **no van en el código publicado**: se entregan por enlace de configuración. |
+| **Identidad** | **Cifrada en el navegador** (rev. 3): en la nube solo un bloque ilegible por episodio (hoja `referencia`), con la contraseña de la unidad instalada en cada PC. Las hojas APK solo en la carpeta local del PC de respaldo; el alta espera su confirmación para borrar la identidad; respaldo mensual cifrado. La URL y los tokens **no van en el código publicado**. |
 | **Kine** | Respiratoria sí/no con aspiración (No, TrachCare, Set) y secreciones (aspecto, reología, cantidad). Terapia física engloba KTM + IMT. |
 
 **Sigue pendiente de la unidad:** tabla real de escalones, unidad de la amiodarona,

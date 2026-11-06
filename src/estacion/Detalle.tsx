@@ -11,6 +11,7 @@ import {
   enlaceSinapse,
   eventosDeRiesgo,
   formatearRut,
+  purgaDeIdentidadLista,
   turnoAnterior,
   turnoDe
 } from "@core/index";
@@ -19,6 +20,7 @@ import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
 import { htmlApk, nombreArchivoApk } from "./apkDocumento";
+import { borrarIdentidad } from "./purga";
 import { filasSabana } from "./sabana";
 import { PanelCircuitoYEvaluaciones, PanelPve } from "./PanelPve";
 import { Tendencia } from "./Tendencia";
@@ -57,9 +59,12 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
 
   const darDeAlta = async (): Promise<void> => {
     await repo.darAlta(ep.id);
-    await db.identidades.delete(ep.id);
-    const r = await api.purgarIdentidades([ep.id]);
-    avisar(r.ok ? `${ep.cama} dada de alta. La identidad se borró.` : `${ep.cama} dada de alta, pero la identidad no se pudo borrar de la nube (${r.error}). Reintenta desde Estado.`);
+    if (!purgaDeIdentidadLista(ep, apks)) {
+      avisar(`${ep.cama} dada de alta. La identidad se borrará cuando el PC de respaldo guarde la hoja APK final (sigue cifrada mientras tanto).`);
+      return;
+    }
+    const r = await borrarIdentidad(api, db, ep.id);
+    avisar(r.ok ? `${ep.cama} dada de alta. La identidad se borró.` : `${ep.cama} dada de alta, pero la identidad no se pudo borrar de la nube (${r.error}). Se reintenta sola.`);
   };
 
   const abrirApk = (imprimir: boolean): void => {

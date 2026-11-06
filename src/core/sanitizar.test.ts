@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   asegurarPayloadSinIdentidad,
   contieneDatoIdentificable,
-  serializarIdentidadParaNube,
   serializarControlParaNube,
   serializarEpisodioParaNube
 } from "./sanitizar";
@@ -88,16 +87,3 @@ describe("asegurarPayloadSinIdentidad", () => {
   });
 });
 
-describe("canal de identidad (separado del canal clinico)", () => {
-  const identidad = { episodioId: "ep-1", nombre: "Rojas, Pedro", rut: "12345678-5", ficha: null };
-
-  it("serializa nombre y RUT para la hoja de identidad", () => {
-    const p = serializarIdentidadParaNube(identidad, new Date("2026-11-04T12:00:00.000Z"));
-    expect(p).toMatchObject({ id: "ep-1", nombre: "Rojas, Pedro", rut: "12345678-5" });
-  });
-
-  it("el canal clinico rechaza ese mismo payload: no puede colarse por el celular", () => {
-    const p = serializarIdentidadParaNube(identidad, new Date());
-    expect(() => asegurarPayloadSinIdentidad(p)).toThrow(/datos identificables/);
-  });
-});

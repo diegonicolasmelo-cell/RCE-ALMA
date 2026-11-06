@@ -26,3 +26,6 @@ export * from "./apk-documento";
 export * from "./pve";
 export * from "./filtros";
 export * from "./evaluaciones";
+export * from "./cifrado";
+export * from "./referencias";
+export * from "./respaldo";

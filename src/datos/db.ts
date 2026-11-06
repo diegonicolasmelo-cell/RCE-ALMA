@@ -62,6 +62,10 @@ export async function leerMeta<T>(db: BaseLocal, clave: string): Promise<T | und
   return m?.valor as T | undefined;
 }
 
+export async function borrarMeta(db: BaseLocal, clave: string): Promise<void> {
+  await db.meta.delete(clave);
+}
+
 export async function guardarMeta(db: BaseLocal, clave: string, valor: unknown): Promise<void> {
   await db.meta.put({ clave, valor });
 }

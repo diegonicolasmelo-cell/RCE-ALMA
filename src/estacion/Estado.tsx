@@ -6,6 +6,8 @@ import { leerMeta } from "../datos/db";
 import { CLAVE_CONEXION, CLAVE_TOKEN_ESTACION } from "../datos/servicios";
 import { Aviso, Pildora } from "../celular/componentes";
 import type { DatosUnidad } from "./datos";
+import { PanelClave } from "./PanelClave";
+import { PanelRespaldo } from "./PanelRespaldo";
 import { archivoLocalSoportado, elegirCarpeta, leerCarpeta, pedirPermiso, permisoConcedido } from "./archivoLocal";
 
 /** Estado de la sincronizacion y de la identidad en este equipo. */
@@ -37,7 +39,8 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
   };
 
   const olvidar = async (): Promise<void> => {
-    await db.meta.bulkDelete([CLAVE_CONEXION, CLAVE_TOKEN_ESTACION, "sesion"]);
+    await db.meta.bulkDelete([CLAVE_CONEXION, CLAVE_TOKEN_ESTACION, "sesion", "claveUnidad"]);
+    await db.identidades.clear();
     window.location.reload();
   };
 
@@ -60,6 +63,8 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
         <p className="small muted">Cada cambio se guarda primero en este equipo y se sube en segundo plano. Si se corta a medias, reintentar no duplica nada.</p>
       </div>
 
+      <PanelClave datos={datos} />
+
       <div className="card stack">
         <h2>Copia local de las hojas APK</h2>
         {!archivoLocalSoportado() ? (
@@ -78,9 +83,11 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
           </>
         )}
         <p className="small muted">
-          Se elige en el PC que queda siempre encendido. Mientras la estación esté abierta ahí, cada firma de APK actualiza el archivo del paciente en esa carpeta, además de Drive. Si el navegador se reinicia, puede pedir confirmar el permiso con un clic. La carpeta contiene RUN: debe estar en un disco protegido y con respaldo.
+          Se elige en el PC que queda siempre encendido. Mientras la estación esté abierta ahí, cada firma de APK actualiza el archivo del paciente en esa carpeta. Es la ÚNICA copia: ya no hay copia en la nube. Si el PC estuvo cerrado, se pone al día al abrir. Si el navegador se reinicia, puede pedir confirmar el permiso con un clic. La carpeta contiene RUN: debe estar en un disco protegido; para sacar las hojas del PC usa el respaldo cifrado de abajo.
         </p>
       </div>
+
+      <PanelRespaldo />
 
       <div className="card stack">
         <h2>Este equipo</h2>
@@ -101,7 +108,7 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
           </div>
         )}
         <p className="small muted">
-          Riesgo aceptado por el equipo: nombre y RUT viven en Google para estar disponibles en cualquier PC y abrir Sinapse. El celular nunca los recibe (otra llave) y se borran al dar de alta.
+          Nombre y RUT se guardan en la nube solo CIFRADOS (un bloque ilegible por paciente) y se leen con la contraseña de la unidad en cada PC, para poder abrir Sinapse. El celular nunca los recibe y se borran al dar de alta.
           {config.sinapseUrl === "" && " El enlace a Sinapse está desactivado: falta configurar VITE_SINAPSE_URL."}
         </p>
       </div>

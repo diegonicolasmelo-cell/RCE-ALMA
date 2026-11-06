@@ -236,6 +236,12 @@ export interface Episodio {
   readonly horaTranscripcion: HoraHHMM | null;
   readonly pendienteEntrega: string;
   readonly activo: boolean;
+  /**
+   * Firma de las APK que el PC de respaldo ya guardo en su carpeta local (ids ordenados).
+   * Mientras no coincida con las APK del episodio, la identidad no se borra al alta.
+   * No identifica a nadie: son ids al azar.
+   */
+  readonly apkArchivada: string | null;
 }
 
 /** Identidad del paciente: canal propio, token de estacion, purga al alta. */

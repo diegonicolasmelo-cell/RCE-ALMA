@@ -8,8 +8,8 @@
  * `Content-Type: text/plain`, que el navegador trata como "solicitud simple".
  */
 
-import { DOTACION, buscarProfesional, serializarIdentidadParaNube } from "@core/index";
-import type { IdentidadPaciente } from "@core/index";
+import { DOTACION, buscarProfesional } from "@core/index";
+import type { ReferenciaNube } from "@core/index";
 
 export interface LoteSync {
   episodios: Record<string, unknown>[];
@@ -43,12 +43,13 @@ export interface ClienteApi {
   definirPin(rut: string, pinActual: string, pinNuevo: string): Promise<{ ok: boolean; error?: string }>;
   sincronizar(lote: LoteSync): Promise<RespuestaSync>;
   leer(desde: string | null): Promise<Resultado<{ datos: DatosNube }>>;
-  /** Canal de identidad: solo con token de estacion. */
-  leerIdentidades(): Promise<Resultado<{ identidades: readonly IdentidadPaciente[] }>>;
-  guardarIdentidades(identidades: readonly IdentidadPaciente[]): Promise<{ ok: boolean; error?: string }>;
-  purgarIdentidades(episodioIds: readonly string[]): Promise<{ ok: boolean; error?: string }>;
-  /** Canal de identidad: archiva la hoja APK digitalizada (HTML + PDF) en la carpeta de Drive. */
-  guardarDocumentoApk(nombre: string, html: string): Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Referencias de episodio (identidad CIFRADA): solo con token de estacion. La nube
+   * guarda un bloque ilegible por episodio; el descifrado ocurre en el navegador.
+   */
+  leerReferencias(): Promise<Resultado<{ referencias: readonly ReferenciaNube[] }>>;
+  guardarReferencias(referencias: readonly ReferenciaNube[]): Promise<{ ok: boolean; error?: string }>;
+  purgarReferencias(episodioIds: readonly string[]): Promise<{ ok: boolean; error?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,42 +132,30 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
       };
     },
 
-    async leerIdentidades() {
+    async leerReferencias() {
       if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
-      const r = await get({ recurso: "identidad", token: cfg.stationToken });
+      const r = await get({ recurso: "referencia", token: cfg.stationToken });
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
-      const filas = Array.isArray(r["identidades"]) ? (r["identidades"] as Obj[]) : [];
-      const identidades = filas
-        .filter((f) => typeof f["episodioId"] === "string" && typeof f["nombre"] === "string")
-        .map((f): IdentidadPaciente => ({
+      const filas = Array.isArray(r["referencias"]) ? (r["referencias"] as Obj[]) : [];
+      const referencias = filas
+        .filter((f) => typeof f["episodioId"] === "string" && typeof f["dato"] === "string")
+        .map((f): ReferenciaNube => ({
           episodioId: String(f["episodioId"]),
-          nombre: String(f["nombre"]),
-          rut: typeof f["rut"] === "string" ? f["rut"] : null,
-          ficha: typeof f["ficha"] === "string" ? f["ficha"] : null
+          registradoEn: typeof f["registradoEn"] === "string" ? f["registradoEn"] : "",
+          dato: String(f["dato"])
         }));
-      return { ok: true, identidades };
+      return { ok: true, referencias };
     },
 
-    async guardarIdentidades(identidades) {
+    async guardarReferencias(referencias) {
       if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
-      const ahora = new Date();
-      const r = await post({
-        token: cfg.stationToken,
-        accion: "guardarIdentidad",
-        identidades: identidades.map((i) => serializarIdentidadParaNube(i, ahora))
-      });
+      const r = await post({ token: cfg.stationToken, accion: "guardarReferencia", referencias });
       return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
     },
 
-    async purgarIdentidades(episodioIds) {
+    async purgarReferencias(episodioIds) {
       if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
-      const r = await post({ token: cfg.stationToken, accion: "purgarIdentidad", episodioIds });
-      return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
-    },
-
-    async guardarDocumentoApk(nombre, html) {
-      if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
-      const r = await post({ token: cfg.stationToken, accion: "guardarDocumentoApk", nombre, html });
+      const r = await post({ token: cfg.stationToken, accion: "purgarReferencia", episodioIds });
       return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
     }
   };
@@ -180,7 +169,7 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
 export const PIN_DEMO = "Kine";
 
 export function crearApiLocal(): ClienteApi {
-  const identidades = new Map<string, IdentidadPaciente>();
+  const referencias = new Map<string, ReferenciaNube>();
   return {
     local: true,
     async login(rut, pin) {
@@ -197,19 +186,15 @@ export function crearApiLocal(): ClienteApi {
     async leer() {
       return { ok: true, datos: { episodios: [], controles: [], eventos: [], apk: [], servidorEn: new Date().toISOString() } };
     },
-    async leerIdentidades() {
-      return { ok: true, identidades: [...identidades.values()] };
+    async leerReferencias() {
+      return { ok: true, referencias: [...referencias.values()] };
     },
-    async guardarIdentidades(lista) {
-      for (const i of lista) identidades.set(i.episodioId, i);
+    async guardarReferencias(lista) {
+      for (const r of lista) referencias.set(r.episodioId, r);
       return { ok: true };
     },
-    async purgarIdentidades(ids) {
-      for (const id of ids) identidades.delete(id);
-      return { ok: true };
-    },
-    async guardarDocumentoApk() {
-      // Sin servidor no hay carpeta: el documento se descarga desde el PC.
+    async purgarReferencias(ids) {
+      for (const id of ids) referencias.delete(id);
       return { ok: true };
     }
   };

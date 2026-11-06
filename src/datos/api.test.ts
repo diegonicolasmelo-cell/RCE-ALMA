@@ -31,20 +31,30 @@ describe("cliente HTTP de Apps Script", () => {
     expect(cuerpo["accion"]).toBe("sincronizar");
   });
 
-  it("la identidad solo se pide con el token de estación", async () => {
+  it("las referencias (identidad cifrada) solo se piden con el token de estación y con nombre neutro", async () => {
     const llamadas: Llamada[] = [];
-    const api = crearApiHttp(cfg, fetchFalso({ ok: true, identidades: [{ episodioId: "ep-1", nombre: "Paciente Prueba", rut: "12345678-5" }] }, llamadas));
-    const r = await api.leerIdentidades();
-    expect(llamadas[0]?.url).toContain("recurso=identidad");
+    const api = crearApiHttp(cfg, fetchFalso({ ok: true, referencias: [{ episodioId: "ep-1", registradoEn: "x", dato: "v1.aaa.bbb" }] }, llamadas));
+    const r = await api.leerReferencias();
+    expect(llamadas[0]?.url).toContain("recurso=referencia");
+    expect(llamadas[0]?.url).not.toMatch(/identidad|nombre|rut/);
     expect(llamadas[0]?.url).toContain("token=EST");
-    expect(r.ok && r.identidades[0]?.nombre).toBe("Paciente Prueba");
+    expect(r.ok && r.referencias[0]?.dato).toBe("v1.aaa.bbb");
+  });
+
+  it("al guardar referencias solo viajan episodio, fecha y el bloque cifrado", async () => {
+    const llamadas: Llamada[] = [];
+    const api = crearApiHttp(cfg, fetchFalso({ ok: true }, llamadas));
+    await api.guardarReferencias([{ episodioId: "ep-1", registradoEn: "x", dato: "v1.a.b" }]);
+    const cuerpo = JSON.parse(String(llamadas[0]?.init?.body)) as Record<string, unknown>;
+    expect(cuerpo["accion"]).toBe("guardarReferencia");
+    expect(JSON.stringify(cuerpo)).not.toMatch(/nombre|rut|identidad/i);
   });
 
   it("un celular sin token de estación no puede ni intentar leer identidad", async () => {
     const llamadas: Llamada[] = [];
     const api = crearApiHttp({ ...cfg, stationToken: null }, fetchFalso({ ok: true }, llamadas));
-    expect(await api.leerIdentidades()).toEqual({ ok: false, error: "SIN_TOKEN_ESTACION" });
-    expect(await api.guardarIdentidades([])).toEqual({ ok: false, error: "SIN_TOKEN_ESTACION" });
+    expect(await api.leerReferencias()).toEqual({ ok: false, error: "SIN_TOKEN_ESTACION" });
+    expect(await api.guardarReferencias([])).toEqual({ ok: false, error: "SIN_TOKEN_ESTACION" });
     expect(llamadas).toHaveLength(0);
   });
 

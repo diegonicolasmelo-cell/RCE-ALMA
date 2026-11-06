@@ -21,7 +21,6 @@ import type {
   Control,
   Episodio,
   EventoClinico,
-  IdentidadPaciente,
   ValidacionApk
 } from "./tipos";
 
@@ -73,30 +72,7 @@ export interface EpisodioNube {
   readonly horaTranscripcion: string | null;
   readonly pendienteEntrega: string;
   readonly activo: boolean;
-}
-
-/**
- * Canal de identidad: unico lugar donde nombre y RUT pueden salir, hacia la hoja
- * "identidad", con el token de estacion. El celular no tiene ese token, asi que
- * el servidor no le entrega esta hoja aunque el cliente tenga un bug.
- *
- * DECISION DEL USUARIO (riesgo aceptado): la identidad vive en Google Sheets para
- * estar disponible en cualquier PC de la UCI y habilitar el enlace a Sinapse por
- * RUT. Apps Script no puede restringir por IP; la proteccion es el token de
- * estacion, la separacion de hojas y la purga al alta.
- */
-export function serializarIdentidadParaNube(
-  i: IdentidadPaciente,
-  ahora: Date
-): Record<string, unknown> {
-  return {
-    id: i.episodioId,
-    episodioId: i.episodioId,
-    registradoEn: ahora.toISOString(),
-    nombre: i.nombre,
-    rut: i.rut,
-    ficha: i.ficha
-  };
+  readonly apkArchivada: string | null;
 }
 
 /**
@@ -123,7 +99,8 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     transcritoAlma: e.transcritoAlma,
     horaTranscripcion: e.horaTranscripcion,
     pendienteEntrega: e.pendienteEntrega,
-    activo: e.activo
+    activo: e.activo,
+    apkArchivada: e.apkArchivada
   };
 }
 

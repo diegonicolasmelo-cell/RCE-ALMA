@@ -6,10 +6,12 @@ import {
   apkVigente,
   criteriosNoCumplidos,
   firmarApk,
+  firmaApk,
   firmarApkCumple,
   inicialesDe,
   kineRespiratoriaPermitida,
-  marcasPorDefecto
+  marcasPorDefecto,
+  purgaDeIdentidadLista
 } from "./apk";
 import { documentoApkHtml, fechaCorta } from "./apk-documento";
 import type { MarcaApk } from "./tipos";
@@ -182,5 +184,33 @@ describe("fecha de la APK", () => {
     expect(firmar("n", f(4, 23, 30)).fecha).toBe("2026-11-04");
     expect(firmar("n", f(5, 2, 10)).fecha).toBe("2026-11-04");
     expect(firmar("d", f(5, 9, 0)).fecha).toBe("2026-11-05");
+  });
+});
+
+describe("borrar la identidad al alta solo cuando la hoja APK final está archivada", () => {
+  const a1 = firmarApkCumple({ id: "a1", episodioId: "ep-1", via: "TET", rutAutor: "x", siglas: "DM", ahora: new Date(2026, 10, 4, 9) });
+  const a2 = firmarApkCumple({ id: "a2", episodioId: "ep-1", via: "TET", rutAutor: "y", siglas: "FG", ahora: new Date(2026, 10, 4, 21) });
+
+  it("sin APK firmadas no hay hoja que esperar: se puede borrar de inmediato", () => {
+    expect(purgaDeIdentidadLista({ id: "ep-1", apkArchivada: null }, [])).toBe(true);
+  });
+
+  it("con APK firmadas y sin constancia del PC de respaldo, se espera", () => {
+    expect(purgaDeIdentidadLista({ id: "ep-1", apkArchivada: null }, [a1])).toBe(false);
+  });
+
+  it("cuando el PC de respaldo guardó exactamente las firmas actuales, ya se puede borrar", () => {
+    const firma = firmaApk([a1, a2], "ep-1");
+    expect(purgaDeIdentidadLista({ id: "ep-1", apkArchivada: firma }, [a1, a2])).toBe(true);
+  });
+
+  it("si se firmó otra APK después de archivar, vuelve a esperar", () => {
+    const firmaVieja = firmaApk([a1], "ep-1");
+    expect(purgaDeIdentidadLista({ id: "ep-1", apkArchivada: firmaVieja }, [a1, a2])).toBe(false);
+  });
+
+  it("la firma no depende del orden y no mezcla episodios", () => {
+    expect(firmaApk([a2, a1], "ep-1")).toBe(firmaApk([a1, a2], "ep-1"));
+    expect(firmaApk([a1, a2], "otro")).toBe("");
   });
 });

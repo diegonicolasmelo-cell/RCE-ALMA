@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useServicios } from "../app/contexto";
 import { useAhora } from "../app/hooks";
-import { useArchivoApk, useArchivoApkLocal } from "./apkDocumento";
+import { descifrarIdentidad, soloEpisodios } from "@core/index";
+import { useArchivoApkLocal } from "./apkDocumento";
+import { useClaveUnidad } from "./claveUnidad";
+import { usePurgasPendientes } from "./purga";
 import { useDatosUnidad } from "./datos";
 import { Estado } from "./Estado";
 import { ParaAlma } from "./ParaAlma";
@@ -9,24 +12,29 @@ import { Tablero } from "./Tablero";
 
 type Vista = "tablero" | "alma" | "estado";
 
-/** Trae las identidades del canal de estacion y refresca la cache local cada minuto. */
+/**
+ * Trae las referencias cifradas, las descifra con la clave de este PC y refresca la
+ * cache local cada minuto. Sin la clave, no se ve ningun nombre.
+ */
 function useIdentidades(): void {
   const { api, db, local, tokenEstacion } = useServicios();
+  const clave = useClaveUnidad();
   useEffect(() => {
     // En modo local la tabla ya esta sembrada y la API local no guarda nada: no se pisa.
-    if (local || !tokenEstacion) return;
+    if (local || !tokenEstacion || !clave) return;
     const traer = async (): Promise<void> => {
-      const r = await api.leerIdentidades();
+      const r = await api.leerReferencias();
       if (!r.ok) return;
+      const leidas = await Promise.all(soloEpisodios(r.referencias).map((ref) => descifrarIdentidad(clave, ref)));
       await db.transaction("rw", db.identidades, async () => {
         await db.identidades.clear();
-        await db.identidades.bulkPut([...r.identidades]);
+        await db.identidades.bulkPut(leidas.filter((x): x is NonNullable<typeof x> => x !== null));
       });
     };
     void traer();
     const t = setInterval(() => void traer(), 60_000);
     return () => clearInterval(t);
-  }, [api, db, local, tokenEstacion]);
+  }, [api, db, local, tokenEstacion, clave]);
 }
 
 export function Estacion() {
@@ -36,8 +44,8 @@ export function Estacion() {
   const [vista, setVista] = useState<Vista>("tablero");
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   useIdentidades();
-  useArchivoApk(datos.episodios, datos.apks, datos.identidades);
-  useArchivoApkLocal(datos.episodios, datos.apks, datos.identidades);
+  useArchivoApkLocal(datos.episodios, datos.pendientesPurga, datos.apks, datos.identidades);
+  usePurgasPendientes(datos.pendientesPurga, datos.apks);
 
   return (
     <div className="estacion">

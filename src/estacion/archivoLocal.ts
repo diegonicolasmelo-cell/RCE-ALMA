@@ -12,8 +12,15 @@ import { guardarMeta, leerMeta } from "../datos/db";
 
 interface ArchivoEscribible { write(d: string): Promise<void>; close(): Promise<void> }
 interface ArchivoHandle { createWritable(): Promise<ArchivoEscribible> }
+interface EntradaCarpeta {
+  readonly kind: "file" | "directory";
+  readonly name: string;
+  getFile?(): Promise<File>;
+}
 export interface CarpetaHandle {
   readonly name: string;
+  values(): AsyncIterable<EntradaCarpeta>;
+  removeEntry(nombre: string): Promise<void>;
   getFileHandle(nombre: string, op: { create: boolean }): Promise<ArchivoHandle>;
   queryPermission(d: { mode: "readwrite" }): Promise<PermissionState>;
   requestPermission(d: { mode: "readwrite" }): Promise<PermissionState>;
@@ -60,4 +67,18 @@ export async function escribirHtml(h: CarpetaHandle, nombre: string, html: strin
   const w = await f.createWritable();
   await w.write(html);
   await w.close();
+}
+
+/** Las hojas APK (.html) que hay en la carpeta, para armar el respaldo. */
+export async function leerHojasHtml(h: CarpetaHandle): Promise<{ nombre: string; html: string }[]> {
+  const out: { nombre: string; html: string }[] = [];
+  for await (const e of h.values()) {
+    if (e.kind === "file" && e.name.toLowerCase().endsWith(".html") && e.getFile) out.push({ nombre: e.name, html: await (await e.getFile()).text() });
+  }
+  return out;
+}
+
+/** Borra de la carpeta solo los archivos indicados. */
+export async function borrarArchivos(h: CarpetaHandle, nombres: readonly string[]): Promise<void> {
+  for (const n of nombres) await h.removeEntry(n);
 }

@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { DOTACION, formatearRut, normalizarRut, validarRut } from "@core/index";
+import { DOTACION, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
 import type { Episodio, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
 import { Seg } from "../celular/componentes";
+import { useClaveUnidad } from "./claveUnidad";
 
 /**
  * Ingreso de un paciente a la unidad. La identidad (nombre y RUT) va por su propio
  * canal y token; el episodio clinico solo lleva cama, edad, sexo y talla.
  */
 export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: readonly string[]; onListo: () => void }) {
-  const { repo, api, db } = useServicios();
+  const { repo, api, db, local } = useServicios();
+  const clave = useClaveUnidad();
   const avisar = useApp((s) => s.avisar);
   const [cama, setCama] = useState("");
   const [nombre, setNombre] = useState("");
@@ -55,13 +57,16 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
       transcritoAlma: false,
       horaTranscripcion: null,
       pendienteEntrega: "",
-      activo: true
+      activo: true,
+      apkArchivada: null
     };
     const identidad = { episodioId: id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null };
 
+    // En produccion la identidad solo sube CIFRADA; sin la clave de la unidad no se ingresa.
+    if (!local && !clave) return setError("Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.");
     await repo.guardarEpisodio(ep);
     await db.identidades.put(identidad);
-    const r = await api.guardarIdentidades([identidad]);
+    const r = local || !clave ? await api.guardarReferencias([]) : await api.guardarReferencias([await cifrarIdentidad(clave, identidad, new Date())]);
     avisar(r.ok ? `Paciente ingresado en ${camaTxt}.` : `Ingresado en ${camaTxt}, pero la identidad no se pudo subir (${r.error ?? "sin conexión"}): reintenta desde Estado.`);
     onListo();
   };
@@ -93,7 +98,7 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
         <button type="submit" className="btn primary">Ingresar</button>
         <button type="button" className="btn" onClick={onListo}>Cancelar</button>
       </div>
-      <p className="small muted">El nombre y el RUT viajan por un canal aparte, con otra llave, y se borran al dar de alta. El resto de los datos clínicos no los lleva.</p>
+      <p className="small muted">El nombre y el RUT se cifran en este equipo antes de subirse: en la nube queda un bloque ilegible, y se borra al dar de alta. El celular nunca los recibe.</p>
     </form>
   );
 }

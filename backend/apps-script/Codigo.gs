@@ -6,14 +6,14 @@
  * Este script corre en servidores de Google, NO en la intranet del hospital.
  * Apps Script no puede leer la IP del cliente: no existe allowlist por IP.
  *
- * DECISION DEL USUARIO (riesgo aceptado): nombre y RUT del paciente se guardan
- * en la hoja "identidad" para estar disponibles en cualquier PC de la UCI y
- * abrir Sinapse por RUT. Las defensas son estas tres:
- *   1. Dos tokens. El celular solo tiene APP_TOKEN y el servidor NUNCA le
- *      entrega la hoja de identidad. Solo los PC tienen STATION_TOKEN.
- *   2. Hojas separadas. El canal clinico rechaza cualquier llave identificable
- *      (validarSinIdentidad), asi un bug del celular no puede escribir un nombre.
- *   3. Purga al alta (purgarIdentidad): la hoja no acumula pacientes historicos.
+ * DECISION DEL USUARIO: nombre y RUT del paciente NUNCA se guardan en claro. El PC los
+ * cifra en el navegador (AES-GCM, con la contrasena de la unidad, que no llega aqui) y
+ * esta hoja ("referencia") solo guarda un bloque ilegible por episodio. Defensas:
+ *   1. El servidor RECHAZA todo lo que no tenga forma de bloque cifrado (v1.<iv>.<datos>).
+ *   2. Dos tokens. El celular solo tiene APP_TOKEN y nunca recibe esta hoja.
+ *   3. El canal clinico rechaza cualquier llave identificable (validarSinIdentidad).
+ *   4. Purga al alta (purgarReferencia): la hoja no acumula pacientes historicos.
+ * El historial de versiones de Sheets conserva el texto cifrado, no el dato.
  * Ver docs/PLAN-MAESTRO.md capitulos 1 y 3.
  *
  * MODELO: APPEND-ONLY
@@ -35,7 +35,7 @@ var HOJAS = {
   EVENTOS: "eventos",
   APK: "apk",
   USUARIOS: "usuarios",
-  IDENTIDAD: "identidad",
+  REFERENCIA: "referencia",
   AUDITORIA: "auditoria"
 };
 
@@ -64,9 +64,8 @@ function doPost(e) {
 
     // El canal de identidad exige el token de estacion; el resto, el de app.
     var esAccionIdentidad =
-      cuerpo.accion === "guardarIdentidad" ||
-      cuerpo.accion === "purgarIdentidad" ||
-      cuerpo.accion === "guardarDocumentoApk";
+      cuerpo.accion === "guardarReferencia" ||
+      cuerpo.accion === "purgarReferencia";
     var autorizado = esAccionIdentidad
       ? tokenEstacionValido(cuerpo.token)
       : tokenValido(cuerpo.token);
@@ -75,12 +74,10 @@ function doPost(e) {
     }
 
     switch (cuerpo.accion) {
-      case "guardarIdentidad":
-        return respuesta(guardarIdentidad(cuerpo.identidades));
-      case "purgarIdentidad":
-        return respuesta(purgarIdentidad(cuerpo.episodioIds));
-      case "guardarDocumentoApk":
-        return respuesta(guardarDocumentoApk(cuerpo.nombre, cuerpo.html));
+      case "guardarReferencia":
+        return respuesta(guardarReferencia(cuerpo.referencias));
+      case "purgarReferencia":
+        return respuesta(purgarReferencia(cuerpo.episodioIds));
       case "login":
         return respuesta(login(cuerpo.rut, cuerpo.pin));
       case "definirPin":
@@ -97,11 +94,11 @@ function doPost(e) {
 
 function doGet(e) {
   try {
-    if (e.parameter.recurso === "identidad") {
+    if (e.parameter.recurso === "referencia") {
       if (!tokenEstacionValido(e.parameter.token)) {
         return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
       }
-      return respuesta({ ok: true, identidades: leerHoja(HOJAS.IDENTIDAD, "") });
+      return respuesta({ ok: true, referencias: leerHoja(HOJAS.REFERENCIA, "") });
     }
     if (!tokenValido(e.parameter.token)) {
       return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
@@ -358,64 +355,30 @@ function filasPorEpisodio(hoja) {
   return mapa;
 }
 
-/** Upsert: la identidad si se corrige (un nombre mal tipeado), a diferencia de lo clinico. */
-/**
- * Archivo de la APK digitalizada: copia fiel de la hoja de papel, rellenada.
- * La arma la estacion (lleva RUN del paciente, por eso viaja por el canal de
- * identidad) y aqui se deja en una carpeta de Drive, en HTML y en PDF. Cada firma
- * nueva reemplaza el archivo del mismo nombre: el nombre identifica al episodio.
- *
- * Carpeta: ScriptProperties CARPETA_APK_ID; si no existe, se crea "APK UCI Adulto".
- * A diferencia de la identidad, este documento NO se borra al alta: es el
- * respaldo que piden en una auditoria. Quien administra la carpeta decide cuanto
- * tiempo se conserva.
- */
-function carpetaApk() {
-  var props = PropertiesService.getScriptProperties();
-  var id = props.getProperty("CARPETA_APK_ID");
-  if (id) return DriveApp.getFolderById(id);
-  var carpeta = DriveApp.createFolder("APK UCI Adulto");
-  props.setProperty("CARPETA_APK_ID", carpeta.getId());
-  return carpeta;
-}
+var FORMA_BLOQUE_CIFRADO = /^v1\.[A-Za-z0-9+\/=]+\.[A-Za-z0-9+\/=]+$/;
 
-function guardarDocumentoApk(nombre, html) {
-  if (!nombre || !html) throw new Error("Documento APK incompleto");
-  if (String(html).length > 2000000) throw new Error("Documento demasiado grande");
-  var seguro = String(nombre).replace(/[^A-Za-z0-9._ -]/g, "_").slice(0, 80);
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
-  try {
-    var carpeta = carpetaApk();
-    [seguro + ".html", seguro + ".pdf"].forEach(function (n) {
-      var viejos = carpeta.getFilesByName(n);
-      while (viejos.hasNext()) viejos.next().setTrashed(true);
-    });
-    var blob = Utilities.newBlob(html, "text/html", seguro + ".html");
-    carpeta.createFile(blob);
-    carpeta.createFile(blob.getAs("application/pdf").setName(seguro + ".pdf"));
-    registrarAuditoria("", "apk_documento", seguro);
-    return { ok: true, carpetaId: carpeta.getId() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function guardarIdentidad(identidades) {
+/** Upsert: una referencia si se corrige, a diferencia de lo clinico. Solo acepta bloques cifrados. */
+function guardarReferencia(referencias) {
+  var identidades = referencias;
   if (!identidades || identidades.length === 0) return { ok: true, guardadas: 0 };
   if (identidades.length > MAX_REGISTROS_POR_LOTE) throw new Error("Lote demasiado grande");
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
   try {
-    var hoja = hojaPorNombre(HOJAS.IDENTIDAD);
+    var hoja = hojaPorNombre(HOJAS.REFERENCIA);
     var filas = filasPorEpisodio(hoja);
     var nuevas = [];
 
     for (var i = 0; i < identidades.length; i++) {
       var d = identidades[i];
-      if (!d || !d.episodioId) throw new Error("Identidad sin episodioId");
-      var fila = [d.episodioId, d.episodioId, d.registradoEn || "", JSON.stringify(d)];
+      if (!d || !d.episodioId) throw new Error("Referencia sin episodioId");
+      if (typeof d.dato !== "string" || !FORMA_BLOQUE_CIFRADO.test(d.dato)) {
+        return { ok: false, error: "DATO_NO_CIFRADO" };
+      }
+      // Solo estos tres campos se guardan, pase lo que pase con el resto del cuerpo.
+      var limpio = { episodioId: String(d.episodioId), registradoEn: String(d.registradoEn || ""), dato: d.dato };
+      var fila = [limpio.episodioId, limpio.episodioId, limpio.registradoEn, JSON.stringify(limpio)];
       if (filas[String(d.episodioId)]) {
         hoja.getRange(filas[String(d.episodioId)], 1, 1, 4).setValues([fila]);
       } else {
@@ -425,21 +388,21 @@ function guardarIdentidad(identidades) {
     if (nuevas.length > 0) {
       hoja.getRange(hoja.getLastRow() + 1, 1, nuevas.length, 4).setValues(nuevas);
     }
-    registrarAuditoria("", "identidad_guardada", String(identidades.length));
+    registrarAuditoria("", "referencia_guardada", String(identidades.length));
     return { ok: true, guardadas: identidades.length };
   } finally {
     lock.releaseLock();
   }
 }
 
-/** Al alta del paciente se borra su identidad; lo clinico des-identificado queda. */
-function purgarIdentidad(episodioIds) {
+/** Al alta del paciente se borra su referencia cifrada; lo clinico des-identificado queda. */
+function purgarReferencia(episodioIds) {
   if (!episodioIds || episodioIds.length === 0) return { ok: true, purgadas: 0 };
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
   try {
-    var hoja = hojaPorNombre(HOJAS.IDENTIDAD);
+    var hoja = hojaPorNombre(HOJAS.REFERENCIA);
     var filas = filasPorEpisodio(hoja);
     var aBorrar = [];
     for (var i = 0; i < episodioIds.length; i++) {
@@ -449,7 +412,7 @@ function purgarIdentidad(episodioIds) {
     // De abajo hacia arriba para que los indices no se corran.
     aBorrar.sort(function (a, b) { return b - a; });
     for (var j = 0; j < aBorrar.length; j++) hoja.deleteRow(aBorrar[j]);
-    registrarAuditoria("", "identidad_purgada", String(aBorrar.length));
+    registrarAuditoria("", "referencia_purgada", String(aBorrar.length));
     return { ok: true, purgadas: aBorrar.length };
   } finally {
     lock.releaseLock();
@@ -522,7 +485,7 @@ function inicializarLibro() {
   esquema[HOJAS.CONTROLES] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.EVENTOS] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.APK] = ["id", "episodioId", "registradoEn", "json"];
-  esquema[HOJAS.IDENTIDAD] = ["id", "episodioId", "registradoEn", "json"];
+  esquema[HOJAS.REFERENCIA] = ["id", "episodioId", "registradoEn", "dato"];
   esquema[HOJAS.USUARIOS] = ["rut", "sal", "hashPin", "nombre", "turno"];
   esquema[HOJAS.AUDITORIA] = ["registradoEn", "rut", "accion", "detalle"];
 

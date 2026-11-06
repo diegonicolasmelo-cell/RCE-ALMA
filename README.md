@@ -63,16 +63,23 @@ punta hay que hacerlo con datos ficticios.
   como un puntaje único (la hoja da solo el corte). Falta la contraindicación
   neuromuscular absoluta/relativa y el laboratorio (GSA, lactato…), que se dejó
   para después.
-- **Carpeta de las APK en Drive**: se crea sola (“APK UCI Adulto”) al primer uso,
-  o se fija con `CARPETA_APK_ID`. A diferencia de la identidad, el documento
-  **no se borra al alta**; decidir cuánto tiempo se conserva. El PDF lo arma Apps
-  Script desde el HTML y puede salir en vertical: el HTML (apaisado, fiel) es la
-  copia de referencia. No está probado contra Google.
-- **Copia local en paralelo**: en Estado, un PC siempre encendido (Chrome o Edge)
-  elige una carpeta y ahí se copia cada hoja APK, además de Drive. Solo escribe con
-  la estación abierta y puede pedir confirmar el permiso tras reiniciar el
-  navegador. Sin prueba automática (el selector de carpeta no se automatiza):
-  probar a mano.
+- **Protección de la identidad (opción B)**: nombre y RUT se **cifran en el navegador**
+  (AES-GCM, clave derivada de una contraseña de la unidad con PBKDF2) antes de subirse;
+  en el Sheet queda una hoja `referencia` con un solo bloque ilegible por episodio, sin
+  columnas que digan nombre ni RUT, y el servidor rechaza todo lo que no sea un bloque
+  cifrado. La contraseña es una sola para los 12 PC, se escribe una vez en cada uno
+  (Estado) y no va al Sheet, a Drive ni al código; solo la guarda una persona, en papel.
+  Un PC sin la contraseña ve las camas sin nombre. Sin prueba contra Google real.
+- **Hojas APK solo en la carpeta local** del PC de respaldo (Chrome o Edge, perfil
+  exclusivo con la estación abierta; sin Drive). Si estuvo cerrado, se pone al día al
+  abrir. **El alta no borra la identidad hasta que ese PC confirme que guardó la hoja
+  final** (`apkArchivada`); mientras tanto sigue cifrada. En Estado se puede borrar
+  “de todas formas”. El selector de carpeta no se automatiza: probar a mano.
+- **Respaldo mensual cifrado**: Estado → «Generar el respaldo de la carpeta» arma un
+  solo archivo `.upcres` cifrado con la contraseña de la unidad (se puede enviar por
+  correo o guardar en disco); «Abrir un respaldo» lo lee en cualquier PC con la clave.
+  Falta confirmar con informática el almacenamiento institucional permitido.
+- Almacenamiento institucional para el respaldo (consulta pendiente a informática).
 - Formato de la URL de **Sinapse** (`VITE_SINAPSE_URL`).
 - RUT de la dotación: son marcadores de posición (`src/core/dotacion.ts`).
 

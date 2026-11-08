@@ -13,6 +13,7 @@ export * from "./fisiologia";
 export * from "./validez";
 export * from "./turnos";
 export * from "./equipos";
+export * from "./ventiladores";
 export * from "./infusiones";
 export * from "./eventos";
 export * from "./apk";

@@ -6,6 +6,7 @@ import {
   calcularDerivados,
   calcularPbw,
   equipoEnUso,
+  equiposEfectivos,
   estadoProno,
   ETIQUETA_ELEMENTO,
   estadoFlujoPve,
@@ -17,7 +18,7 @@ import {
   semaforoDva,
   usaSoporteCardiovascular
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk, Ventilador } from "@core/index";
 import { cx } from "../app/util";
 import { Pildora } from "../celular/componentes";
 import { VENTANA_ALERTA_MS, haceTexto, nombreProfesional } from "./util";
@@ -37,12 +38,14 @@ interface Props {
   identidad: IdentidadPaciente | null;
   ahora: Date;
   seleccionada: boolean;
+  /** El ventilador que el inventario dice que esta en esta cama. */
+  ventilador?: Ventilador | null;
   onClick: () => void;
   /** Version reducida, sin boton (espejo). */
   mini?: boolean;
 }
 
-export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, seleccionada, onClick }: Props) {
+export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, seleccionada, ventilador = null, onClick }: Props) {
   const u = controles.at(-1) ?? null;
   const d = u ? calcularDerivados(u, calcularPbw(ep.tallaCm, ep.sexo)) : null;
   const riesgoCrudo = eventoDeRiesgoMasReciente(eventos);
@@ -54,7 +57,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
   const pve = estadoPve(eventos, ahora);
   const pendientes = estadoFlujoPve(eventos, ahora).bloque?.momentos.filter((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H") ?? [];
   const apk = apkVigente(apks, ep.id, ahora);
-  const equipo = equipoEnUso(ep.equipos);
+  const equipo = equipoEnUso(equiposEfectivos(ep.equipos, ventilador));
   const minutos = u ? Math.max(0, Math.round((ahora.getTime() - Date.parse(u.registradoEn)) / 60000)) : null;
 
   return (

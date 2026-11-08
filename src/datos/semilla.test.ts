@@ -6,7 +6,7 @@ import { Repositorio } from "./repositorio";
 import { sembrarSiVacia } from "./semilla";
 import { crearApiLocal } from "./api";
 import { combinarConfig, modoLocal, parsearHash } from "./config";
-import { calcularDerivados, calcularPbw, contieneDatoIdentificable, apkVigente, turnoDe, turnoAnterior, validarRut } from "@core/index";
+import { derivarInventario, hayPrestamosAtrasados, calcularDerivados, calcularPbw, contieneDatoIdentificable, apkVigente, turnoDe, turnoAnterior, validarRut } from "@core/index";
 
 async function sembrada() {
   const db = new BaseLocal(`semilla-${Math.random()}`);
@@ -101,5 +101,16 @@ describe("combinarConfig", () => {
   it("sin conexión guardada usa la del build, y sin ninguna queda en modo local", () => {
     expect(combinarConfig(entorno, undefined)).toEqual(entorno);
     expect(modoLocal(combinarConfig({ apiUrl: null, appToken: null, sinapseUrl: "" }, undefined))).toBe(true);
+  });
+
+  it("deja un inventario de ventiladores de ejemplo, sin datos de pacientes", async () => {
+    const { db, ahora } = await sembrada();
+    const movs = await db.movVentiladores.toArray();
+    const inv = derivarInventario(movs);
+    expect(inv.length).toBeGreaterThanOrEqual(12);
+    expect(inv.some((v) => v.ubicacion.tipo === "ZONA" && v.ubicacion.zona === "MANTENCION" && v.nota !== "")).toBe(true);
+    expect(inv.filter((v) => v.prestamo !== null)).toHaveLength(2);
+    expect(hayPrestamosAtrasados(inv, ahora)).toBe(true);
+    for (const m of movs) expect(contieneDatoIdentificable(m)).toEqual([]);
   });
 });

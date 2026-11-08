@@ -1,5 +1,5 @@
 import { normalizarControl } from "@core/index";
-import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk, Ventilador } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
 import { useIdentidadesEnMemoria } from "./identidades";
@@ -12,9 +12,11 @@ export interface DatosUnidad {
   readonly identidades: ReadonlyMap<string, IdentidadPaciente>;
   /** Episodios ya dados de alta cuya identidad sigue guardada (esperan la hoja APK final). */
   readonly pendientesPurga: readonly Episodio[];
+  /** Donde esta cada ventilador (inventario de la unidad). */
+  readonly ventiladores: readonly Ventilador[];
 }
 
-const VACIO: DatosUnidad = { episodios: [], controles: new Map(), eventos: new Map(), apks: new Map(), identidades: new Map(), pendientesPurga: [] };
+const VACIO: DatosUnidad = { episodios: [], controles: new Map(), eventos: new Map(), apks: new Map(), identidades: new Map(), pendientesPurga: [], ventiladores: [] };
 
 function agrupar<T extends { episodioId: string; registradoEn?: string }>(filas: readonly T[]): ReadonlyMap<string, readonly T[]> {
   const m = new Map<string, T[]>();
@@ -41,13 +43,14 @@ export function useDatosUnidad(): DatosUnidad {
   const enMemoria = useIdentidadesEnMemoria((s) => s.mapa);
   return useConsulta(
     async () => {
-      const [episodios, todos, controles, eventos, apks, ids] = await Promise.all([
+      const [episodios, todos, controles, eventos, apks, ids, ventiladores] = await Promise.all([
         repo.episodiosActivos(),
         db.episodios.toArray(),
         db.controles.toArray(),
         db.eventos.toArray(),
         db.apk.toArray(),
-        local ? db.identidades.toArray() : Promise.resolve([...enMemoria.values()])
+        local ? db.identidades.toArray() : Promise.resolve([...enMemoria.values()]),
+        repo.inventarioVentiladores()
       ]);
       return {
         episodios,
@@ -55,7 +58,8 @@ export function useDatosUnidad(): DatosUnidad {
         eventos: agrupar(eventos),
         apks: agrupar(apks),
         identidades: new Map(ids.map((i) => [i.episodioId, i] as const)),
-        pendientesPurga: ultimaVersion(todos).filter((e) => !e.activo && ids.some((i) => i.episodioId === e.id))
+        pendientesPurga: ultimaVersion(todos).filter((e) => !e.activo && ids.some((i) => i.episodioId === e.id)),
+        ventiladores
       };
     },
     [db, repo, local, enMemoria],

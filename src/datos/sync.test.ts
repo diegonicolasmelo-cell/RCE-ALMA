@@ -18,7 +18,8 @@ function servidorFalso() {
     episodios: new Map(),
     controles: new Map(),
     eventos: new Map(),
-    apk: new Map()
+    apk: new Map(),
+    ventiladores: new Map()
   };
   const estado = { falla: null as string | null, llamadas: 0, llaves: [] as string[] };
   const api: ClienteApi = {
@@ -38,6 +39,7 @@ function servidorFalso() {
         controles: [...guardado.controles.values()],
         eventos: [...guardado.eventos.values()],
         apk: [...guardado.apk.values()],
+        ventiladores: [...guardado.ventiladores.values()],
         servidorEn: new Date(2026, 10, 4, 12, 0).toISOString()
       };
       return { ok: true, datos };

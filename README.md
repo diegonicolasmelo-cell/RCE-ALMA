@@ -36,7 +36,8 @@ tendencias.
 | App del celular | ✅ |
 | Vista del PC | ✅ |
 | PWA instalable y sin conexión | ✅ |
-| Prueba de punta a punta en navegador (`e2e/`) | ✅ 21 pruebas |
+| Tablero de ventiladores (PC y celular) | ✅ |
+| Prueba de punta a punta en navegador (`e2e/`) | ✅ 42 pruebas |
 | Backend Apps Script (`backend/apps-script`) | 🔨 código listo, **sin desplegar ni probar contra Google** |
 | Envío del informe de riesgo por correo a coordinación | ⬜ |
 
@@ -194,6 +195,21 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
   Kine motora, PVE y Eventos siguen en sus pestañas. Auto PEEP solo en modalidades
   controladas. TrachCare y HEPA duran 3 días, el HME 2: se anota solo el cambio.
 - **Vía aérea fija por episodio:** solo la cambia un evento.
+- **Ventiladores: un inventario aparte del paciente.** Cada equipo (PB840, PB980, Servo U,
+  Avea, Vela, Mekics Evo 5, Savina 300, con su número) está en una **cama** (1 a 18) o en una
+  **zona**: pasillo, bodega, mantención o fuera de la unidad. La fuente de verdad es un
+  **registro de movimientos de solo agregar** (quién, cuándo, hacia dónde): el estado de un
+  equipo es su último movimiento, así que dos celulares que anotan lo mismo convergen sin
+  duplicar. Mover a una cama ocupada **intercambia** los dos (salvo que el equipo venga de
+  mantención o préstamo: ahí se mueve primero el de la cama). **Mantención** lleva una nota
+  libre; **fuera de la unidad** exige servicio y fechas de salida y de retorno, con un aviso
+  de color (verde «Vuelve en N d», amarillo «Vuelve hoy», rojo «Atrasado N d») y un punto
+  rojo en la pestaña. El tablero (PC y celular, `src/ventiladores/`) son cinco ventanas
+  fijas sin scroll (camas 1–6, 7–12, 13–18, pasillo y bodega, mantención y préstamo) con
+  recuadros de tamaño constante y los equipos dibujados en 8 bits. El colega registra el de su
+  cama desde el control; el de la cama manda sobre el anotado en el episodio para la tarjeta y
+  la nota de ALMA. Reglas en `src/core/ventiladores.ts`. La nota libre **no debe llevar nombres
+  de pacientes**.
 
 ## Estructura
 

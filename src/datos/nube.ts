@@ -14,9 +14,10 @@ import {
   serializarApkParaNube,
   serializarControlParaNube,
   serializarEpisodioParaNube,
-  serializarEventoParaNube
+  serializarEventoParaNube,
+  serializarMovimientoParaNube
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, MovimientoVentilador, ValidacionApk } from "@core/index";
 import type { TipoRegistro } from "./db";
 
 export interface FilaNube {
@@ -46,6 +47,10 @@ export function filaDeEvento(e: EventoClinico): FilaNube {
 
 export function filaDeApk(a: ValidacionApk): FilaNube {
   return { tipo: "apk", registroId: a.id, payload: asegurarPayloadSinIdentidad(serializarApkParaNube(a)) };
+}
+
+export function filaDeMovimientoVentilador(m: MovimientoVentilador): FilaNube {
+  return { tipo: "ventilador", registroId: m.id, payload: asegurarPayloadSinIdentidad(serializarMovimientoParaNube(m)) };
 }
 
 // ---------------------------------------------------------------------------

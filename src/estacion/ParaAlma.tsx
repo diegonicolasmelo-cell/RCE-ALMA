@@ -1,6 +1,6 @@
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
-import { calcularPbw, camposAlma, componerNotaAlma } from "@core/index";
+import { calcularPbw, camaDeEpisodio, camposAlma, componerNotaAlma, equiposEfectivos, ventiladorEnCama } from "@core/index";
 import type { ModoNota } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
@@ -33,7 +33,7 @@ export function ParaAlma({ datos, ahora, seleccionada, onSeleccionar }: { datos:
   if (!ep) return <div className="card"><p className="muted">No hay pacientes activos.</p></div>;
 
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
-  const campos = control ? camposAlma(control, pbw, ep.equipos) : [];
+  const campos = control ? camposAlma(control, pbw, equiposEfectivos(ep.equipos, ventiladorEnCama(datos.ventiladores, camaDeEpisodio(ep.cama)))) : [];
   const fin = control !== null && paso >= campos.length;
   const actual = campos[paso];
   const nota = componerNotaAlma({ episodio: ep, controles, eventos, apk: apks, modo, ahora });

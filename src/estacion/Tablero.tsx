@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
+import { camaDeEpisodio, ventiladorEnCama } from "@core/index";
 import { cx } from "../app/util";
 import type { DatosUnidad } from "./datos";
 import { Detalle } from "./Detalle";
@@ -63,6 +64,7 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
               identidad={datos.identidades.get(ep.id) ?? null}
               ahora={ahora}
               seleccionada={sel?.id === ep.id}
+              ventilador={ventiladorEnCama(datos.ventiladores, camaDeEpisodio(ep.cama))}
               onClick={() => onSeleccionar(ep.id)}
             />
           ))}
@@ -78,6 +80,7 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
           apks={datos.apks.get(sel.id) ?? []}
           identidad={datos.identidades.get(sel.id) ?? null}
           ahora={ahora}
+          ventiladores={datos.ventiladores}
         />
       )}
     </>

@@ -10,8 +10,10 @@ import { useDatosUnidad } from "./datos";
 import { Estado } from "./Estado";
 import { ParaAlma } from "./ParaAlma";
 import { Tablero } from "./Tablero";
+import { TableroVentiladores } from "../ventiladores/Tablero";
+import { useApp } from "../app/store";
 
-type Vista = "tablero" | "alma" | "estado";
+type Vista = "tablero" | "alma" | "ventiladores" | "estado";
 
 /**
  * Trae las referencias cifradas, las descifra con la clave de este PC y las refresca
@@ -39,6 +41,7 @@ function useIdentidades(): void {
 export function Estacion() {
   const { local } = useServicios();
   const datos = useDatosUnidad();
+  const sesion = useApp((s) => s.sesion);
   const ahora = useAhora(30_000);
   const [vista, setVista] = useState<Vista>("tablero");
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export function Estacion() {
       </div>
 
       <div className="tabs" role="tablist">
-        {([["tablero", "Tablero"], ["alma", "Para ALMA"], ["estado", "Estado"]] as const).map(([k, t]) => (
+        {([["tablero", "Tablero"], ["alma", "Para ALMA"], ["ventiladores", "Ventiladores"], ["estado", "Estado"]] as const).map(([k, t]) => (
           <button key={k} type="button" role="tab" className="tab" aria-selected={vista === k} onClick={() => setVista(k)}>{t}</button>
         ))}
       </div>
@@ -70,6 +73,7 @@ export function Estacion() {
       <main>
         {vista === "tablero" && <Tablero datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
         {vista === "alma" && <ParaAlma datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
+        {vista === "ventiladores" && <TableroVentiladores rutAutor={sesion?.rut ?? "ESTACION"} />}
         {vista === "estado" && <Estado datos={datos} />}
       </main>
     </div>

@@ -8,8 +8,8 @@ import type { BorradorControl } from "@core/index";
 import type { SegmentoId } from "../celular/pasos";
 
 export type TabCelular = "control" | "kine" | "motora" | "pve" | "eventos";
-/** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. */
-export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion";
+/** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. "ventiladores": el tablero de equipos. */
+export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "ventiladores";
 
 export interface Sesion {
   readonly rut: string;

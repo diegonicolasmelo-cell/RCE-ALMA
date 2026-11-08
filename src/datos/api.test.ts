@@ -16,7 +16,7 @@ describe("cliente HTTP de Apps Script", () => {
   it("los POST van como text/plain para evitar el preflight CORS que Apps Script no responde", async () => {
     const llamadas: Llamada[] = [];
     const api = crearApiHttp(cfg, fetchFalso({ ok: true, servidorEn: "x" }, llamadas));
-    await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [] });
+    await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [], ventiladores: [] });
     const h = llamadas[0]?.init?.headers as Record<string, string>;
     expect(h["Content-Type"]).toContain("text/plain");
     expect(llamadas[0]?.init?.method).toBe("POST");
@@ -25,7 +25,7 @@ describe("cliente HTTP de Apps Script", () => {
   it("el canal clínico usa el token de app, nunca el de estación", async () => {
     const llamadas: Llamada[] = [];
     const api = crearApiHttp(cfg, fetchFalso({ ok: true, servidorEn: "x" }, llamadas));
-    await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [] });
+    await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [], ventiladores: [] });
     const cuerpo = JSON.parse(String(llamadas[0]?.init?.body)) as Record<string, unknown>;
     expect(cuerpo["token"]).toBe("APP");
     expect(cuerpo["accion"]).toBe("sincronizar");
@@ -62,12 +62,12 @@ describe("cliente HTTP de Apps Script", () => {
     const api = crearApiHttp(cfg, (async () => {
       throw new Error("offline");
     }) as unknown as typeof fetch);
-    expect(await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [] })).toEqual({ ok: false, error: "SIN_CONEXION" });
+    expect(await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [], ventiladores: [] })).toEqual({ ok: false, error: "SIN_CONEXION" });
   });
 
   it("traduce el rechazo por identidad con las llaves infractoras", async () => {
     const api = crearApiHttp(cfg, fetchFalso({ ok: false, error: "PAYLOAD_CON_IDENTIDAD", llaves: ["nombre"] }));
-    const r = await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [] });
+    const r = await api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [], ventiladores: [] });
     expect(r).toEqual({ ok: false, error: "PAYLOAD_CON_IDENTIDAD", llaves: ["nombre"] });
   });
 

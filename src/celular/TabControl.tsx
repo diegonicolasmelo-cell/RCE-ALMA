@@ -37,6 +37,7 @@ import type { SegmentoId } from "./pasos";
 import { textoNum } from "../app/util";
 import { Aviso, CampoNum, Pildora, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
+import { VentiladorDeCama } from "../ventiladores/VentiladorDeCama";
 import { baseEvento } from "./eventos-ui";
 import { opcionesNumericas, useFranja } from "./franja";
 import type { DescriptorFranja } from "./franja";
@@ -200,6 +201,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       {paso === "modo" && (
       <section>
         <h3>Soporte y modo</h3>
+        <VentiladorDeCama cama={ctx.ep.cama} rutAutor={ctx.rutAutor} />
         <PanelEquipos ctx={ctx} />
         <div className="fgrid2 mt">
           <div className="f">
@@ -380,7 +382,7 @@ function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState(false);
   const [lista, setLista] = useState(ep.equipos);
-  const [modelo, setModelo] = useState<string>(CATALOGO_EQUIPOS[0]?.modelo ?? "");
+  const [modelo, setModelo] = useState<string>(CATALOGO_EQUIPOS.find((e) => e.tipo !== "VENTILADOR")?.modelo ?? "");
   const [numero, setNumero] = useState("");
   useEffect(() => {
     if (!abierto) setLista(ep.equipos);
@@ -402,12 +404,12 @@ function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
   return (
     <div className="mt">
       <button type="button" className="todo-row small" style={{ width: "100%", textAlign: "left", background: "none", cursor: "pointer", color: "inherit" }} onClick={() => setAbierto((a) => !a)} aria-expanded={abierto}>
-        <b>Equipos de la sala:</b> {describirEquipos(ep.equipos)} <span className="muted">· {abierto ? "cerrar" : "cambiar"}</span>
+        <b>Otros equipos de la sala:</b> {describirEquipos(ep.equipos.filter((e) => e.tipo !== "VENTILADOR"))} <span className="muted">· {abierto ? "cerrar" : "cambiar"}</span>
       </button>
       {abierto && (
         <div className="card stack" style={{ padding: 10, gap: 8, marginTop: 6 }}>
-          {lista.length === 0 && <div className="small muted">Sin equipos registrados.</div>}
-          {lista.map((e) => (
+          {lista.filter((e) => e.tipo !== "VENTILADOR").length === 0 && <div className="small muted">Sin otros equipos registrados. El ventilador se registra arriba.</div>}
+          {lista.filter((e) => e.tipo !== "VENTILADOR").map((e) => (
             <div key={etiquetaEquipo(e)} className="row" style={{ justifyContent: "space-between" }}>
               <span>
                 <b>{etiquetaEquipo(e)}</b>{" "}
@@ -423,7 +425,7 @@ function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
           ))}
           <div className="row">
             <select value={modelo} onChange={(e) => setModelo(e.target.value)} aria-label="Modelo de equipo">
-              {CATALOGO_EQUIPOS.map((e) => (
+              {CATALOGO_EQUIPOS.filter((e) => e.tipo !== "VENTILADOR").map((e) => (
                 <option key={e.modelo}>{e.modelo}</option>
               ))}
             </select>

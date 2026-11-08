@@ -27,6 +27,8 @@ describe("dotación", () => {
 describe("usuario por nombre o RUT", () => {
   it("encuentra por nombre sin importar tildes ni mayúsculas", () => {
     expect(buscarUsuario("diego melo")?.rut).toBe("16.452.891-K");
+    expect(buscarUsuario(" DiegoNicolas.Melo@gmail.com ")?.rut).toBe("16.452.891-K");
+    expect(buscarUsuario("otro@gmail.com")).toBeUndefined();
     expect(buscarUsuario("  María  José Vega ")?.nombre).toBe("Maria Jose Vega");
   });
   it("también por RUT", () => {

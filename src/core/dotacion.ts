@@ -19,7 +19,7 @@ export const DOTACION: readonly Profesional[] = [
   { rut: "22.222.223-3", nombre: "Alvaro Wilson", turno: "T2", rol: "KINE_CLINICO" },
 
   { rut: "33.333.331-1", nombre: "Eduardo Gonzalez", turno: "T3", rol: "KINE_CLINICO" },
-  { rut: "16.452.891-K", nombre: "Diego Melo", turno: "T3", rol: "KINE_CLINICO" },
+  { rut: "16.452.891-K", nombre: "Diego Melo", turno: "T3", rol: "KINE_CLINICO", correo: "diegonicolas.melo@gmail.com" },
   { rut: "33.333.333-3", nombre: "Karen Gonzalez", turno: "T3", rol: "KINE_CLINICO" },
 
   { rut: "44.444.441-1", nombre: "Carlos Morales", turno: "T4", rol: "KINE_CLINICO" },
@@ -55,10 +55,14 @@ const sinTildes = (t: string): string =>
   t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
 /**
- * Usuario por RUT o por nombre ("Diego Melo", sin importar tildes ni mayusculas).
+ * Usuario por correo, RUT o nombre ("Diego Melo", sin importar tildes ni mayusculas).
  * Por nombre debe haber UNA sola coincidencia; si es ambiguo no adivina.
  */
 export function buscarUsuario(texto: string): Profesional | undefined {
+  if (texto.includes("@")) {
+    const correo = texto.trim().toLowerCase();
+    return DOTACION.find((p) => p.correo?.toLowerCase() === correo);
+  }
   const porRut = buscarProfesional(texto);
   if (porRut) return porRut;
   const q = sinTildes(texto);

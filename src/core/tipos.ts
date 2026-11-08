@@ -457,4 +457,6 @@ export interface Profesional {
   readonly nombre: string;
   readonly turno: IdTurno;
   readonly rol: "KINE_CLINICO" | "COORDINACION";
+  /** Correo con que ingresa a la app (opcional: tambien se entra con nombre o RUT). */
+  readonly correo?: string;
 }

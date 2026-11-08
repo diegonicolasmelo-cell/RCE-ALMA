@@ -92,9 +92,15 @@ punta hay que hacerlo con datos ficticios.
 npm install
 ```
 
-Sin configurar nada, la app arranca en **modo demostración**: ocho camas con
-pacientes inventados, todo en el dispositivo. Ingreso: cualquier RUT de la
-dotación y el PIN `0000`.
+Sin configurar nada, la app arranca en **modo demostración**: camas con
+pacientes inventados, todo en el dispositivo. Ingreso: el correo
+`diegonicolas.melo@gmail.com` (o cualquier nombre o RUT de la dotación) y la
+contraseña `kine`.
+
+En producción se entra con **correo** (o nombre o RUT) y contraseña. El correo se
+resuelve al RUT en el dispositivo (`src/core/dotacion.ts`, campo `correo`): al
+servidor viaja solo el RUT. La primera vez, la contraseña escrita queda como propia
+al repetirla; el servidor guarda solo su hash.
 
 ```bash
 npm run dev

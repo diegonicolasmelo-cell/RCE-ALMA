@@ -37,6 +37,11 @@ PRIMERA VEZ
 7. Elige  cargarDotacion  y Ejecutar. Carga a los profesionales sin clave; cada
    uno define la suya la primera vez que entra. (Revisa que los RUT de la hoja
    "usuarios" sean los reales.)
+   Se entra con el CORREO (o el nombre o el RUT) y la contrasena. La primera vez,
+   la contrasena que se escribe queda como propia al repetirla. La clave no se
+   guarda en ninguna parte: la hoja guarda solo una huella (hash).
+   Diego entra con diegonicolas.melo@gmail.com; los demas correos se agregan en
+   src/core/dotacion.ts (campo "correo") y se arma una version nueva.
 
 8. Implementar -> Nueva implementacion -> tipo "Aplicacion web":
      Ejecutar como:      Yo
@@ -49,7 +54,7 @@ PRIMERA VEZ
 
 9. Prueba la demostracion (pacientes inventados, NO toca la hoja):
      <URL /exec>?demo=1
-   Usuario: Diego Melo   Clave: Kine
+   Correo: diegonicolas.melo@gmail.com   Clave: kine
 
 10. Conecta cada equipo UNA vez abriendo su enlace (la app guarda la llave en ese
     navegador y la borra de la barra de direcciones):

@@ -72,8 +72,8 @@ async function esperarServidor() {
       assert.match(await cel.textContent("[role=alert]"), /dotación/);
     });
 
-    await prueba("entra con usuario y contraseña, elige sus camas y la portada las muestra primero", async () => {
-      await entrar("diego melo", "kine");
+    await prueba("entra con correo y contraseña, elige sus camas y la portada las muestra primero", async () => {
+      await entrar("diegonicolas.melo@gmail.com", "kine");
       await cel.waitForSelector("text=¿Cuáles son tus camas hoy?");
       assert.equal(await cel.locator('[aria-label="Camas"] .chip').count(), 18);
       await cel.click('button:has-text("Ninguna")');

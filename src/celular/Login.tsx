@@ -49,17 +49,19 @@ export function Login() {
     );
   };
 
+  /** Primer ingreso: la contraseña que escribio queda como suya, si la repite igual. */
   const definir = async (): Promise<void> => {
     const prof = buscarUsuario(rut);
     if (!prof) return;
-    if (nuevoPin.length < 4) return setError("El PIN debe tener al menos 4 dígitos.");
+    if (pin.length < 4) return setError("La contraseña debe tener al menos 4 caracteres.");
+    if (nuevoPin !== pin) return setError("Las dos contraseñas no coinciden.");
     setCargando(true);
     const r = await api.definirPin(prof.rut, "", nuevoPin);
     setCargando(false);
-    if (!r.ok) return setError("No se pudo definir el PIN.");
-    setPin(nuevoPin);
+    if (!r.ok) return setError("No se pudo guardar la contraseña.");
+    setNuevoPin("");
     setFase("ingreso");
-    setError(null);
+    await entrar();
   };
 
   return (
@@ -78,14 +80,15 @@ export function Login() {
       {fase === "ingreso" ? (
         <>
           <div className="f">
-            <label htmlFor="rut">Usuario</label>
+            <label htmlFor="rut">Correo</label>
             <input
               id="rut"
-              inputMode="text"
+              inputMode="email"
               autoComplete="username"
-              autoCapitalize="words"
+              autoCapitalize="none"
+              spellCheck={false}
               value={rut}
-              placeholder="Nombre o RUT"
+              placeholder="tucorreo@… (o nombre o RUT)"
               onChange={(e) => setRut(e.target.value)}
               style={{ textAlign: "left", fontFamily: "var(--font-ui)" }}
             />
@@ -97,19 +100,19 @@ export function Login() {
         </>
       ) : (
         <>
-          <div className="notice acc">Es tu primer ingreso: define un PIN de 4 a 6 dígitos. Con él se firman la APK y tus controles.</div>
+          <div className="notice acc">Es tu primer ingreso: la contraseña que escribiste quedará como tuya. Repítela para confirmarla. Con ella se firman la APK y tus controles.</div>
           <div className="f">
-            <label htmlFor="npin">Nuevo PIN</label>
-            <input id="npin" type="password" inputMode="numeric" value={nuevoPin} onChange={(e) => setNuevoPin(e.target.value)} style={{ textAlign: "left" }} />
+            <label htmlFor="npin">Repite la contraseña</label>
+            <input id="npin" type="password" autoComplete="new-password" value={nuevoPin} onChange={(e) => setNuevoPin(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} />
           </div>
         </>
       )}
 
       {error && <div className="notice crit" role="alert">{error}</div>}
       <button type="submit" className="btn primary grande" disabled={cargando}>
-        {fase === "ingreso" ? "Ingresar" : "Definir PIN"}
+        {fase === "ingreso" ? "Ingresar" : "Guardar contraseña e ingresar"}
       </button>
-      {local && <div className="notice new small">Modo demostración (sin servidor): usuario <b>Diego Melo</b> (o cualquier nombre o RUT de la dotación) y contraseña <b className="mono">{PIN_DEMO}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
+      {local && <div className="notice new small">Modo demostración (sin servidor): correo <b>diegonicolas.melo@gmail.com</b> (o cualquier nombre o RUT de la dotación) y contraseña <b className="mono">{PIN_DEMO.toLowerCase()}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
     </form>
   );
 }

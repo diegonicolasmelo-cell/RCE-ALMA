@@ -44,7 +44,6 @@ const pagina = () =>
   gas.llamar("cargarDotacion");
   const APP = gas.propiedades.get("APP_TOKEN");
   const ESTACION = gas.propiedades.get("STATION_TOKEN");
-  assert.equal(JSON.parse(gas.llamar("rcePost", JSON.stringify({ token: APP, accion: "definirPin", rut: "16.452.891-K", pinNuevo: "4321" }))).ok, true);
   const llamadas = [];
 
   const navegador = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {});
@@ -103,8 +102,8 @@ const pagina = () =>
       const antes = llamadas.length;
       const { p, ctx } = await abrir({ parametros: { demo: "1" } });
       await p.waitForSelector("#rut", { timeout: 10000 });
-      await p.fill("#rut", "Diego Melo");
-      await p.fill("#pin", "Kine");
+      await p.fill("#rut", "diegonicolas.melo@gmail.com");
+      await p.fill("#pin", "kine");
       await p.click("button[type=submit]");
       await p.waitForSelector("text=¿Cuáles son tus camas hoy?");
       assert.equal(llamadas.length, antes, "la demostracion no debe llamar al servidor");
@@ -127,24 +126,43 @@ const pagina = () =>
       await p.close();
     });
 
-    await prueba("el celular conectado entra con la clave real contra Codigo.gs (y la equivocada no entra)", async () => {
+    await prueba("primer ingreso con el correo: la contraseña escrita queda como suya al repetirla (Codigo.gs real)", async () => {
       const { p } = await abrir({}, celular);
       await p.waitForSelector("#rut", { timeout: 10000 });
-      await p.fill("#rut", "Diego Melo");
-      await p.fill("#pin", "0000");
+      await p.fill("#rut", "diegonicolas.melo@gmail.com");
+      await p.fill("#pin", "kine");
       await p.click("button[type=submit]");
-      await p.waitForSelector("[role=alert]");
-      assert.match(await p.textContent("[role=alert]"), /incorrecta/i);
-      await p.fill("#pin", "4321");
+      await p.waitForSelector("#npin");
+      await p.fill("#npin", "kina");
       await p.click("button[type=submit]");
-      // La hoja recien creada no tiene pacientes: entra y lo dice.
+      assert.match(await p.textContent("[role=alert]"), /no coinciden/);
+      await p.fill("#npin", "kine");
+      await p.click("button[type=submit]");
       await p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
-      const logins = llamadas.filter((l) => l.tipo === "post" && l.cuerpo.accion === "login");
-      assert.ok(logins.length >= 2 && logins.every((l) => l.cuerpo.token === APP));
-      // Sincroniza: lee la hoja con la llave de app.
+      // El servidor guardo un hash, nunca la clave.
+      const usuarios = gas.hojas.get("usuarios").filas;
+      const fila = usuarios.find((f) => f[0] === "16.452.891-K");
+      assert.ok(fila[2] && fila[2] !== "kine" && !usuarios.flat().includes("kine"));
+      const posts = llamadas.filter((l) => l.tipo === "post");
+      assert.ok(posts.every((l) => l.cuerpo.token === APP && l.cuerpo.rut === "16.452.891-K"), "al servidor viaja el RUT, no el correo");
       await new Promise((r) => setTimeout(r, 800));
       assert.ok(llamadas.some((l) => l.tipo === "get" && l.params.token === APP && !l.params.recurso));
       await p.close();
+    });
+
+    await prueba("con la contraseña equivocada no entra; con 'kine' sí", async () => {
+      const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 } });
+      const a = await abrir({ hash: `config?a=${APP}` }, ctx);
+      await a.p.waitForSelector("#rut", { timeout: 10000 });
+      await a.p.fill("#rut", "diegonicolas.melo@gmail.com");
+      await a.p.fill("#pin", "0000");
+      await a.p.click("button[type=submit]");
+      await a.p.waitForSelector("[role=alert]");
+      assert.match(await a.p.textContent("[role=alert]"), /incorrecta/i);
+      await a.p.fill("#pin", "kine");
+      await a.p.click("button[type=submit]");
+      await a.p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
+      await ctx.close();
     });
 
     await prueba("el PC de la estacion se conecta con sus dos enlaces y ninguna llave queda en la barra de afuera", async () => {

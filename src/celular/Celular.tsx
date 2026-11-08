@@ -39,7 +39,6 @@ const TABS: readonly (readonly [TabCelular, string])[] = [
   ["control", "Control"],
   ["kine", "Kine resp. · APK"],
   ["motora", "Kine motora"],
-  ["pve", "PVE"],
   ["eventos", "Eventos"]
 ];
 
@@ -276,7 +275,7 @@ export function Celular() {
       <div className="seg-relleno" aria-hidden />
     </div>
   );
-  const cuerpo = tab === "control" ? cuerpoHoja : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : tab === "pve" ? <TabPve ctx={ctx} /> : <TabEventos ctx={ctx} />;
+  const cuerpo = tab === "control" ? cuerpoHoja : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} />;
 
   const cabecera = (
       <div className="cel-top">
@@ -303,7 +302,7 @@ export function Celular() {
     return (
       <div className="app-cel">
         {cabecera}
-        <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· elige Control o Evaluación</span></div>
+        <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Monitorización, Evaluaciones o PVE</span></div>
         <ListaCamas />
       </div>
     );
@@ -336,7 +335,7 @@ export function Celular() {
         <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
           {volver}
           <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
-          <span className="small muted">Evaluación</span>
+          <span className="small muted">Evaluaciones</span>
         </div>
         <Evaluaciones ctx={ctx} />
       </div>

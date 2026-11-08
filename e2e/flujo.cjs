@@ -86,26 +86,22 @@ async function esperarServidor() {
       assert.deepEqual(camas.slice(0, 12), Array.from({ length: 12 }, (_, i) => `Cama UCI-${String(i + 1).padStart(2, "0")}`), "las mias (01-12) van primero, en orden");
       assert.match(await cel.textContent(".app-cel"), /Mis camas \(12\)/);
       assert.match(await cel.textContent(".app-cel"), /Otras camas/);
-      assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")').count()) === 1);
+      assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")').count()) === 1);
       // dejar solo 01-06 como "mias" para el resto del recorrido
       await cel.click('button:has-text("Cambiar mis camas")');
       await cel.click('.chip:text-is("07–12")');
       await cel.click('button:has-text("Ver camas")');
       await cel.waitForSelector("text=Mis camas (6)");
       // PVE directa: la cama en CPAP/PS la ofrece en su tarjeta; la que esta en modalidad controlada no.
-      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button:has-text("PVE")').count(), 0);
+      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button:text-is("PVE")').count(), 1, "ventilado en ACVC: la PVE a mano, sin destacar");
+      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button.primary:has-text("PVE")').count(), 0);
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Evaluar PVE diaria")');
       await cel.waitForSelector("text=Prueba de ventilación espontánea");
       assert.match(await cel.textContent(".app-cel"), /PVE diaria · hoja de PVE/);
       assert.match(await cel.textContent(".app-cel"), /Checklist previo/);
       assert.equal(await cel.locator('button:has-text("Guardar control")').count(), 0, "la PVE directa no abre el control");
       await cel.click('button:has-text("‹ Camas")');
-      // Y tambien desde Evaluaciones · PVE y extubacion.
-      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Evaluación")');
-      await cel.click('button:has-text("PVE diaria: checklist")');
-      await cel.waitForSelector("text=Prueba de ventilación espontánea");
-      await cel.click('button:has-text("‹ Camas")');
-      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector("#cuerpo");
       assert.equal((await cel.locator(".cel-camas .chip").count()), 18);
       assert.match(await cel.textContent(".app-cel b.mono"), /UCI-01/);
@@ -309,7 +305,7 @@ async function esperarServidor() {
       assert.match(await aviso(), /Guardado UCI-01/);
       await cel.waitForSelector('article[aria-label^="Cama"]');
       assert.equal(await cel.locator("#cuerpo .segmento").count(), 0, "al guardar vuelve a las tarjetas de las camas");
-      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector(".segmento");
     });
 
@@ -337,8 +333,11 @@ async function esperarServidor() {
     });
 
     await prueba("PVE: checklist de 8 criterios, control inicial, cronometro, 30 min y post extubacion", async () => {
-      await cel.click('.cel-camas button:text-is("02")');
-      await cel.click('[role=tab]:has-text("PVE")');
+      // La PVE ya no es una pestaña del control: se entra desde la tarjeta de la cama.
+      assert.equal(await cel.locator('[role=tab]:has-text("PVE")').count(), 0, "sin pestaña PVE en el control");
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-02"] button:text-is("PVE")');
+      await cel.waitForSelector("text=Prueba de ventilación espontánea");
       assert.ok((await cel.locator('button:has-text("Iniciar PVE")').count()) === 0, "sin checklist no se puede iniciar");
       // un criterio no cumple: no hay PVE
       await cel.locator('[aria-label="Resolución del cuadro"] button:text-is("No cumple")').click();
@@ -370,13 +369,28 @@ async function esperarServidor() {
       await cel.waitForTimeout(500);
       const lista = await cel.textContent(".app-cel");
       for (const m of ["Extubación", "30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
-      assert.match(await cel.textContent(".airway"), /Vía aérea natural/);
+      // Falla post extubacion: pasa directo a la reintubacion, que vuelve a dejar la via aerea artificial.
+      await cel.click('button:has-text("Registrar falla post extubación")');
+      await cel.locator('[aria-label="Falla post extubación"] button:text-is("Sí")').click();
+      await cel.fill("#pve-hip", "Estridor laríngeo");
+      await cel.click('button:has-text("Registrar falla y pasar a reintubación")');
+      await cel.waitForSelector('[aria-label="Reintubación"]');
+      await cel.click('button:has-text("Registrar reintubación")');
+      assert.match(await aviso(), /Falta el calibre/);
+      await cel.fill("#pve-reint-cal", "7.5");
+      await cel.fill("#pve-reint-fij", "21");
+      await cel.click('button:has-text("Registrar reintubación")');
+      await cel.waitForTimeout(500);
+      assert.match(await aviso(), /Reintubado: la vía aérea queda en TET 7\.5/);
+      await cel.click('button:has-text("‹ Camas")');
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-02"]'), /TET · VM día/);
+      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Monitorización")');
     });
 
     await prueba("evaluacion MRC-ss desde la tarjeta de la cama: puntaje, corte de debilidad y registro", async () => {
       await cel.click('button:has-text("‹ Camas")');
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
-      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluación")');
+      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
       // Primero el apartado de PVE y extubacion, con VISAGE, via aerea, flujo pico de tos y deglucion.
       assert.equal(await cel.locator(".cel-cuerpo h3").first().textContent(), "PVE y extubación");
       await cel.click('button:has-text("Deglución")');
@@ -417,7 +431,7 @@ async function esperarServidor() {
 
     await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive junto a la sedacion", async () => {
       await cel.click('button:has-text("‹ Camas")');
-      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Control")');
+      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
       await cel.click('[role=tab]:has-text("Control")');
       assert.ok((await cel.locator('h3:has-text("Bloqueo neuromuscular")').count()) === 1, "BNM en Monitoreo, con la sedacion");
       await cel.click('[role=tab]:has-text("Eventos")');
@@ -429,7 +443,7 @@ async function esperarServidor() {
 
     await prueba("un control nuevo hereda solo el modo y la FiO2; los demas ajustes nacen en blanco y se repiten con 'Usar lo anterior'", async () => {
       await cel.click('button:has-text("‹ Camas")');
-      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector(".hoja-ctl");
       assert.equal(await cel.inputValue("#in-vent-fio2"), "35", "la FiO2 se hereda");
       for (const id of ["peep", "vtProgramado", "frProgramada", "flujo", "ti"]) {

@@ -7,7 +7,8 @@ import { create } from "zustand";
 import type { BorradorControl } from "@core/index";
 import type { SegmentoId } from "../celular/pasos";
 
-export type TabCelular = "control" | "kine" | "motora" | "pve" | "eventos";
+/** La PVE no es una pestana del control: se abre desde la tarjeta de la cama (vista "pve"). */
+export type TabCelular = "control" | "kine" | "motora" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. "pve": la PVE directa, sin pasar por el control. */
 export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve";
 

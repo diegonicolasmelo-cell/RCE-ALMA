@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   ESCALAS,
-  GRUPO_PVE_EXTUBACION,
   LARGO_MAX_NOTA_EVALUACION,
   SUGERENCIAS_ECOGRAFIA,
   calcularEscala,
@@ -78,11 +77,6 @@ export function Evaluaciones({ ctx }: { ctx: ContextoCama }) {
             <section key={g}>
               <h3>{g}</h3>
               <div className="stack" style={{ gap: 6 }}>
-                {g === GRUPO_PVE_EXTUBACION && (
-                  <button type="button" className="btn primary" style={{ textAlign: "left" }} onClick={() => useApp.getState().irA("pve", ep.id)}>
-                    PVE diaria: checklist, control inicial y a los 30 min
-                  </button>
-                )}
                 {ESCALAS.filter((e) => e.grupo === g).map((e) => (
                   <button key={e.id} type="button" className="btn" style={{ textAlign: "left" }} onClick={() => abrir(e.id)}>{e.nombre}</button>
                 ))}

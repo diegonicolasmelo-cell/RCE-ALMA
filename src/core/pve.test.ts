@@ -149,8 +149,9 @@ describe("entrada directa a la PVE desde la tarjeta de la cama", () => {
     expect(accesoPve("TET", "CPAP_PS", [], t(9))).toEqual({ texto: "Evaluar PVE diaria", destacado: false });
   });
 
-  it("en modalidad controlada y sin nada pendiente no se ofrece", () => {
-    expect(accesoPve("TET", "ACVC", [], t(9))).toBeNull();
+  it("en modalidad controlada queda a mano sin destacar; con vía aérea natural y nada pendiente no se ofrece", () => {
+    expect(accesoPve("TET", "ACVC", [], t(9))).toEqual({ texto: "PVE", destacado: false });
+    expect(accesoPve("TQT", null, [], t(9))).toEqual({ texto: "PVE", destacado: false });
     expect(accesoPve("NATURAL", "CPAP_PS", [], t(9))).toBeNull();
   });
 

@@ -208,7 +208,8 @@ export interface AccesoPve {
  * Cuando la tarjeta de la cama ofrece entrar directo a la PVE, sin pasar por el control.
  * Un paciente ventilado en CPAP/PS es candidato a la evaluacion diaria; lo que ya esta en
  * marcha (PVE en curso, extubacion por registrar, controles post extubacion) se ofrece
- * siempre. Con la via aerea natural y nada pendiente, no se ofrece.
+ * siempre. La PVE vive SOLO en la tarjeta (no es una pestana del control): todo paciente
+ * ventilado tiene su boton. Con la via aerea natural y nada pendiente, no se ofrece.
  */
 export function accesoPve(via: ViaAerea, modalidad: Modalidad | null, eventos: readonly EventoClinico[], ahora: Date): AccesoPve | null {
   const f = estadoFlujoPve(eventos, ahora);
@@ -222,5 +223,6 @@ export function accesoPve(via: ViaAerea, modalidad: Modalidad | null, eventos: r
   if (f.fase === "APTO") return { texto: "Iniciar PVE", destacado: true };
   if (f.fase === "NO_APTO") return { texto: "PVE diaria: no apto este turno", destacado: false };
   if (modalidad === "CPAP_PS") return { texto: "Evaluar PVE diaria", destacado: false };
-  return null;
+  // Ventilado en otra modalidad: la PVE sigue a mano en la tarjeta, sin destacarla.
+  return { texto: "PVE", destacado: false };
 }

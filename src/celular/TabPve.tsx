@@ -110,6 +110,16 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const [fuera, setFuera] = useState(false);
   const [formulario, setFormulario] = useState<"inicial" | "30" | "extub" | MomentoPostExtub | "falla" | null>(null);
   const [falla, setFalla] = useState<{ si: boolean | null; hip: string; obs: string }>({ si: null, hip: "", obs: "" });
+  const [reint, setReint] = useState<{ via: "TET" | "TQT" | null; cal: string; fij: string }>({ via: "TET", cal: "", fij: "" });
+
+  /** Falla post extubacion: se reintuba aqui mismo, con el evento de siempre (cambia la via aerea del episodio). */
+  const reintubar = async (): Promise<void> => {
+    if (!reint.via) return avisar("Indica la vía: TET o TQT.");
+    if (reint.cal.trim() === "") return avisar("Falta el calibre.");
+    await ev({ tipo: "REINTUBACION", via: reint.via, calibre: reint.cal.trim(), fijacionCm: reint.fij.trim() });
+    setReint({ via: "TET", cal: "", fij: "" });
+    avisar(`Reintubado: la vía aérea queda en ${reint.via} ${reint.cal.trim()}.`);
+  };
 
   const ev = async (e: Record<string, unknown>): Promise<void> => {
     await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), ...e } as EventoClinico);
@@ -246,16 +256,29 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
           </div>
           <h3 style={{ marginTop: 14 }}>Falla post extubación</h3>
           {flujo.bloque.falla ? (
-            <Aviso tipo={flujo.bloque.falla.falla ? "crit" : "good"} pequeno>
-              {flujo.bloque.falla.falla ? "Sí" : "No"}{flujo.bloque.falla.hipotesis ? ` · ${flujo.bloque.falla.hipotesis}` : ""}{flujo.bloque.falla.observaciones ? ` · ${flujo.bloque.falla.observaciones}` : ""}
-            </Aviso>
+            <>
+              <Aviso tipo={flujo.bloque.falla.falla ? "crit" : "good"} pequeno>
+                {flujo.bloque.falla.falla ? "Sí" : "No"}{flujo.bloque.falla.hipotesis ? ` · ${flujo.bloque.falla.hipotesis}` : ""}{flujo.bloque.falla.observaciones ? ` · ${flujo.bloque.falla.observaciones}` : ""}
+              </Aviso>
+              {flujo.bloque.falla.falla && !artificial && (
+                <div className="card stack mt" style={{ padding: 12, gap: 8 }} aria-label="Reintubación">
+                  <b>Reintubación / IOT</b>
+                  <Seg ancho etiqueta="Vía" valor={reint.via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={(x) => setReint({ ...reint, via: x })} />
+                  <div className="fgrid2">
+                    <div className="f"><label htmlFor="pve-reint-cal">Calibre</label><input id="pve-reint-cal" inputMode="decimal" autoComplete="off" value={reint.cal} onChange={(e) => setReint({ ...reint, cal: e.target.value })} /></div>
+                    <div className="f"><label htmlFor="pve-reint-fij">Fijación <span className="muted">cm a la comisura</span></label><input id="pve-reint-fij" inputMode="decimal" autoComplete="off" value={reint.fij} onChange={(e) => setReint({ ...reint, fij: e.target.value })} /></div>
+                  </div>
+                  <button type="button" className="btn danger" onClick={() => void reintubar()}>Registrar reintubación</button>
+                </div>
+              )}
+            </>
           ) : formulario === "falla" ? (
             <div className="card stack" style={{ padding: 12, gap: 8 }}>
               <Seg ancho etiqueta="Falla post extubación" valor={falla.si} opciones={[{ valor: true, texto: "Sí" }, { valor: false, texto: "No" }]} onCambio={(x) => setFalla({ ...falla, si: x })} />
               <div className="f"><label htmlFor="pve-hip">Hipótesis</label><input id="pve-hip" value={falla.hip} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setFalla({ ...falla, hip: e.target.value })} /></div>
               <div className="f"><label htmlFor="pve-obs">Observaciones</label><input id="pve-obs" value={falla.obs} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setFalla({ ...falla, obs: e.target.value })} /></div>
               <div className="row">
-                <button type="button" className="btn primary" onClick={() => { if (falla.si === null) return avisar("Indica si hubo falla: Sí o No."); void ev({ tipo: "FALLA_POST_EXTUB", falla: falla.si, hipotesis: falla.hip, observaciones: falla.obs }); setFormulario(null); }}>Registrar</button>
+                <button type="button" className="btn primary" onClick={() => { if (falla.si === null) return avisar("Indica si hubo falla: Sí o No."); void ev({ tipo: "FALLA_POST_EXTUB", falla: falla.si, hipotesis: falla.hip, observaciones: falla.obs }); setFormulario(null); }}>{falla.si ? "Registrar falla y pasar a reintubación" : "Registrar"}</button>
                 <button type="button" className="btn" onClick={() => setFormulario(null)}>Cancelar</button>
               </div>
             </div>

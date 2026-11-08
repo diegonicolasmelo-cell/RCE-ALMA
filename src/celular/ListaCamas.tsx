@@ -96,10 +96,10 @@ export function ListaCamas() {
             </div>
             <div className="row">
               <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => irA("cama", ep.id)}>
-                <Stethoscope size={15} aria-hidden /> Registrar control
+                <Stethoscope size={15} aria-hidden /> Monitorización
               </button>
               <button type="button" className="btn" style={{ flex: 1 }} onClick={() => irA("evaluacion", ep.id)}>
-                <ClipboardList size={15} aria-hidden /> Evaluación
+                <ClipboardList size={15} aria-hidden /> Evaluaciones
               </button>
             </div>
             {pve && (

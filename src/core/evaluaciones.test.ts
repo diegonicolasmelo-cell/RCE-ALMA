@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESCALAS, GRUPO_PVE_EXTUBACION, calcularEscala, escalaDe, resumenEvaluacion } from "./evaluaciones";
+import { ESCALAS, GRUPO_PVE_EXTUBACION, calcularEscala, escalaDe, momentoDeEvaluacion, resumenEvaluacion } from "./evaluaciones";
 
 const todos = (id: Parameters<typeof escalaDe>[0], v: number) => Object.fromEntries(escalaDe(id).campos.map((c) => [c.id, v]));
 
@@ -58,16 +58,16 @@ describe("otras escalas", () => {
     expect(calcularEscala("FRAGILIDAD", { nivel: 5 }).total).toBe(5);
   });
 
-  it("hay nueve escalas con id único", () => {
+  it("hay diez escalas con id único", () => {
     expect(new Set(ESCALAS.map((e) => e.id)).size).toBe(ESCALAS.length);
-    expect(ESCALAS).toHaveLength(9);
+    expect(ESCALAS).toHaveLength(10);
   });
 });
 
 describe("PVE y extubación", () => {
   it("es el primer apartado y reúne VISAGE, vía aérea, flujo pico de tos y deglución", () => {
     expect(ESCALAS[0]?.grupo).toBe(GRUPO_PVE_EXTUBACION);
-    expect(ESCALAS.filter((e) => e.grupo === GRUPO_PVE_EXTUBACION).map((e) => e.id)).toEqual(["VISAGE", "VIA_AEREA", "FLUJO_PICO_TOS", "DEGLUCION"]);
+    expect(ESCALAS.filter((e) => e.grupo === GRUPO_PVE_EXTUBACION).map((e) => e.id)).toEqual(["VISAGE", "VIA_AEREA", "FLUJO_PICO_TOS", "DEGLUCION", "ECOGRAFIA"]);
     expect(ESCALAS.some((e) => e.grupo === "Neurológico")).toBe(false);
   });
 
@@ -84,5 +84,37 @@ describe("PVE y extubación", () => {
     expect(r.total).toBe(60);
     expect(r.interpretacion).toBeNull();
     expect(resumenEvaluacion("FLUJO_PICO_TOS", { pef: 60 }, 60)).toBe("Flujo pico de tos: 60 L/min");
+  });
+});
+
+describe("nota clínica, ecografía y hora real", () => {
+  it("la ecografía es su hallazgo: exige nota y se lee como tal", () => {
+    expect(escalaDe("ECOGRAFIA").exigeNota).toBe(true);
+    expect(escalaDe("ECOGRAFIA").campos).toHaveLength(0);
+    expect(resumenEvaluacion("ECOGRAFIA", {}, null, " Patrón B bilateral ")).toBe("Ecografía: Patrón B bilateral");
+  });
+
+  it("cualquier evaluación puede llevar una nota clínica al final", () => {
+    expect(resumenEvaluacion("DEGLUCION", { nivel: 0 }, null, "Se suspende vía oral")).toBe("Deglución: ausente · Se suspende vía oral");
+    expect(resumenEvaluacion("VISAGE", { puntaje: 3 }, 3)).toBe("VISAGE (neurológicos y neuroquirúrgicos): 3");
+  });
+
+  const ahora = new Date(2026, 10, 8, 14, 30);
+
+  it("la hora real puede ser minutos antes de registrarla", () => {
+    expect(momentoDeEvaluacion("14:12", ahora)?.getTime()).toBe(new Date(2026, 10, 8, 14, 12).getTime());
+    expect(momentoDeEvaluacion("14:30", ahora)?.getTime()).toBe(ahora.getTime());
+  });
+
+  it("una hora posterior a la actual es de la noche anterior", () => {
+    const madrugada = new Date(2026, 10, 9, 0, 10);
+    expect(momentoDeEvaluacion("23:50", madrugada)?.getTime()).toBe(new Date(2026, 10, 8, 23, 50).getTime());
+  });
+
+  it("no acepta una hora inválida ni de más de 12 horas atrás", () => {
+    expect(momentoDeEvaluacion("25:00", ahora)).toBeNull();
+    expect(momentoDeEvaluacion("abc", ahora)).toBeNull();
+    expect(momentoDeEvaluacion("01:00", ahora)).toBeNull();
+    expect(momentoDeEvaluacion("02:31", ahora)).not.toBeNull();
   });
 });

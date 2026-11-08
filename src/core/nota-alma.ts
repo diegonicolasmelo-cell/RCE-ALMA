@@ -220,7 +220,7 @@ export function describirEvento(ev: EventoClinico): string {
     case "CAMBIO_HMEF":
       return "Cambio de filtro HME";
     case "EVALUACION_PUNTUAL":
-      return `Evaluación ${resumenEvaluacion(ev.escala, ev.valores, ev.total)}`;
+      return `Evaluación ${resumenEvaluacion(ev.escala, ev.valores, ev.total, ev.comentario)}`;
     case "CAMBIO_FILTRO":
       return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
     case "CAMBIO_EQUIPOS":
@@ -276,7 +276,8 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
 
   const aparte = eventos
     .filter((e) => !lista.some((c) => c.hora === e.hora))
-    .map((e) => `  · [${e.hora} hrs] ${describirEvento(e)}${e.comentario ? `. ${e.comentario}` : ""}`)
+    // La evaluacion ya trae su nota clinica dentro de la descripcion.
+    .map((e) => `  · [${e.hora} hrs] ${describirEvento(e)}${e.comentario && e.tipo !== "EVALUACION_PUNTUAL" ? `. ${e.comentario}` : ""}`)
     .join("\n");
 
   return [

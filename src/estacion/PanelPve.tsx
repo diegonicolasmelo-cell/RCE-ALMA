@@ -112,6 +112,7 @@ export function PanelCircuitoYEvaluaciones({ eventos, ahora }: { eventos: readon
                 <li key={d.id}>
                   <b>{d.nombre}</b> · {e!.registradoEn.slice(0, 10)} {e!.hora}: {r.lineas.length > 0 ? r.lineas.join(" · ") : e!.total ?? "registrada"}
                   {r.interpretacion ? ` · ${r.interpretacion}` : ""}
+                  {e!.comentario ? ` · ${e!.comentario}` : ""}
                 </li>
               );
             })}

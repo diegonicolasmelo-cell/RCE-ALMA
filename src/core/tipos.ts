@@ -346,7 +346,7 @@ export interface LecturasPve {
 }
 
 /** Escalas de la hoja neuromuscular y de weaning. Ver evaluaciones.ts. */
-export type IdEscala = "MRC_SS" | "FSS_ICU" | "FUERZA_RESPIRATORIA" | "VISAGE" | "VIA_AEREA" | "FLUJO_PICO_TOS" | "DEGLUCION" | "FRAGILIDAD" | "BARTHEL";
+export type IdEscala = "MRC_SS" | "FSS_ICU" | "FUERZA_RESPIRATORIA" | "VISAGE" | "VIA_AEREA" | "FLUJO_PICO_TOS" | "DEGLUCION" | "ECOGRAFIA" | "FRAGILIDAD" | "BARTHEL";
 
 export type ElementoFiltro = "TRACHCARE" | "HEPA";
 
@@ -399,7 +399,18 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "TOMA_CULTIVO"; readonly muestra: string })
   | (EventoBase & { readonly tipo: "TRASLADO_IMAGEN"; readonly destino: string })
   /** Evaluacion puntual de una escala (MRC-ss, FSS-ICU, PIM/PEF, VISAGE...). Todo nace en blanco. */
-  | (EventoBase & { readonly tipo: "EVALUACION_PUNTUAL"; readonly escala: IdEscala; readonly valores: Readonly<Record<string, number | null>>; readonly total: number | null })
+  /**
+   * Evaluacion puntual. `hora` es la hora REAL en que se hizo (puede ser minutos antes de
+   * registrarla); `realizadaEn` es ese momento completo y `registradoEn`, cuando se anoto.
+   * `comentario` es la nota clinica de la evaluacion (en la ecografia, el hallazgo).
+   */
+  | (EventoBase & {
+      readonly tipo: "EVALUACION_PUNTUAL";
+      readonly escala: IdEscala;
+      readonly valores: Readonly<Record<string, number | null>>;
+      readonly total: number | null;
+      readonly realizadaEn?: string;
+    })
   | (EventoBase & { readonly tipo: "CAMBIO_HMEF" })
   /** Cambio de TrachCare (sonda de circuito cerrado) o filtro HEPA. El HME va como CAMBIO_HMEF. No va atado a un control. */
   | (EventoBase & { readonly tipo: "CAMBIO_FILTRO"; readonly elemento: ElementoFiltro })

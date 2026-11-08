@@ -368,9 +368,26 @@ async function esperarServidor() {
       assert.equal(await cel.locator(".cel-cuerpo h3").first().textContent(), "PVE y extubación");
       await cel.click('button:has-text("Deglución")');
       await cel.selectOption("#ev-nivel", "1");
+      // La hora sugerida es la de ahora; se corrige a la real, unos minutos antes.
+      const sugerida = await cel.inputValue("#ev-hora");
+      assert.match(sugerida, /^\d\d:\d\d$/);
+      const real = await cel.evaluate(() => {
+        const d = new Date(Date.now() - 7 * 60_000);
+        return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      });
+      await cel.fill("#ev-hora", real);
+      await cel.fill("#ev-nota", "Tose al tragar saliva; se mantiene régimen cero");
       await cel.click('button:has-text("Registrar evaluación")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".app-cel"), /Deglución: esporádica/);
+      assert.match(await cel.textContent(".app-cel"), new RegExp(`${real} Deglución: esporádica · Tose al tragar saliva`));
+      // Ecografia: el hallazgo es la evaluacion; vacio no se registra.
+      await cel.click('button:has-text("Ecografía")');
+      await cel.click('button:has-text("Registrar evaluación")');
+      assert.match(await aviso(), /Escribe el hallazgo/);
+      await cel.click('.chip:has-text("Patrón B bilateral")');
+      await cel.click('button:has-text("Registrar evaluación")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent(".app-cel"), /Ecografía: Patrón B bilateral/);
       await cel.click('button:has-text("Flujo pico de tos")');
       await cel.fill("#ev-pef", "55");
       await cel.click('button:has-text("Registrar evaluación")');

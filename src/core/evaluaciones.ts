@@ -29,6 +29,8 @@ export interface DefEscala {
   readonly campos: readonly CampoEscala[];
   /** Si se suma: maximo del total. `null` = no hay total (mediciones sueltas). */
   readonly maxTotal: number | null;
+  /** La evaluacion ES la nota (p. ej. el hallazgo de una ecografia): no puede ir vacia. */
+  readonly exigeNota?: boolean;
 }
 
 const MRC_MOVIMIENTOS = ["Abducción de hombro", "Flexión de codo", "Extensión de muñeca", "Flexión de cadera", "Extensión de rodilla", "Dorsiflexión tobillo"];
@@ -48,6 +50,7 @@ export const ESCALAS: readonly DefEscala[] = [
   { id: "VIA_AEREA", nombre: "Score de cuidados de vía aérea", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "puntaje", etiqueta: "Puntaje", min: 0, max: null }] },
   { id: "FLUJO_PICO_TOS", nombre: "Flujo pico de tos", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "pef", etiqueta: "Flujo pico de tos", min: 0, max: null, unidad: "L/min" }] },
   { id: "DEGLUCION", nombre: "Deglución", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "nivel", etiqueta: "Deglución", min: 0, max: 2, opciones: OPCIONES_DEGLUCION_EVAL }] },
+  { id: "ECOGRAFIA", nombre: "Ecografía", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [], exigeNota: true },
   {
     id: "MRC_SS",
     nombre: "Fuerza muscular MRC-ss",
@@ -145,10 +148,49 @@ export function calcularEscala(id: IdEscala, valores: Readonly<Record<string, nu
   return { total: unico, completa, lineas: def.campos.length > 1 ? def.campos.filter((c) => valores[c.id] != null).map((c) => `${c.etiqueta}: ${valores[c.id]}${c.unidad ? " " + c.unidad : ""}`) : [], interpretacion: null, errores };
 }
 
-/** "Deglución: esporádica", "Flujo pico de tos: 60 L/min", "VISAGE (…): 3": para la nota y las listas. */
-export function resumenEvaluacion(id: IdEscala, valores: Readonly<Record<string, number | null | undefined>>, total: number | null): string {
+/** Hallazgos frecuentes para escribir la ecografia (el campo es texto libre). Provisorios. */
+export const SUGERENCIAS_ECOGRAFIA: readonly string[] = [
+  "Patrón A bilateral",
+  "Patrón B bilateral",
+  "Patrón B focal",
+  "Consolidación",
+  "Derrame pleural",
+  "Deslizamiento pleural ausente",
+  "Disfunción diafragmática"
+];
+
+export const LARGO_MAX_NOTA_EVALUACION = 300;
+
+/**
+ * "Deglución: esporádica", "Flujo pico de tos: 60 L/min", "Ecografía: patrón B bilateral",
+ * "VISAGE (…): 3". Con nota clinica, va al final: "… · nota".
+ */
+export function resumenEvaluacion(id: IdEscala, valores: Readonly<Record<string, number | null | undefined>>, total: number | null, nota = ""): string {
+  const n = nota.trim();
+  if (escalaDe(id).exigeNota) return `${nombreEscala(id)}: ${n || "sin hallazgo"}`;
+  return `${resumenSinNota(id, valores, total)}${n ? ` · ${n}` : ""}`;
+}
+
+function resumenSinNota(id: IdEscala, valores: Readonly<Record<string, number | null | undefined>>, total: number | null): string {
   const r = calcularEscala(id, valores);
   if (id === "DEGLUCION") return `${nombreEscala(id)}: ${r.lineas[0]?.toLowerCase() ?? "sin dato"}`;
   if (id === "FLUJO_PICO_TOS") return `${nombreEscala(id)}: ${r.lineas[0] ?? "sin dato"}`;
   return `${nombreEscala(id)}${total !== null ? `: ${total}` : ""}`;
+}
+
+/**
+ * La hora REAL de una evaluacion, escrita como "HH:MM", llevada a un momento completo.
+ * Una hora posterior a la actual es del dia anterior (una evaluacion de las 23:50 anotada
+ * a las 00:10). No se acepta mas de `maxHorasAtras` hacia atras: eso ya no es "minutos antes".
+ */
+export function momentoDeEvaluacion(hora: string, ahora: Date, maxHorasAtras = 12): Date | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hora.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  let t = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), h, min);
+  if (t.getTime() > ahora.getTime() + 60_000) t = new Date(t.getTime() - 24 * 3600_000);
+  if (ahora.getTime() - t.getTime() > maxHorasAtras * 3600_000) return null;
+  return t;
 }

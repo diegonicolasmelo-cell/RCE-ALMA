@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ESCALAS, calcularEscala, escalaDe, nombreEscala } from "@core/index";
+import { ESCALAS, calcularEscala, escalaDe, nombreEscala, resumenEvaluacion } from "@core/index";
 import type { EventoClinico, IdEscala } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
@@ -54,7 +54,7 @@ export function Evaluaciones({ ctx }: { ctx: ContextoCama }) {
             <section>
               <h3>Registradas en esta cama</h3>
               <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-                {hechas.map((e) => <li key={e.id}><span className="mono">{e.hora}</span> {nombreEscala(e.escala)}{e.total !== null ? `: ${e.total}` : ""}</li>)}
+                {hechas.map((e) => <li key={e.id}><span className="mono">{e.hora}</span> {resumenEvaluacion(e.escala, e.valores, e.total)}</li>)}
               </ul>
             </section>
           )}
@@ -69,9 +69,16 @@ export function Evaluaciones({ ctx }: { ctx: ContextoCama }) {
               <div className="f" key={c.id}>
                 <label htmlFor={`ev-${c.id}`}>
                   {c.etiqueta}
-                  <span className="muted"> {c.unidad ?? (c.max !== null ? `${c.min} a ${c.max}` : "")}</span>
+                  {!c.opciones && <span className="muted"> {c.unidad ?? (c.max !== null ? `${c.min} a ${c.max}` : "")}</span>}
                 </label>
-                <input id={`ev-${c.id}`} inputMode="decimal" autoComplete="off" value={v[c.id] ?? ""} onChange={(e) => setV({ ...v, [c.id]: e.target.value })} />
+                {c.opciones ? (
+                  <select id={`ev-${c.id}`} value={v[c.id] ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setV({ ...v, [c.id]: e.target.value })}>
+                    <option value="">—</option>
+                    {c.opciones.map((o) => <option key={o.val} value={String(o.val)}>{o.label}</option>)}
+                  </select>
+                ) : (
+                  <input id={`ev-${c.id}`} inputMode="decimal" autoComplete="off" value={v[c.id] ?? ""} onChange={(e) => setV({ ...v, [c.id]: e.target.value })} />
+                )}
               </div>
             ))}
           </div>

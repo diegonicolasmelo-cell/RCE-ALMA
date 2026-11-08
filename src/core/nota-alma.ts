@@ -13,7 +13,7 @@
 import { buscarProfesional } from "./dotacion";
 import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto } from "./catalogos";
 import { apkVigente } from "./apk";
-import { nombreEscala } from "./evaluaciones";
+import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
 import { describirEquipos, equipoEnUso, etiquetaEquipo } from "./equipos";
 import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiologia";
@@ -220,7 +220,7 @@ export function describirEvento(ev: EventoClinico): string {
     case "CAMBIO_HMEF":
       return "Cambio de filtro HME";
     case "EVALUACION_PUNTUAL":
-      return `Evaluación ${nombreEscala(ev.escala)}${ev.total !== null ? `: ${ev.total}` : ""}`;
+      return `Evaluación ${resumenEvaluacion(ev.escala, ev.valores, ev.total)}`;
     case "CAMBIO_FILTRO":
       return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
     case "CAMBIO_EQUIPOS":

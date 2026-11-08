@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESCALAS, calcularEscala, escalaDe } from "./evaluaciones";
+import { ESCALAS, GRUPO_PVE_EXTUBACION, calcularEscala, escalaDe, resumenEvaluacion } from "./evaluaciones";
 
 const todos = (id: Parameters<typeof escalaDe>[0], v: number) => Object.fromEntries(escalaDe(id).campos.map((c) => [c.id, v]));
 
@@ -58,7 +58,31 @@ describe("otras escalas", () => {
     expect(calcularEscala("FRAGILIDAD", { nivel: 5 }).total).toBe(5);
   });
 
-  it("hay siete escalas con id único", () => {
-    expect(new Set(ESCALAS.map((e) => e.id)).size).toBe(7);
+  it("hay nueve escalas con id único", () => {
+    expect(new Set(ESCALAS.map((e) => e.id)).size).toBe(ESCALAS.length);
+    expect(ESCALAS).toHaveLength(9);
+  });
+});
+
+describe("PVE y extubación", () => {
+  it("es el primer apartado y reúne VISAGE, vía aérea, flujo pico de tos y deglución", () => {
+    expect(ESCALAS[0]?.grupo).toBe(GRUPO_PVE_EXTUBACION);
+    expect(ESCALAS.filter((e) => e.grupo === GRUPO_PVE_EXTUBACION).map((e) => e.id)).toEqual(["VISAGE", "VIA_AEREA", "FLUJO_PICO_TOS", "DEGLUCION"]);
+    expect(ESCALAS.some((e) => e.grupo === "Neurológico")).toBe(false);
+  });
+
+  it("la deglución es una categoría: se lee como texto y no tiene total", () => {
+    const r = calcularEscala("DEGLUCION", { nivel: 1 });
+    expect(r.total).toBeNull();
+    expect(r.lineas).toEqual(["Esporádica"]);
+    expect(resumenEvaluacion("DEGLUCION", { nivel: 1 }, null)).toBe("Deglución: esporádica");
+    expect(calcularEscala("DEGLUCION", { nivel: 3 }).errores).toHaveLength(1);
+  });
+
+  it("el flujo pico de tos se registra en L/min, sin un corte inventado", () => {
+    const r = calcularEscala("FLUJO_PICO_TOS", { pef: 60 });
+    expect(r.total).toBe(60);
+    expect(r.interpretacion).toBeNull();
+    expect(resumenEvaluacion("FLUJO_PICO_TOS", { pef: 60 }, 60)).toBe("Flujo pico de tos: 60 L/min");
   });
 });

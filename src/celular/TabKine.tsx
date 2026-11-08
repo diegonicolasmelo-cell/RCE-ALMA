@@ -5,7 +5,6 @@ import {
   buscarProfesional,
   esViaAereaArtificial,
   ASPECTOS_SECRECIONES,
-  OPCIONES_DEGLUCION,
   SUGERENCIAS_AUSCULTACION,
   hayAspectoDeSecreciones,
   apkVigente,
@@ -99,7 +98,8 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
               </div>
             ))}
           </div>
-          <h3 style={{ marginTop: 14 }}>Manejo de secreciones</h3>
+          <h3 style={{ marginTop: 14 }}>Tos</h3>
+          <p className="small muted" style={{ margin: "0 0 6px" }}>El flujo pico de tos y la deglución se registran en Evaluaciones · PVE y extubación.</p>
           <div className="fgrid2">
             <div className="f">
               <label htmlFor="sel-tos">Tos</label>
@@ -107,15 +107,6 @@ export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) 
                 <option value="">—</option>
                 <option value="EFICIENTE">Eficiente</option>
                 <option value="DEFICIENTE">Deficiente</option>
-              </select>
-            </div>
-            <CampoNum clave="pef-tos" etiqueta="Flujo pico de tos (PEF)" unidad="L/min" valor={b.flujoPicoTos} onCambio={(v) => editar((x) => ({ ...x, flujoPicoTos: v }))}
-              franja={() => ({ etiqueta: "Flujo pico de tos", opciones: [], onElegir: () => undefined })} />
-            <div className="f">
-              <label htmlFor="sel-deglucion">Deglución</label>
-              <select id="sel-deglucion" value={b.deglucion ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => editar((x) => ({ ...x, deglucion: e.target.value === "" ? null : (e.target.value as typeof x.deglucion) }))}>
-                <option value="">—</option>
-                {OPCIONES_DEGLUCION.map((d) => <option key={d.val} value={d.val}>{d.label}</option>)}
               </select>
             </div>
           </div>

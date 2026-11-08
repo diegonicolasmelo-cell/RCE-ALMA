@@ -274,11 +274,10 @@ async function esperarServidor() {
       await cel.selectOption("#sel-aspecto", "NINGUNA");
       assert.equal(await cel.locator("#sel-cantidad").isDisabled(), true, "sin secreciones se vuelve a deshabilitar");
       assert.equal(await cel.inputValue("#sel-cantidad"), "", "y se limpia");
-      // manejo de secreciones: tos, flujo pico de tos y deglucion
+      // la tos se registra en el control; el flujo pico de tos y la deglucion son evaluaciones
       await cel.selectOption("#sel-tos", "DEFICIENTE");
-      await cel.fill("#in-pef-tos", "55");
-      await cel.click('.franja .qchip:has-text("Listo")');
-      await cel.selectOption("#sel-deglucion", "ESPORADICA");
+      assert.equal(await cel.locator("#in-pef-tos").count(), 0, "el flujo pico de tos ya no esta en el control");
+      assert.equal(await cel.locator("#sel-deglucion").count(), 0, "la deglucion ya no esta en el control");
       // la kine motora va aparte y no es obligatoria
       assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 0, "la terapia fisica no esta en kine respiratoria");
       await cel.click('[role=tab]:has-text("Kine motora")');
@@ -365,6 +364,18 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Camas")');
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluación")');
+      // Primero el apartado de PVE y extubacion, con VISAGE, via aerea, flujo pico de tos y deglucion.
+      assert.equal(await cel.locator(".cel-cuerpo h3").first().textContent(), "PVE y extubación");
+      await cel.click('button:has-text("Deglución")');
+      await cel.selectOption("#ev-nivel", "1");
+      await cel.click('button:has-text("Registrar evaluación")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent(".app-cel"), /Deglución: esporádica/);
+      await cel.click('button:has-text("Flujo pico de tos")');
+      await cel.fill("#ev-pef", "55");
+      await cel.click('button:has-text("Registrar evaluación")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent(".app-cel"), /Flujo pico de tos: 55 L\/min/);
       await cel.click('button:has-text("Fuerza muscular MRC-ss")');
       for (const c of await cel.locator('input[id^="ev-m"]').all()) await c.fill("4");
       assert.match(await cel.textContent(".app-cel"), /MRC sum score 48\/60/);

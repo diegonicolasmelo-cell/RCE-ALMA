@@ -197,7 +197,7 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
   6 ultraprotector); la franja ofrece 6, 7 y 8 ml/kg ya calculados.
 - **Cada control es una atención kinésica** (así se cuenta en la estadística): no se
   pregunta si hubo kine respiratoria ni aspiración; se registran auscultación y
-  secreciones (aspecto con 12 tipos más «sin secreciones», reología y cantidad, en listas desplegables; reología y cantidad solo se habilitan si hay secreciones) y manejo de secreciones (tos eficiente/deficiente con flujo pico de tos, y deglución presente/esporádica/ausente, esta última por confirmar). La auscultación es
+  secreciones (aspecto con 12 tipos más «sin secreciones», reología y cantidad, en listas desplegables; reología y cantidad solo se habilitan si hay secreciones) y la tos (eficiente/deficiente). **El control es monitorización**: lo que se evalúa para decidir va en Evaluaciones; el apartado **PVE y extubación** reúne VISAGE, score de cuidados de vía aérea, flujo pico de tos (L/min) y deglución (presente/esporádica/ausente, por confirmar). La auscultación es
   texto libre con sugerencias desplegables (las sugerencias son provisorias).
 - **Kine motora aparte**: la terapia física tiene su pestaña y solo se registra
   cuando se hace (no es obligatoria para guardar).

@@ -1,7 +1,8 @@
 /**
  * Evaluaciones puntuales de la hoja de cuidados neuromusculares y del protocolo
  * de weaning. No son parte del control de rutina: se hacen aparte y se registran
- * como evento, con su puntaje calculado.
+ * como evento, con su puntaje calculado. El control es MONITORIZACION; todo lo que
+ * se evalua para decidir (destete, extubacion) vive aqui.
  *
  * Los campos y rangos salen de la hoja de papel. Lo que la hoja no precisa (maximo
  * del score de cuidados de via aerea, componentes del VISAGE) queda como un unico
@@ -17,6 +18,8 @@ export interface CampoEscala {
   /** `null` = la hoja no fija un maximo. */
   readonly max: number | null;
   readonly unidad?: string;
+  /** Si la medicion es una categoria: se elige de una lista; se guarda el numero `val`. */
+  readonly opciones?: readonly { readonly val: number; readonly label: string }[];
 }
 
 export interface DefEscala {
@@ -30,7 +33,21 @@ export interface DefEscala {
 
 const MRC_MOVIMIENTOS = ["Abducción de hombro", "Flexión de codo", "Extensión de muñeca", "Flexión de cadera", "Extensión de rodilla", "Dorsiflexión tobillo"];
 
+/** Deglucion como categoria (las etiquetas son las del catalogo; la clasificacion es provisoria). */
+export const OPCIONES_DEGLUCION_EVAL: readonly { readonly val: number; readonly label: string }[] = [
+  { val: 2, label: "Presente" },
+  { val: 1, label: "Esporádica" },
+  { val: 0, label: "Ausente" }
+];
+
+export const GRUPO_PVE_EXTUBACION = "PVE y extubación";
+
+/** El orden de la lista es el orden de los apartados en la pantalla. */
 export const ESCALAS: readonly DefEscala[] = [
+  { id: "VISAGE", nombre: "VISAGE (neurológicos y neuroquirúrgicos)", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "puntaje", etiqueta: "Puntaje", min: 0, max: 5 }] },
+  { id: "VIA_AEREA", nombre: "Score de cuidados de vía aérea", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "puntaje", etiqueta: "Puntaje", min: 0, max: null }] },
+  { id: "FLUJO_PICO_TOS", nombre: "Flujo pico de tos", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "pef", etiqueta: "Flujo pico de tos", min: 0, max: null, unidad: "L/min" }] },
+  { id: "DEGLUCION", nombre: "Deglución", grupo: GRUPO_PVE_EXTUBACION, maxTotal: null, campos: [{ id: "nivel", etiqueta: "Deglución", min: 0, max: 2, opciones: OPCIONES_DEGLUCION_EVAL }] },
   {
     id: "MRC_SS",
     nombre: "Fuerza muscular MRC-ss",
@@ -65,8 +82,6 @@ export const ESCALAS: readonly DefEscala[] = [
       { id: "exc", etiqueta: "Excursión diafragmática", min: 0, max: null, unidad: "cm" }
     ]
   },
-  { id: "VISAGE", nombre: "VISAGE (neurológicos y neuroquirúrgicos)", grupo: "Neurológico", maxTotal: null, campos: [{ id: "puntaje", etiqueta: "Puntaje", min: 0, max: 5 }] },
-  { id: "VIA_AEREA", nombre: "Score de cuidados de vía aérea", grupo: "Neurológico", maxTotal: null, campos: [{ id: "puntaje", etiqueta: "Puntaje", min: 0, max: null }] },
   { id: "FRAGILIDAD", nombre: "Escala clínica de fragilidad", grupo: "Funcional", maxTotal: null, campos: [{ id: "nivel", etiqueta: "Nivel", min: 1, max: 9 }] },
   { id: "BARTHEL", nombre: "Índice de Barthel", grupo: "Funcional", maxTotal: null, campos: [{ id: "puntaje", etiqueta: "Puntaje", min: 0, max: 100 }] }
 ];
@@ -119,5 +134,21 @@ export function calcularEscala(id: IdEscala, valores: Readonly<Record<string, nu
   if (id === "VIA_AEREA") {
     return { total: unico, completa, lineas: [], interpretacion: unico === null ? null : unico < 6 ? "Bajo el corte (< 6 puntos)" : "Sobre el corte (< 6 puntos)", errores };
   }
+  if (id === "DEGLUCION") {
+    const etiqueta = OPCIONES_DEGLUCION_EVAL.find((o) => o.val === unico)?.label ?? null;
+    // Una categoria no es un puntaje: no tiene total.
+    return { total: null, completa, lineas: etiqueta ? [etiqueta] : [], interpretacion: null, errores };
+  }
+  if (id === "FLUJO_PICO_TOS") {
+    return { total: unico, completa, lineas: unico === null ? [] : [`${unico} L/min`], interpretacion: null, errores };
+  }
   return { total: unico, completa, lineas: def.campos.length > 1 ? def.campos.filter((c) => valores[c.id] != null).map((c) => `${c.etiqueta}: ${valores[c.id]}${c.unidad ? " " + c.unidad : ""}`) : [], interpretacion: null, errores };
+}
+
+/** "Deglución: esporádica", "Flujo pico de tos: 60 L/min", "VISAGE (…): 3": para la nota y las listas. */
+export function resumenEvaluacion(id: IdEscala, valores: Readonly<Record<string, number | null | undefined>>, total: number | null): string {
+  const r = calcularEscala(id, valores);
+  if (id === "DEGLUCION") return `${nombreEscala(id)}: ${r.lineas[0]?.toLowerCase() ?? "sin dato"}`;
+  if (id === "FLUJO_PICO_TOS") return `${nombreEscala(id)}: ${r.lineas[0] ?? "sin dato"}`;
+  return `${nombreEscala(id)}${total !== null ? `: ${total}` : ""}`;
 }

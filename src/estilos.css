@@ -282,3 +282,21 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .ph-tabs{display:flex!important;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .ph-tabs::-webkit-scrollbar{display:none}
 .ph-tabs button{flex:1 0 auto;white-space:nowrap;padding:9px 12px}
+
+/* ---- Hoja de PVE: vertical como el papel, y el inicio contrastado con el termino ---- */
+.pve-hoja{display:grid;gap:0}
+.pve-fila{display:grid;grid-template-columns:minmax(0,1fr) 6.5em;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.pve-hoja.con-ref .pve-fila{grid-template-columns:minmax(0,1fr) 4.8em 6.5em}
+.pve-fila > label{margin:0;font-weight:600}
+.pve-fila input{min-height:42px;text-align:center;width:100%;min-width:0}
+.pve-ref{text-align:center;color:var(--ink-2);background:var(--panel-2);border:1px dashed var(--line);border-radius:6px;padding:10px 0;font-size:15px}
+.pve-cab{border-bottom:2px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pve-cab span:not(:first-child){text-align:center}
+.pve-contraste{overflow-x:auto}
+.pve-contraste table{width:100%;border-collapse:collapse;font-size:14px}
+.pve-contraste th,.pve-contraste td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+.pve-contraste th[scope="row"]{text-align:left;font-weight:600}
+.pve-contraste thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pve-contraste .ini{background:var(--panel-2);color:var(--ink-2)}
+.pve-contraste .ter{background:var(--accent-soft);color:var(--ink);font-weight:700}
+.pve-contraste thead .ter{color:var(--accent)}

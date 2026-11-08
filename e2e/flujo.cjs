@@ -360,8 +360,15 @@ async function esperarServidor() {
       await cel.waitForTimeout(500);
       assert.match(await cel.textContent("#pve-timer"), /0 \/ 30 min/);
       await cel.click('button:has-text("Control a los 30 min")');
+      // Hoja vertical, con el valor de inicio al lado de cada casilla del termino.
+      assert.equal(await cel.locator(".pve-hoja.con-ref .pve-ref").count(), 7);
+      assert.equal(await cel.locator('[aria-label="Frec. cardiaca al inicio"]').textContent(), "82");
       for (const [id, val] of [["fc", "88"], ["fr", "20"], ["pas", "118"], ["pad", "68"], ["spo2", "95"]]) await cel.fill(`#pve-${id}`, val);
       await cel.click('button:has-text("Registrar control")');
+      await cel.waitForSelector('[aria-label="Contraste inicio y término de la PVE"]');
+      const filaFc = await cel.locator('.pve-contraste tr:has(th:text-is("Frec. cardiacalpm")), .pve-contraste tr:has-text("Frec. cardiaca")').first().textContent();
+      assert.match(filaFc, /82\s*88\s*\+6/);
+      assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "el contraste no desborda en 390 px");
       await cel.click('button:has-text("Fin · tolerada")');
       await cel.waitForTimeout(400);
       await cel.click('button:has-text("Registrar extubación")');

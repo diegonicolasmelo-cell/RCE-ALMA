@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
   CRITERIOS_PVE,
+  contrastarControlesPve,
   criteriosAptos,
   esViaAereaArtificial,
   estadoFlujoPve,
-  etiquetaMomentoPostExtub
+  etiquetaMomentoPostExtub,
+  registrosPve
 } from "@core/index";
 import type { EventoClinico, FasePveControl, LecturasPve, MomentoPostExtub } from "@core/index";
 import { useApp } from "../app/store";
@@ -19,16 +21,56 @@ const num = (v: string): number | null => {
 };
 
 type Texto = Record<string, string>;
+const txt = (n: number | null): string => (n === null ? "—" : String(n));
 
-/** Casillero numerico simple: nace en blanco, teclado numerico del sistema. */
-function Num({ id, etiqueta, unidad, v, set }: { id: string; etiqueta: string; unidad?: string; v: Texto; set: (x: Texto) => void }) {
+/**
+ * Una fila de la hoja de PVE, vertical como el papel: dato a la izquierda, casilla a la
+ * derecha. Con `referencia`, al medio va el valor del control de inicio para contrastarlo.
+ */
+function Fila({ id, etiqueta, unidad, v, set, referencia }: { id: string; etiqueta: string; unidad?: string; v: Texto; set: (x: Texto) => void; referencia?: string }) {
   return (
-    <div className="f">
+    <div className="pve-fila">
       <label htmlFor={`pve-${id}`}>
         {etiqueta}
         {unidad && <span className="muted"> {unidad}</span>}
       </label>
+      {referencia !== undefined && <span className="pve-ref mono" aria-label={`${etiqueta} al inicio`}>{referencia}</span>}
       <input id={`pve-${id}`} inputMode="decimal" autoComplete="off" value={v[id] ?? ""} onChange={(e) => set({ ...v, [id]: e.target.value })} />
+    </div>
+  );
+}
+
+/** Cabecera de las columnas cuando se contrasta con el inicio. */
+function CabeceraContraste({ horaInicio, titulo }: { horaInicio: string; titulo: string }) {
+  return (
+    <div className="pve-fila pve-cab" aria-hidden="true">
+      <span>Parámetro</span>
+      <span>Inicio {horaInicio}</span>
+      <span>{titulo}</span>
+    </div>
+  );
+}
+
+/** El control de inicio y el de termino lado a lado, con la diferencia. */
+function ContrastePve({ inicio, termino, horaInicio, horaTermino }: { inicio: LecturasPve; termino: LecturasPve | null; horaInicio: string; horaTermino: string | null }) {
+  const filas = contrastarControlesPve(inicio, termino);
+  return (
+    <div className="pve-contraste" aria-label="Contraste inicio y término de la PVE">
+      <table>
+        <thead>
+          <tr><th>Parámetro</th><th className="ini">Inicio<br /><span className="mono">{horaInicio}</span></th><th className="ter">Término<br /><span className="mono">{horaTermino ?? "pendiente"}</span></th><th>Dif.</th></tr>
+        </thead>
+        <tbody>
+          {filas.map((f) => (
+            <tr key={f.etiqueta}>
+              <th scope="row">{f.etiqueta}{f.unidad && <span className="muted"> {f.unidad}</span>}</th>
+              <td className="ini mono">{f.inicio}</td>
+              <td className="ter mono">{f.termino}</td>
+              <td className="mono">{f.diferencia ?? ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -38,7 +80,20 @@ const SECRECIONES = [{ valor: "Escasas", texto: "Escasas" }, { valor: "Moderadas
 const MANEJO = [{ valor: "Maneja", texto: "Maneja" }, { valor: "No maneja", texto: "No maneja" }];
 
 /** Hoja de registro de PVE: Hora, FC, PA, FR, SpO2, GCS, Volumen minuto, Trabajo respiratorio, Secreciones. */
-function FormControlPve({ titulo, boton, onGuardar, onCancelar }: { titulo: string; boton: string; onGuardar: (l: LecturasPve) => void; onCancelar?: () => void }) {
+function FormControlPve({
+  titulo,
+  boton,
+  onGuardar,
+  onCancelar,
+  inicio
+}: {
+  titulo: string;
+  boton: string;
+  onGuardar: (l: LecturasPve) => void;
+  onCancelar?: () => void;
+  /** El control de inicio, para tenerlo al lado al anotar el de termino. */
+  inicio?: { readonly lecturas: LecturasPve; readonly hora: string };
+}) {
   const avisar = useApp((s) => s.avisar);
   const [v, setV] = useState<Texto>({});
   const guardar = (): void => {
@@ -54,17 +109,18 @@ function FormControlPve({ titulo, boton, onGuardar, onCancelar }: { titulo: stri
   return (
     <div className="card stack" style={{ padding: 12, gap: 10 }}>
       <b>{titulo}</b>
-      <div className="fgrid">
-        <Num id="fc" etiqueta="Frec. cardiaca" unidad="lpm" v={v} set={setV} />
-        <Num id="fr" etiqueta="Frec. respiratoria" unidad="rpm" v={v} set={setV} />
-        <Num id="pas" etiqueta="P. sistólica" unidad="mmHg" v={v} set={setV} />
-        <Num id="pad" etiqueta="P. diastólica" unidad="mmHg" v={v} set={setV} />
-        <Num id="spo2" etiqueta="SpO₂" unidad="%" v={v} set={setV} />
-        <Num id="gcs" etiqueta="GCS" unidad="3-15" v={v} set={setV} />
-        <Num id="vm" etiqueta="Volumen minuto" unidad="L/min" v={v} set={setV} />
+      <div className={`pve-hoja${inicio ? " con-ref" : ""}`}>
+        {inicio && <CabeceraContraste horaInicio={inicio.hora} titulo="Ahora" />}
+        <Fila id="fc" etiqueta="Frec. cardiaca" unidad="lpm" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.fc) } : {})} />
+        <Fila id="fr" etiqueta="Frec. respiratoria" unidad="rpm" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.fr) } : {})} />
+        <Fila id="pas" etiqueta="P. sistólica" unidad="mmHg" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.pas) } : {})} />
+        <Fila id="pad" etiqueta="P. diastólica" unidad="mmHg" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.pad) } : {})} />
+        <Fila id="spo2" etiqueta="SpO₂" unidad="%" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.spo2) } : {})} />
+        <Fila id="gcs" etiqueta="GCS" unidad="3-15" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.gcs) } : {})} />
+        <Fila id="vm" etiqueta="Volumen minuto" unidad="L/min" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.volMinuto) } : {})} />
       </div>
-      <div><div className="small ink2">Trabajo respiratorio</div><Fichas etiqueta="Trabajo respiratorio" valor={v["trab"] ?? null} opciones={TRABAJO} onCambio={(x) => setV({ ...v, trab: x })} /></div>
-      <div><div className="small ink2">Secreciones bronquiales</div><Fichas etiqueta="Secreciones bronquiales" valor={v["sec"] ?? null} opciones={SECRECIONES} onCambio={(x) => setV({ ...v, sec: x })} /></div>
+      <div><div className="small ink2">Trabajo respiratorio{inicio?.lecturas.trabajoResp ? ` · al inicio: ${inicio.lecturas.trabajoResp}` : ""}</div><Fichas etiqueta="Trabajo respiratorio" valor={v["trab"] ?? null} opciones={TRABAJO} onCambio={(x) => setV({ ...v, trab: x })} /></div>
+      <div><div className="small ink2">Secreciones bronquiales{inicio?.lecturas.secreciones ? ` · al inicio: ${inicio.lecturas.secreciones}` : ""}</div><Fichas etiqueta="Secreciones bronquiales" valor={v["sec"] ?? null} opciones={SECRECIONES} onCambio={(x) => setV({ ...v, sec: x })} /></div>
       <div className="row">
         <button type="button" className="btn primary" onClick={guardar}>{boton}</button>
         {onCancelar && <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>}
@@ -79,13 +135,13 @@ function FormReeval({ momento, onGuardar, onCancelar }: { momento: MomentoPostEx
   return (
     <div className="card stack" style={{ padding: 12, gap: 10 }}>
       <b>Reevaluación post extubación · {etiquetaMomentoPostExtub(momento)}</b>
-      <div className="fgrid">
-        <Num id="fc" etiqueta="FC" unidad="lpm" v={v} set={setV} />
-        <Num id="pam" etiqueta="PAM" unidad="mmHg" v={v} set={setV} />
-        <Num id="gcs" etiqueta="GCS" unidad="3-15" v={v} set={setV} />
-        <Num id="fr" etiqueta="FR" unidad="rpm" v={v} set={setV} />
-        <Num id="fio2" etiqueta="FiO₂" unidad="%" v={v} set={setV} />
-        <Num id="spo2" etiqueta="SpO₂" unidad="%" v={v} set={setV} />
+      <div className="pve-hoja">
+        <Fila id="fc" etiqueta="FC" unidad="lpm" v={v} set={setV} />
+        <Fila id="pam" etiqueta="PAM" unidad="mmHg" v={v} set={setV} />
+        <Fila id="gcs" etiqueta="GCS" unidad="3-15" v={v} set={setV} />
+        <Fila id="fr" etiqueta="FR" unidad="rpm" v={v} set={setV} />
+        <Fila id="fio2" etiqueta="FiO₂" unidad="%" v={v} set={setV} />
+        <Fila id="spo2" etiqueta="SpO₂" unidad="%" v={v} set={setV} />
       </div>
       <div><div className="small ink2">Trabajo respiratorio</div><Fichas etiqueta="Trabajo respiratorio" valor={v["trab"] ?? null} opciones={TRABAJO} onCambio={(x) => setV({ ...v, trab: x })} /></div>
       <div><div className="small ink2">Manejo de secreciones</div><Fichas etiqueta="Manejo de secreciones" valor={v["man"] ?? null} opciones={MANEJO} onCambio={(x) => setV({ ...v, man: x })} /></div>
@@ -104,6 +160,10 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const flujo = estadoFlujoPve(eventos, ahora);
+  // La PVE de hoy: su control de inicio y el de termino (30 min), para contrastarlos.
+  const reg = registrosPve(eventos).at(-1) ?? null;
+  const inicioPve = reg?.inicio ? { lecturas: reg.inicio.lecturas, hora: reg.inicio.hora } : null;
+  const verContraste = inicioPve !== null && reg?.treintaMin != null && (flujo.fase === "EN_CURSO" || flujo.fase === "TERMINADA" || flujo.bloque !== null);
   const artificial = esViaAereaArtificial(ep.viaAereaActual);
   const [marcas, setMarcas] = useState<(boolean | null)[]>(() => Array<boolean | null>(CRITERIOS_PVE.length).fill(null));
   const [datos, setDatos] = useState("");
@@ -207,7 +267,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
             <div className="small">Control inicial {flujo.controlInicial ? "registrado" : "pendiente"} · control a los 30 min {flujo.control30 ? "registrado" : "pendiente"}</div>
           </div>
           {!flujo.control30 && (formulario === "30" ? (
-            <div className="mt"><FormControlPve titulo="Control a los 30 min" boton="Registrar control" onGuardar={(l) => { void ev({ tipo: "CONTROL_PVE", fase: "30MIN" as FasePveControl, lecturas: l }); setFormulario(null); }} onCancelar={() => setFormulario(null)} /></div>
+            <div className="mt"><FormControlPve titulo="Control de término · 30 min" boton="Registrar control" {...(inicioPve ? { inicio: inicioPve } : {})} onGuardar={(l) => { void ev({ tipo: "CONTROL_PVE", fase: "30MIN" as FasePveControl, lecturas: l }); setFormulario(null); }} onCancelar={() => setFormulario(null)} /></div>
           ) : (
             <div className="mt"><button type="button" className="btn primary" onClick={() => setFormulario("30")}>Control a los 30 min{flujo.pve.minutosRestantes > 0 ? ` (faltan ${flujo.pve.minutosRestantes})` : ""}</button></div>
           ))}
@@ -215,6 +275,13 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
             <button type="button" className="btn" onClick={() => void ev({ tipo: "FIN_PVE", exitosa: true })}>Fin · tolerada</button>
             <button type="button" className="btn" onClick={() => void ev({ tipo: "FIN_PVE", exitosa: false })}>Fin · no tolerada</button>
           </div>
+        </section>
+      )}
+
+      {verContraste && inicioPve && reg && (
+        <section>
+          <h3>Inicio y término de la PVE</h3>
+          <ContrastePve inicio={inicioPve.lecturas} termino={reg.treintaMin?.lecturas ?? null} horaInicio={inicioPve.hora} horaTermino={reg.treintaMin?.hora ?? null} />
         </section>
       )}
 

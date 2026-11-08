@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITERIOS_PVE, accesoPve, bloquesPostExtub, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
+import { CRITERIOS_PVE, accesoPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve } from "./tipos";
 
@@ -166,5 +166,31 @@ describe("entrada directa a la PVE desde la tarjeta de la cama", () => {
     const fin: EventoClinico = { ...base(t(10, 40), "fin"), tipo: "FIN_PVE", exitosa: true };
     const evs = [checklist(t(9)), ...inicio(t(10)), fin, extub(t(11))];
     expect(accesoPve("NATURAL", null, evs, t(11, 31))).toEqual({ texto: "Post extubación: registrar", destacado: true });
+  });
+});
+
+describe("contraste del control de inicio con el de término", () => {
+  it("pone lado a lado cada dato de la hoja con su diferencia", () => {
+    const fin: LecturasPve = { ...LECT, fc: 96, fr: 26, pas: 135, spo2: 93, volMinuto: 7, trabajoResp: "Aumentado", secreciones: "Escasas" };
+    const f = contrastarControlesPve({ ...LECT, trabajoResp: "Sin aumento", secreciones: "Escasas" }, fin);
+    expect(f.map((x) => x.etiqueta)).toEqual(["Frec. cardiaca", "Frec. respiratoria", "Presión arterial", "SpO₂", "GCS", "Volumen minuto", "Trabajo respiratorio", "Secreciones bronquiales"]);
+    expect(f[0]).toMatchObject({ inicio: "80", termino: "96", diferencia: "+16" });
+    expect(f[2]).toMatchObject({ inicio: "120/70", termino: "135/70", diferencia: "+15" });
+    expect(f[3]).toMatchObject({ diferencia: "-3" });
+    expect(f[5]).toMatchObject({ diferencia: "=" });
+    expect(f[6]).toMatchObject({ inicio: "Sin aumento", termino: "Aumentado", diferencia: null });
+  });
+
+  it("sin control de término, el inicio queda solo", () => {
+    const f = contrastarControlesPve(LECT, null);
+    expect(f[0]).toMatchObject({ inicio: "80", termino: "—", diferencia: null });
+  });
+});
+
+describe("eventos guardados en el mismo instante", () => {
+  it("el control inicial se reconoce aunque llegue antes que el inicio con la misma hora", () => {
+    const [ini, ctl] = inicio(t(10));
+    const r = registrosPve([checklist(t(9)), ctl!, ini!]).at(-1);
+    expect(r?.inicio?.fase).toBe("INICIAL");
   });
 });

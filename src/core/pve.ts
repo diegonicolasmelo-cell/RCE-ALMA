@@ -13,7 +13,7 @@
  */
 
 import { turnoDe } from "./turnos";
-import type { EventoClinico, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
+import type { EventoClinico, LecturasPve, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
 import { esViaAereaArtificial } from "./fisiologia";
 import { estadoPve } from "./eventos";
 import type { EstadoPve } from "./eventos";
@@ -43,8 +43,25 @@ export const etiquetaMomentoPostExtub = (m: MomentoPostExtub): string =>
 
 type Evento<T extends EventoClinico["tipo"]> = Extract<EventoClinico, { tipo: T }>;
 
+/**
+ * Orden de un mismo instante: el inicio de la PVE y su control inicial se guardan en el
+ * mismo milisegundo, y el empate no puede quedar al azar (el control quedaria "antes" del
+ * inicio y se perderia).
+ */
+const ORDEN_MISMO_INSTANTE: Partial<Record<EventoClinico["tipo"], number>> = {
+  EVALUACION_PVE: 0,
+  INICIO_PVE: 1,
+  CONTROL_PVE: 2,
+  FIN_PVE: 3,
+  EXTUBACION_PROGRAMADA: 4,
+  REEVAL_POST_EXTUB: 5,
+  FALLA_POST_EXTUB: 6,
+  REINTUBACION: 7
+};
+const rango = (e: EventoClinico): number => ORDEN_MISMO_INSTANTE[e.tipo] ?? 9;
+
 const ordenados = (eventos: readonly EventoClinico[]): EventoClinico[] =>
-  [...eventos].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
+  [...eventos].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn) || rango(a) - rango(b));
 
 /** `true` si los 8 criterios cumplen. Con menos de 8 respuestas no hay aptitud. */
 export function criteriosAptos(criterios: readonly boolean[]): boolean {
@@ -225,4 +242,49 @@ export function accesoPve(via: ViaAerea, modalidad: Modalidad | null, eventos: r
   if (modalidad === "CPAP_PS") return { texto: "Evaluar PVE diaria", destacado: false };
   // Ventilado en otra modalidad: la PVE sigue a mano en la tarjeta, sin destacarla.
   return { texto: "PVE", destacado: false };
+}
+
+/** Una fila del contraste entre el control de inicio y el de termino de la PVE. */
+export interface FilaContrastePve {
+  readonly etiqueta: string;
+  readonly unidad: string;
+  readonly inicio: string;
+  readonly termino: string;
+  /** "+6", "-2", "=" o null si no hay los dos valores numericos. */
+  readonly diferencia: string | null;
+}
+
+/** Las filas de la hoja de PVE, en su orden: FC, FR, PA, SpO2, GCS, volumen minuto, trabajo y secreciones. */
+export function contrastarControlesPve(inicio: LecturasPve, termino: LecturasPve | null): readonly FilaContrastePve[] {
+  const texto = (v: number | null): string => (v === null ? "—" : String(v));
+  const dif = (a: number | null, b: number | null): string | null => {
+    if (a === null || b === null) return null;
+    const d = Math.round((b - a) * 10) / 10;
+    return d === 0 ? "=" : d > 0 ? `+${d}` : String(d);
+  };
+  const pa = (l: LecturasPve | null): string => (l && (l.pas !== null || l.pad !== null) ? `${texto(l.pas)}/${texto(l.pad)}` : "—");
+  const num = (etiqueta: string, unidad: string, k: "fc" | "fr" | "spo2" | "gcs" | "volMinuto"): FilaContrastePve => ({
+    etiqueta,
+    unidad,
+    inicio: texto(inicio[k]),
+    termino: termino ? texto(termino[k]) : "—",
+    diferencia: termino ? dif(inicio[k], termino[k]) : null
+  });
+  const cat = (etiqueta: string, k: "trabajoResp" | "secreciones"): FilaContrastePve => ({
+    etiqueta,
+    unidad: "",
+    inicio: inicio[k] || "—",
+    termino: termino ? termino[k] || "—" : "—",
+    diferencia: null
+  });
+  return [
+    num("Frec. cardiaca", "lpm", "fc"),
+    num("Frec. respiratoria", "rpm", "fr"),
+    { etiqueta: "Presión arterial", unidad: "mmHg", inicio: pa(inicio), termino: pa(termino), diferencia: termino ? dif(inicio.pas, termino.pas) : null },
+    num("SpO₂", "%", "spo2"),
+    num("GCS", "", "gcs"),
+    num("Volumen minuto", "L/min", "volMinuto"),
+    cat("Trabajo respiratorio", "trabajoResp"),
+    cat("Secreciones bronquiales", "secreciones")
+  ];
 }

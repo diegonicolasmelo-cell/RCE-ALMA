@@ -111,6 +111,32 @@ levanta el build en un navegador real (requiere Playwright):
 npm run build && NODE_PATH=$(npm root -g) npm run e2e
 ```
 
+### Montar la app en Google Apps Script
+
+La app también se sirve desde el **mismo proyecto de Apps Script** que guarda los datos:
+una sola URL `/exec` es página y servidor. Ahí habla con el servidor por
+`google.script.run` (no por la URL), y los enlaces de conexión siguen siendo
+fragmentos (`#config?a=…`, `#estacion?t=…`) que se leen de la barra de afuera del
+iframe y se borran de ella.
+
+```bash
+npm run gas
+```
+
+Deja en `dist-gas/` lo que se pega en el editor: `index.html` (la app en formato
+«cohete»: cargador ASCII + app en base64, para que el analizador de Google no la
+rompa), `Codigo.gs` y `LEEME.txt` con el paso a paso
+(`backend/apps-script/LEEME-MONTAJE.txt`). `?demo=1` abre la demostración en una
+base local aparte. La prueba de arranque carga ese `index.html` en Chromium con el
+`Codigo.gs` real simulado detrás:
+
+```bash
+npm run gas && NODE_PATH=$(npm root -g) npm run e2e:gas
+```
+
+Dentro de Apps Script no hay modo sin conexión de PWA ni selector de carpeta local
+(Chrome los bloquea dentro del marco de Google).
+
 ## Configuración y despliegue
 
 La app se publica como sitio estático (GitHub Pages, ver

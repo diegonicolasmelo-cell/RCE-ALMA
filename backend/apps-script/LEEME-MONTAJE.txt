@@ -1,0 +1,89 @@
+UPC-PULSE EN GOOGLE APPS SCRIPT - PASO A PASO
+==============================================
+
+Se pegan DOS archivos en un proyecto de Apps Script ligado a una hoja de calculo:
+
+  Codigo.gs   -> el servidor: guarda los datos en la hoja y sirve la pagina.
+  index.html  -> la app completa (celular y PC de la estacion).
+
+index.html es un archivo largo de una sola pieza: se copia y se pega ENTERO, sin
+tocarlo. Esta en formato "cohete" (la app va en base64) a proposito: Google revisa
+el HTML con un analizador mas estricto que el del navegador y, sin esto, la app no
+arranca.
+
+
+PRIMERA VEZ
+-----------
+
+1. Crea una hoja de calculo nueva en Google Sheets. Nombrala "UPC-Pulse - Datos".
+   Mejor una hoja NUEVA y no la de produccion del RCE: son sistemas distintos.
+
+2. En la hoja: Extensiones -> Apps Script.
+
+3. Archivo "Codigo.gs": borra todo y pega el contenido de Codigo.gs.
+
+4. Boton "+" junto a Archivos -> HTML. Nombre: index  (exactamente asi, sin .html;
+   el editor lo agrega). Borra lo que trae y pega el contenido de index.html.
+
+5. Guarda (icono de disquete).
+
+6. Arriba, en el selector de funciones, elige  inicializarLibro  y pulsa Ejecutar.
+   La primera vez pide permisos: aceptalos. Crea las hojas y dos llaves.
+   Abre "Registro de ejecucion" y copia:
+     APP_TOKEN      -> para conectar los celulares y los PC.
+     STATION_TOKEN  -> SOLO para los PC de la estacion. Nunca en un celular:
+                       es lo que impide que un telefono lea nombres y RUT.
+
+7. Elige  cargarDotacion  y Ejecutar. Carga a los profesionales sin clave; cada
+   uno define la suya la primera vez que entra. (Revisa que los RUT de la hoja
+   "usuarios" sean los reales.)
+
+8. Implementar -> Nueva implementacion -> tipo "Aplicacion web":
+     Ejecutar como:      Yo
+     Quien tiene acceso: Cualquier persona
+   Copia la URL que termina en /exec.
+   Por que "cualquier persona": los celulares no inician sesion en Google. Lo que
+   protege es la llave APP_TOKEN de cada equipo y la clave de cada profesional; y
+   la hoja no guarda nombres ni RUT en claro (van cifrados con la contrasena de la
+   unidad, que nunca llega a Google).
+
+9. Prueba la demostracion (pacientes inventados, NO toca la hoja):
+     <URL /exec>?demo=1
+   Usuario: Diego Melo   Clave: Kine
+
+10. Conecta cada equipo UNA vez abriendo su enlace (la app guarda la llave en ese
+    navegador y la borra de la barra de direcciones):
+     Celulares:            <URL /exec>#config?a=<APP_TOKEN>
+     PC de la estacion:    <URL /exec>#config?a=<APP_TOKEN>
+                           y despues <URL /exec>#estacion?t=<STATION_TOKEN>
+    Desde ahi basta abrir <URL /exec> en el celular, o <URL /exec>#estacion en el PC.
+    Un equipo sin conectar muestra un aviso y no ve ningun dato.
+
+
+CADA VEZ QUE HAYA UNA VERSION NUEVA
+-----------------------------------
+
+1. Pega el index.html nuevo encima del anterior (y Codigo.gs, si cambio).
+2. Guarda.
+3. Implementar -> Administrar implementaciones -> lapiz sobre la implementacion
+   que ya existe -> Version: "Nueva version" -> Implementar.
+   NO crees una implementacion nueva: cambiaria la URL y habria que volver a
+   conectar todos los equipos.
+4. Si la entrega dice que cambiaron las hojas, ejecuta otra vez  inicializarLibro
+   (solo crea lo que falta; no borra nada).
+Ojo: la URL /exec sirve la VERSION IMPLEMENTADA. Si se pega y no se hace "Nueva
+version", el equipo sigue viendo la anterior.
+
+
+LO QUE NO FUNCIONA DENTRO DE APPS SCRIPT (y por que)
+----------------------------------------------------
+
+- No se instala como aplicacion ni abre sin internet. Google sirve la pagina dentro
+  de su propio marco, donde no se permiten los "service workers". Con la pagina ya
+  abierta, lo que se guarda sin senal queda en el telefono y sube solo cuando vuelve.
+- La carpeta local de las hojas APK (el PC de respaldo) no se puede elegir: Chrome
+  no permite abrir el selector de carpetas dentro del marco de Google. El PC de
+  respaldo necesita otra solucion; queda pendiente con informatica.
+- Cada celular guarda sus datos en su navegador, separado por implementacion: si un
+  dia se crea una implementacion nueva, los borradores sin subir de la anterior no
+  se ven en la nueva.

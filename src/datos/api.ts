@@ -65,6 +65,15 @@ export interface ConfigHttp {
 
 type Obj = Record<string, unknown>;
 
+/**
+ * Como llegan las peticiones al servidor. Por HTTP (la app servida desde otro sitio) o por
+ * `google.script.run` (la app servida por el mismo Apps Script). Las reglas son las mismas.
+ */
+export interface Transporte {
+  post(cuerpo: Obj): Promise<Obj>;
+  get(params: Record<string, string>): Promise<Obj>;
+}
+
 export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): ClienteApi {
   const timeoutMs = cfg.timeoutMs ?? 20_000;
 
@@ -94,6 +103,12 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
   const get = (params: Record<string, string>): Promise<Obj> =>
     pedir(() => fetchImpl(`${cfg.url}?${new URLSearchParams(params).toString()}`, { redirect: "follow" }));
 
+  return crearApiRemota({ post, get }, cfg);
+}
+
+/** El cliente de la API sobre cualquier transporte. Los tokens viajan en cada peticion. */
+export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; readonly stationToken: string | null }): ClienteApi {
+  const { post, get } = t;
   const errorDe = (r: Obj): string => (typeof r["error"] === "string" ? (r["error"] as string) : "ERROR_DESCONOCIDO");
 
   return {

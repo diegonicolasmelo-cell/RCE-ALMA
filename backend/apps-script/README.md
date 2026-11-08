@@ -26,7 +26,11 @@
    uno define el suyo en su primer ingreso.
 6. **Reemplaza los RUT de marcador de posición** por los reales, en la hoja
    `usuarios` y en `src/core/dotacion.ts`.
-7. `Implementar → Nueva implementación → Aplicación web`:
+7. **Si la app se sirve desde este mismo proyecto** (lo recomendado): agrega un archivo
+   HTML llamado `index` y pega `dist-gas/index.html` (se genera con `npm run gas`).
+   El paso a paso completo está en `LEEME-MONTAJE.txt`. `doGet` sin token sirve la
+   app; con token, responde la API como siempre.
+   `Implementar → Nueva implementación → Aplicación web`:
    - *Ejecutar como*: **Yo**
    - *Quién tiene acceso*: **Cualquier persona**
 8. Copia la URL `/exec` resultante.

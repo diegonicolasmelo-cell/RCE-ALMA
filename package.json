@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "e2e": "node e2e/flujo.cjs",
     "check": "npm run typecheck && npm test",
-    "artefacto": "vite build -c vite.artefacto.config.ts && node scripts/armar-artefacto.cjs"
+    "artefacto": "vite build -c vite.artefacto.config.ts && node scripts/armar-artefacto.cjs",
+    "gas": "tsc --noEmit && vite build -c vite.gas.config.ts && node scripts/armar-gas.cjs",
+    "e2e:gas": "node e2e/gas.cjs"
   },
   "dependencies": {
     "dexie": "4.0.11",

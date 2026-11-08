@@ -60,54 +60,89 @@ var MAX_REGISTROS_POR_LOTE = 200;
 
 function doPost(e) {
   try {
-    var cuerpo = JSON.parse(e.postData.contents);
-
-    // El canal de identidad exige el token de estacion; el resto, el de app.
-    var esAccionIdentidad =
-      cuerpo.accion === "guardarReferencia" ||
-      cuerpo.accion === "purgarReferencia";
-    var autorizado = esAccionIdentidad
-      ? tokenEstacionValido(cuerpo.token)
-      : tokenValido(cuerpo.token);
-    if (!autorizado) {
-      return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
-    }
-
-    switch (cuerpo.accion) {
-      case "guardarReferencia":
-        return respuesta(guardarReferencia(cuerpo.referencias));
-      case "purgarReferencia":
-        return respuesta(purgarReferencia(cuerpo.episodioIds));
-      case "login":
-        return respuesta(login(cuerpo.rut, cuerpo.pin));
-      case "definirPin":
-        return respuesta(definirPin(cuerpo.rut, cuerpo.pinActual, cuerpo.pinNuevo));
-      case "sincronizar":
-        return respuesta(sincronizar(cuerpo));
-      default:
-        return respuesta({ ok: false, error: "ACCION_DESCONOCIDA" });
-    }
+    return respuesta(procesarPost(JSON.parse(e.postData.contents)));
   } catch (err) {
     return respuesta({ ok: false, error: "ERROR_INTERNO", detalle: String(err) });
   }
 }
 
+/**
+ * Sin token ni recurso: se sirve la APP (index.html). Con token: es la API de lectura.
+ * Asi un solo proyecto de Apps Script es pagina y servidor a la vez.
+ */
 function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (!p.token && !p.recurso) return servirApp();
   try {
-    if (e.parameter.recurso === "referencia") {
-      if (!tokenEstacionValido(e.parameter.token)) {
-        return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
-      }
-      return respuesta({ ok: true, referencias: leerHoja(HOJAS.REFERENCIA, "") });
-    }
-    if (!tokenValido(e.parameter.token)) {
-      return respuesta({ ok: false, error: "TOKEN_INVALIDO" });
-    }
-    // `desde` es un ISO 8601; permite sincronia incremental en vez de leer todo.
-    return respuesta(leer(e.parameter.desde || ""));
+    return respuesta(procesarGet(p));
   } catch (err) {
     return respuesta({ ok: false, error: "ERROR_INTERNO", detalle: String(err) });
   }
+}
+
+/**
+ * La pagina de la app. Se sirve con createHtmlOutputFromFile y SIN plantillas: el
+ * index.html es un cargador ASCII con la app en base64 ("cohete"), asi el analizador
+ * de Google nunca ve el codigo real. Generarlo con `npm run gas`.
+ */
+function servirApp() {
+  return HtmlService.createHtmlOutputFromFile("index")
+    .setTitle("UPC-Pulse")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1, viewport-fit=cover");
+}
+
+/** Llamada desde la app servida por este mismo proyecto (google.script.run). Devuelve texto JSON. */
+function rcePost(texto) {
+  try {
+    return JSON.stringify(procesarPost(JSON.parse(texto)));
+  } catch (err) {
+    return JSON.stringify({ ok: false, error: "ERROR_INTERNO", detalle: String(err) });
+  }
+}
+
+/** Lectura desde la app servida por este mismo proyecto (google.script.run). Devuelve texto JSON. */
+function rceGet(params) {
+  try {
+    return JSON.stringify(procesarGet(params || {}));
+  } catch (err) {
+    return JSON.stringify({ ok: false, error: "ERROR_INTERNO", detalle: String(err) });
+  }
+}
+
+function procesarPost(cuerpo) {
+  // El canal de identidad exige el token de estacion; el resto, el de app.
+  var esAccionIdentidad =
+    cuerpo.accion === "guardarReferencia" ||
+    cuerpo.accion === "purgarReferencia";
+  var autorizado = esAccionIdentidad
+    ? tokenEstacionValido(cuerpo.token)
+    : tokenValido(cuerpo.token);
+  if (!autorizado) return { ok: false, error: "TOKEN_INVALIDO" };
+
+  switch (cuerpo.accion) {
+    case "guardarReferencia":
+      return guardarReferencia(cuerpo.referencias);
+    case "purgarReferencia":
+      return purgarReferencia(cuerpo.episodioIds);
+    case "login":
+      return login(cuerpo.rut, cuerpo.pin);
+    case "definirPin":
+      return definirPin(cuerpo.rut, cuerpo.pinActual, cuerpo.pinNuevo);
+    case "sincronizar":
+      return sincronizar(cuerpo);
+    default:
+      return { ok: false, error: "ACCION_DESCONOCIDA" };
+  }
+}
+
+function procesarGet(p) {
+  if (p.recurso === "referencia") {
+    if (!tokenEstacionValido(p.token)) return { ok: false, error: "TOKEN_INVALIDO" };
+    return { ok: true, referencias: leerHoja(HOJAS.REFERENCIA, "") };
+  }
+  if (!tokenValido(p.token)) return { ok: false, error: "TOKEN_INVALIDO" };
+  // `desde` es un ISO 8601; permite sincronia incremental en vez de leer todo.
+  return leer(p.desde || "");
 }
 
 function respuesta(obj) {

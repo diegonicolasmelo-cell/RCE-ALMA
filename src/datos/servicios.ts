@@ -4,10 +4,11 @@
  */
 
 import { BaseLocal, guardarMeta, leerMeta } from "./db";
-import { crearApiHttp, crearApiLocal } from "./api";
+import { crearApiHttp, crearApiLocal, crearApiRemota } from "./api";
 import type { ClienteApi } from "./api";
 import { combinarConfig, leerConfigEntorno, modoLocal, parsearHash } from "./config";
 import type { ConexionDispositivo, ConfigApp } from "./config";
+import { MENSAJE_SIN_CONFIGURAR, URL_APPS_SCRIPT, contextoAppsScript, googleScript, reemplazarHashExterno, transporteAppsScript } from "./gas";
 import { Repositorio } from "./repositorio";
 import { sembrarSiVacia } from "./semilla";
 import { Sincronizador } from "./sync";
@@ -33,28 +34,42 @@ export function iniciarServicios(): Promise<Servicios> {
 }
 
 async function crear(): Promise<Servicios> {
-  const db = new BaseLocal();
+  // Servida por Apps Script: el servidor es el mismo proyecto y se le habla por google.script.run.
+  const gas = contextoAppsScript();
+  const gs = gas ? googleScript() : null;
+  // La demostracion usa otra base local: sus pacientes inventados nunca se mezclan con los reales.
+  const db = gas?.demo ? new BaseLocal("upc-pulse-demo") : new BaseLocal();
 
   // Llaves y conexion llegan en un enlace (#config?u=..&a=.. / #estacion?t=..), se guardan en
   // este navegador y se borran de la barra. No van en el codigo publicado.
   const h = parsearHash(window.location.hash);
   if (h.token) await guardarMeta(db, CLAVE_TOKEN_ESTACION, h.token);
-  if (h.apiUrl && h.appToken) {
-    const conexion: ConexionDispositivo = { apiUrl: h.apiUrl, appToken: h.appToken, ...(h.sinapseUrl ? { sinapseUrl: h.sinapseUrl } : {}) };
+  const apiUrlEnlace = gs ? URL_APPS_SCRIPT : h.apiUrl;
+  if (apiUrlEnlace && h.appToken) {
+    const conexion: ConexionDispositivo = { apiUrl: apiUrlEnlace, appToken: h.appToken, ...(h.sinapseUrl ? { sinapseUrl: h.sinapseUrl } : {}) };
     await guardarMeta(db, CLAVE_CONEXION, conexion);
   }
   if (h.token || h.apiUrl || h.appToken || h.sinapseUrl) {
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${h.limpio}`);
+    // Tambien en la barra de afuera del iframe, que es la que ve la persona.
+    if (gs && gas) reemplazarHashExterno(h.limpio, gas.parametros, gs);
   }
 
-  const config = combinarConfig(leerConfigEntorno(), await leerMeta<ConexionDispositivo>(db, CLAVE_CONEXION));
-  const local = modoLocal(config);
+  const guardada = await leerMeta<ConexionDispositivo>(db, CLAVE_CONEXION);
+  const config = gs
+    ? { apiUrl: URL_APPS_SCRIPT, appToken: guardada?.appToken ?? null, sinapseUrl: guardada?.sinapseUrl ?? leerConfigEntorno().sinapseUrl }
+    : combinarConfig(leerConfigEntorno(), guardada);
+  const local = gas ? gas.demo : modoLocal(config);
+  if (gs && !local && !config.appToken) throw new Error(MENSAJE_SIN_CONFIGURAR);
   const tokenEstacion = (await leerMeta<string>(db, CLAVE_TOKEN_ESTACION)) ?? null;
 
-  const api: ClienteApi =
-    !local && config.apiUrl && config.appToken
-      ? crearApiHttp({ url: config.apiUrl, appToken: config.appToken, stationToken: tokenEstacion })
-      : crearApiLocal();
+  const api: ClienteApi = local
+    ? crearApiLocal()
+    : gs && config.appToken
+      ? crearApiRemota(transporteAppsScript(gs), { appToken: config.appToken, stationToken: tokenEstacion })
+      : config.apiUrl && config.appToken
+        ? crearApiHttp({ url: config.apiUrl, appToken: config.appToken, stationToken: tokenEstacion })
+        : crearApiLocal();
 
   const sync = new Sincronizador(db, api);
   const repo = new Repositorio(db, sync);

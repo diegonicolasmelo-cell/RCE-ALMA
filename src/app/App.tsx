@@ -57,7 +57,7 @@ export function App() {
   const ruta = useRuta();
 
   useEffect(() => {
-    iniciarServicios().then(setServicios).catch((e: unknown) => setError(String(e)));
+    iniciarServicios().then(setServicios).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {

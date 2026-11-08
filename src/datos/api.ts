@@ -16,7 +16,6 @@ export interface LoteSync {
   controles: Record<string, unknown>[];
   eventos: Record<string, unknown>[];
   apk: Record<string, unknown>[];
-  ventiladores: Record<string, unknown>[];
 }
 
 export type RespuestaSync =
@@ -28,7 +27,6 @@ export interface DatosNube {
   readonly controles: readonly unknown[];
   readonly eventos: readonly unknown[];
   readonly apk: readonly unknown[];
-  readonly ventiladores: readonly unknown[];
   readonly servidorEn: string;
 }
 
@@ -129,7 +127,6 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
           controles: arr("controles"),
           eventos: arr("eventos"),
           apk: arr("apk"),
-          ventiladores: arr("ventiladores"),
           servidorEn: String(r["servidorEn"] ?? "")
         }
       };
@@ -187,7 +184,7 @@ export function crearApiLocal(): ClienteApi {
       return { ok: true, servidorEn: new Date().toISOString() };
     },
     async leer() {
-      return { ok: true, datos: { episodios: [], controles: [], eventos: [], apk: [], ventiladores: [], servidorEn: new Date().toISOString() } };
+      return { ok: true, datos: { episodios: [], controles: [], eventos: [], apk: [], servidorEn: new Date().toISOString() } };
     },
     async leerReferencias() {
       return { ok: true, referencias: [...referencias.values()] };

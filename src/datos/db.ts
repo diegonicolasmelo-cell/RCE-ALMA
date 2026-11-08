@@ -8,9 +8,9 @@
 
 import Dexie from "dexie";
 import type { Table } from "dexie";
-import type { Control, Episodio, EventoClinico, IdentidadPaciente, MovimientoVentilador, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 
-export type TipoRegistro = "episodio" | "control" | "evento" | "apk" | "ventilador";
+export type TipoRegistro = "episodio" | "control" | "evento" | "apk";
 
 /** Registro pendiente de subir. El payload ya esta serializado para la nube. */
 export interface EntradaCola {
@@ -38,8 +38,6 @@ export class BaseLocal extends Dexie {
   controles!: Table<Control, string>;
   eventos!: Table<EventoClinico, string>;
   apk!: Table<ValidacionApk, string>;
-  /** Registro de movimientos de ventiladores (solo se agrega). El inventario se deriva de aqui. */
-  movVentiladores!: Table<MovimientoVentilador, string>;
   /** Solo en PC de la estacion. Nunca existe ni se lee en el celular. */
   identidades!: Table<IdentidadPaciente, string>;
   cola!: Table<EntradaCola, number>;
@@ -55,17 +53,6 @@ export class BaseLocal extends Dexie {
       identidades: "episodioId",
       cola: "++id,tipo,proximoIntento,estado",
       meta: "clave"
-    });
-    // v2: el inventario de ventiladores (independiente del paciente).
-    this.version(2).stores({
-      episodios: "id,cama,activo",
-      controles: "id,episodioId,registradoEn",
-      eventos: "id,episodioId,registradoEn",
-      apk: "id,episodioId,turno",
-      identidades: "episodioId",
-      cola: "++id,tipo,proximoIntento,estado",
-      meta: "clave",
-      movVentiladores: "id,ventiladorId,registradoEn"
     });
   }
 }

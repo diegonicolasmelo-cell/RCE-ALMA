@@ -61,10 +61,7 @@ export function ListaCamas() {
     <div className="cel-cuerpo" style={{ display: "grid", gap: 10 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
-        <span className="row" style={{ gap: 12 }}>
-          <button type="button" className="linkbtn" onClick={() => irA("ventiladores")}>Ventiladores</button>
-          <button type="button" className="linkbtn" onClick={() => irA("elegir")}>Cambiar mis camas</button>
-        </span>
+        <button type="button" className="linkbtn" onClick={() => irA("elegir")}>Cambiar mis camas</button>
       </div>
       {nMias === 0 && <p className="small muted">No elegiste camas. Puedes abrir cualquiera de abajo o usar «Cambiar mis camas».</p>}
       {ordenadas.map(({ ep, ultimo, eventos, apks }, i) => {

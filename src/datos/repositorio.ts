@@ -5,22 +5,11 @@
  * modo que nunca queda un dato guardado sin su subida pendiente (ni al reves).
  */
 
-import { aplicarEventoAEpisodio, altaVentilador, derivarInventario, moverVentilador } from "@core/index";
+import { aplicarEventoAEpisodio } from "@core/index";
 import { normalizarControl } from "@core/index";
-import type {
-  Control,
-  DatosDestino,
-  Episodio,
-  EventoClinico,
-  ModeloVentilador,
-  MovimientoVentilador,
-  ResultadoMovimiento,
-  UbicacionVentilador,
-  ValidacionApk,
-  Ventilador
-} from "@core/index";
+import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
-import { filaDeApk, filaDeControl, filaDeEpisodio, filaDeEvento, filaDeMovimientoVentilador } from "./nube";
+import { filaDeApk, filaDeControl, filaDeEpisodio, filaDeEvento } from "./nube";
 import type { FilaNube } from "./nube";
 import type { Sincronizador } from "./sync";
 
@@ -32,7 +21,7 @@ export class Repositorio {
   ) {}
 
   private tablas() {
-    return [this.db.episodios, this.db.controles, this.db.eventos, this.db.apk, this.db.movVentiladores, this.db.cola, this.db.meta];
+    return [this.db.episodios, this.db.controles, this.db.eventos, this.db.apk, this.db.cola, this.db.meta];
   }
 
   /** Guarda una version nueva del episodio. Devuelve la fila para encolarla. */
@@ -100,57 +89,6 @@ export class Repositorio {
       if (!ep) return;
       await this.sync.encolar([await this.poner({ ...ep, activo: false })]);
     });
-  }
-
-  /**
-   * Mover un ventilador (o darlo de alta). Lee el inventario, decide con las reglas
-   * del nucleo y escribe los movimientos, todo en una transaccion: dos toques seguidos
-   * nunca ven un inventario a medias.
-   */
-  async moverVentilador(
-    ventiladorId: string,
-    destino: UbicacionVentilador,
-    datos: DatosDestino,
-    rutAutor: string,
-    nuevoId: () => string
-  ): Promise<ResultadoMovimiento> {
-    return this.decidirVentilador((inv, ctx) => moverVentilador(inv, ventiladorId, destino, datos, ctx), rutAutor, nuevoId);
-  }
-
-  async altaVentilador(
-    modelo: ModeloVentilador,
-    numero: number,
-    destino: UbicacionVentilador,
-    rutAutor: string,
-    nuevoId: () => string
-  ): Promise<ResultadoMovimiento> {
-    return this.decidirVentilador((inv, ctx) => altaVentilador(inv, modelo, numero, destino, ctx), rutAutor, nuevoId);
-  }
-
-  private async decidirVentilador(
-    decidir: (inv: readonly Ventilador[], ctx: { rutAutor: string; ahora: Date; nuevoId: () => string }) => ResultadoMovimiento,
-    rutAutor: string,
-    nuevoId: () => string
-  ): Promise<ResultadoMovimiento> {
-    return this.db.transaction("rw", this.tablas(), async () => {
-      const inv = derivarInventario(await this.db.movVentiladores.toArray());
-      const r = decidir(inv, { rutAutor, ahora: this.ahora(), nuevoId });
-      if (r.ok) {
-        await this.db.movVentiladores.bulkAdd([...r.movimientos]);
-        await this.sync.encolar(r.movimientos.map(filaDeMovimientoVentilador));
-      }
-      return r;
-    });
-  }
-
-  async inventarioVentiladores(): Promise<readonly Ventilador[]> {
-    return derivarInventario(await this.db.movVentiladores.toArray());
-  }
-
-  /** El registro completo de movimientos de un equipo, del mas antiguo al mas nuevo. */
-  async movimientosDe(ventiladorId: string): Promise<readonly MovimientoVentilador[]> {
-    const m = await this.db.movVentiladores.where("ventiladorId").equals(ventiladorId).toArray();
-    return m.sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   }
 
   // ---- lectura ----

@@ -82,13 +82,9 @@ Todas las peticiones llevan `token`.
 ### `POST` · `{ accion: "definirPin", rut, pinActual, pinNuevo }`
 Primer PIN sin `pinActual`; los cambios posteriores lo exigen.
 
-### `POST` · `{ accion: "sincronizar", episodios[], controles[], eventos[], apk[], ventiladores[] }`
+### `POST` · `{ accion: "sincronizar", episodios[], controles[], eventos[], apk[] }`
 Append-only e **idempotente**: los `id` ya presentes se ignoran, por lo que
 reintentar una sincronía interrumpida es seguro.
-
-`ventiladores[]` es el registro de movimientos de los equipos (donde está cada ventilador).
-No lleva datos de pacientes. Si el libro ya estaba instalado, vuelve a pegar `Codigo.gs` y
-ejecuta `inicializarLibro` de nuevo: solo crea la hoja `ventiladores` que falta, no toca lo demás.
 
 → `{ ok: true, controles: { insertados, duplicados }, ... }`
 → `{ ok: false, error: "PAYLOAD_CON_IDENTIDAD", llaves: [...] }` si el payload

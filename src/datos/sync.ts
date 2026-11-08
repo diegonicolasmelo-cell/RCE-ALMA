@@ -9,7 +9,6 @@
  * Por eso se relee una ventana de 24 h y se deduplica por id (la hoja es chica).
  */
 
-import { movimientoVentiladorDeNube } from "@core/index";
 import { leerMeta, guardarMeta } from "./db";
 import type { BaseLocal, EntradaCola } from "./db";
 import type { ClienteApi, LoteSync } from "./api";
@@ -40,7 +39,6 @@ export interface ResultadoTraer {
   readonly controles: number;
   readonly eventos: number;
   readonly apk: number;
-  readonly ventiladores: number;
   readonly episodios: number;
   readonly error: string | null;
 }
@@ -89,15 +87,11 @@ export class Sincronizador {
 
     if (lista.length === 0) return this.resumen(0, null);
 
-    const lote: LoteSync = { episodios: [], controles: [], eventos: [], apk: [], ventiladores: [] };
-    const destinos: Record<EntradaCola["tipo"], Record<string, unknown>[]> = {
-      episodio: lote.episodios,
-      control: lote.controles,
-      evento: lote.eventos,
-      apk: lote.apk,
-      ventilador: lote.ventiladores
-    };
-    for (const e of lista) destinos[e.tipo].push(e.payload);
+    const lote: LoteSync = { episodios: [], controles: [], eventos: [], apk: [] };
+    for (const e of lista) {
+      const destino = e.tipo === "episodio" ? lote.episodios : e.tipo === "control" ? lote.controles : e.tipo === "evento" ? lote.eventos : lote.apk;
+      destino.push(e.payload);
+    }
 
     const r = await this.api.sincronizar(lote);
     const ids = lista.map((e) => e.id!).filter((id): id is number => id !== undefined);
@@ -138,7 +132,7 @@ export class Sincronizador {
 
   /** Lee lo que subieron los demas y lo fusiona en la base local, sin pisar cambios locales mas nuevos. */
   async traer(opciones: { todo?: boolean } = {}): Promise<ResultadoTraer> {
-    const vacio: ResultadoTraer = { controles: 0, eventos: 0, apk: 0, ventiladores: 0, episodios: 0, error: null };
+    const vacio: ResultadoTraer = { controles: 0, eventos: 0, apk: 0, episodios: 0, error: null };
     const ultima = await leerMeta<number>(this.db, CLAVE_ULTIMA_LECTURA);
     const desde = opciones.todo || ultima === undefined ? null : new Date(ultima - VENTANA_LECTURA_MS).toISOString();
 
@@ -149,7 +143,6 @@ export class Sincronizador {
     const controles = d.controles.map(controlDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
     const eventos = d.eventos.map(eventoDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
     const apk = d.apk.map(apkDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
-    const ventiladores = d.ventiladores.map(movimientoVentiladorDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
     const versiones = d.episodios.map(versionDeEpisodioNube).filter((x): x is VersionEpisodio => x !== null);
 
     // Un registro propio (id ya existente) no se pisa: la nube y lo local coinciden por construccion.
@@ -164,7 +157,6 @@ export class Sincronizador {
     const nC = await nuevos(this.db.controles, controles);
     const nE = await nuevos(this.db.eventos, eventos);
     const nA = await nuevos(this.db.apk, apk);
-    const nV = await nuevos(this.db.movVentiladores, ventiladores);
 
     // Episodios: solo se aplica una version remota si es mas nueva que la local.
     let nEp = 0;
@@ -180,7 +172,7 @@ export class Sincronizador {
     }
 
     if (d.servidorEn) await guardarMeta(this.db, CLAVE_ULTIMA_LECTURA, Date.parse(d.servidorEn) || this.ahora());
-    return { controles: nC, eventos: nE, apk: nA, ventiladores: nV, episodios: nEp, error: null };
+    return { controles: nC, eventos: nE, apk: nA, episodios: nEp, error: null };
   }
 
   /** Marca local de la version de un episodio (para no pisarla al leer). */

@@ -3,7 +3,7 @@
  * Nunca se cargan cuando hay una API configurada.
  */
 
-import { construirRut, diaIso, enCama, enZona, firmarApkCumple, turnoAnterior } from "@core/index";
+import { construirRut, firmarApkCumple, turnoAnterior } from "@core/index";
 import type {
   Control,
   Episodio,
@@ -242,32 +242,5 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
   await repo.firmarApk(apkPrevia("ep-02-apk0", "ep-02", "TET", "11.111.112-2"));
   await repo.firmarApk(apkPrevia("ep-03-apk0", "ep-03", "TQT", "22.222.222-2"));
   await db.identidades.bulkPut(identidades);
-  await sembrarVentiladores(repo, ahora);
   return true;
-}
-
-/** Inventario de ejemplo: equipos en camas, en cada zona y dos prestamos (uno atrasado). */
-async function sembrarVentiladores(repo: Repositorio, ahora: Date): Promise<void> {
-  let k = 0;
-  const id = (): string => `demo-vent-${++k}`;
-  const dia = (n: number): string => diaIso(new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + n));
-  const camas: readonly (readonly [Parameters<Repositorio["altaVentilador"]>[0], number, string])[] = [
-    ["PB840", 1, "2"],
-    ["PB980", 1, "3"],
-    ["SERVO_U", 1, "6"],
-    ["AVEA", 1, "9"],
-    ["VELA", 1, "10"],
-    ["MEKICS_EVO5", 1, "13"],
-    ["SAVINA300", 1, "15"],
-    ["PB840", 2, "17"]
-  ];
-  for (const [modelo, numero, cama] of camas) await repo.altaVentilador(modelo, numero, enCama(cama), RUT_DIEGO, id);
-  await repo.altaVentilador("AVEA", 2, enZona("PASILLO"), RUT_DIEGO, id);
-  await repo.altaVentilador("PB980", 2, enZona("BODEGA"), RUT_DIEGO, id);
-  await repo.altaVentilador("SERVO_U", 2, enZona("BODEGA"), RUT_DIEGO, id);
-  await repo.moverVentilador("SERVO_U-2", enZona("MANTENCION"), { nota: "Servicio técnico, revisión de sensor de flujo" }, RUT_DIEGO, id);
-  await repo.altaVentilador("SAVINA300", 2, enZona("BODEGA"), RUT_DIEGO, id);
-  await repo.moverVentilador("SAVINA300-2", enZona("FUERA"), { prestamo: { servicio: "Pabellón", salida: dia(-3), retorno: dia(2) } }, RUT_DIEGO, id);
-  await repo.altaVentilador("SERVO_U", 3, enZona("BODEGA"), RUT_DIEGO, id);
-  await repo.moverVentilador("SERVO_U-3", enZona("FUERA"), { prestamo: { servicio: "Urgencia", salida: dia(-9), retorno: dia(-1) } }, RUT_DIEGO, id);
 }

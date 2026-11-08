@@ -6,19 +6,16 @@ import {
   calcularDerivados,
   calcularPbw,
   componerInformeRiesgo,
-  camaDeEpisodio,
   describirEquipos,
-  equiposEfectivos,
   describirEvento,
   enlaceSinapse,
   eventosDeRiesgo,
   formatearRut,
   purgaDeIdentidadLista,
   turnoAnterior,
-  turnoDe,
-  ventiladorEnCama
+  turnoDe
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk, Ventilador } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
@@ -36,13 +33,11 @@ interface Props {
   apks: readonly ValidacionApk[];
   identidad: IdentidadPaciente | null;
   ahora: Date;
-  /** Inventario de ventiladores de la unidad (el de esta cama manda sobre el anotado en el episodio). */
-  ventiladores?: readonly Ventilador[];
 }
 
 const MAX_COLUMNAS = 10;
 
-export function Detalle({ ep, controles, eventos, apks, identidad, ahora, ventiladores = [] }: Props) {
+export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Props) {
   const { repo, api, db, config } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [confirmarAlta, setConfirmarAlta] = useState(false);
@@ -99,7 +94,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora, ventil
             {identidad?.rut ? <>RUT <span className="mono">{formatearRut(identidad.rut)}</span> · </> : null}
             {ep.edad} a · {ep.diagnostico}
           </div>
-          <div className="small ink2">Equipos: {describirEquipos(equiposEfectivos(ep.equipos, ventiladorEnCama(ventiladores, camaDeEpisodio(ep.cama))))}</div>
+          <div className="small ink2">Equipos: {describirEquipos(ep.equipos)}</div>
           <div className="small ink2">
             APK · turno anterior: {apkPrevia ? `${apkPrevia.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkPrevia.hora} (${nombreProfesional(apkPrevia.rutAutor)})` : "sin registro"} · este turno:{" "}
             {apkActual ? `${apkActual.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkActual.hora}` : "pendiente"}

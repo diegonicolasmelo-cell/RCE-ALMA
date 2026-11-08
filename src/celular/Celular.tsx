@@ -32,7 +32,6 @@ import { TabEventos } from "./TabEventos";
 import { ElegirCamas, claveMisCamas } from "./ElegirCamas";
 import { Evaluaciones } from "./Evaluaciones";
 import { ListaCamas } from "./ListaCamas";
-import { TableroVentiladores } from "../ventiladores/Tablero";
 import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 
@@ -296,22 +295,6 @@ export function Celular() {
       <div className="app-cel">
         {cabecera}
         <ElegirCamas />
-      </div>
-    );
-  }
-
-  if (vista === "ventiladores") {
-    return (
-      <div className="app-cel">
-        {cabecera}
-        <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => irA("camas")}>‹ Camas</button>
-          <b>Ventiladores</b>
-          <span className="small muted">· dónde está cada equipo</span>
-        </div>
-        <div className="cel-cuerpo">
-          <TableroVentiladores rutAutor={sesion.rut} />
-        </div>
       </div>
     );
   }

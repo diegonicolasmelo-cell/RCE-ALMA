@@ -34,7 +34,6 @@ var HOJAS = {
   CONTROLES: "controles",
   EVENTOS: "eventos",
   APK: "apk",
-  VENTILADORES: "ventiladores",
   USUARIOS: "usuarios",
   REFERENCIA: "referencia",
   AUDITORIA: "auditoria"
@@ -315,8 +314,7 @@ function sincronizar(cuerpo) {
     episodios: cuerpo.episodios,
     controles: cuerpo.controles,
     eventos: cuerpo.eventos,
-    apk: cuerpo.apk,
-    ventiladores: cuerpo.ventiladores
+    apk: cuerpo.apk
   });
 
   if (hallazgos.length > 0) {
@@ -335,7 +333,6 @@ function sincronizar(cuerpo) {
       controles: agregarRegistros(HOJAS.CONTROLES, cuerpo.controles),
       eventos: agregarRegistros(HOJAS.EVENTOS, cuerpo.eventos),
       apk: agregarRegistros(HOJAS.APK, cuerpo.apk),
-      ventiladores: agregarRegistros(HOJAS.VENTILADORES, cuerpo.ventiladores),
       servidorEn: new Date().toISOString()
     };
     return resultado;
@@ -454,7 +451,6 @@ function leer(desde) {
     controles: leerHoja(HOJAS.CONTROLES, desde),
     eventos: leerHoja(HOJAS.EVENTOS, desde),
     apk: leerHoja(HOJAS.APK, desde),
-    ventiladores: leerHoja(HOJAS.VENTILADORES, desde),
     servidorEn: new Date().toISOString()
   };
 }
@@ -489,7 +485,6 @@ function inicializarLibro() {
   esquema[HOJAS.CONTROLES] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.EVENTOS] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.APK] = ["id", "episodioId", "registradoEn", "json"];
-  esquema[HOJAS.VENTILADORES] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.REFERENCIA] = ["id", "episodioId", "registradoEn", "dato"];
   esquema[HOJAS.USUARIOS] = ["rut", "sal", "hashPin", "nombre", "turno"];
   esquema[HOJAS.AUDITORIA] = ["registradoEn", "rut", "accion", "detalle"];

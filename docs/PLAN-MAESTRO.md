@@ -528,23 +528,3 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
 3. Informe de gestión de riesgo pre-llenado en **< 5 min** en vez de 40.
 4. REM 28 mensual sin recuento manual.
 5. Tendencias de 24 h legibles de un vistazo en la estación.
-
----
-
-## Tablero de ventiladores (nov-2026)
-
-Pedido de la unidad: saber dónde está cada ventilador, moverlo desde el PC y que cada colega
-registre desde el celular el de su sala; un colega, el del fondo, cuida además la bodega.
-
-- **Datos:** inventario independiente del paciente, derivado de un registro de movimientos de
-  solo agregar (hoja `ventiladores` en Apps Script; tabla `movVentiladores` en la base local,
-  versión 2 de Dexie). Sin datos de pacientes; pasa igual por la guarda de identidad.
-- **Zonas:** pasillo, bodega, mantención (nota libre) y fuera de la unidad (servicio, salida
-  y retorno con aviso de color).
-- **Pantalla:** cinco ventanas fijas (1–6, 7–12, 13–18, pasillo y bodega, mantención y
-  préstamo); camas 1–4 en columna, el resto en pares; recuadros de tamaño constante.
-- **Pendiente de la unidad:** cuántos equipos hay en total y cuántos suelen quedar en pasillo,
-  mantención y préstamo (hoy una zona con varios equipos crece); si el atraso de un préstamo
-  debe llegar también a una campana de alertas; si el retorno de un préstamo necesita un botón
-  «ya volvió»; fotos de cada modelo para afinar los dibujos; si hay más de un Servo U.
-- **Para desplegar:** pegar `Codigo.gs` y ejecutar `inicializarLibro` (crea la hoja que falta).

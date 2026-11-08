@@ -313,6 +313,22 @@ export function Celular() {
     <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => { franja.cerrar(); irA("camas"); }}>‹ Camas</button>
   );
 
+  if (vista === "pve") {
+    return (
+      <div className="app-cel">
+        {cabecera}
+        <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
+          {volver}
+          <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
+          <span className="small muted">PVE diaria · hoja de PVE</span>
+        </div>
+        <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
+          <TabPve ctx={ctx} />
+        </div>
+      </div>
+    );
+  }
+
   if (vista === "evaluacion") {
     return (
       <div className="app-cel">

@@ -215,6 +215,7 @@ PC UCI   ── llave de estación ──▶  hoja: identidad (nombre, RUT)  · 
   invasivo y la alimentación parten en N/A. Al firmar se llena una columna de la
   hoja digital (copia fiel, 10 fechas por página, con RUN), que la estación guarda
   en Drive y se puede imprimir o descargar. Un “0” difiere la kine respiratoria.
+- **PVE directa**: la tarjeta de la cama ofrece entrar a la PVE sin pasar por el control: «Evaluar PVE diaria» si el paciente está ventilado en CPAP/PS, y «Iniciar PVE», «Continuar PVE», «PVE terminada: registrar extubación» o «Post extubación: registrar» según lo que esté pendiente (lo urgente, destacado). También se entra desde Evaluaciones · PVE y extubación. Reglas en `accesoPve` (`src/core/pve.ts`).
 - **PVE**: checklist de 8 criterios → control inicial (arranca el cronómetro) →
   control a los 30 min → fin → extubación → reevaluaciones a 0, 30, 60, 120 min y
   48 h → falla post extubación (sí/no, hipótesis, observaciones).

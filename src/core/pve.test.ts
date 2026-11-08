@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITERIOS_PVE, bloquesPostExtub, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
+import { CRITERIOS_PVE, accesoPve, bloquesPostExtub, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve } from "./tipos";
 
@@ -141,5 +141,29 @@ describe("hoja de registro de PVE", () => {
     expect(r[0]!.fin?.exitosa).toBe(false);
     expect(r[1]!.treintaMin).toBeNull();
     expect(r[1]!.numero).toBe(2);
+  });
+});
+
+describe("entrada directa a la PVE desde la tarjeta de la cama", () => {
+  it("un ventilado en CPAP/PS sin checklist: 'Evaluar PVE diaria'", () => {
+    expect(accesoPve("TET", "CPAP_PS", [], t(9))).toEqual({ texto: "Evaluar PVE diaria", destacado: false });
+  });
+
+  it("en modalidad controlada y sin nada pendiente no se ofrece", () => {
+    expect(accesoPve("TET", "ACVC", [], t(9))).toBeNull();
+    expect(accesoPve("NATURAL", "CPAP_PS", [], t(9))).toBeNull();
+  });
+
+  it("apto: 'Iniciar PVE'; no apto: lo dice; en curso: 'Continuar PVE'", () => {
+    expect(accesoPve("TET", "CPAP_PS", [checklist(t(9))], t(9, 10))).toEqual({ texto: "Iniciar PVE", destacado: true });
+    const no = SI.map((x, i) => (i === 0 ? false : x));
+    expect(accesoPve("TET", "CPAP_PS", [checklist(t(9), no)], t(9, 10))?.texto).toMatch(/no apto/);
+    expect(accesoPve("TET", "ACVC", [checklist(t(9)), ...inicio(t(10))], t(10, 5))).toEqual({ texto: "Continuar PVE", destacado: true });
+  });
+
+  it("extubado: avisa cuando toca un control post extubación, aunque ya tenga vía aérea natural", () => {
+    const fin: EventoClinico = { ...base(t(10, 40), "fin"), tipo: "FIN_PVE", exitosa: true };
+    const evs = [checklist(t(9)), ...inicio(t(10)), fin, extub(t(11))];
+    expect(accesoPve("NATURAL", null, evs, t(11, 31))).toEqual({ texto: "Post extubación: registrar", destacado: true });
   });
 });

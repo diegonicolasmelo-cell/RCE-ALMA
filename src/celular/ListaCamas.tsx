@@ -1,6 +1,7 @@
-import { ClipboardList, Stethoscope } from "lucide-react";
+import { ClipboardList, Stethoscope, Timer } from "lucide-react";
 import { Fragment } from "react";
 import {
+  accesoPve,
   apkVigente,
   esViaAereaArtificial,
   estadoFlujoPve,
@@ -72,6 +73,7 @@ export function ListaCamas() {
         const cambios = filtrosPorCambiar(eventos, ahora);
         const duePost = flujo.bloque?.momentos.find((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H");
         const propia = esMia(ep);
+        const pve = accesoPve(ep.viaAereaActual, ultimo?.ventilacion.modalidad ?? null, eventos, ahora);
         return (
           <Fragment key={ep.id}>
           {i === nMias && <h3 style={{ margin: "8px 0 0" }}>Otras camas · para ayudar a un colega</h3>}
@@ -100,6 +102,11 @@ export function ListaCamas() {
                 <ClipboardList size={15} aria-hidden /> Evaluación
               </button>
             </div>
+            {pve && (
+              <button type="button" className={pve.destacado ? "btn primary" : "btn"} onClick={() => irA("pve", ep.id)}>
+                <Timer size={15} aria-hidden /> {pve.texto}
+              </button>
+            )}
           </article>
           </Fragment>
         );

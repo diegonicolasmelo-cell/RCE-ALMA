@@ -13,7 +13,8 @@
  */
 
 import { turnoDe } from "./turnos";
-import type { EventoClinico, MomentoPostExtub, TurnoClave } from "./tipos";
+import type { EventoClinico, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
+import { esViaAereaArtificial } from "./fisiologia";
 import { estadoPve } from "./eventos";
 import type { EstadoPve } from "./eventos";
 
@@ -194,4 +195,32 @@ export function registrosPve(eventos: readonly EventoClinico[]): RegistroPve[] {
     });
   });
   return res;
+}
+
+/** Entrada directa a la PVE desde la tarjeta de la cama: que ofrecer y si destacarlo. */
+export interface AccesoPve {
+  readonly texto: string;
+  /** Hay algo pendiente ahora (PVE en curso, control vencido): boton principal. */
+  readonly destacado: boolean;
+}
+
+/**
+ * Cuando la tarjeta de la cama ofrece entrar directo a la PVE, sin pasar por el control.
+ * Un paciente ventilado en CPAP/PS es candidato a la evaluacion diaria; lo que ya esta en
+ * marcha (PVE en curso, extubacion por registrar, controles post extubacion) se ofrece
+ * siempre. Con la via aerea natural y nada pendiente, no se ofrece.
+ */
+export function accesoPve(via: ViaAerea, modalidad: Modalidad | null, eventos: readonly EventoClinico[], ahora: Date): AccesoPve | null {
+  const f = estadoFlujoPve(eventos, ahora);
+  // Lo mas urgente primero: un control post extubacion que ya toca.
+  if (f.bloque && f.bloque.momentos.some((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H")) {
+    return { texto: "Post extubación: registrar", destacado: true };
+  }
+  if (f.fase === "EN_CURSO") return { texto: "Continuar PVE", destacado: true };
+  if (!esViaAereaArtificial(via)) return null;
+  if (f.fase === "TERMINADA") return { texto: "PVE terminada: registrar extubación", destacado: true };
+  if (f.fase === "APTO") return { texto: "Iniciar PVE", destacado: true };
+  if (f.fase === "NO_APTO") return { texto: "PVE diaria: no apto este turno", destacado: false };
+  if (modalidad === "CPAP_PS") return { texto: "Evaluar PVE diaria", destacado: false };
+  return null;
 }

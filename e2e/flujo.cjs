@@ -92,6 +92,19 @@ async function esperarServidor() {
       await cel.click('.chip:text-is("07–12")');
       await cel.click('button:has-text("Ver camas")');
       await cel.waitForSelector("text=Mis camas (6)");
+      // PVE directa: la cama en CPAP/PS la ofrece en su tarjeta; la que esta en modalidad controlada no.
+      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button:has-text("PVE")').count(), 0);
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Evaluar PVE diaria")');
+      await cel.waitForSelector("text=Prueba de ventilación espontánea");
+      assert.match(await cel.textContent(".app-cel"), /PVE diaria · hoja de PVE/);
+      assert.match(await cel.textContent(".app-cel"), /Checklist previo/);
+      assert.equal(await cel.locator('button:has-text("Guardar control")').count(), 0, "la PVE directa no abre el control");
+      await cel.click('button:has-text("‹ Camas")');
+      // Y tambien desde Evaluaciones · PVE y extubacion.
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Evaluación")');
+      await cel.click('button:has-text("PVE diaria: checklist")');
+      await cel.waitForSelector("text=Prueba de ventilación espontánea");
+      await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Registrar control")');
       await cel.waitForSelector("#cuerpo");
       assert.equal((await cel.locator(".cel-camas .chip").count()), 18);

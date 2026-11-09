@@ -451,46 +451,68 @@ async function esperarServidor() {
       assert.equal(await cel.locator(".evento-soporte").count(), 0);
     });
 
-    await prueba("evaluacion MRC-ss desde la tarjeta de la cama: puntaje, corte de debilidad y registro", async () => {
+    await prueba("evaluaciones en cuatro pestañas: cada bloque cabe en la pantalla, con hora real, botones y correccion del dato previo", async () => {
       await cel.click('button:has-text("‹ Camas")');
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
-      // Primero el apartado de PVE y extubacion, con VISAGE, via aerea, flujo pico de tos y deglucion.
-      assert.equal(await cel.locator(".cel-cuerpo h3").first().textContent(), "PVE y extubación");
-      await cel.click('button:has-text("Deglución")');
-      await cel.selectOption("#ev-nivel", "1");
-      // La hora sugerida es la de ahora; se corrige a la real, unos minutos antes.
-      const sugerida = await cel.inputValue("#ev-hora");
-      assert.match(sugerida, /^\d\d:\d\d$/);
+      assert.deepEqual(await cel.locator(".pestanas-ev button").allTextContents(), ["Previa a la UCI", "Fuerza y función", "PVE y extubación", "Imagen"]);
+      for (const p of ["Previa a la UCI", "Fuerza y función", "PVE y extubación", "Imagen"]) {
+        await cel.click(`.pestanas-ev button:text-is("${p}")`);
+        const sobra = await cel.evaluate(() => { const c = document.querySelector(".cel-cuerpo"); return c ? c.scrollHeight - c.clientHeight : 0; });
+        assert.ok(sobra <= 4, `${p}: el bloque cabe sin scroll (sobran ${sobra} px)`);
+      }
+      // Con TQT (cama 3) no hay PVE, y dice por que.
+      await cel.click('.pestanas-ev button:text-is("PVE y extubación")');
+      assert.ok(await cel.locator('[data-escala="PVE"]').isDisabled());
+      assert.match(await cel.textContent('[data-escala="PVE"]'), /Con TQT no hay PVE/);
+      // Tos y deglucion: con TQT aparecen el azul de metileno y la PTT. Hora real, unos minutos antes.
+      await cel.click('[data-escala="TOS_DEGLUCION"]');
+      assert.equal(await cel.locator('[aria-label="Test de azul de metileno (BDT)"]').count(), 1);
+      await cel.fill("#ev-pcf", "55");
+      await cel.locator('[aria-label="Deglución"] button:text-is("Alterada leve")').click();
       const real = await cel.evaluate(() => {
         const d = new Date(Date.now() - 7 * 60_000);
         return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       });
       await cel.fill("#ev-hora", real);
       await cel.fill("#ev-nota", "Tose al tragar saliva; se mantiene régimen cero");
-      await cel.click('button:has-text("Registrar evaluación")');
+      assert.match(await cel.textContent(".ev-res"), /Tos ineficaz/);
+      await cel.click('button:has-text("Guardar Tos y deglución")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".app-cel"), new RegExp(`${real} Deglución: esporádica · Tose al tragar saliva`));
-      // Ecografia: el hallazgo es la evaluacion; vacio no se registra.
-      await cel.click('button:has-text("Ecografía")');
-      await cel.click('button:has-text("Registrar evaluación")');
-      assert.match(await aviso(), /Escribe el hallazgo/);
-      await cel.click('.chip:has-text("Patrón B bilateral")');
-      await cel.click('button:has-text("Registrar evaluación")');
+      assert.match(await aviso(), new RegExp(`Guardado: Tos y deglución: PCF 55 L/min · deglución alterada leve.* · ${real}`));
+      assert.match(await cel.textContent('[data-escala="TOS_DEGLUCION"]'), /Última: Tos y deglución: PCF 55/);
+      // MRC-ss con botones 0-5: 12 movimientos en 4 = 48, sin DAUCI (el corte es < 48).
+      await cel.click('.pestanas-ev button:text-is("Fuerza y función")');
+      await cel.click('[data-escala="MRC_SS"]');
+      for (const g of await cel.locator('.ev-ops[aria-label*="·"]').all()) await g.locator('button:text-is("4")').click();
+      assert.match(await cel.textContent(".ev-res"), /MRC-ss 48\/60/);
+      assert.match(await cel.textContent(".ev-res"), /Sin DAUCI/);
+      await cel.click('button:has-text("Guardar MRC-ss")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".app-cel"), /Ecografía: Patrón B bilateral/);
-      await cel.click('button:has-text("Flujo pico de tos")');
-      await cel.fill("#ev-pef", "55");
-      await cel.click('button:has-text("Registrar evaluación")');
+      assert.match(await cel.textContent('[data-escala="MRC_SS"]'), /MRC-ss 48\/60/);
+      // Fragilidad: dato unico del episodio; volver a registrarla la corrige.
+      await cel.click('.pestanas-ev button:text-is("Previa a la UCI")');
+      await cel.click('[data-escala="FRAGILIDAD"]');
+      await cel.click('button:has-text("Guardar Fragilidad")');
+      assert.match(await cel.textContent('[role=alert]'), /Falta: el nivel de fragilidad/);
+      await cel.locator('.ev-listaop button:has-text("Vive con fragilidad leve")').click();
+      await cel.click('button:has-text("Guardar Fragilidad")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".app-cel"), /Flujo pico de tos: 55 L\/min/);
-      await cel.click('button:has-text("Fuerza muscular MRC-ss")');
-      for (const c of await cel.locator('input[id^="ev-m"]').all()) await c.fill("4");
-      assert.match(await cel.textContent(".app-cel"), /MRC sum score 48\/60/);
-      assert.match(await cel.textContent(".notice"), /Debilidad adquirida en UCI/);
-      await cel.click('button:has-text("Registrar evaluación")');
+      assert.match(await cel.textContent('[data-escala="FRAGILIDAD"]'), /Registrado: Fragilidad: ECF 5 .* tocar para corregir/);
+      await cel.click('[data-escala="FRAGILIDAD"]');
+      assert.equal(await cel.locator('.ev-listaop button[aria-pressed="true"] .n').textContent(), "5", "reabre con lo registrado");
+      await cel.locator('.ev-listaop button:has-text("Vive con fragilidad moderada")').click();
+      await cel.click('button:has-text("Guardar corrección")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".app-cel"), /MRC-ss: 48|Fuerza muscular MRC-ss: 48/);
+      assert.match(await aviso(), /Corregido: Fragilidad: ECF 6/);
+      // Charlson: cada toque baja la pantalla un renglon.
+      await cel.click('[data-escala="CHARLSON"]');
+      const y0 = await cel.evaluate(() => document.querySelector(".cel-cuerpo").scrollTop);
+      await cel.locator(".ev-chk").nth(2).click();
+      await cel.waitForTimeout(500);
+      assert.ok((await cel.evaluate(() => document.querySelector(".cel-cuerpo").scrollTop)) > y0, "al marcar, la pantalla avanza sola");
+      assert.match(await cel.textContent(".ev-res"), /Charlson 1 pt sin edad/);
+      await cel.click('button:text-is("Cancelar")');
     });
 
     await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive junto a la sedacion", async () => {

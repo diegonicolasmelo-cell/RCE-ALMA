@@ -370,7 +370,23 @@ export interface LecturasPve {
 }
 
 /** Escalas de la hoja neuromuscular y de weaning. Ver evaluaciones.ts. */
-export type IdEscala = "MRC_SS" | "FSS_ICU" | "FUERZA_RESPIRATORIA" | "VISAGE" | "VIA_AEREA" | "FLUJO_PICO_TOS" | "DEGLUCION" | "ECOGRAFIA" | "FRAGILIDAD" | "BARTHEL";
+export type IdEscala =
+  | "MRC_SS"
+  | "FSS_ICU"
+  | "CPAX"
+  | "IMS"
+  | "DINAMOMETRIA"
+  | "FUERZA_RESPIRATORIA"
+  | "TOS_DEGLUCION"
+  | "VISAGE"
+  | "VIA_AEREA"
+  | "ECOGRAFIA"
+  | "FRAGILIDAD"
+  | "BARTHEL"
+  | "CHARLSON"
+  /** De una version anterior: se leen, ya no se ofrecen. */
+  | "FLUJO_PICO_TOS"
+  | "DEGLUCION";
 
 export type ElementoFiltro = "TRACHCARE" | "HEPA";
 

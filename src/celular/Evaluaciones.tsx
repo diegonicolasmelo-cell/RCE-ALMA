@@ -161,7 +161,8 @@ export function Evaluaciones({ ctx }: { ctx: ContextoCama }) {
           ))}
         </div>
         <div className="ev-lista" role="tabpanel">
-          {pestana === "PVE" && (
+          {/* Con via aerea natural no hay PVE que iniciar: solo aparece si queda algo en marcha (post extubacion). */}
+          {pestana === "PVE" && (pve || ep.viaAereaActual !== "NATURAL") && (
             <button type="button" className="ev-item" data-escala="PVE" disabled={!pve} onClick={() => irA("pve", ep.id)}>
               <b><Timer size={14} aria-hidden /> {pve ? pve.texto : "PVE"}</b>
               <span>{pve ? "Checklist, control de inicio y término, extubación" : sinPve ?? "La PVE de este turno ya se cerró."}</span>

@@ -360,7 +360,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       // Con via aerea natural no hay cambios de HME, HEPA ni TrachCare, ni el cuadro de filtros.
-      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
+      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación programada", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
       assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0);
       await cel.click('button:has-text("Intubación / reintubación")');
       assert.equal(await cel.inputValue("#evf-talla"), "162", "la talla del paciente viene puesta");
@@ -373,6 +373,8 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.5 · 22 cm/);
       // La linea de tiempo junta los eventos y los controles, del mas nuevo al mas antiguo, con fecha y hora.
       await cel.click('[role=tab]:has-text("Eventos")');
+      assert.equal(await cel.locator('button:has-text("Intubación / reintubación")').count(), 0, "intubado: ya no se ofrece intubar");
+      assert.equal(await cel.locator('button:has-text("Extubación programada")').count(), 1);
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /^hoy \d\d:\d\d\s*Reintubación TET calibre 7\.5/, linea.join(" | "));
       assert.ok(linea.some((x) => /AUTOEXTUBACIÓN NO PLANIFICADA/.test(x)), "la autoextubacion queda en la linea: " + linea.join(" | "));
@@ -459,6 +461,8 @@ async function esperarServidor() {
       await cel.click('.franja .qchip:has-text("CPAP+PS")');
       await cel.click('.franja .qchip:has-text("Listo")');
       assert.equal(await cel.locator(".evento-soporte").count(), 0);
+      // Cerrar el teclado (el siguiente paso vuelve a las camas).
+      while (await cel.locator('.franja .qchip:has-text("Listo")').count()) await cel.click('.franja .qchip:has-text("Listo")');
     });
 
     await prueba("evaluaciones en cuatro pestañas: cada bloque cabe en la pantalla, con hora real, botones y correccion del dato previo", async () => {

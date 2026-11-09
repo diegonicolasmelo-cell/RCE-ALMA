@@ -359,6 +359,9 @@ async function esperarServidor() {
     await prueba("intubar desde Eventos pide el tubo, los cm en la arcada, la talla y el sexo, y lleva al control", async () => {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
+      // Con via aerea natural no hay cambios de HME, HEPA ni TrachCare, ni el cuadro de filtros.
+      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
+      assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0);
       await cel.click('button:has-text("Intubación / reintubación")');
       assert.equal(await cel.inputValue("#evf-talla"), "162", "la talla del paciente viene puesta");
       await cel.click('button:text-is("Registrar")');

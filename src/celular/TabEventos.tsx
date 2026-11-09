@@ -82,9 +82,9 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         { k: "cult", texto: "Toma de cultivo", campos: [{ id: "mu", etiqueta: "Muestra", opciones: lista(MUESTRAS_CULTIVO) }], crear: (v, b) => ({ ...b, tipo: "TOMA_CULTIVO", muestra: v["mu"] ?? MUESTRAS_CULTIVO[0] ?? "" }) },
         { k: "img", texto: "Traslado a imagenología", campos: [{ id: "dst", etiqueta: "Destino", opciones: lista(DESTINOS_IMAGEN) }], crear: (v, b) => ({ ...b, tipo: "TRASLADO_IMAGEN", destino: v["dst"] ?? DESTINOS_IMAGEN[0] ?? "" }) },
         { k: "asist", texto: "Asistencia en procedimiento", campos: [{ id: "pr", etiqueta: "Procedimiento", opciones: lista(PROCEDIMIENTOS_MEDICOS) }], crear: (v, b) => ({ ...b, tipo: "ASISTENCIA_PROCEDIMIENTO", procedimiento: v["pr"] ?? PROCEDIMIENTOS_MEDICOS[0] ?? "" }) },
-        { k: "hme", texto: "Cambio de filtro HME", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_HMEF" }) },
+        { k: "hme", texto: "Cambio de filtro HME", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_HMEF" }) },
         { k: "trach", texto: "Cambio de TrachCare", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "TRACHCARE" }) },
-        { k: "hepa", texto: "Cambio de filtro HEPA", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "HEPA" }) }
+        { k: "hepa", texto: "Cambio de filtro HEPA", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "HEPA" }) }
       ]
     },
     {
@@ -177,24 +177,28 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </div>
       )}
 
-      <section>
-        <h3>Filtros y circuito</h3>
-        <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-          {vigenciaFiltros(eventos, ahora).map((v) => (
-            <li key={v.elemento}>
-              <b>{ETIQUETA_ELEMENTO[v.elemento]}</b>:{" "}
-              {v.estado === "SIN_REGISTRO" ? "sin cambio registrado" : v.estado === "VENCIDO" ? `vencido desde el ${v.venceFecha}` : v.estado === "VENCE_HOY" ? `cambiado el ${v.cambiadoEn}, vence hoy` : `cambiado el ${v.cambiadoEn}, vence el ${v.venceFecha}`}
-            </li>
-          ))}
-        </ul>
-        <p className="small muted mt">Se anota la fecha solo cuando se cambia; el sistema cuenta el plazo (TrachCare y HEPA 3 días, HME 2).</p>
-      </section>
+      {/* Filtros y circuito: solo con via aerea artificial (con via natural no hay HME, HEPA ni TrachCare). */}
+      {artificial && (
+        <section>
+          <h3>Filtros y circuito</h3>
+          <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
+            {vigenciaFiltros(eventos, ahora).map((v) => (
+              <li key={v.elemento}>
+                <b>{ETIQUETA_ELEMENTO[v.elemento]}</b>:{" "}
+                {v.estado === "SIN_REGISTRO" ? "sin cambio registrado" : v.estado === "VENCIDO" ? `vencido desde el ${v.venceFecha}` : v.estado === "VENCE_HOY" ? `cambiado el ${v.cambiadoEn}, vence hoy` : `cambiado el ${v.cambiadoEn}, vence el ${v.venceFecha}`}
+              </li>
+            ))}
+          </ul>
+          <p className="small muted mt">Se anota la fecha solo cuando se cambia; el sistema cuenta el plazo (TrachCare y HEPA 3 días, HME 2).</p>
+        </section>
+      )}
 
       {grupos.map((g) => (
         <section key={g.titulo}>
           <h3>{g.titulo}</h3>
           <div className="evgrid">
-            {g.items.map((it) => {
+            {/* Los cambios de HME, HEPA y TrachCare no existen con via aerea natural: ni se muestran. */}
+            {g.items.filter((it) => artificial || !["hme", "trach", "hepa"].includes(it.k)).map((it) => {
               const off = it.deshabilitado || (it.req === "art" && !artificial) || (it.req === "nat" && artificial);
               return (
                 <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : "btn"} disabled={off} onClick={() => clic(it)}>

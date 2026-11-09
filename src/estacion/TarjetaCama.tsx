@@ -16,6 +16,7 @@ import {
   eventoDeRiesgoMasReciente,
   semaforoDva,
   usaSoporteCardiovascular,
+  esViaAereaArtificial,
   textoEdad
 } from "@core/index";
 import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
@@ -79,7 +80,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
         {sem ? <Pildora tipo={sem.tipo}>{sem.t}</Pildora> : soporte ? <Pildora tipo="warn">Soporte CV</Pildora> : u ? <Pildora>Sin DVA</Pildora> : null}
         {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
         {pve.activa && <Pildora tipo="acc">PVE en curso</Pildora>}
-        {filtrosPorCambiar(eventos, ahora).map((f) => <Pildora key={f.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[f.elemento]}</Pildora>)}
+        {(esViaAereaArtificial(ep.viaAereaActual) ? filtrosPorCambiar(eventos, ahora) : []).map((f) => <Pildora key={f.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[f.elemento]}</Pildora>)}
         {pendientes.length > 0 && <Pildora tipo="warn">Post extub. {pendientes[0]?.etiqueta} pendiente</Pildora>}
         {(bnmVigente(eventos) || bnmEnCurso(u?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
         {equipo && <Pildora>{etiquetaEquipo(equipo)}</Pildora>}

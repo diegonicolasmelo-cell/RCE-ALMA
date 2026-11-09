@@ -87,7 +87,8 @@ export function ListaCamas() {
         const apk = apkVigente(apks, ep.id, ahora);
         const flujo = estadoFlujoPve(eventos, ahora);
         const prono = estadoProno(eventos, ahora);
-        const cambios = filtrosPorCambiar(eventos, ahora);
+        // Con via aerea natural no hay filtros ni TrachCare que cambiar.
+        const cambios = esViaAereaArtificial(ep.viaAereaActual) ? filtrosPorCambiar(eventos, ahora) : [];
         const duePost = flujo.bloque?.momentos.find((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H");
         const propia = esMia(ep);
         const pve = accesoPve(ep.viaAereaActual, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, ahora);

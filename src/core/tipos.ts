@@ -27,8 +27,26 @@ export type OrigenTalla = "MEDIDA" | "ESTIMADA";
 // Ventilacion: lo programado y lo que realmente hace el paciente
 // ---------------------------------------------------------------------------
 
-/** Nomenclatura de la unidad. Nuevas modalidades (VMNI B60, etc.) se agregan aqui. */
-export const MODALIDADES = ["ACVC", "PCV", "CPAP_PS", "CNAF"] as const;
+/**
+ * Nomenclatura de la unidad. Que modos se ofrecen depende de la via aerea
+ * (catalogos.MODALIDADES_POR_VIA): con via natural, oxigenoterapia y VNI; con TET, los
+ * modos ventilatorios y el tubo T / HME; con TQT, ademas alto flujo por TQT, S/T y AVAPS.
+ */
+export const MODALIDADES = [
+  "ACVC",
+  "PCV",
+  "CPAP_PS",
+  "TUBO_T",
+  "CNAF_TQT",
+  "O2_NARICERA",
+  "O2_MASCARILLA",
+  "O2_VENTURI",
+  "O2_RESERVORIO",
+  "CNAF",
+  "VNI_CPAP",
+  "VNI_ST",
+  "AVAPS"
+] as const;
 export type Modalidad = (typeof MODALIDADES)[number];
 
 /** Modalidades controladas: en ellas la asincronia contamina el plateau. */
@@ -52,7 +70,11 @@ export type CampoVent =
   /** Volumen minuto espirado leido del ventilador. */
   | "volMinuto"
   /** Temperatura programada del humidificador (CNAF). */
-  | "temperatura";
+  | "temperatura"
+  /** Fuga de la interfaz (VNI), L/min. */
+  | "fuga"
+  /** IPAP maxima (AVAPS). La minima va en `presion`. */
+  | "presionMax";
 
 export const CAMPOS_VENT: readonly CampoVent[] = [
   "frProgramada",
@@ -69,7 +91,9 @@ export const CAMPOS_VENT: readonly CampoVent[] = [
   "pMedia",
   "autoPeep",
   "volMinuto",
-  "temperatura"
+  "temperatura",
+  "fuga",
+  "presionMax"
 ];
 
 /**
@@ -414,6 +438,17 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "CAMBIO_HMEF" })
   /** Cambio de TrachCare (sonda de circuito cerrado) o filtro HEPA. El HME va como CAMBIO_HMEF. No va atado a un control. */
   | (EventoBase & { readonly tipo: "CAMBIO_FILTRO"; readonly elemento: ElementoFiltro })
+  /**
+   * Desvinculacion o reconexion del soporte, deducida del modo del control anterior y el
+   * nuevo (p. ej. CPAP+PS -> tubo T / HME). `hora` y `realizadaEn` son la hora REAL del
+   * cambio, que puede ser antes del control que lo registra.
+   */
+  | (EventoBase & {
+      readonly tipo: "DESVINCULACION" | "RECONEXION";
+      readonly desde: Modalidad;
+      readonly hasta: Modalidad;
+      readonly realizadaEn: string;
+    })
   /** Cambio en los equipos de la sala (rastreo de la ubicacion de ventiladores). */
   | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[] });
 

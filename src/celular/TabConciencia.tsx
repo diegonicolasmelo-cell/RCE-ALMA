@@ -4,7 +4,6 @@ import {
   ESTADOS_VIGILIA,
   INFUSIONES,
   alternarDosisLibre,
-  calcularGlasgow,
   calcularPam,
   calcularPpc,
   esViaAereaArtificial,
@@ -55,8 +54,6 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
     onElegir: elegir
   });
 
-  const completo = b.glasgow.ocular !== null && b.glasgow.motora !== null && b.glasgow.verbal !== null;
-  const calculado = completo ? calcularGlasgow(b.glasgow as Glasgow, ep.viaAereaActual) : null;
 
   // Sedoanalgesia: lo que esta en curso se ve siempre; el resto se agrega con "+".
   const [abiertos, setAbiertos] = useState<{ sedacion: boolean; agitacion: boolean; bnm: boolean }>({ sedacion: false, agitacion: false, bnm: false });
@@ -92,7 +89,7 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
               onCambio={(v) => { const n = digito(v, 1, 4); if (n !== undefined) setGlasgow({ ocular: n as Glasgow["ocular"] | null }); }}
               franja={franjaNum("Ocular", [1, 2, 3, 4], b.glasgow.ocular === null ? "" : String(b.glasgow.ocular), (v) => setGlasgow({ ocular: Number(v) as Glasgow["ocular"] })) } />
             {artificial ? (
-              <div className="f"><label>Verbal</label><div className="pam mono">NT</div></div>
+              <div className="f"><label>Verbal</label><div className="pam mono" title="Con vía aérea artificial el verbal no se evalúa">T</div></div>
             ) : (
               <CampoNum clave="gcs-v" etiqueta="Verbal" unidad="1-5" valor={b.glasgow.verbal === null ? "" : String(b.glasgow.verbal)}
                 onCambio={(v) => { const n = digito(v, 1, 5); if (n !== undefined) setGlasgow({ verbal: n as Glasgow["verbal"] | null }); }}
@@ -101,15 +98,8 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
             <CampoNum clave="gcs-m" etiqueta="Motora" unidad="1-6" valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)}
               onCambio={(v) => { const n = digito(v, 1, 6); if (n !== undefined) setGlasgow({ motora: n as Glasgow["motora"] | null }); }}
               franja={franjaNum("Motora", [1, 2, 3, 4, 5, 6], b.glasgow.motora === null ? "" : String(b.glasgow.motora), (v) => setGlasgow({ motora: Number(v) as Glasgow["motora"] })) } />
-            <div className="f">
-              <label>Glasgow{sedada && calculado ? " · bajo sedación" : ""}</label>
-              <div className="pam mono" aria-live="polite">{calculado ? calculado.display : "--"}</div>
-            </div>
           </div>
-          <div className="fgrid4">
-            <CampoNum clave="s5q" etiqueta="S5Q" unidad="0 a 5" previo={ultimo?.s5q ?? null} valor={b.s5q} onCambio={(v) => { const n = digito(v, 0, 5); if (n !== undefined) editar((x) => ({ ...x, s5q: n === null ? "" : String(n) })); }}
-              franja={franjaNum("S5Q", [0, 1, 2, 3, 4, 5], b.s5q, (v) => editar((x) => ({ ...x, s5q: v })))} />
-          </div>
+          <p className="small muted" style={{ margin: "6px 0 0" }}>Solo O, V y M: el total se ve en la sábana.{artificial ? " Con vía aérea artificial el verbal queda en T." : ""}</p>
         </section>
       )}
       {paso === "sas" && (

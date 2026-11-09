@@ -212,6 +212,8 @@ export function normalizarControl(c: Control): Control {
       autoPeep: v.autoPeep ?? null,
       volMinuto: v.volMinuto ?? null,
       temperatura: v.temperatura ?? null,
+      fuga: v.fuga ?? null,
+      presionMax: v.presionMax ?? null,
       musculaturaAccesoria: v.musculaturaAccesoria ?? null
     },
     kineResp: {

@@ -41,6 +41,8 @@ function vent(over: Partial<Ventilacion> = {}): Ventilacion {
     autoPeep: null,
     volMinuto: 8.6,
     temperatura: null,
+    fuga: null,
+    presionMax: null,
     musculaturaAccesoria: null,
     ...over
   };

@@ -42,6 +42,7 @@ export function ubicacionDeCampo(campo: string): { tab: "control" | TabControl; 
     return SEDANTES.includes(campo.slice("infusion:".length)) ? { tab: "control", seg: "sas" } : { tab: "control", seg: /amiodarona|dobutamina|milrinona/.test(campo) ? "fc" : "pa" };
   }
   if (campo === "frTotal") return { tab: "control", seg: "vent" };
+  if (campo === "modalidad" || campo === "horaEvento") return { tab: "control", seg: "modo" };
   if (campo === "spo2") return { tab: "control", seg: "vent" };
   if (campo === "kine") return { tab: "kine", seg: "kine" };
   if (campo === "apk") return { tab: "kine", seg: "apk" };

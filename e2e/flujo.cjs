@@ -146,11 +146,13 @@ async function esperarServidor() {
       await cel.click("#in-modo, button.pickbtn");
       const opciones = await franja();
       assert.match(opciones[0], /^Igual: /);
-      assert.ok(opciones.includes("PCV") && opciones.includes("CNAF"));
+      // Con TET solo los modos de la via aerea: ventilatorios y tubo T / HME; nada de oxigenoterapia ni VNI.
+      assert.ok(opciones.some((o) => o.startsWith("ACPC")) && opciones.some((o) => o.startsWith("Tubo T / HME")), opciones.join(" | "));
+      assert.ok(!opciones.some((o) => o.startsWith("CNAF") || o.startsWith("Naricera") || o.startsWith("VNI")), "con TET no se ofrece oxigenoterapia ni VNI: " + opciones.join(" | "));
     });
 
     await prueba("elegir otra modalidad cambia los casilleros y pasa al primer ajuste", async () => {
-      await cel.click('.franja .qchip:has-text("PCV")');
+      await cel.click('.franja .qchip:has-text("ACPC")');
       await cel.waitForTimeout(200);
       assert.equal(await parada(), "vent:frProgramada");
       const etiquetas = await cel.locator('section:has(h3:has-text("Terapia ventilatoria")) .f label').allTextContents();
@@ -216,16 +218,16 @@ async function esperarServidor() {
 
     });
 
-    await prueba("Glasgow en una fila (ocular, verbal, motora y total al final), S5Q numerico y bloqueo neuromuscular como tarjeta", async () => {
+    await prueba("Glasgow solo O, V y M (la V queda en T con TET, sin total), sin S5Q, y bloqueo neuromuscular como tarjeta", async () => {
       await cel.click('[role=tab]:has-text("Control")');
       await cel.fill("#in-gcs-o", "3");
       await cel.fill("#in-gcs-o", "9");
       assert.equal(await cel.inputValue("#in-gcs-o"), "3", "un valor fuera de rango se ignora");
       await cel.fill("#in-gcs-m", "5");
-      assert.match(await cel.textContent('.segmento[data-seg="glasgow"]'), /9T/, "total al final, con la T de intubado");
-      assert.equal(await cel.locator("#in-gcs-v").count(), 0, "verbal es NT con via aerea artificial");
-      await cel.fill("#in-s5q", "4");
-      assert.equal(await cel.inputValue("#in-s5q"), "4");
+      assert.doesNotMatch(await cel.textContent('.segmento[data-seg="glasgow"]'), /9T/, "sin total: se ve en la sabana");
+      assert.equal(await cel.locator("#in-gcs-v").count(), 0, "con via aerea artificial el verbal no se pide");
+      assert.match(await cel.textContent('.segmento[data-seg="glasgow"]'), /Verbal\s*T/);
+      assert.equal(await cel.locator("#in-s5q").count(), 0, "el S5Q salio del control");
       assert.equal(await cel.locator('.segmento[data-seg="glasgow"] .notice').count(), 0, "sin avisos ni interpretaciones en el celular");
       await cel.click('button:has-text("+ Agregar bloqueo neuromuscular")');
       const roc = cel.locator('.infu:has(b:text-is("Rocuronio"))');
@@ -240,7 +242,7 @@ async function esperarServidor() {
       assert.equal(await cel.locator('text=estimada').count(), 0, "la talla no distingue medida/estimada");
     });
 
-    await prueba("sedantes plegados: Iniciar abre el escalon con su dosis, y Suspender se puede deshacer", async () => {
+    await prueba("sedantes plegados: Iniciar parte en el escalon 1, las flechas titulan por escalon y se guarda la dosis; Suspender se puede deshacer", async () => {
       await cel.click('[role=tab]:has-text("Control")');
       const tarjeta = cel.locator('.infu:has(b:text-is("Propofol"))');
       assert.equal(await tarjeta.count(), 0, "lo que no esta en curso no ocupa lugar hasta agregarlo");
@@ -250,10 +252,16 @@ async function esperarServidor() {
       assert.equal(await cel.locator('.infu:has(b:text-is("Precedex"))').count(), 0, "Precedex y lorazepam van en el bundle de agitacion");
       await tarjeta.locator('button:has-text("Iniciar")').click();
       await cel.waitForTimeout(200);
-      // Cada opcion une el escalon con su dosis: "3" + "1.5".
-      assert.ok((await franja()).includes("31.5"), "la franja ofrece los escalones 1 a 6 con su dosis");
-      await cel.click('.franja .qchip:has-text("1.5")');
-      assert.equal((await tarjeta.locator(".st.cur b").textContent()).trim(), "3");
+      // Se escribe la DOSIS; el escalon solo se muestra.
+      assert.equal(await tarjeta.locator("input").inputValue(), "0.5", "parte en la dosis del escalon 1");
+      assert.ok((await franja()).includes("1.5esc. 3"), "la franja ofrece las dosis de los escalones: " + (await franja()).join("|"));
+      await cel.click('.franja .qchip:has-text("Listo")');
+      await tarjeta.locator('button[aria-label="Subir Propofol"]').click();
+      assert.equal(await tarjeta.locator("input").inputValue(), "1", "la flecha sube al escalon siguiente");
+      assert.equal((await tarjeta.locator(".st.cur b").textContent()).trim(), "2");
+      assert.match(await tarjeta.textContent(), /1 mg\/kg\/h · escalón 2/);
+      await tarjeta.locator('button[aria-label="Bajar Propofol"]').click();
+      assert.equal(await tarjeta.locator("input").inputValue(), "0.5");
       await tarjeta.locator('button:has-text("Suspender")').click();
       assert.match(await aviso(), /Propofol suspendida/);
       assert.equal(await tarjeta.locator('button:has-text("Iniciar")').count(), 1);
@@ -422,6 +430,25 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Camas")');
       assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET · VM día/);
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
+    });
+
+    await prueba("pasar de CPAP+PS a tubo T / HME es una desvinculacion, con su propia hora real", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
+      await cel.waitForSelector(".hoja-ctl");
+      await cel.click("#in-modo, button.pickbtn");
+      await cel.click('.franja .qchip:has-text("Tubo T / HME")');
+      await cel.click('.franja .qchip:has-text("Listo")');
+      const ev = cel.locator(".evento-soporte");
+      assert.match(await ev.textContent(), /Desvinculación · de CPAP\+PS a Tubo T \/ HME/);
+      await cel.fill("#in-hora-evento", "00:00");
+      assert.match(await ev.textContent(), /Se guarda: \d\d-\d\d 00:00|más de 12 h/);
+      assert.match(await ev.textContent(), /no es una PVE/);
+      // Volver a CPAP+PS: ya no hay cambio de soporte.
+      await cel.click("#in-modo, button.pickbtn");
+      await cel.click('.franja .qchip:has-text("CPAP+PS")');
+      await cel.click('.franja .qchip:has-text("Listo")');
+      assert.equal(await cel.locator(".evento-soporte").count(), 0);
     });
 
     await prueba("evaluacion MRC-ss desde la tarjeta de la cama: puntaje, corte de debilidad y registro", async () => {

@@ -10,6 +10,7 @@ import {
   CORTE_FUGA,
   CORTE_PROTECTOR_MAX,
   CORTE_ULTRAPROTECTOR,
+  MODALIDADES_CON_VT,
   PCF_CORTE_EXITO,
   PCF_CORTE_OPTIMO
 } from "./catalogos";
@@ -187,7 +188,8 @@ export interface DerivadosControl {
 export function calcularDerivados(control: Control, pbw: number): DerivadosControl {
   const v = control.ventilacion;
   const controlada = esModalidadControlada(v.modalidad);
-  const esVMI = v.modalidad !== "CNAF";
+  // Ventilado con presion positiva y volumen medible (VMI o VNI): aplica la guia de proteccion pulmonar.
+  const esVMI = MODALIDADES_CON_VT.includes(v.modalidad);
   const validez = validezMecanicaEstatica(v);
 
   const pam = calcularPam(control.pas, control.pad);
@@ -233,7 +235,7 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     origenDriving,
     compliance,
     tobin: v.modalidad === "CPAP_PS" ? indiceTobin(v.frTotal, v.vtEspirado) : null,
-    rox: v.modalidad === "CNAF" ? indiceRox(control.spo2, v.fio2, v.frTotal) : null,
+    rox: v.modalidad === "CNAF" || v.modalidad === "CNAF_TQT" ? indiceRox(control.spo2, v.fio2, v.frTotal) : null,
     glasgow: control.glasgow ? calcularGlasgow(control.glasgow, control.viaAerea) : null,
     glasgowBajoSedacion: control.glasgow !== null && sedoanalgesiaActiva(control.infusiones),
     semaforoPcf: semaforoPcf(control.esfuerzo?.pcf ?? null),

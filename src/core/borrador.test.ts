@@ -63,7 +63,7 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   });
 
   it("cubre exactamente lo observado", () => {
-    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "frTotal", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
+    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "frTotal", "fuga", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
   });
 
   it("el S5Q nace en blanco", () => {
@@ -118,8 +118,8 @@ describe("herencia deliberada de ajustes e infusiones", () => {
 
   it("hereda la modalidad", () => expect(b.modalidad).toBe("ACVC"));
 
-  it("hereda las infusiones en curso con su escalón o dosis libre", () => {
-    expect(b.infusiones.fentanilo).toEqual({ activa: true, escalon: "2", dosis: "1.2", libre: false });
+  it("hereda las infusiones en curso por su dosis (el escalón no se guarda: lo interpreta la sábana)", () => {
+    expect(b.infusiones.fentanilo).toEqual({ activa: true, escalon: "", dosis: "1.2", libre: true });
     expect(b.infusiones.noradrenalina).toMatchObject({ activa: true, dosis: "0.08", libre: true });
   });
 
@@ -155,10 +155,10 @@ describe("transformaciones del borrador", () => {
     expect(s.infusiones.adrenalina).toEqual({ activa: false, escalon: "", dosis: "", libre: true });
   });
 
-  it("alternar dosis libre en un sedante con escalones", () => {
+  it("iniciar un sedante con escalones parte en la dosis del escalón 1", () => {
     const b = iniciarInfusion(completo(), "propofol");
-    expect(b.infusiones.propofol.libre).toBe(false);
-    expect(alternarDosisLibre(b, "propofol").infusiones.propofol.libre).toBe(true);
+    expect(b.infusiones.propofol).toMatchObject({ activa: true, dosis: "0.5", libre: true });
+    expect(iniciarInfusion(completo(), "midazolam").infusiones.midazolam.dosis).toBe("0.01");
   });
 
   it("lorazepam no tiene escalones: siempre dosis libre, no se puede alternar", () => {
@@ -210,9 +210,9 @@ describe("validarBorrador", () => {
     expect(c).not.toContain("sas");
   });
 
-  it("una infusión iniciada sin dosis o escalón impide guardar", () => {
-    const b = iniciarInfusion(completo(), "propofol");
-    expect(campos(b, { apkVigente: apkOk() })).toContain("infusion:propofol");
+  it("una infusión iniciada sin dosis impide guardar", () => {
+    const b = iniciarInfusion(completo(), "lorazepam");
+    expect(campos(b, { apkVigente: apkOk() })).toContain("infusion:lorazepam");
   });
 
   it("cada control es una atención: exige la APK firmada del turno", () => {
@@ -466,5 +466,26 @@ describe("secreciones y manejo de secreciones", () => {
     expect([b.tos, b.flujoPicoTos, b.deglucion]).toEqual([null, "", null]);
     const c = materializarControl(completo({ tos: "DEFICIENTE", flujoPicoTos: "55", deglucion: "ESPORADICA" }), dat);
     expect(c.kineResp).toMatchObject({ tos: "DEFICIENTE", flujoPicoTos: 55, deglucion: "ESPORADICA" });
+  });
+});
+
+describe("modos según la vía aérea y cambio de soporte", () => {
+  it("el modo heredado se conserva solo si corresponde a la vía aérea de hoy", () => {
+    const ps = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS" }) });
+    expect(crearBorradorNuevoControl(unEpisodio(), ps, "x").modalidad).toBe("CPAP_PS");
+    // Extubado: CPAP+PS ya no se ofrece con via natural.
+    expect(crearBorradorNuevoControl(unEpisodio({ viaAereaActual: "NATURAL" }), ps, "x").modalidad).toBe("CNAF");
+  });
+
+  it("no se puede guardar un modo que no corresponde a la vía aérea", () => {
+    const b = { ...completo(), modalidad: "O2_NARICERA" as const };
+    expect(validarBorrador(b, { apkVigente: apkOk(), viaAerea: "TET" }).map((p) => p.campo)).toContain("modalidad");
+    expect(validarBorrador({ ...completo(), modalidad: "TUBO_T" as const }, { apkVigente: apkOk(), viaAerea: "TET" }).map((p) => p.campo)).not.toContain("modalidad");
+  });
+
+  it("la hora de la desvinculación, si se escribe, debe ser real (últimas 12 h)", () => {
+    const b = { ...completo(), modalidad: "TUBO_T" as const, horaEvento: "99:00" };
+    const campos = validarBorrador(b, { apkVigente: apkOk(), viaAerea: "TET", modalidadAnterior: "CPAP_PS" }).map((p) => p.campo);
+    expect(campos).toContain("horaEvento");
   });
 });

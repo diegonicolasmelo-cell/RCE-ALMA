@@ -15,7 +15,8 @@
  * a cero) son clinicamente distintos y no deben colapsar.
  */
 
-import { CAMPOS_POR_MODALIDAD, INFUSIONES, hayAspectoDeSecreciones } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, conSoporte, hayAspectoDeSecreciones, modalidadPermitida, transicionSoporte } from "./catalogos";
+import { momentoDeEvaluacion } from "./evaluaciones";
 import { esViaAereaArtificial } from "./fisiologia";
 import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
 import { kineRespiratoriaPermitida } from "./apk";
@@ -58,7 +59,8 @@ export const CAMPOS_VENT_PROGRAMADOS: readonly CampoVent[] = [
   "presion",
   "peep",
   "fio2",
-  "temperatura"
+  "temperatura",
+  "presionMax"
 ];
 
 /** Lo que hace el paciente: nace en blanco, se lee del monitor. */
@@ -69,7 +71,8 @@ export const CAMPOS_VENT_OBSERVADOS: readonly CampoVent[] = [
   "pPlateau",
   "pMedia",
   "autoPeep",
-  "volMinuto"
+  "volMinuto",
+  "fuga"
 ];
 
 export interface BorradorInfusion {
@@ -92,6 +95,11 @@ export interface BorradorControl {
   pad: string;
 
   modalidad: Modalidad;
+  /**
+   * Hora REAL (HH:mm) de la desvinculacion o reconexion que deduce el cambio de modo
+   * respecto del control anterior. Puede ser antes del control; "" = la de ahora.
+   */
+  horaEvento: string;
   asincronico: boolean;
   /** Uso de musculatura accesoria (CNAF). Observacion del momento: nace en blanco. */
   musculaturaAccesoria: boolean | null;
@@ -130,7 +138,9 @@ export interface BorradorControl {
 
 export function infusionVacia(id: IdInfusion): BorradorInfusion {
   const def = INFUSIONES.find((i) => i.id === id);
-  return { activa: false, escalon: "", dosis: "", libre: def ? def.escalones === null : true };
+  // Siempre por dosis: el escalon no se guarda, lo interpreta la sabana desde la dosis.
+  void def;
+  return { activa: false, escalon: "", dosis: "", libre: true };
 }
 
 function textoDe(v: Medicion | undefined): string {
@@ -156,7 +166,11 @@ export function crearBorradorNuevoControl(
   rutAutor: string
 ): BorradorControl {
   const artificial = esViaAereaArtificial(episodio.viaAereaActual);
-  const modalidad: Modalidad = ultimo?.ventilacion.modalidad ?? (artificial ? "CPAP_PS" : "CNAF");
+  // El modo se hereda solo si corresponde a la via aerea de hoy (p. ej. tras extubar, un
+  // CPAP+PS ya no se ofrece): si no, parte en uno de los de esa via y se elige.
+  const heredada = ultimo?.ventilacion.modalidad ?? null;
+  const modalidad: Modalidad =
+    heredada && modalidadPermitida(heredada, episodio.viaAereaActual) ? heredada : artificial ? "CPAP_PS" : "CNAF";
 
   const vent = Object.fromEntries(CAMPOS_VENT.map((c) => [c, ""])) as Record<CampoVent, string>;
   // Solo el modo y la FiO2 se heredan. El resto de los ajustes nace en blanco: se repite con
@@ -168,12 +182,7 @@ export function crearBorradorNuevoControl(
       const previa = ultimo?.infusiones[def.id];
       const b: BorradorInfusion =
         previa && previa.dosis > 0
-          ? {
-              activa: true,
-              escalon: previa.escalon === null ? "" : String(previa.escalon),
-              dosis: String(previa.dosis),
-              libre: previa.escalon === null
-            }
+          ? { activa: true, escalon: "", dosis: String(previa.dosis), libre: true }
           : infusionVacia(def.id);
       return [def.id, b];
     })
@@ -190,6 +199,7 @@ export function crearBorradorNuevoControl(
     pad: "",
 
     modalidad,
+    horaEvento: "",
     // La asincronia es una observacion del momento: no se hereda.
     asincronico: false,
     musculaturaAccesoria: null,
@@ -225,11 +235,14 @@ export function crearBorradorNuevoControl(
 // ---------------------------------------------------------------------------
 
 export function cambiarModalidad(b: BorradorControl, modalidad: Modalidad): BorradorControl {
-  return { ...b, modalidad, asincronico: modalidad === "CNAF" ? false : b.asincronico };
+  return { ...b, modalidad, asincronico: conSoporte(modalidad) ? b.asincronico : false };
 }
 
+/** Iniciar: un sedante con escalones parte en la dosis del escalon 1 (se titula con ▲ / ▼). */
 export function iniciarInfusion(b: BorradorControl, id: IdInfusion): BorradorControl {
-  return { ...b, infusiones: { ...b.infusiones, [id]: { ...b.infusiones[id], activa: true } } };
+  const d1 = dosisDeEscalon(id, 1);
+  const x = b.infusiones[id];
+  return { ...b, infusiones: { ...b.infusiones, [id]: { ...x, activa: true, libre: true, escalon: "", dosis: x.dosis || (d1 === null ? "" : String(d1)) } } };
 }
 
 export function suspenderInfusion(b: BorradorControl, id: IdInfusion): BorradorControl {
@@ -264,6 +277,11 @@ export interface ProblemaBorrador {
 export interface ContextoValidacion {
   /** APK vigente del turno para este episodio, o null si no hay. */
   readonly apkVigente: ValidacionApk | null;
+  /** Via aerea vigente: decide que modos se pueden guardar. */
+  readonly viaAerea?: ViaAerea;
+  /** Modo del control anterior: si cambia el soporte, la hora del evento debe ser valida. */
+  readonly modalidadAnterior?: Modalidad | null;
+  readonly ahora?: Date;
 }
 
 const ETIQUETA_VITAL: Readonly<Record<CampoVital, string>> = {
@@ -284,6 +302,15 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
     if (medicionDe(b[c]) === null) falta(c, ETIQUETA_VITAL[c]);
   }
   if (medicionDe(b.vent.frTotal) === null) falta("frTotal", "FR total");
+  if (ctx.viaAerea && !modalidadPermitida(b.modalidad, ctx.viaAerea)) {
+    falta("modalidad", `un modo que corresponda a la vía aérea (${ETIQUETA_MODALIDAD[b.modalidad]} no se usa con ${ctx.viaAerea === "NATURAL" ? "vía aérea natural" : ctx.viaAerea})`);
+  }
+  if (ctx.viaAerea) {
+    const tr = transicionSoporte(ctx.modalidadAnterior ?? null, b.modalidad, ctx.viaAerea);
+    if (tr && b.horaEvento.trim() !== "" && !momentoDeEvaluacion(b.horaEvento, ctx.ahora ?? new Date())) {
+      falta("horaEvento", `la hora real de la ${tr.tipo === "DESVINCULACION" ? "desvinculación" : "reconexión"} (de las últimas 12 horas)`);
+    }
+  }
 
   const sedada = sedoanalgesiaActivaEnBorrador(b);
   if (sedada && b.sas === null) falta("sas", "SAS");
@@ -341,7 +368,7 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
 
   const ventilacion: Ventilacion = {
     modalidad: b.modalidad,
-    asincronico: b.modalidad === "CNAF" ? false : b.asincronico,
+    asincronico: conSoporte(b.modalidad) ? b.asincronico : false,
     frProgramada: campo("frProgramada"),
     vtProgramado: campo("vtProgramado"),
     flujo: campo("flujo"),
@@ -356,7 +383,9 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     pMedia: campo("pMedia"),
     autoPeep: campo("autoPeep"),
     temperatura: campo("temperatura"),
-    musculaturaAccesoria: b.modalidad === "CNAF" ? b.musculaturaAccesoria : null,
+    fuga: campo("fuga"),
+    presionMax: campo("presionMax"),
+    musculaturaAccesoria: b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT" ? b.musculaturaAccesoria : null,
     volMinuto: campo("volMinuto")
   };
 

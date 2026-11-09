@@ -3,9 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CAMPOS_POR_MODALIDAD,
   CATALOGO_EQUIPOS,
+  ETIQUETA_GRUPO_MODALIDAD,
   ETIQUETA_MODALIDAD,
+  GRUPO_MODALIDAD,
   INFUSIONES,
-  MODALIDADES,
+  MODALIDADES_CON_VT,
+  MODALIDADES_POR_VIA,
   OBJETIVOS_VT_ML_KG,
   VALORES_RAPIDOS,
   agregarEquipo,
@@ -14,6 +17,9 @@ import {
   calcularDerivados,
   calcularPam,
   camposSugeribles,
+  conSoporte,
+  momentoDeEvaluacion,
+  transicionSoporte,
   cambiarModalidad,
   describirEquipos,
   equipoEnUso,
@@ -34,7 +40,7 @@ import type { CampoVent, CampoVentDef, Modalidad } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import type { SegmentoId } from "./pasos";
-import { textoNum } from "../app/util";
+import { horaDe, textoNum } from "../app/util";
 import { Aviso, CampoNum, Pildora, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
@@ -84,19 +90,27 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
     return { etiqueta: `${def.etiqueta} ${def.unidad}`, opciones, onElegir: (v) => setVent(def.campo, v) };
   };
 
+  // Solo los modos de la via aerea de hoy: con via natural, oxigenoterapia y VNI; con TET,
+  // los ventilatorios y el tubo T / HME; con TQT, ademas alto flujo por TQT, S/T y AVAPS.
+  const permitidos = MODALIDADES_POR_VIA[ep.viaAereaActual];
   f.registrar("modo", () => {
     const previa = ultimo?.ventilacion.modalidad ?? null;
+    const previaVale = previa !== null && permitidos.includes(previa);
     return {
       etiqueta: "Modo",
       opciones: [
-        ...(previa ? [{ valor: previa, texto: `Igual: ${ETIQUETA_MODALIDAD[previa]}`, previa: true, activa: b.modalidad === previa }] : []),
-        ...MODALIDADES.filter((m) => m !== previa).map((m) => ({ valor: m, texto: ETIQUETA_MODALIDAD[m], activa: b.modalidad === m }))
+        ...(previa && previaVale ? [{ valor: previa, texto: `Igual: ${ETIQUETA_MODALIDAD[previa]}`, previa: true, activa: b.modalidad === previa }] : []),
+        ...permitidos.filter((m) => m !== previa || !previaVale).map((m) => ({ valor: m, texto: ETIQUETA_MODALIDAD[m], sub: ETIQUETA_GRUPO_MODALIDAD[GRUPO_MODALIDAD[m]], activa: b.modalidad === m }))
       ],
       onElegir: (v) => editar((x) => cambiarModalidad(x, v as Modalidad))
     };
   });
 
   const sinFranja = (etiqueta: string) => (): DescriptorFranja => ({ etiqueta, opciones: [], onElegir: () => undefined });
+  // Cambio de soporte respecto del control anterior: se registra solo, como evento, con su hora real.
+  const transicion = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
+  const horaEvento = b.horaEvento || horaDe(new Date());
+  const momentoEvento = transicion ? momentoDeEvaluacion(horaEvento, new Date()) : null;
   const campos = CAMPOS_POR_MODALIDAD[b.modalidad];
   const sugeribles = camposSugeribles(b, ultimo);
   const grupo = (g: "PROGRAMADO" | "OBSERVADO") =>
@@ -227,7 +241,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
           </div>
           <div className="f">
             <label>Sincronía</label>
-            {b.modalidad === "CNAF" ? (
+            {!conSoporte(b.modalidad) ? (
               <div className="small muted" style={{ padding: "10px 0" }}>No aplica</div>
             ) : (
               <Seg
@@ -240,6 +254,17 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
             )}
           </div>
         </div>
+        {transicion && (
+          <div className={`evento-soporte ${transicion.tipo.toLowerCase()} mt`} role="status">
+            <b>{transicion.texto}</b> · de {ETIQUETA_MODALIDAD[transicion.desde]} a {ETIQUETA_MODALIDAD[transicion.hasta]}
+            <label htmlFor="in-hora-evento">
+              Hora real de la {transicion.tipo === "DESVINCULACION" ? "desvinculación" : "reconexión"}
+              <input id="in-hora-evento" type="time" value={horaEvento} onChange={(e) => editar((x) => ({ ...x, horaEvento: e.target.value }))} />
+            </label>
+            <span className="small">{momentoEvento ? `Se guarda: ${momentoEvento.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" })} ${horaDe(momentoEvento)}` : "Esa hora queda a más de 12 h: revísala."}</span>
+            <span className="small muted">Si ocurrió antes, cámbiala: es distinta de la hora del control. La desvinculación no es una PVE.</span>
+          </div>
+        )}
         {bloqueado && (
           <div className="mt">
             <Aviso tipo="crit" pequeno>
@@ -267,7 +292,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
           {grupo("OBSERVADO")}
           <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" previo={ultimo?.spo2 ?? null} valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} />
         </div>
-        {b.modalidad === "CNAF" && (
+        {(b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT") && (
           <div className="mt">
             <div className="small ink2">Uso de musculatura accesoria</div>
             <Seg ancho etiqueta="Uso de musculatura accesoria" valor={b.musculaturaAccesoria} opciones={[{ valor: true, texto: "Sí" }, { valor: false, texto: "No" }]} onCambio={(v) => editar((x) => ({ ...x, musculaturaAccesoria: v }))} />
@@ -300,7 +325,7 @@ function rellenarEjemplo({ b, editar }: ContextoCama): void {
 
 function Resultantes({ ctx, d, bloqueado }: { ctx: ContextoCama; d: ReturnType<typeof calcularDerivados>; bloqueado: boolean }) {
   const { b, pbw } = ctx;
-  if (b.modalidad === "CNAF") {
+  if (b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT") {
     return (
       <section>
         <h3>Resultantes</h3>
@@ -308,9 +333,11 @@ function Resultantes({ ctx, d, bloqueado }: { ctx: ContextoCama; d: ReturnType<t
       </section>
     );
   }
+  // Oxigenoterapia y tubo T / HME: sin volumen que proteger.
+  if (!MODALIDADES_CON_VT.includes(b.modalidad)) return null;
   const programado = mlPorKg(medicionDe(b.vent.vtProgramado), pbw);
   const lineas: { l: string; ml: number | null; kg: number | null }[] = [
-    ...(b.modalidad === "ACVC" ? [{ l: "Programado", ml: medicionDe(b.vent.vtProgramado), kg: programado }] : []),
+    ...(b.modalidad === "ACVC" || b.modalidad === "AVAPS" ? [{ l: b.modalidad === "AVAPS" ? "Objetivo" : "Programado", ml: medicionDe(b.vent.vtProgramado), kg: programado }] : []),
     { l: "Espirado", ml: medicionDe(b.vent.vtEspirado), kg: d.vtEspiradoPorKg }
   ];
   return (

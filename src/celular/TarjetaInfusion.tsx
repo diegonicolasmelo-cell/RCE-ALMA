@@ -7,7 +7,7 @@
  */
 
 import { ChevronDown, ChevronUp, Pause, Play } from "lucide-react";
-import { dosisDeEscalon, escalonesDe, medicionDe, semaforoCatecolamina, titularDosis } from "@core/index";
+import { escalonesDe, medicionDe, semaforoCatecolamina, textoEscalon, titularDosis, titularPorEscalon } from "@core/index";
 import type { BorradorInfusion, Control, DefinicionInfusion } from "@core/index";
 import { cx } from "../app/util";
 import { Pildora } from "./componentes";
@@ -23,37 +23,36 @@ interface Props {
   onAlternarLibre: () => void;
 }
 
+/** La dosis y, en los sedantes, donde cae en la escalera (solo para leer: se guarda la dosis). */
 function textoDosis(def: DefinicionInfusion, x: BorradorInfusion): string {
   if (!x.activa) return "Sin infusión";
-  if (x.libre) {
-    const d = medicionDe(x.dosis);
-    return d === null ? "Falta la dosis" : `${d} ${def.unidad} · dosis libre`;
-  }
-  const e = medicionDe(x.escalon);
-  const d = e === null ? null : dosisDeEscalon(def.id, e);
-  return d === null ? "Falta el escalón (1 a 6)" : `${d} ${def.unidad} · escalón ${e}`;
+  const d = medicionDe(x.dosis);
+  if (d === null) return "Falta la dosis";
+  const esc = textoEscalon(def.id, d);
+  return `${d} ${def.unidad}${esc ? ` · ${esc}` : ""}`;
 }
 
-export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspender, onAlternarLibre }: Props) {
+export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspender }: Props) {
   const f = useFranja();
-  const usaEscalon = def.escalones !== null && !x.libre;
-  const clave = `inf:${def.id}:${usaEscalon ? "esc" : "dosis"}`;
+  // Siempre por dosis: el escalon no se guarda. Los sedantes titulan por su escalera.
+  const conEscalera = def.escalones !== null;
+  const clave = `inf:${def.id}:dosis`;
   const previa = ultimo?.infusiones[def.id];
 
   f.registrar(clave, () => ({
-    etiqueta: `${def.nombre} · ${usaEscalon ? "escalón" : def.unidad}`,
-    opciones: usaEscalon
+    etiqueta: `${def.nombre} · ${def.unidad}`,
+    opciones: conEscalera
       ? [
-          ...(previa?.escalon != null ? [{ valor: String(previa.escalon), texto: `ant. ${previa.escalon}`, previa: true }] : []),
+          ...(previa ? [{ valor: String(previa.dosis), texto: `ant. ${previa.dosis}`, previa: true }] : []),
           ...escalonesDe(def.id).map((e) => ({
-            valor: String(e.escalon),
-            texto: String(e.escalon),
-            sub: String(e.dosis),
-            activa: x.escalon === String(e.escalon)
+            valor: String(e.dosis),
+            texto: String(e.dosis),
+            sub: `esc. ${e.escalon}`,
+            activa: x.dosis === String(e.dosis)
           }))
         ]
-      : opcionesNumericas(def.rapidos, x.dosis, previa && previa.escalon === null ? previa.dosis : null),
-    onElegir: (v) => onCambio(usaEscalon ? { escalon: v } : { dosis: v })
+      : opcionesNumericas(def.rapidos, x.dosis, previa ? previa.dosis : null),
+    onElegir: (v) => onCambio({ dosis: v })
   }));
 
   const dosisNum = Number(x.dosis.replace(",", "."));
@@ -64,7 +63,8 @@ export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspend
     : semaforo === "ALTA" ? { tipo: "crit" as const, t: "DVA alta" }
     : { tipo: "acc" as const, t: "En curso" };
 
-  const escalonActual = usaEscalon && x.activa ? Number(x.escalon) : null;
+  const dosisActual = x.activa ? medicionDe(x.dosis) : null;
+  const titular = (sentido: 1 | -1): string => (conEscalera ? titularPorEscalon(def.id, x.dosis, sentido) : titularDosis(x.dosis, def.paso ?? 0.01, sentido));
   const id = `in-${clave.replace(/[^a-z0-9]+/gi, "-")}`;
   /** Al iniciar, el foco pasa a la dosis para titular de inmediato (no al abrir la pantalla). */
   const iniciar = (): void => {
@@ -98,16 +98,16 @@ export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspend
                 data-stop={clave}
                 inputMode="decimal"
                 autoComplete="off"
-                value={usaEscalon ? x.escalon : x.dosis}
-                placeholder={usaEscalon ? "" : "dosis"}
-                aria-label={`${def.nombre} ${usaEscalon ? "escalón" : "dosis"}`}
+                value={x.dosis}
+                placeholder="dosis"
+                aria-label={`${def.nombre} dosis`}
                 onFocus={() => f.abrir(clave)}
-                onChange={(e) => onCambio(usaEscalon ? { escalon: e.target.value } : { dosis: e.target.value })}
+                onChange={(e) => onCambio({ dosis: e.target.value })}
               />
-              {!usaEscalon && (
+              {(
                 <>
-                  <button type="button" className="btn sm" aria-label={`Bajar ${def.nombre}`} onClick={() => onCambio({ dosis: titularDosis(x.dosis, def.paso ?? 0.01, -1) })}><ChevronDown size={16} aria-hidden /></button>
-                  <button type="button" className="btn sm" aria-label={`Subir ${def.nombre}`} onClick={() => onCambio({ dosis: titularDosis(x.dosis, def.paso ?? 0.01, 1) })}><ChevronUp size={16} aria-hidden /></button>
+                  <button type="button" className="btn sm" aria-label={`Bajar ${def.nombre}`} onClick={() => onCambio({ dosis: titular(-1) })}><ChevronDown size={16} aria-hidden /></button>
+                  <button type="button" className="btn sm" aria-label={`Subir ${def.nombre}`} onClick={() => onCambio({ dosis: titular(1) })}><ChevronUp size={16} aria-hidden /></button>
                   <span className="small muted">{def.unidad}</span>
                 </>
               )}
@@ -117,22 +117,17 @@ export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspend
             </button>
           </div>
 
-          {def.escalones !== null && (
+          {conEscalera && (
             <>
-              {usaEscalon && (
-                <div className="steps" aria-label="Escalón de titulación">
-                  {escalonesDe(def.id).map((e) => (
-                    <i key={e.escalon} className={cx("st", escalonActual !== null && escalonActual >= e.escalon && "f", escalonActual === e.escalon && "cur")}>
-                      <b>{e.escalon}</b>
-                      <small>{e.dosis}</small>
-                    </i>
-                  ))}
-                </div>
-              )}
-              <div className="small ink2 mt">{textoDosis(def, x)}</div>
-              <button type="button" className="linkbtn" onClick={onAlternarLibre}>
-                {x.libre ? "Usar escalones" : "Dosis libre"}
-              </button>
+              <div className="steps" aria-label="Escalones de titulación">
+                {escalonesDe(def.id).map((e) => (
+                  <i key={e.escalon} className={cx("st", dosisActual !== null && dosisActual >= e.dosis - 1e-9 && "f", dosisActual !== null && Math.abs(dosisActual - e.dosis) < 1e-9 && "cur")}>
+                    <b>{e.escalon}</b>
+                    <small>{e.dosis}</small>
+                  </i>
+                ))}
+              </div>
+              <div className="small ink2 mt" aria-live="polite">{textoDosis(def, x)}</div>
             </>
           )}
           {def.escalones === null && def.grupo === "SEDANTE" && (

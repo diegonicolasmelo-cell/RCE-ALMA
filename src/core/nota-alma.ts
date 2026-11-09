@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
@@ -136,8 +136,19 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
   const v = c.ventilacion;
   const d = calcularDerivados(c, pbw);
 
-  if (v.modalidad === "CNAF") {
-    const p = [`CNAF flujo ${fmt(v.flujo)} L/min`, ...(v.temperatura !== null ? [`temperatura ${v.temperatura} °C`] : []), `FiO2 ${fmt(v.fio2)}%`, `FR ${fmt(v.frTotal)} rpm`];
+  // Desconexion, oxigenoterapia y VNI: el modo y lo que se anoto de el, con sus etiquetas.
+  if (!["ACVC", "PCV", "CPAP_PS", "CNAF", "CNAF_TQT"].includes(v.modalidad)) {
+    const p = [ETIQUETA_MODALIDAD[v.modalidad]];
+    for (const def of CAMPOS_POR_MODALIDAD[v.modalidad]) {
+      const x = v[def.campo];
+      if (x !== null) p.push(`${def.etiqueta} ${x}${def.unidad === "%" ? "%" : ` ${def.unidad}`}`);
+    }
+    if (d.vtEspiradoPorKg !== null) p.push(`${fmt(d.vtEspiradoPorKg)} ml/kg PI`);
+    return p.join(", ");
+  }
+
+  if (v.modalidad === "CNAF" || v.modalidad === "CNAF_TQT") {
+    const p = [`${ETIQUETA_MODALIDAD[v.modalidad]} flujo ${fmt(v.flujo)} L/min`, ...(v.temperatura !== null ? [`temperatura ${v.temperatura} °C`] : []), `FiO2 ${fmt(v.fio2)}%`, `FR ${fmt(v.frTotal)} rpm`];
     if (v.musculaturaAccesoria !== null) p.push(v.musculaturaAccesoria ? "con uso de musculatura accesoria" : "sin uso de musculatura accesoria");
     if (d.rox !== null) p.push(`índice ROX ${d.rox}`);
     return p.join(", ");
@@ -225,6 +236,9 @@ export function describirEvento(ev: EventoClinico): string {
       return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
     case "CAMBIO_EQUIPOS":
       return `Cambio de equipos: ${describirEquipos(ev.equipos)}`;
+    case "DESVINCULACION":
+    case "RECONEXION":
+      return `${ev.tipo === "DESVINCULACION" ? "Desvinculación" : "Reconexión"}: de ${ETIQUETA_MODALIDAD[ev.desde]} a ${ETIQUETA_MODALIDAD[ev.hasta]}`;
     default: {
       const _exhaustivo: never = ev;
       return String(_exhaustivo);
@@ -343,7 +357,8 @@ export function claseModoAlma(m: Modalidad): ClaseAlma | null {
       return "pc";
     case "CPAP_PS":
       return "ps";
-    case "CNAF":
+    default:
+      // Desconexion, oxigenoterapia y VNI no van al formulario de ventilacion mecanica de ALMA.
       return null;
   }
 }

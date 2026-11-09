@@ -85,7 +85,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     // --- Lo que el papel no trae ---
     { etiqueta: "Sedación", celda: (c) => t(describirInfusiones(c.infusiones, "SEDANTE") || "—") },
     { etiqueta: "Bloqueo neuromuscular", celda: (c) => t(describirInfusiones(c.infusiones, "BNM") || "—") },
-    { etiqueta: "Temperatura (CNAF)", celda: (c) => t(c.ventilacion.modalidad === "CNAF" ? n(c.ventilacion.temperatura) : "—") },
+    { etiqueta: "Temperatura (CNAF)", celda: (c) => t(c.ventilacion.modalidad === "CNAF" || c.ventilacion.modalidad === "CNAF_TQT" ? n(c.ventilacion.temperatura) : "—") },
     { etiqueta: "Musc. accesoria", celda: (c) => t(c.ventilacion.musculaturaAccesoria === null ? "--" : c.ventilacion.musculaturaAccesoria ? "Sí" : "No") }
   );
 

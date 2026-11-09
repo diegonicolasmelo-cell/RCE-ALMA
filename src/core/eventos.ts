@@ -76,6 +76,8 @@ export function viaAereaVigente(
       case "CAMBIO_FILTRO":
       case "EVALUACION_PUNTUAL":
       case "CAMBIO_EQUIPOS":
+      case "DESVINCULACION":
+      case "RECONEXION":
       case "ASISTENCIA_PROCEDIMIENTO":
       case "TOMA_CULTIVO":
       case "TRASLADO_IMAGEN":

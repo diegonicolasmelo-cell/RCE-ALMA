@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { titularDosis } from "./infusiones";
+import { textoEscalon, titularDosis, titularPorEscalon } from "./infusiones";
 import {
   describirCardiovasculares,
   describirInfusiones,
@@ -166,5 +166,26 @@ describe("titular con ▲ / ▼", () => {
   });
   it("acepta coma decimal", () => {
     expect(titularDosis("0,05", 0.01, 1)).toBe("0.06");
+  });
+});
+
+describe("titulación de sedantes por su escalera (se guarda solo la dosis)", () => {
+  it("▲ y ▼ llevan a la dosis del escalón siguiente o anterior", () => {
+    expect(titularPorEscalon("fentanilo", "0.6", 1)).toBe("1.2");
+    expect(titularPorEscalon("fentanilo", "1.2", -1)).toBe("0.6");
+    expect(titularPorEscalon("fentanilo", "1", 1)).toBe("1.2");
+    expect(titularPorEscalon("fentanilo", "3.6", 1)).toBe("3.6");
+    expect(titularPorEscalon("propofol", "", 1)).toBe("0.5");
+  });
+  it("midazolam pasa del escalón 6 (0,06) de a 0,01 hasta 0,5", () => {
+    expect(titularPorEscalon("midazolam", "0.06", 1)).toBe("0.07");
+    expect(titularPorEscalon("midazolam", "0.5", 1)).toBe("0.5");
+    expect(titularPorEscalon("midazolam", "0.07", -1)).toBe("0.06");
+  });
+  it("dice dónde cae la dosis en la escalera", () => {
+    expect(textoEscalon("fentanilo", 1.8)).toBe("escalón 3");
+    expect(textoEscalon("fentanilo", 1.5)).toBe("entre escalón 2 y 3");
+    expect(textoEscalon("midazolam", 0.1)).toBe("sobre el escalón 6");
+    expect(textoEscalon("noradrenalina", 0.1)).toBe("");
   });
 });

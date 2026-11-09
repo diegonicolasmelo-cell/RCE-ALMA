@@ -6,7 +6,8 @@ import type {
   IdInfusion,
   Modalidad,
   TipoEquipo,
-  ValorSas
+  ValorSas,
+  ViaAerea
 } from "./tipos";
 
 export interface OpcionEscala<T> {
@@ -53,10 +54,89 @@ export const ESCALA_IMS: readonly OpcionEscala<number>[] = [
 
 export const ETIQUETA_MODALIDAD: Readonly<Record<Modalidad, string>> = {
   ACVC: "ACVC",
-  PCV: "PCV",
+  PCV: "ACPC",
   CPAP_PS: "CPAP+PS",
-  CNAF: "CNAF"
+  TUBO_T: "Tubo T / HME",
+  CNAF_TQT: "Alto flujo por TQT",
+  O2_NARICERA: "Naricera",
+  O2_MASCARILLA: "Mascarilla simple",
+  O2_VENTURI: "Venturi",
+  O2_RESERVORIO: "Mascarilla con reservorio",
+  CNAF: "CNAF",
+  VNI_CPAP: "VNI · CPAP",
+  VNI_ST: "BiPAP S/T",
+  AVAPS: "AVAPS"
 };
+
+export type GrupoModalidad = "VENTILACION_MECANICA" | "DESCONEXION" | "OXIGENOTERAPIA" | "VNI";
+export const ETIQUETA_GRUPO_MODALIDAD: Readonly<Record<GrupoModalidad, string>> = {
+  VENTILACION_MECANICA: "Ventilación mecánica",
+  DESCONEXION: "Desconexión",
+  OXIGENOTERAPIA: "Oxigenoterapia",
+  VNI: "Ventilación no invasiva"
+};
+export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
+  ACVC: "VENTILACION_MECANICA",
+  PCV: "VENTILACION_MECANICA",
+  CPAP_PS: "VENTILACION_MECANICA",
+  TUBO_T: "DESCONEXION",
+  CNAF_TQT: "DESCONEXION",
+  O2_NARICERA: "OXIGENOTERAPIA",
+  O2_MASCARILLA: "OXIGENOTERAPIA",
+  O2_VENTURI: "OXIGENOTERAPIA",
+  O2_RESERVORIO: "OXIGENOTERAPIA",
+  CNAF: "OXIGENOTERAPIA",
+  VNI_CPAP: "VNI",
+  VNI_ST: "VNI",
+  AVAPS: "VNI"
+};
+
+/**
+ * Que modos se ofrecen segun la via aerea. Con via natural, solo oxigenoterapia y VNI.
+ * Con TET, los modos ventilatorios y el tubo T / HME. Con TQT, lo mismo mas alto flujo
+ * por TQT, S/T y AVAPS (conectados a la TQT).
+ */
+export const MODALIDADES_POR_VIA: Readonly<Record<ViaAerea, readonly Modalidad[]>> = {
+  NATURAL: ["O2_NARICERA", "O2_MASCARILLA", "O2_VENTURI", "O2_RESERVORIO", "CNAF", "VNI_CPAP", "VNI_ST"],
+  TET: ["ACVC", "PCV", "CPAP_PS", "TUBO_T"],
+  TQT: ["ACVC", "PCV", "CPAP_PS", "TUBO_T", "CNAF_TQT", "VNI_ST", "AVAPS"]
+};
+
+export function modalidadPermitida(m: Modalidad, via: ViaAerea): boolean {
+  return MODALIDADES_POR_VIA[via].includes(m);
+}
+
+/** Modos con presion positiva: el ventilador (o la VNI) da soporte. El resto es desconexion u oxigenoterapia. */
+export const MODALIDADES_CON_SOPORTE: readonly Modalidad[] = ["ACVC", "PCV", "CPAP_PS", "VNI_ST", "AVAPS", "VNI_CPAP"];
+export const conSoporte = (m: Modalidad): boolean => MODALIDADES_CON_SOPORTE.includes(m);
+
+/** Modos que se ventilan con presion positiva y Vt medible (para la guia de proteccion pulmonar). */
+export const MODALIDADES_CON_VT: readonly Modalidad[] = ["ACVC", "PCV", "CPAP_PS", "VNI_CPAP", "VNI_ST", "AVAPS"];
+
+export interface TransicionSoporte {
+  readonly tipo: "DESVINCULACION" | "RECONEXION";
+  readonly texto: string;
+  readonly desde: Modalidad;
+  readonly hasta: Modalidad;
+}
+
+/**
+ * Desvinculacion o reconexion, deducida del modo anterior y el nuevo. Pasar de un modo con
+ * soporte (CPAP+PS, ACVC...) a uno sin soporte (tubo T / HME, alto flujo, oxigenoterapia) es
+ * desvincular; al reves, reconectar. Con via natural, el soporte es la VNI. `null` si no cambia.
+ * La desvinculacion no es una PVE: la PVE es un protocolo aparte, solo con TET.
+ */
+export function transicionSoporte(previo: Modalidad | null, nuevo: Modalidad, via: ViaAerea): TransicionSoporte | null {
+  if (!previo || conSoporte(previo) === conSoporte(nuevo)) return null;
+  const natural = via === "NATURAL";
+  const desv = conSoporte(previo) && !conSoporte(nuevo);
+  return {
+    tipo: desv ? "DESVINCULACION" : "RECONEXION",
+    texto: desv ? (natural ? "Desvinculación de VNI" : "Desvinculación") : natural ? "Reconexión a VNI" : "Reconexión",
+    desde: previo,
+    hasta: nuevo
+  };
+}
 
 export interface CampoVentDef {
   readonly campo: CampoVent;
@@ -125,7 +205,37 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("volMinuto", "Vol. minuto espirado", "L/min"),
     o("pPico", "P. pico", "cmH₂O")
   ],
-  CNAF: [p("flujo", "Flujo", "L/min"), p("temperatura", "Temperatura", "°C"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")]
+  CNAF: [p("flujo", "Flujo", "L/min"), p("temperatura", "Temperatura", "°C"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
+  CNAF_TQT: [p("flujo", "Flujo", "L/min"), p("temperatura", "Temperatura", "°C"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
+  TUBO_T: [p("flujo", "Flujo O₂", "L/min"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
+  O2_NARICERA: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
+  O2_MASCARILLA: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
+  O2_RESERVORIO: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
+  O2_VENTURI: [p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
+  // En VNI la presion de la interfaz: CPAP (o EPAP) va en `peep`; IPAP en `presion`.
+  VNI_CPAP: [p("peep", "CPAP", "cmH₂O"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm"), o("vtEspirado", "Vt espirado", "ml"), o("fuga", "Fuga", "L/min")],
+  VNI_ST: [
+    p("presion", "IPAP", "cmH₂O"),
+    p("peep", "EPAP", "cmH₂O"),
+    p("frProgramada", "FR de respaldo", "rpm"),
+    p("fio2", "FiO₂", "%"),
+    o("frTotal", "FR total", "rpm"),
+    o("vtEspirado", "Vt espirado", "ml"),
+    o("volMinuto", "Vol. minuto", "L/min"),
+    o("fuga", "Fuga", "L/min")
+  ],
+  AVAPS: [
+    p("vtProgramado", "Vt objetivo", "ml"),
+    p("presionMax", "IPAP máx.", "cmH₂O"),
+    p("presion", "IPAP mín.", "cmH₂O"),
+    p("peep", "EPAP", "cmH₂O"),
+    p("frProgramada", "FR de respaldo", "rpm"),
+    p("fio2", "FiO₂", "%"),
+    o("frTotal", "FR total", "rpm"),
+    o("vtEspirado", "Vt espirado", "ml"),
+    o("volMinuto", "Vol. minuto", "L/min"),
+    o("fuga", "Fuga", "L/min")
+  ]
 };
 
 /** Valores rapidos para la franja del teclado. Por confirmar con la unidad. */
@@ -171,6 +281,11 @@ export interface DefinicionInfusion {
   readonly rapidos: readonly number[];
   /** Cuanto sube o baja cada toque de ▲ / ▼ en la dosis libre. */
   readonly paso?: number;
+  /**
+   * Pasado el escalon 6, sigue titulando de a `paso` hasta `max` (midazolam: 0,06 y despues
+   * de a 0,01 hasta 0,5). Sin esto, ▲ no pasa del escalon 6.
+   */
+  readonly sobreEscalones?: { readonly paso: number; readonly max: number };
 }
 
 /**
@@ -183,7 +298,7 @@ export const TABLA_ESCALONES_CONFIRMADA = false;
 export const INFUSIONES: readonly DefinicionInfusion[] = [
   { id: "fentanilo", nombre: "Fentanilo", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.6, sexto: 3.6, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
   { id: "propofol", nombre: "Propofol", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.5, sexto: 3.0, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
-  { id: "midazolam", nombre: "Midazolam", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.01, sexto: 0.06, decimales: 3 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
+  { id: "midazolam", nombre: "Midazolam", unidad: "mg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.01, sexto: 0.06, decimales: 3 }, sobreEscalones: { paso: 0.01, max: 0.5 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
   { id: "dexmedetomidina", nombre: "Precedex", unidad: "mcg/kg/h", grupo: "SEDANTE", escalones: { primero: 0.2, sexto: 1.5, decimales: 2 }, semaforo: false, unidadConfirmada: true, rapidos: [] },
   { id: "lorazepam", nombre: "Lorazepam", unidad: "mg/h", grupo: "SEDANTE", escalones: null, semaforo: false, unidadConfirmada: true, rapidos: [], paso: 0.5 },
   { id: "noradrenalina", nombre: "Noradrenalina", unidad: "mcg/kg/min", grupo: "DVA", escalones: null, semaforo: true, unidadConfirmada: true, rapidos: [0.05, 0.1, 0.2, 0.3], paso: 0.01 },

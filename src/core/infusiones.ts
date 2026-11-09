@@ -114,6 +114,52 @@ export function titularDosis(actual: string, paso: number, sentido: 1 | -1): str
   return String(Number(nuevo.toFixed(decimales)));
 }
 
+/**
+ * Titula un sedante por su escalera de escalones: ▲ lleva a la dosis del escalon siguiente,
+ * ▼ a la del anterior. Se guarda solo la DOSIS (el escalon lo interpreta la sabana). Pasado
+ * el escalon 6, sigue de a `sobreEscalones.paso` hasta su maximo (midazolam); si no, se queda.
+ */
+export function titularPorEscalon(id: IdInfusion, actual: string, sentido: 1 | -1): string {
+  const def = definicionInfusion(id);
+  const escalera = escalonesDe(id).map((e) => e.dosis);
+  if (escalera.length === 0) return titularDosis(actual, def.paso ?? 0.01, sentido);
+  const n = Number(actual.replace(",", "."));
+  const x = Number.isFinite(n) && actual.trim() !== "" ? n : null;
+  const eps = 1e-9;
+  const primero = escalera[0]!;
+  const ultimo = escalera[escalera.length - 1]!;
+  const extra = def.sobreEscalones;
+  const dec = (p: number): number => (String(p).split(".")[1] ?? "").length;
+  if (x === null) return String(primero);
+  if (sentido === 1) {
+    const sig = escalera.find((d) => d > x + eps);
+    if (sig !== undefined) return String(sig);
+    if (!extra) return String(Math.max(x, ultimo));
+    return String(Number(Math.min(extra.max, x + extra.paso).toFixed(dec(extra.paso))));
+  }
+  if (x > ultimo + eps && extra) {
+    const baja = Number((x - extra.paso).toFixed(dec(extra.paso)));
+    return String(baja < ultimo - eps ? ultimo : baja);
+  }
+  const ant = [...escalera].reverse().find((d) => d < x - eps);
+  return String(ant ?? primero);
+}
+
+/** Donde cae una dosis en la escalera: "escalón 3", "entre escalón 2 y 3", "sobre el escalón 6". */
+export function textoEscalon(id: IdInfusion, dosis: number | null): string {
+  const escalera = escalonesDe(id);
+  if (dosis === null || escalera.length === 0) return "";
+  const eps = 1e-9;
+  const igual = escalera.find((e) => Math.abs(e.dosis - dosis) < eps);
+  if (igual) return `escalón ${igual.escalon}`;
+  const primero = escalera[0]!;
+  const ultimo = escalera[escalera.length - 1]!;
+  if (dosis < primero.dosis) return `bajo el escalón ${primero.escalon}`;
+  if (dosis > ultimo.dosis) return `sobre el escalón ${ultimo.escalon}`;
+  const i = escalera.findIndex((e) => e.dosis > dosis);
+  return `entre escalón ${escalera[i - 1]!.escalon} y ${escalera[i]!.escalon}`;
+}
+
 /** Bloqueo neuromuscular en curso segun las infusiones del control. */
 export function bnmEnCurso(infusiones: Infusiones | undefined | null): boolean {
   return infusiones ? infusionesActivas(infusiones, "BNM").length > 0 : false;
@@ -132,7 +178,11 @@ export function suspender(infusiones: Infusiones, id: IdInfusion): Infusiones {
 /** Texto para la nota clinica: "Fentanilo 1.2 mcg/kg/h (esc. 2) + Propofol 1 mg/kg/h". */
 export function describirInfusiones(infusiones: Infusiones, grupo?: GrupoInfusion): string {
   return infusionesActivas(infusiones, grupo)
-    .map((a) => `${a.nombre} ${a.dosis} ${a.unidad}${a.escalon !== null ? ` (esc. ${a.escalon})` : ""}`)
+    // Se guarda la dosis; la sabana interpreta el escalon desde ella (los controles viejos lo traen guardado).
+    .map((a) => {
+      const esc = a.escalon !== null ? `esc. ${a.escalon}` : textoEscalon(a.id, a.dosis).replace("escalón", "esc.");
+      return `${a.nombre} ${a.dosis} ${a.unidad}${esc ? ` (${esc})` : ""}`;
+    })
     .join(" + ");
 }
 

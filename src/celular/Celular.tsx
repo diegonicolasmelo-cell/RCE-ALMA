@@ -11,6 +11,8 @@ import {
   bnmEnCurso,
   bnmVigente,
   materializarControl,
+  momentoDeEvaluacion,
+  transicionSoporte,
   nombreCama,
   volumenObjetivoMl,
   turnoDe,
@@ -22,7 +24,8 @@ import { useAhora, useConsulta, useOnline } from "../app/hooks";
 import { leerMeta } from "../datos/db";
 import { useApp } from "../app/store";
 import type { TabCelular } from "../app/store";
-import { nuevoId } from "../app/util";
+import { horaDe, nuevoId } from "../app/util";
+import { baseEvento } from "./eventos-ui";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { EVENTO_FIN_PESTANA, EVENTO_FIN_SEGMENTO, asegurarVisible, enfocarPrimero, enfocarPrimeroEn, useFranja } from "./franja";
@@ -219,7 +222,11 @@ export function Celular() {
   const turno = turnoDe(ahora);
 
   const guardar = async (): Promise<void> => {
-    const problemas = validarBorrador(b, { apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut) });
+    const problemas = validarBorrador(b, {
+      apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut),
+      viaAerea: ep.viaAereaActual,
+      modalidadAnterior: ultimo?.ventilacion.modalidad ?? null
+    });
     if (problemas.length > 0) {
       const primero = problemas[0];
       if (primero) {
@@ -233,12 +240,19 @@ export function Celular() {
     const t = new Date();
     const control = materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: t, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo });
     await repo.guardarControl(control);
+    // Cambio de soporte (p. ej. CPAP+PS a tubo T / HME): desvinculacion o reconexion, con su hora real.
+    const tr = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
+    if (tr) {
+      const real = momentoDeEvaluacion(b.horaEvento || horaDe(t), t) ?? t;
+      await repo.registrarEvento({ ...baseEvento(ep, sesion.rut, t), hora: horaDe(real), realizadaEn: real.toISOString(), tipo: tr.tipo, desde: tr.desde, hasta: tr.hasta });
+    }
     useApp.getState().descartar(ep.id);
     franja.cerrar();
     setTab("control");
     // Guardado el control, de vuelta a las tarjetas de las camas.
     irA("camas");
-    avisar(online ? `Guardado ${ep.cama} ${control.hora}.` : `Guardado ${ep.cama} ${control.hora}. Sin señal: se sube cuando vuelva la conexión.`);
+    const conEvento = tr ? ` ${tr.texto} registrada.` : "";
+    avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}` : `Guardado ${ep.cama} ${control.hora}.${conEvento} Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
 

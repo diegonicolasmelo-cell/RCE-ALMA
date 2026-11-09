@@ -5,6 +5,8 @@ import {
   criteriosAptos,
   esViaAereaArtificial,
   estadoFlujoPve,
+  avisoMenos24hVm,
+  horasDeVm,
   motivoSinPve,
   etiquetaMomentoPostExtub,
   registrosPve
@@ -170,6 +172,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const ult = ctx.ultimo;
   const bloqueo = motivoSinPve(ep.viaAereaActual, ult ? { modalidad: ult.ventilacion.modalidad, registradoEn: ult.registradoEn } : null, eventos);
   const conTet = ep.viaAereaActual === "TET";
+  const aviso24 = conTet ? avisoMenos24hVm(horasDeVm(ep.diasVM, eventos, ctx.controles[0]?.registradoEn ?? null, ahora)) : null;
   const [marcas, setMarcas] = useState<(boolean | null)[]>(() => Array<boolean | null>(CRITERIOS_PVE.length).fill(null));
   const [datos, setDatos] = useState("");
   const [fuera, setFuera] = useState(false);
@@ -227,6 +230,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
       {conTet && !bloqueo && flujo.fase !== "EN_CURSO" && (
         <section>
           <h3>1 · Checklist previo (cumple con 8 criterios)</h3>
+          {aviso24 && <div style={{ marginBottom: 8 }}><Aviso tipo="warn" pequeno>{aviso24}</Aviso></div>}
           {flujo.checklist && (
             <div className="mt" style={{ marginBottom: 8 }}>
               <Aviso tipo={flujo.checklist.apto ? "good" : "crit"} pequeno>

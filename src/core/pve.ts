@@ -240,6 +240,36 @@ function inicioTuboActual(eventos: readonly EventoClinico[]): string | null {
   return r.at(-1)?.registradoEn ?? null;
 }
 
+/** Horas de ventilacion mecanica del tubo actual, o null si no se puede saber. */
+export interface HorasVm {
+  readonly horas: number;
+  /** Desde cuando se cuenta (ISO). */
+  readonly desde: string | null;
+}
+
+/**
+ * Cuantas horas lleva el tubo actual. Manda la ultima intubacion registrada como evento; si no
+ * hay, un episodio que ya trae dias de VM lleva al menos esos dias; si llego intubado hoy, se
+ * cuenta desde el primer control del episodio. `null` si no hay de donde contar.
+ */
+export function horasDeVm(diasVM: number, eventos: readonly EventoClinico[], primerControlEn: string | null, ahora: Date): HorasVm | null {
+  const tubo = inicioTuboActual(eventos);
+  const desde = tubo ?? (diasVM > 0 ? null : primerControlEn);
+  if (!desde) return diasVM > 0 ? { horas: diasVM * 24, desde: null } : null;
+  const ms = ahora.getTime() - new Date(desde).getTime();
+  return Number.isFinite(ms) ? { horas: Math.max(0, Math.floor(ms / 3_600_000)), desde } : null;
+}
+
+/**
+ * Aviso suave (no bloquea): con menos de 24 h de VM, en estricto rigor no corresponde una PVE
+ * (p. ej. el paciente de pabellon que despierta rapido y se extuba sin protocolo).
+ */
+export function avisoMenos24hVm(h: HorasVm | null): string | null {
+  if (!h || h.horas >= 24) return null;
+  const desde = h.desde ? ` (desde las ${new Date(h.desde).toTimeString().slice(0, 5)})` : "";
+  return `Menos de 24 h de VM: ${h.horas} h${desde}. En estricto rigor no corresponde PVE; se puede registrar igual.`;
+}
+
 /**
  * Por que NO se puede iniciar una PVE ahora, o null si se puede. Regla de la unidad:
  * solo con TET (con TQT no hay PVE: se desvincula con los controles) y con el ultimo

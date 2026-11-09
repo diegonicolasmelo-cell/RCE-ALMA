@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITERIOS_PVE, accesoPve, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
+import { CRITERIOS_PVE, accesoPve, avisoMenos24hVm, horasDeVm, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve } from "./tipos";
 
@@ -221,5 +221,22 @@ describe("PVE superada sin extubar y PVE no tolerada", () => {
     const evs = [checklist(t(9)), ...inicio(t(10)), fin(t(10, 20), false)];
     expect(estadoFlujoPve(evs, t(10, 30)).fase).toBe("CERRADA");
     expect(accesoPve("TET", ctl("CPAP_PS"), evs, t(10, 30))).toBeNull();
+  });
+});
+
+describe("aviso de menos de 24 h de VM (no bloquea)", () => {
+  const reint = (ahora: Date): EventoClinico => ({ ...base(ahora, "re" + ahora.getTime()), tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22" });
+  it("cuenta desde la última intubación registrada", () => {
+    const h = horasDeVm(0, [reint(t(2))], null, t(10));
+    expect(h?.horas).toBe(8);
+    expect(avisoMenos24hVm(h)).toMatch(/^Menos de 24 h de VM: 8 h \(desde las 02:00\)/);
+  });
+  it("un episodio que ya trae días de VM no avisa", () => {
+    expect(avisoMenos24hVm(horasDeVm(3, [], null, t(10)))).toBeNull();
+  });
+  it("llegó intubado hoy: cuenta desde el primer control; 24 h o más no avisa", () => {
+    expect(horasDeVm(0, [], t(9).toISOString(), t(10))?.horas).toBe(1);
+    expect(avisoMenos24hVm(horasDeVm(0, [reint(t(9, 0, 3))], null, t(10)))).toBeNull();
+    expect(horasDeVm(0, [], null, t(10))).toBeNull();
   });
 });

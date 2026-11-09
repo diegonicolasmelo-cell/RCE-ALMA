@@ -193,13 +193,13 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </section>
       )}
 
-      {grupos.filter((g) => g.items.some((it) => (it.req !== "art" || artificial || it.k === "prono" || it.k === "supinar") && (it.req !== "nat" || !artificial))).map((g) => (
+      {grupos.filter((g) => g.items.some((it) => (it.req !== "art" || artificial) && (it.req !== "nat" || !artificial))).map((g) => (
         <section key={g.titulo}>
           <h3>{g.titulo}</h3>
           <div className="evgrid">
-            {/* Lo del tubo y la TQT (extubar, TQT, ajustar el tubo, autoextubacion, filtros y TrachCare) no
-                existe con via aerea natural: ni se muestra. Con via artificial, no se ofrece intubar. */}
-            {g.items.filter((it) => (it.req !== "art" || artificial || it.k === "prono" || it.k === "supinar") && (it.req !== "nat" || !artificial)).map((it) => {
+            {/* Lo del tubo y la TQT (extubar, TQT, ajustar el tubo, autoextubacion, filtros, TrachCare y
+                prono) no se ofrece con via aerea natural: ni se muestra. Con via artificial, no se ofrece intubar. */}
+            {g.items.filter((it) => (it.req !== "art" || artificial) && (it.req !== "nat" || !artificial)).map((it) => {
               const off = it.deshabilitado || (it.req === "art" && !artificial) || (it.req === "nat" && artificial);
               return (
                 <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : "btn"} disabled={off} onClick={() => clic(it)}>

@@ -360,7 +360,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       // Con via aerea natural no hay cambios de HME, HEPA ni TrachCare, ni el cuadro de filtros.
-      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación programada", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
+      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación programada", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación", "Iniciar prono"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
       assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0);
       await cel.click('button:has-text("Intubación / reintubación")');
       assert.equal(await cel.inputValue("#evf-talla"), "162", "la talla del paciente viene puesta");

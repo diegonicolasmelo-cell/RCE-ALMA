@@ -117,8 +117,25 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         />
       ));
 
-  const tarjetas = (grupoInf: (typeof INFUSIONES)[number]["grupo"]) =>
-    INFUSIONES.filter((i) => i.grupo === grupoInf).map((def) => {
+  /** Como la sedoanalgesia: lo que esta en curso se ve siempre; el resto se agrega con "+". */
+  const [abiertos, setAbiertos] = useState<Partial<Record<(typeof INFUSIONES)[number]["grupo"], boolean>>>({});
+  const plegados = (grupoInf: (typeof INFUSIONES)[number]["grupo"], agregar: string): JSX.Element => {
+    const abierto = abiertos[grupoInf] === true;
+    const hayActivas = INFUSIONES.some((i) => i.grupo === grupoInf && b.infusiones[i.id].activa);
+    return (
+      <>
+        {tarjetas(grupoInf, abierto)}
+        {!abierto && (
+          <div className="row">
+            <button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, [grupoInf]: true }))}>+ {hayActivas ? "Agregar otra" : `Agregar ${agregar}`}</button>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const tarjetas = (grupoInf: (typeof INFUSIONES)[number]["grupo"], todas = true) =>
+    INFUSIONES.filter((i) => i.grupo === grupoInf && (todas || b.infusiones[i.id].activa)).map((def) => {
       const x = b.infusiones[def.id];
       return (
         <TarjetaInfusion
@@ -159,9 +176,9 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         <h3>Inotrópicos y antiarrítmicos</h3>
         <div className="stack" style={{ gap: 6 }}>
           <div className="grpt">Inotrópicos</div>
-          {tarjetas("INOTROPO")}
+          {plegados("INOTROPO", "inotrópico")}
           <div className="grpt">Antiarrítmicos</div>
-          {tarjetas("ANTIARRITMICO")}
+          {plegados("ANTIARRITMICO", "antiarrítmico")}
         </div>
       </section>
 
@@ -192,7 +209,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
       <section>
         <h3>Drogas vasoactivas</h3>
         <div className="stack" style={{ gap: 6 }}>
-          {tarjetas("DVA")}
+          {plegados("DVA", "droga vasoactiva")}
         </div>
       </section>
         </>

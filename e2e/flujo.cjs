@@ -199,6 +199,14 @@ async function esperarServidor() {
       assert.ok((await cel.locator('.segmento[data-seg="fc"] h3:has-text("Inotrópicos y antiarrítmicos")').count()) === 1);
       assert.ok((await cel.locator('.segmento[data-seg="pa"] h3:has-text("Drogas vasoactivas")').count()) === 1);
       assert.ok((await cel.locator('.segmento[data-seg="sas"] h3:has-text("Sedoanalgesia")').count()) === 1, "SAS y los escalones de sedacion van juntos");
+      // Inotropicos, antiarritmicos y DVA plegados si no estan activos; la noradrenalina en curso se ve siempre.
+      assert.equal(await cel.locator('.segmento[data-seg="fc"] [aria-label*="Dobutamina"], .segmento[data-seg="fc"] :text-is("Dobutamina")').count(), 0, "dobutamina plegada");
+      assert.equal(await cel.locator('.segmento[data-seg="pa"] :text-is("Adrenalina")').count(), 0, "adrenalina plegada");
+      assert.ok((await cel.locator('.segmento[data-seg="pa"] :text-is("Noradrenalina")').count()) >= 1, "la noradrenalina activa se ve");
+      await cel.click('.segmento[data-seg="fc"] button:has-text("+ Agregar inotrópico")');
+      assert.ok((await cel.locator('.segmento[data-seg="fc"] :text-is("Dobutamina")').count()) >= 1, "al agregar aparecen los inotropicos");
+      await cel.click('.segmento[data-seg="pa"] button:has-text("+ Agregar otra")');
+      assert.ok((await cel.locator('.segmento[data-seg="pa"] :text-is("Adrenalina")').count()) >= 1);
 
     });
 

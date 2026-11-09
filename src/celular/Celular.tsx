@@ -11,6 +11,8 @@ import {
   bnmEnCurso,
   bnmVigente,
   materializarControl,
+  nombreCama,
+  volumenObjetivoMl,
   turnoDe,
   validarBorrador
 } from "@core/index";
@@ -275,7 +277,7 @@ export function Celular() {
       <div className="seg-relleno" aria-hidden />
     </div>
   );
-  const cuerpo = tab === "control" ? cuerpoHoja : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} />;
+  const cuerpo = tab === "control" ? cuerpoHoja : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); setTab("control"); avisar(t); }} />;
 
   const cabecera = (
       <div className="cel-top">
@@ -302,7 +304,7 @@ export function Celular() {
     return (
       <div className="app-cel">
         {cabecera}
-        <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Monitorización, Evaluaciones o PVE</span></div>
+        <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Monitorización, Evaluaciones, Eventos o PVE</span></div>
         <ListaCamas />
       </div>
     );
@@ -311,16 +313,60 @@ export function Celular() {
   const volver = (
     <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => { franja.cerrar(); irA("camas"); }}>‹ Camas</button>
   );
+  // "lun 9 nov": la fecha va al lado del titulo, en la misma linea.
+  const fecha = ahora.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" }).replace(/[,.]/g, "");
+  /** Titulo de cada vista de la cama: «Control · Cama 2  lun 9 nov». */
+  const titulo = (que: string) => (
+    <div className="ctl-cabeza">
+      {volver}
+      <h1>{que} · {nombreCama(ep.cama)}</h1>
+      <span className="fecha">{fecha}</span>
+      {!esMia(ep) && <Pildora>de apoyo</Pildora>}
+    </div>
+  );
+  /** Banda del paciente, a lo ancho y en dos lineas: la via aerea, y el peso ideal con el Vt por kilo. */
+  const banda = (
+    <div className="banda" aria-label="Vía aérea y peso ideal">
+      <div className="l1">
+        <Lock size={13} aria-label="Vía aérea fija: solo la cambia un evento" />
+        <span>
+          {esViaAereaArtificial(ep.viaAereaActual)
+            ? <><b>{ep.viaAereaActual} {ep.calibreVia}</b>{ep.viaAereaActual === "TET" && ep.fijacionCm ? <> · {ep.fijacionCm}{/\d/.test(ep.fijacionCm) ? " cm" : ""}</> : null} · VM día {ep.diasVM}</>
+            : <b>Vía aérea natural</b>}
+        </span>
+        {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
+        {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
+      </div>
+      <div className="l2">PI {String(pbw).replace(".", ",")} kg · Vt 6-8 ml/kg: {volumenObjetivoMl(pbw, 6)}-{volumenObjetivoMl(pbw, 8)} ml · talla {ep.tallaCm} cm</div>
+    </div>
+  );
+
+  /** Tras un evento que cambia la via aerea: directo al control post evento. */
+  const alCambiarVia = (texto: string): void => {
+    franja.cerrar();
+    irA("cama", ep.id);
+    avisar(texto);
+  };
+
+  if (vista === "eventos") {
+    return (
+      <div className="app-cel">
+        {cabecera}
+        {titulo("Eventos")}
+        {banda}
+        <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
+          <TabEventos ctx={ctx} onCambioVia={alCambiarVia} />
+        </div>
+      </div>
+    );
+  }
 
   if (vista === "pve") {
     return (
       <div className="app-cel">
         {cabecera}
-        <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
-          {volver}
-          <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
-          <span className="small muted">PVE diaria · hoja de PVE</span>
-        </div>
+        {titulo("PVE")}
+        {banda}
         <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
           <TabPve ctx={ctx} />
         </div>
@@ -332,11 +378,7 @@ export function Celular() {
     return (
       <div className="app-cel">
         {cabecera}
-        <div style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
-          {volver}
-          <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
-          <span className="small muted">Evaluaciones</span>
-        </div>
+        {titulo("Evaluaciones")}
         <Evaluaciones ctx={ctx} />
       </div>
     );
@@ -354,21 +396,8 @@ export function Celular() {
         </span>
       </div>
 
-      <div className="cel-cabeza" style={{ padding: "8px 14px 0", display: "flex", alignItems: "center", gap: 10 }}>
-        {volver}
-        <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
-        {!esMia(ep) && <Pildora>control de apoyo</Pildora>}
-      </div>
-      <div className="airway">
-        <Lock size={14} aria-label="Vía aérea fija: solo la cambia un evento" />
-        <span>
-          {esViaAereaArtificial(ep.viaAereaActual)
-            ? <><b>{ep.viaAereaActual}</b> {ep.calibreVia} · {ep.fijacionCm}{/\d/.test(ep.fijacionCm ?? "") ? " cm" : ""} · VM día {ep.diasVM}</>
-            : "Vía aérea natural"}
-        </span>
-        {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
-        {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
-      </div>
+      {titulo("Control")}
+      {banda}
 
       <div className="ph-tabs" role="tablist">
         {TABS.map(([k, t]) => (

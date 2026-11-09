@@ -12,6 +12,7 @@ import {
   eventosDeRiesgo,
   formatearRut,
   purgaDeIdentidadLista,
+  textoEdad,
   turnoAnterior,
   turnoDe
 } from "@core/index";
@@ -24,6 +25,7 @@ import { borrarIdentidad } from "./purga";
 import { filasSabana } from "./sabana";
 import { PanelCircuitoYEvaluaciones, PanelPve } from "./PanelPve";
 import { Tendencia } from "./Tendencia";
+import { CompletarIdentidad } from "./CompletarIdentidad";
 import { VENTANA_ALERTA_MS, copiarTexto, nombreProfesional } from "./util";
 
 interface Props {
@@ -92,9 +94,10 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           <h2 style={{ margin: 0 }}>{ep.cama} · {identidad ? identidad.nombre : "Sin identidad en este equipo"}</h2>
           <div className="small ink2">
             {identidad?.rut ? <>RUT <span className="mono">{formatearRut(identidad.rut)}</span> · </> : null}
-            {ep.edad} a · {ep.diagnostico}
+            {textoEdad(ep.edad)} · {ep.diagnostico || "diagnóstico pendiente"}
           </div>
           <div className="small ink2">Equipos: {describirEquipos(ep.equipos)}</div>
+          {!identidad && ep.edad === 0 && <div className="mt"><CompletarIdentidad ep={ep} /></div>}
           <div className="small ink2">
             APK · turno anterior: {apkPrevia ? `${apkPrevia.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkPrevia.hora} (${nombreProfesional(apkPrevia.rutAutor)})` : "sin registro"} · este turno:{" "}
             {apkActual ? `${apkActual.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkActual.hora}` : "pendiente"}

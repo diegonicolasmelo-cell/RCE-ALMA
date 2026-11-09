@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DOTACION, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
-import type { Episodio, OrigenTalla, Sexo, ViaAerea } from "@core/index";
+import type { Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
@@ -12,9 +12,27 @@ import { useIdentidadesEnMemoria } from "./identidades";
  * Ingreso de un paciente a la unidad. La identidad (nombre y RUT) va por su propio
  * canal y token; el episodio clinico solo lleva cama, edad, sexo y talla.
  */
-export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: readonly string[]; onListo: () => void }) {
-  const { repo, api, db, local } = useServicios();
+/**
+ * Guarda la identidad de un episodio: cifrada con la clave de la unidad antes de subir
+ * (en produccion), en memoria en este PC; en la demostracion, en la base local.
+ * Devuelve un texto de error si no se pudo guardar de forma segura, o el resultado de la subida.
+ */
+export function useGuardarIdentidad(): (identidad: IdentidadPaciente) => Promise<{ readonly error: string | null; readonly subida: { ok: boolean; error?: string | undefined } | null }> {
+  const { api, db, local } = useServicios();
   const clave = useClaveUnidad();
+  return async (identidad) => {
+    if (!local && !clave) return { error: "Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.", subida: null };
+    if (local) await db.identidades.put(identidad);
+    else useIdentidadesEnMemoria.getState().poner(identidad);
+    const r = local || !clave ? await api.guardarReferencias([]) : await api.guardarReferencias([await cifrarIdentidad(clave, identidad, new Date())]);
+    return { error: null, subida: r };
+  };
+}
+
+export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: readonly string[]; onListo: () => void }) {
+  const { repo, local } = useServicios();
+  const clave = useClaveUnidad();
+  const guardarIdentidad = useGuardarIdentidad();
   const avisar = useApp((s) => s.avisar);
   const [cama, setCama] = useState("");
   const [nombre, setNombre] = useState("");
@@ -66,10 +84,8 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
     // En produccion la identidad solo sube CIFRADA; sin la clave de la unidad no se ingresa.
     if (!local && !clave) return setError("Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.");
     await repo.guardarEpisodio(ep);
-    // En produccion el nombre queda solo en memoria; en demostracion, en la base local.
-    if (local) await db.identidades.put(identidad);
-    else useIdentidadesEnMemoria.getState().poner(identidad);
-    const r = local || !clave ? await api.guardarReferencias([]) : await api.guardarReferencias([await cifrarIdentidad(clave, identidad, new Date())]);
+    const g = await guardarIdentidad(identidad);
+    const r = g.subida ?? { ok: false, error: g.error ?? undefined };
     avisar(r.ok ? `Paciente ingresado en ${camaTxt}.` : `Ingresado en ${camaTxt}, pero la identidad no se pudo subir (${r.error ?? "sin conexión"}): reintenta desde Estado.`);
     onListo();
   };

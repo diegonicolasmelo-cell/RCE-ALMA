@@ -342,3 +342,24 @@ export const DESTINOS_IMAGEN: readonly string[] = ["Scanner", "Resonancia", "Otr
 /** Corte institucional de flujo pico de tos para exito de extubacion (L/min). */
 export const PCF_CORTE_EXITO = 55;
 export const PCF_CORTE_OPTIMO = 60;
+
+// ---------------------------------------------------------------------------
+// Camas de la unidad
+// ---------------------------------------------------------------------------
+
+/** Las 18 camas de la UCI. Una cama sin episodio activo esta libre: se puede ingresar desde el celular. */
+export const CAMAS_UNIDAD: readonly string[] = Array.from({ length: 18 }, (_, i) => `UCI-${String(i + 1).padStart(2, "0")}`);
+
+/** "UCI-02" -> "Cama 2": como se nombra la cama en voz alta. */
+export function nombreCama(cama: string): string {
+  const n = /(\d+)\s*$/.exec(cama)?.[1];
+  return n ? `Cama ${Number(n)}` : cama;
+}
+
+/**
+ * La edad la pone el PC (va junto a la identidad). Un ingreso hecho desde el celular la deja
+ * en 0 hasta que la estacion la completa.
+ */
+export function textoEdad(edad: number): string {
+  return edad > 0 ? `${edad} a` : "edad pendiente";
+}

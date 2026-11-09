@@ -14,7 +14,6 @@
 
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
-import { esViaAereaArtificial } from "./fisiologia";
 import { estadoPve } from "./eventos";
 import type { EstadoPve } from "./eventos";
 
@@ -221,27 +220,50 @@ export interface AccesoPve {
   readonly destacado: boolean;
 }
 
+/** El ultimo control, para decidir si se puede iniciar una PVE: su modalidad y cuando se registro. */
+export interface UltimoControlPve {
+  readonly modalidad: Modalidad | null;
+  readonly registradoEn: string;
+}
+
+/** Cuando fue la intubacion vigente (la ultima reintubacion registrada), o null si no hay. */
+function inicioTuboActual(eventos: readonly EventoClinico[]): string | null {
+  const r = ordenados(eventos).filter((e) => e.tipo === "REINTUBACION");
+  return r.at(-1)?.registradoEn ?? null;
+}
+
 /**
- * Cuando la tarjeta de la cama ofrece entrar directo a la PVE, sin pasar por el control.
- * Un paciente ventilado en CPAP/PS es candidato a la evaluacion diaria; lo que ya esta en
- * marcha (PVE en curso, extubacion por registrar, controles post extubacion) se ofrece
- * siempre. La PVE vive SOLO en la tarjeta (no es una pestana del control): todo paciente
- * ventilado tiene su boton. Con la via aerea natural y nada pendiente, no se ofrece.
+ * Por que NO se puede iniciar una PVE ahora, o null si se puede. Regla de la unidad:
+ * solo con TET (con TQT no hay PVE: se desvincula con los controles) y con el ultimo
+ * control en CPAP+PS, posterior a la intubacion vigente (un control de antes de una
+ * reintubacion no cuenta). Lo que ya esta en marcha se sigue siempre: ver accesoPve.
  */
-export function accesoPve(via: ViaAerea, modalidad: Modalidad | null, eventos: readonly EventoClinico[], ahora: Date): AccesoPve | null {
+export function motivoSinPve(via: ViaAerea, ultimo: UltimoControlPve | null, eventos: readonly EventoClinico[]): string | null {
+  if (via === "TQT") return "Con TQT no hay PVE: se desvincula con los controles.";
+  if (via !== "TET") return "La PVE es solo con TET.";
+  if (!ultimo || ultimo.modalidad !== "CPAP_PS") return "Se inicia con el último control en CPAP+PS.";
+  const tubo = inicioTuboActual(eventos);
+  if (tubo && ultimo.registradoEn < tubo) return "Se inicia con un control en CPAP+PS posterior a la intubación actual.";
+  return null;
+}
+
+/**
+ * Cuando la tarjeta de la cama (y Evaluaciones) ofrecen entrar a la PVE. Lo que ya esta en
+ * marcha (PVE en curso, extubacion por registrar, controles post extubacion) se ofrece
+ * siempre; una PVE nueva, solo si `motivoSinPve` no pone reparos.
+ */
+export function accesoPve(via: ViaAerea, ultimo: UltimoControlPve | null, eventos: readonly EventoClinico[], ahora: Date): AccesoPve | null {
   const f = estadoFlujoPve(eventos, ahora);
   // Lo mas urgente primero: un control post extubacion que ya toca.
   if (f.bloque && f.bloque.momentos.some((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H")) {
     return { texto: "Post extubación: registrar", destacado: true };
   }
   if (f.fase === "EN_CURSO") return { texto: "Continuar PVE", destacado: true };
-  if (!esViaAereaArtificial(via)) return null;
-  if (f.fase === "TERMINADA") return { texto: "PVE terminada: registrar extubación", destacado: true };
-  if (f.fase === "APTO") return { texto: "Iniciar PVE", destacado: true };
+  if (via === "TET" && f.fase === "TERMINADA") return { texto: "PVE terminada: registrar extubación", destacado: true };
+  if (via === "TET" && f.fase === "APTO") return { texto: "Iniciar PVE", destacado: true };
+  if (motivoSinPve(via, ultimo, eventos)) return null;
   if (f.fase === "NO_APTO") return { texto: "PVE diaria: no apto este turno", destacado: false };
-  if (modalidad === "CPAP_PS") return { texto: "Evaluar PVE diaria", destacado: false };
-  // Ventilado en otra modalidad: la PVE sigue a mano en la tarjeta, sin destacarla.
-  return { texto: "PVE", destacado: false };
+  return { texto: "Evaluar PVE diaria", destacado: false };
 }
 
 /** Una fila del contraste entre el control de inicio y el de termino de la PVE. */

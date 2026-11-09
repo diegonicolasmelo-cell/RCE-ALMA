@@ -1,7 +1,9 @@
-import { ClipboardList, Stethoscope, Timer } from "lucide-react";
-import { Fragment } from "react";
+import { ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
+import { Fragment, useState } from "react";
 import {
+  CAMAS_UNIDAD,
   accesoPve,
+  nombreCama,
   apkVigente,
   esViaAereaArtificial,
   estadoFlujoPve,
@@ -16,6 +18,7 @@ import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta } from "../app/hooks";
 import { useApp } from "../app/store";
 import { Pildora } from "./componentes";
+import { IngresoRapido } from "./IngresoRapido";
 
 interface Fila {
   readonly ep: Episodio;
@@ -33,6 +36,7 @@ export function ListaCamas() {
   const irA = useApp((s) => s.irA);
   const misCamas = useApp((s) => s.misCamas);
   const ahora = useAhora(30_000);
+  const [ingresando, setIngresando] = useState<string | null>(null);
 
   const filas = useConsulta<readonly Fila[]>(
     async () => {
@@ -50,9 +54,22 @@ export function ListaCamas() {
     []
   );
 
-  if (filas.length === 0) {
-    return <div className="cel-cuerpo"><p className="muted">No hay camas activas. Un PC de la estación debe ingresar a los pacientes.</p></div>;
-  }
+  const ocupadas = new Set(filas.map((f) => f.ep.cama));
+  const libres = CAMAS_UNIDAD.filter((c) => !ocupadas.has(c));
+  /** Camas sin paciente: se ingresan aqui mismo, a pie de cama (sin nombre ni RUT). */
+  const seccionLibres = (
+    <section aria-label="Camas libres">
+      <h3 style={{ margin: "8px 0 6px" }}>Camas libres ({libres.length})</h3>
+      {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
+      <div className="libres">
+        {libres.map((c) => (
+          <button key={c} type="button" className="btn" aria-label={`Ingresar ${nombreCama(c)}`} aria-pressed={ingresando === c} onClick={() => setIngresando(c)}>
+            {nombreCama(c)}<span className="small muted">Ingresar</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
   const esMia = (e: Episodio): boolean => (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
   // Las mias primero, de la primera a la ultima; despues las demas, tambien en orden.
   const ordenadas = [...filas].sort((a, b) => Number(esMia(b.ep)) - Number(esMia(a.ep)) || a.ep.cama.localeCompare(b.ep.cama));
@@ -73,13 +90,13 @@ export function ListaCamas() {
         const cambios = filtrosPorCambiar(eventos, ahora);
         const duePost = flujo.bloque?.momentos.find((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H");
         const propia = esMia(ep);
-        const pve = accesoPve(ep.viaAereaActual, ultimo?.ventilacion.modalidad ?? null, eventos, ahora);
+        const pve = accesoPve(ep.viaAereaActual, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, ahora);
         return (
           <Fragment key={ep.id}>
           {i === nMias && <h3 style={{ margin: "8px 0 0" }}>Otras camas · para ayudar a un colega</h3>}
           <article className="card stack" style={{ padding: 12, gap: 8 }} aria-label={`Cama ${ep.cama}`}>
             <header className="row" style={{ justifyContent: "space-between" }}>
-              <b className="mono" style={{ fontSize: 20 }}>{ep.cama}</b>
+              <b style={{ fontSize: 19 }}>{nombreCama(ep.cama)}</b>
               <span className="small muted">{ultimo ? `último ${ultimo.hora} · hace ${haceTexto(minutos ?? 0)}` : "sin controles"}</span>
             </header>
             <div className="small ink2">
@@ -94,12 +111,15 @@ export function ListaCamas() {
               {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
               {cambios.map((c) => <Pildora key={c.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[c.elemento]}</Pildora>)}
             </div>
-            <div className="row">
-              <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => irA("cama", ep.id)}>
+            <div className="botones-cama">
+              <button type="button" className="btn primary" onClick={() => irA("cama", ep.id)}>
                 <Stethoscope size={15} aria-hidden /> Monitorización
               </button>
-              <button type="button" className="btn" style={{ flex: 1 }} onClick={() => irA("evaluacion", ep.id)}>
+              <button type="button" className="btn" onClick={() => irA("evaluacion", ep.id)}>
                 <ClipboardList size={15} aria-hidden /> Evaluaciones
+              </button>
+              <button type="button" className="btn" onClick={() => irA("eventos", ep.id)}>
+                <Zap size={15} aria-hidden /> Eventos
               </button>
             </div>
             {pve && (
@@ -111,6 +131,7 @@ export function ListaCamas() {
           </Fragment>
         );
       })}
+      {seccionLibres}
     </div>
   );
 }

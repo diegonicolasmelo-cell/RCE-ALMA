@@ -300,3 +300,20 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .pve-contraste .ini{background:var(--panel-2);color:var(--ink-2)}
 .pve-contraste .ter{background:var(--accent-soft);color:var(--ink);font-weight:700}
 .pve-contraste thead .ter{color:var(--accent)}
+
+/* Tarjeta de la cama: tres accesos directos del mismo tamano. */
+.botones-cama{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.botones-cama .btn{padding-left:4px;padding-right:4px;font-size:13px;gap:4px}
+/* Camas libres: se ingresan desde el celular. */
+.libres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.libres .btn{flex-direction:column;gap:0;min-height:52px}
+.libres .btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+/* Cabecera del control: titulo con la fecha en una linea y la banda del paciente en dos. */
+.ctl-cabeza{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 14px 6px}
+.ctl-cabeza h1{margin:0;font-size:19px;letter-spacing:.01em}
+.ctl-cabeza .fecha{font-size:13px;color:var(--ink-2);font-weight:600}
+.banda{padding:6px 14px;background:var(--accent-soft);border-bottom:1px solid var(--line);display:grid;gap:2px;font-size:13px}
+.banda .l1{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.banda .l1 b{font-size:15px}
+.banda .l2{color:var(--ink-2)}
+.app-cel.teclado .ctl-cabeza,.app-cel.teclado .banda{display:none !important}

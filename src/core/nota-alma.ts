@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto } from "./catalogos";
+import { ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
@@ -282,7 +282,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
 
   return [
     `[EVOLUCIÓN KINESIOLOGÍA UPC · RESUMEN DE TURNO · ${episodio.cama}]`,
-    `Diagnóstico: ${episodio.diagnostico} | ${episodio.edad} a | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${episodio.diasVM}`,
+    `Diagnóstico: ${episodio.diagnostico} | ${textoEdad(episodio.edad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${episodio.diasVM}`,
     `Equipos: ${describirEquipos(episodio.equipos)}`,
     ``,
     `1. HEMODINAMIA Y PERFUSIÓN`,

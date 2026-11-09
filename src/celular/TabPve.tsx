@@ -5,6 +5,7 @@ import {
   criteriosAptos,
   esViaAereaArtificial,
   estadoFlujoPve,
+  motivoSinPve,
   etiquetaMomentoPostExtub,
   registrosPve
 } from "@core/index";
@@ -165,6 +166,10 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const inicioPve = reg?.inicio ? { lecturas: reg.inicio.lecturas, hora: reg.inicio.hora } : null;
   const verContraste = inicioPve !== null && reg?.treintaMin != null && (flujo.fase === "EN_CURSO" || flujo.fase === "TERMINADA" || flujo.bloque !== null);
   const artificial = esViaAereaArtificial(ep.viaAereaActual);
+  // Una PVE nueva: solo con TET y el ultimo control en CPAP+PS posterior al tubo actual.
+  const ult = ctx.ultimo;
+  const bloqueo = motivoSinPve(ep.viaAereaActual, ult ? { modalidad: ult.ventilacion.modalidad, registradoEn: ult.registradoEn } : null, eventos);
+  const conTet = ep.viaAereaActual === "TET";
   const [marcas, setMarcas] = useState<(boolean | null)[]>(() => Array<boolean | null>(CRITERIOS_PVE.length).fill(null));
   const [datos, setDatos] = useState("");
   const [fuera, setFuera] = useState(false);
@@ -215,10 +220,10 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
             {{ SIN_CHECKLIST: "Falta el checklist", NO_APTO: "No apto para PVE", APTO: "Apto: puede iniciar", EN_CURSO: "PVE en curso", TERMINADA: "PVE terminada", POST_EXTUBACION: "Post extubación" }[flujo.fase]}
           </Pildora>
         </div>
-        {!artificial && !flujo.bloque && <div className="mt"><Aviso tipo="warn" pequeno>Sin vía aérea artificial: no hay PVE que iniciar.</Aviso></div>}
+        {bloqueo && !flujo.bloque && flujo.fase !== "EN_CURSO" && flujo.fase !== "APTO" && flujo.fase !== "TERMINADA" && <div className="mt"><Aviso tipo="warn" pequeno>{bloqueo}</Aviso></div>}
       </section>
 
-      {artificial && flujo.fase !== "EN_CURSO" && (
+      {conTet && !bloqueo && flujo.fase !== "EN_CURSO" && (
         <section>
           <h3>1 · Checklist previo (cumple con 8 criterios)</h3>
           {flujo.checklist && (
@@ -247,7 +252,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
         </section>
       )}
 
-      {artificial && flujo.fase === "APTO" && (
+      {conTet && flujo.fase === "APTO" && (
         <section>
           <h3>2 · Control inicial</h3>
           {formulario === "inicial" ? (
@@ -285,7 +290,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
         </section>
       )}
 
-      {flujo.fase === "TERMINADA" && artificial && (
+      {flujo.fase === "TERMINADA" && conTet && (
         <section>
           <h3>3 · Extubación</h3>
           <p className="small ink2">Si la PVE fue tolerada y se extuba, registra la extubación: parten los controles de 30, 60 y 120 min y 48 h.</p>
@@ -333,7 +338,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
                   <Seg ancho etiqueta="Vía" valor={reint.via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={(x) => setReint({ ...reint, via: x })} />
                   <div className="fgrid2">
                     <div className="f"><label htmlFor="pve-reint-cal">Calibre</label><input id="pve-reint-cal" inputMode="decimal" autoComplete="off" value={reint.cal} onChange={(e) => setReint({ ...reint, cal: e.target.value })} /></div>
-                    <div className="f"><label htmlFor="pve-reint-fij">Fijación <span className="muted">cm a la comisura</span></label><input id="pve-reint-fij" inputMode="decimal" autoComplete="off" value={reint.fij} onChange={(e) => setReint({ ...reint, fij: e.target.value })} /></div>
+                    <div className="f"><label htmlFor="pve-reint-fij">Fijación <span className="muted">cm en la arcada dental</span></label><input id="pve-reint-fij" inputMode="decimal" autoComplete="off" value={reint.fij} onChange={(e) => setReint({ ...reint, fij: e.target.value })} /></div>
                   </div>
                   <button type="button" className="btn danger" onClick={() => void reintubar()}>Registrar reintubación</button>
                 </div>

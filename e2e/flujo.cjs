@@ -93,18 +93,24 @@ async function esperarServidor() {
       await cel.click('button:has-text("Ver camas")');
       await cel.waitForSelector("text=Mis camas (6)");
       // PVE directa: la cama en CPAP/PS la ofrece en su tarjeta; la que esta en modalidad controlada no.
-      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button:text-is("PVE")').count(), 1, "ventilado en ACVC: la PVE a mano, sin destacar");
-      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button.primary:has-text("PVE")').count(), 0);
+      assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button:has-text("PVE")').count(), 0, "ventilado en ACVC: no se ofrece PVE (solo TET con el ultimo control en CPAP+PS)");
+      // Cada tarjeta tiene sus tres accesos directos: Monitorización, Evaluaciones y Eventos.
+      assert.deepEqual((await cel.locator('article[aria-label="Cama UCI-02"] .botones-cama button').allTextContents()).map((x) => x.trim()), ["Monitorización", "Evaluaciones", "Eventos"]);
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Evaluar PVE diaria")');
       await cel.waitForSelector("text=Prueba de ventilación espontánea");
-      assert.match(await cel.textContent(".app-cel"), /PVE diaria · hoja de PVE/);
+      assert.match(await cel.textContent(".ctl-cabeza h1"), /PVE · Cama 1/);
       assert.match(await cel.textContent(".app-cel"), /Checklist previo/);
       assert.equal(await cel.locator('button:has-text("Guardar control")').count(), 0, "la PVE directa no abre el control");
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector("#cuerpo");
       assert.equal((await cel.locator(".cel-camas .chip").count()), 18);
-      assert.match(await cel.textContent(".app-cel b.mono"), /UCI-01/);
+      // Cabecera: «Control · Cama 1» con la fecha al lado, y la banda del paciente en dos lineas a lo ancho.
+      assert.match(await cel.textContent(".ctl-cabeza h1"), /^Control · Cama 1$/);
+      assert.match(await cel.textContent(".ctl-cabeza .fecha"), /^\S+ \d{1,2} \S+$/, "la fecha va al lado del titulo: " + (await cel.textContent(".ctl-cabeza .fecha")));
+      assert.equal(await cel.locator(".banda > div").count(), 2, "la banda tiene dos lineas");
+      assert.match(await cel.textContent(".banda .l1"), /TET .* · VM día/);
+      assert.match(await cel.textContent(".banda .l2"), /PI \d+(,\d)? kg · Vt 6-8 ml\/kg: \d+-\d+ ml · talla 172 cm/);
     });
 
     await prueba("las lecturas nacen en blanco, sin el valor anterior a la vista ni para copiar", async () => {
@@ -117,7 +123,7 @@ async function esperarServidor() {
 
     await prueba("con el teclado abierto se oculta la cabecera y se ve el cuadro completo", async () => {
       assert.equal(await cel.locator(".app-cel.teclado").count(), 1);
-      assert.equal(await cel.locator(".airway").isVisible(), false, "la via aerea y las pestanas se ocultan mientras se escribe");
+      assert.equal(await cel.locator(".banda").isVisible(), false, "la via aerea y las pestanas se ocultan mientras se escribe");
       assert.equal(await cel.locator('.ph-tabs').isVisible(), false);
       assert.ok(await cel.locator('.segmento[data-seg="fc"] h3:has-text("Inotrópicos")').isVisible(), "se ven las drogas del mismo cuadro");
     });
@@ -330,21 +336,37 @@ async function esperarServidor() {
       assert.ok((await cel.locator(".notice.good").count()) >= 1, "la APK del turno sigue vigente");
     });
 
-    await prueba("una autoextubacion cambia la via aerea del episodio", async () => {
-      await cel.click('[role=tab]:has-text("Eventos")');
+    await prueba("Eventos desde la tarjeta: una autoextubacion cambia la via aerea y lleva al control post evento", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Eventos · Cama 2")');
       await cel.click('button:has-text("Autoextubación")');
       await cel.fill("#evf-txt", "tracciona el TET durante el aseo");
       await cel.click('button:has-text("Registrar")');
-      await cel.waitForTimeout(600);
-      assert.match(await aviso(), /Evento registrado/);
-      assert.match(await cel.textContent(".airway"), /Vía aérea natural/);
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
+      assert.match(await aviso(), /Autoextubación registrada\. Sigue con el control post evento/);
+      assert.match(await cel.textContent(".banda"), /Vía aérea natural/);
+    });
+
+    await prueba("intubar desde Eventos pide el tubo, los cm en la arcada, la talla y el sexo, y lleva al control", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
+      await cel.click('button:has-text("Intubación / reintubación")');
+      assert.equal(await cel.inputValue("#evf-talla"), "162", "la talla del paciente viene puesta");
+      await cel.click('button:text-is("Registrar")');
+      assert.match(await aviso(), /Falta el calibre/);
+      await cel.fill("#evf-cal", "7.5");
+      await cel.fill("#evf-fij", "22");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
+      assert.match(await cel.textContent(".banda .l1"), /TET 7\.5 · 22 cm/);
     });
 
     await prueba("PVE: checklist de 8 criterios, control inicial, cronometro, 30 min y post extubacion", async () => {
       // La PVE ya no es una pestaña del control: se entra desde la tarjeta de la cama.
       assert.equal(await cel.locator('[role=tab]:has-text("PVE")').count(), 0, "sin pestaña PVE en el control");
       await cel.click('button:has-text("‹ Camas")');
-      await cel.click('article[aria-label="Cama UCI-02"] button:text-is("PVE")');
+      await cel.click('article[aria-label="Cama UCI-06"] button:has-text("PVE")');
       await cel.waitForSelector("text=Prueba de ventilación espontánea");
       assert.ok((await cel.locator('button:has-text("Iniciar PVE")').count()) === 0, "sin checklist no se puede iniciar");
       // un criterio no cumple: no hay PVE
@@ -398,8 +420,8 @@ async function esperarServidor() {
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Reintubado: la vía aérea queda en TET 7\.5/);
       await cel.click('button:has-text("‹ Camas")');
-      assert.match(await cel.textContent('article[aria-label="Cama UCI-02"]'), /TET · VM día/);
-      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Monitorización")');
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET · VM día/);
+      await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
     });
 
     await prueba("evaluacion MRC-ss desde la tarjeta de la cama: puntaje, corte de debilidad y registro", async () => {
@@ -504,11 +526,14 @@ async function esperarServidor() {
     });
 
     await prueba("el informe de riesgo viene pre-llenado con el evento, la identidad y el contexto previo", async () => {
+      // La autoextubacion se registro en la cama 2 desde su tarjeta.
+      await pc.click(".cama.alerta");
       const informe = await pc.locator("pre.nota").first().textContent();
       assert.match(informe, /Autoextubación no planificada/);
       assert.match(informe, /tracciona el TET/);
-      assert.match(informe, /Paciente Prueba Uno · RUT 12\.345\.678-5/);
+      assert.match(informe, /Paciente Prueba Dos · RUT 9\.876\.543-\w/);
       assert.match(informe, /Contexto de las horas previas/);
+      await pc.click('.cama:has-text("UCI-01")');
     });
 
     await prueba("la hoja APK se descarga como copia de la hoja de papel, con el RUN del paciente", async () => {
@@ -558,6 +583,46 @@ async function esperarServidor() {
       assert.equal(await pc.locator(".cama").count(), 19);
     });
 
+    await prueba("ingreso rapido a pie de cama: el celular ingresa sin nombre ni RUT y el PC completa la identidad", async () => {
+      // El PC libera la cama 18.
+      await pc.click('.cama:has-text("UCI-18")');
+      await pc.click('button:text-is("Dar de alta")');
+      await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
+      await pc.waitForTimeout(600);
+      // El celular la ve libre y la ingresa.
+      await cel.reload();
+      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      await cel.waitForSelector('[aria-label="Camas libres"]');
+      assert.match(await cel.textContent('[aria-label="Camas libres"] h3'), /Camas libres \(1\)/);
+      await cel.click('button[aria-label="Ingresar Cama 18"]');
+      await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
+      assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /sexo/);
+      await cel.locator('[aria-label="Sexo"] button:text-is("Mujer")').click();
+      await cel.fill("#ir-talla", "160");
+      assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] .notice.acc'), /Peso ideal 52,4 kg · Vt 6 ml\/kg 315 · 7 ml\/kg 365 · 8 ml\/kg 420 ml/);
+      await cel.locator('[aria-label="Vía aérea"] button:text-is("TET")').click();
+      await cel.fill("#ir-cal", "7");
+      await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
+      assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /arcada/);
+      await cel.fill("#ir-cm", "21");
+      await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 18")');
+      assert.match(await cel.textContent(".banda .l1"), /TET 7 · 21 cm/);
+      assert.match(await cel.textContent(".banda .l2"), /PI 52,4 kg/);
+      // El PC la ve sin identidad y la completa (cifrada en produccion).
+      await pc.waitForTimeout(800);
+      await pc.click('.cama:has-text("UCI-18")');
+      await pc.waitForSelector('form[aria-label="Completar identidad"]');
+      assert.match(await pc.textContent(".detail-head"), /edad pendiente/);
+      await pc.fill("#ci-nombre", "Paciente Prueba Dieciocho");
+      await pc.fill("#ci-edad", "50");
+      await pc.fill("#ci-dx", "Neumonía grave");
+      await pc.click('button:has-text("Guardar identidad")');
+      await pc.waitForTimeout(600);
+      assert.match(await pc.textContent(".detail-head h2"), /Paciente Prueba Dieciocho/);
+      assert.match(await pc.textContent(".detail-head"), /50 a · Neumonía grave/);
+    });
+
     console.log("Sin conexion y en pantalla de celular");
     await prueba("la app se instala como PWA y funciona sin conexion", async () => {
       await cel.evaluate(() => navigator.serviceWorker.ready);
@@ -567,7 +632,7 @@ async function esperarServidor() {
       await cel.reload();
       await cel.waitForSelector('article[aria-label^="Cama"]', { timeout: 8000 });
       assert.match(await cel.textContent(".cel-top"), /Sin señal/);
-      assert.match(await cel.textContent(".app-cel b.mono"), /UCI/);
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-01"] header'), /Cama 1/);
       await ctx.setOffline(false);
     });
 

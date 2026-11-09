@@ -185,6 +185,11 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
       infusiones: { ...FENT(4, 2.4), noradrenalina: { dosis: 0.35, escalon: null } }, sas: 2,
       terapiaFisica: { estado: "CONTRAINDICADA", actividades: [], ims: null, motivoContraindicacion: "Inestabilidad hemodinámica / DVA en ascenso" } }),
 
+    // Posoperatorio despierto, ya en CPAP+PS: candidato a la PVE diaria.
+    c("ep-06", 1, 30, { fc: 86, pas: 126, pad: 72, spo2: 97,
+      ventilacion: vent({ modalidad: "CPAP_PS", frProgramada: null, vtProgramado: null, flujo: null, ti: null, presion: 8, peep: 5, fio2: 30, frTotal: 16, vtEspirado: 480, pPico: 14, pPlateau: null, pMedia: null }),
+      sas: 4, glasgow: { ocular: 4, verbal: 1, motora: 6 } }),
+
     c("ep-07", 1, 240, { fc: 80, pas: 130, pad: 74, spo2: 95, viaAerea: "NATURAL",
       ventilacion: vent({ modalidad: "CNAF", frProgramada: null, vtProgramado: null, ti: null, peep: null, flujo: 40, fio2: 40, frTotal: 20, vtEspirado: null, pPico: null, pPlateau: null, pMedia: null }),
       sas: null, vigilia: "VIGIL_ALERTA", kineResp: { auscultacion: "MP conservado", aspecto: null, reologia: null, cantidad: null, tos: "EFICIENTE", flujoPicoTos: 120, deglucion: "PRESENTE" } }, RUT_KAREN)

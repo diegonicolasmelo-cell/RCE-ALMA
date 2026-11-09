@@ -11,7 +11,7 @@
  * clinico (el del celular) nunca la lleva.
  */
 
-import { ESCALA_SAS, ETIQUETA_MODALIDAD } from "./catalogos";
+import { ESCALA_SAS, ETIQUETA_MODALIDAD, textoEdad } from "./catalogos";
 import { buscarProfesional } from "./dotacion";
 import { describirEquipos } from "./equipos";
 import { eventosDeRiesgo } from "./eventos";
@@ -83,8 +83,8 @@ export function componerInformeRiesgo(e: EntradaInforme): string {
   const previo = controlPrevio(e.controles, evento);
   const autor = buscarProfesional(evento.rutAutor);
   const paciente = identidad
-    ? `${identidad.nombre}${identidad.rut ? ` · RUT ${formatearRut(identidad.rut)}` : ""} · ${episodio.edad} a`
-    : `cama ${episodio.cama} · ${episodio.edad} a (sin identidad disponible en este equipo)`;
+    ? `${identidad.nombre}${identidad.rut ? ` · RUT ${formatearRut(identidad.rut)}` : ""} · ${textoEdad(episodio.edad)}`
+    : `cama ${episodio.cama} · ${textoEdad(episodio.edad)} (sin identidad disponible en este equipo)`;
   const queda = evento.tipo === "AUTOEXTUBACION" ? evento.dispositivo : null;
 
   return [

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITERIOS_PVE, accesoPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
+import { CRITERIOS_PVE, accesoPve, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve } from "./tipos";
 
@@ -14,6 +14,7 @@ const base = (ahora: Date, id: string) => ({
 });
 const LECT: LecturasPve = { fc: 80, pas: 120, pad: 70, fr: 18, spo2: 96, gcs: 15, volMinuto: 7, trabajoResp: "", secreciones: "" };
 const SI = Array(8).fill(true) as boolean[];
+const ctl = (modalidad: "CPAP_PS" | "ACVC", en: Date = t(8)) => ({ modalidad, registradoEn: en.toISOString() });
 
 const checklist = (ahora: Date, criterios: boolean[] = SI): EventoClinico => ({
   ...base(ahora, "chk" + ahora.getTime()), tipo: "EVALUACION_PVE", criterios, apto: criteriosAptos(criterios), datos: "", extubacionFueraProtocolo: false
@@ -146,20 +147,30 @@ describe("hoja de registro de PVE", () => {
 
 describe("entrada directa a la PVE desde la tarjeta de la cama", () => {
   it("un ventilado en CPAP/PS sin checklist: 'Evaluar PVE diaria'", () => {
-    expect(accesoPve("TET", "CPAP_PS", [], t(9))).toEqual({ texto: "Evaluar PVE diaria", destacado: false });
+    expect(accesoPve("TET", ctl("CPAP_PS"), [], t(9))).toEqual({ texto: "Evaluar PVE diaria", destacado: false });
   });
 
-  it("en modalidad controlada queda a mano sin destacar; con vía aérea natural y nada pendiente no se ofrece", () => {
-    expect(accesoPve("TET", "ACVC", [], t(9))).toEqual({ texto: "PVE", destacado: false });
-    expect(accesoPve("TQT", null, [], t(9))).toEqual({ texto: "PVE", destacado: false });
-    expect(accesoPve("NATURAL", "CPAP_PS", [], t(9))).toBeNull();
+  it("solo con TET y el último control en CPAP+PS: en otra modalidad, con TQT o natural no se ofrece, y dice por qué", () => {
+    expect(accesoPve("TET", ctl("ACVC"), [], t(9))).toBeNull();
+    expect(accesoPve("TQT", ctl("CPAP_PS"), [], t(9))).toBeNull();
+    expect(accesoPve("NATURAL", ctl("CPAP_PS"), [], t(9))).toBeNull();
+    expect(motivoSinPve("TET", ctl("ACVC"), [])).toMatch(/CPAP\+PS/);
+    expect(motivoSinPve("TQT", ctl("CPAP_PS"), [])).toMatch(/TQT/);
+    expect(motivoSinPve("NATURAL", null, [])).toMatch(/solo con TET/);
+  });
+
+  it("un control en CPAP+PS anterior a una reintubación no habilita la PVE", () => {
+    const reint: EventoClinico = { ...base(t(10), "re"), tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22" };
+    expect(accesoPve("TET", ctl("CPAP_PS", t(9)), [reint], t(11))).toBeNull();
+    expect(motivoSinPve("TET", ctl("CPAP_PS", t(9)), [reint])).toMatch(/posterior a la intubación/);
+    expect(accesoPve("TET", ctl("CPAP_PS", t(10, 30)), [reint], t(11))).toEqual({ texto: "Evaluar PVE diaria", destacado: false });
   });
 
   it("apto: 'Iniciar PVE'; no apto: lo dice; en curso: 'Continuar PVE'", () => {
-    expect(accesoPve("TET", "CPAP_PS", [checklist(t(9))], t(9, 10))).toEqual({ texto: "Iniciar PVE", destacado: true });
+    expect(accesoPve("TET", ctl("CPAP_PS"), [checklist(t(9))], t(9, 10))).toEqual({ texto: "Iniciar PVE", destacado: true });
     const no = SI.map((x, i) => (i === 0 ? false : x));
-    expect(accesoPve("TET", "CPAP_PS", [checklist(t(9), no)], t(9, 10))?.texto).toMatch(/no apto/);
-    expect(accesoPve("TET", "ACVC", [checklist(t(9)), ...inicio(t(10))], t(10, 5))).toEqual({ texto: "Continuar PVE", destacado: true });
+    expect(accesoPve("TET", ctl("CPAP_PS"), [checklist(t(9), no)], t(9, 10))?.texto).toMatch(/no apto/);
+    expect(accesoPve("TET", ctl("ACVC"), [checklist(t(9)), ...inicio(t(10))], t(10, 5))).toEqual({ texto: "Continuar PVE", destacado: true });
   });
 
   it("extubado: avisa cuando toca un control post extubación, aunque ya tenga vía aérea natural", () => {

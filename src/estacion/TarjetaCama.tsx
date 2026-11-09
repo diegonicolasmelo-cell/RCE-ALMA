@@ -15,7 +15,8 @@ import {
   etiquetaEventoRiesgo,
   eventoDeRiesgoMasReciente,
   semaforoDva,
-  usaSoporteCardiovascular
+  usaSoporteCardiovascular,
+  textoEdad
 } from "@core/index";
 import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { cx } from "../app/util";
@@ -70,7 +71,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
       )}
       <div>
         <div className="nm">{identidad ? identidad.nombre : <span className="muted">Sin identidad en este equipo</span>}</div>
-        <div className="meta">{ep.edad} a · {ep.sexo} · {ep.diagnostico}</div>
+        <div className="meta">{textoEdad(ep.edad)} · {ep.sexo} · {ep.diagnostico || "diagnóstico pendiente"}</div>
       </div>
       <div className="pills">
         <Pildora tipo="acc">{ep.viaAereaActual === "NATURAL" ? "Vía natural" : ep.viaAereaActual}</Pildora>

@@ -422,6 +422,8 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "FALLA_POST_EXTUB"; readonly falla: boolean; readonly hipotesis: string; readonly observaciones: string })
   | (EventoBase & { readonly tipo: "INICIO_PVE"; readonly duracionMin: number })
   | (EventoBase & { readonly tipo: "FIN_PVE"; readonly exitosa: boolean })
+  /** PVE tolerada y NO se extuba (p. ej. espera de evaluacion de deglucion): cierra la PVE del turno. */
+  | (EventoBase & { readonly tipo: "PVE_SIN_EXTUBAR"; readonly motivo: string })
   | (EventoBase & { readonly tipo: "EXTUBACION_PROGRAMADA"; readonly dispositivo: DispositivoPosterior })
   | (EventoBase & { readonly tipo: "AUTOEXTUBACION"; readonly dispositivo: DispositivoPosterior })
   | (EventoBase & { readonly tipo: "REINTUBACION"; readonly via: "TET" | "TQT"; readonly calibre: string; readonly fijacionCm: string })

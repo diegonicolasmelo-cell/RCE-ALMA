@@ -84,8 +84,8 @@ describe("PVE en curso: control inicial, cronómetro y 30 min", () => {
     expect(puedeIniciarPve([checklist(t(9)), ...inicio(t(10))], t(10, 5))).toBe(false);
   });
 
-  it("al terminar queda 'terminada'", () => {
-    const evs = [checklist(t(9)), ...inicio(t(10)), { ...base(t(10, 35), "fin"), tipo: "FIN_PVE", exitosa: false } as EventoClinico];
+  it("al terminar tolerada queda 'terminada' (por extubar)", () => {
+    const evs = [checklist(t(9)), ...inicio(t(10)), { ...base(t(10, 35), "fin"), tipo: "FIN_PVE", exitosa: true } as EventoClinico];
     expect(estadoFlujoPve(evs, t(10, 40)).fase).toBe("TERMINADA");
   });
 });
@@ -203,5 +203,23 @@ describe("eventos guardados en el mismo instante", () => {
     const [ini, ctl] = inicio(t(10));
     const r = registrosPve([checklist(t(9)), ctl!, ini!]).at(-1);
     expect(r?.inicio?.fase).toBe("INICIAL");
+  });
+});
+
+describe("PVE superada sin extubar y PVE no tolerada", () => {
+  const fin = (ahora: Date, exitosa: boolean): EventoClinico => ({ ...base(ahora, "fin" + ahora.getTime()), tipo: "FIN_PVE", exitosa });
+  it("tolerada: queda por registrar la extubación", () => {
+    expect(estadoFlujoPve([checklist(t(9)), ...inicio(t(10)), fin(t(10, 35), true)], t(10, 40)).fase).toBe("TERMINADA");
+  });
+  it("tolerada sin extubar: la PVE del turno se cierra y no se ofrece otra", () => {
+    const sin: EventoClinico = { ...base(t(10, 45), "sin"), tipo: "PVE_SIN_EXTUBAR", motivo: "espera de evaluación de deglución" };
+    const evs = [checklist(t(9)), ...inicio(t(10)), fin(t(10, 35), true), sin];
+    expect(estadoFlujoPve(evs, t(11)).fase).toBe("CERRADA");
+    expect(accesoPve("TET", ctl("CPAP_PS", t(10, 50)), evs, t(11))).toBeNull();
+  });
+  it("no tolerada: cerrada, sin ofrecer la extubación", () => {
+    const evs = [checklist(t(9)), ...inicio(t(10)), fin(t(10, 20), false)];
+    expect(estadoFlujoPve(evs, t(10, 30)).fase).toBe("CERRADA");
+    expect(accesoPve("TET", ctl("CPAP_PS"), evs, t(10, 30))).toBeNull();
   });
 });

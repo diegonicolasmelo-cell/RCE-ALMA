@@ -65,6 +65,7 @@ export function viaAereaVigente(
       case "FALLA_POST_EXTUB":
       case "INICIO_PVE":
       case "FIN_PVE":
+      case "PVE_SIN_EXTUBAR":
       case "INICIO_PRONO":
       case "SUPINACION":
       case "INICIO_BNM":

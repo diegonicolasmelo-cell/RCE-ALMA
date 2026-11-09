@@ -52,6 +52,7 @@ const ORDEN_MISMO_INSTANTE: Partial<Record<EventoClinico["tipo"], number>> = {
   INICIO_PVE: 1,
   CONTROL_PVE: 2,
   FIN_PVE: 3,
+  PVE_SIN_EXTUBAR: 4,
   EXTUBACION_PROGRAMADA: 4,
   REEVAL_POST_EXTUB: 5,
   FALLA_POST_EXTUB: 6,
@@ -73,6 +74,8 @@ export type FasePve =
   | "APTO"
   | "EN_CURSO"
   | "TERMINADA"
+  /** La PVE de este turno ya se cerro: no tolerada, o tolerada sin extubar. */
+  | "CERRADA"
   | "POST_EXTUBACION";
 
 export interface MomentoPendiente {
@@ -172,7 +175,12 @@ export function estadoFlujoPve(eventos: readonly EventoClinico[], ahora: Date): 
   let fase: FasePve;
   if (pve.activa) fase = "EN_CURSO";
   else if (bloqueVigente) fase = "POST_EXTUBACION";
-  else if (idxInicio >= 0 && desde.some((e) => e.tipo === "FIN_PVE") && (!checklist || checklist.registradoEn < (desde[0]?.registradoEn ?? ""))) fase = "TERMINADA";
+  else if (idxInicio >= 0 && desde.some((e) => e.tipo === "FIN_PVE") && (!checklist || checklist.registradoEn < (desde[0]?.registradoEn ?? ""))) {
+    // Tolerada: queda por registrar la extubacion (o que se supero sin extubar). No tolerada: cerrada.
+    const fin = [...desde].reverse().find((e): e is Evento<"FIN_PVE"> => e.tipo === "FIN_PVE");
+    const sinExtubar = desde.some((e) => e.tipo === "PVE_SIN_EXTUBAR");
+    fase = fin?.exitosa && !sinExtubar ? "TERMINADA" : "CERRADA";
+  }
   else if (!checklist) fase = "SIN_CHECKLIST";
   else fase = checklist.apto ? "APTO" : "NO_APTO";
 
@@ -261,6 +269,7 @@ export function accesoPve(via: ViaAerea, ultimo: UltimoControlPve | null, evento
   if (f.fase === "EN_CURSO") return { texto: "Continuar PVE", destacado: true };
   if (via === "TET" && f.fase === "TERMINADA") return { texto: "PVE terminada: registrar extubación", destacado: true };
   if (via === "TET" && f.fase === "APTO") return { texto: "Iniciar PVE", destacado: true };
+  if (f.fase === "CERRADA") return null;
   if (motivoSinPve(via, ultimo, eventos)) return null;
   if (f.fase === "NO_APTO") return { texto: "PVE diaria: no apto este turno", destacado: false };
   return { texto: "Evaluar PVE diaria", destacado: false };

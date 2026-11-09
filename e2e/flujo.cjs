@@ -368,6 +368,13 @@ async function esperarServidor() {
       await cel.click('button:text-is("Registrar")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.5 · 22 cm/);
+      // La linea de tiempo junta los eventos y los controles, del mas nuevo al mas antiguo, con fecha y hora.
+      await cel.click('[role=tab]:has-text("Eventos")');
+      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
+      assert.match(linea[0] ?? "", /^hoy \d\d:\d\d\s*Reintubación TET calibre 7\.5/, linea.join(" | "));
+      assert.ok(linea.some((x) => /AUTOEXTUBACIÓN NO PLANIFICADA/.test(x)), "la autoextubacion queda en la linea: " + linea.join(" | "));
+      assert.ok(linea.some((x) => /Control · ACVC/.test(x)), "los controles tambien");
+      await cel.click('[role=tab]:has-text("Control")');
     });
 
     await prueba("PVE: checklist de 8 criterios, control inicial, cronometro, 30 min y post extubacion", async () => {

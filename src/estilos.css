@@ -357,3 +357,8 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 /* Numeros y NE en una sola fila, del mismo ancho (hasta 9 botones caben en 390 px). */
 .ev-ops:not(.txt){display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
 .ev-ops:not(.txt) button{min-width:0;padding:0}
+/* Linea de tiempo de la cama: cada cosa con su fecha y hora. */
+.linea-tiempo{list-style:none;margin:0;padding:0;display:grid;gap:0;border-left:2px solid var(--line);margin-left:4px}
+.linea-tiempo li{display:grid;grid-template-columns:6.6em minmax(0,1fr);gap:8px;padding:5px 0 5px 10px;font-size:13px;position:relative}
+.linea-tiempo li::before{content:"";position:absolute;left:-5px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.linea-tiempo .cuando{color:var(--ink-2);font-size:12px}

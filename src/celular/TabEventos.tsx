@@ -7,7 +7,8 @@ import {
   esViaAereaArtificial,
   estadoProno,
   vigenciaFiltros,
-  ETIQUETA_ELEMENTO
+  ETIQUETA_ELEMENTO,
+  ETIQUETA_MODALIDAD
 } from "@core/index";
 import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo } from "@core/index";
 import { useApp } from "../app/store";
@@ -131,7 +132,19 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     }
   };
 
-  const recientes = [...eventos].slice(-4).reverse();
+  // Linea de tiempo: todo lo que paso en la cama, del mas nuevo al mas antiguo, con su fecha y hora.
+  const [todo, setTodo] = useState(false);
+  const linea = [
+    ...eventos.map((e) => ({ id: e.id, en: ("realizadaEn" in e && typeof e.realizadaEn === "string" ? e.realizadaEn : e.registradoEn), texto: describirEvento(e), fuerte: e.tipo !== "EVALUACION_PUNTUAL" && e.tipo !== "CAMBIO_HMEF" && e.tipo !== "CAMBIO_FILTRO" })),
+    ...ctx.controles.map((c) => ({ id: c.id, en: c.registradoEn, texto: `Control · ${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? c.ventilacion.modalidad}`, fuerte: false }))
+  ].sort((a, b) => b.en.localeCompare(a.en));
+  const visibles = todo ? linea : linea.slice(0, 10);
+  const cuando = (iso: string): string => {
+    const d = new Date(iso);
+    const ayer = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1);
+    const dia = d.toDateString() === ahora.toDateString() ? "hoy" : d.toDateString() === ayer.toDateString() ? "ayer" : `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return `${dia} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
 
   return (
     <>
@@ -193,14 +206,15 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </section>
       ))}
 
-      {recientes.length > 0 && (
-        <section>
-          <h3>Registrados</h3>
-          <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-            {recientes.map((e) => (
-              <li key={e.id}><span className="mono">{e.hora}</span> {describirEvento(e)}</li>
+      {linea.length > 0 && (
+        <section aria-label="Línea de tiempo">
+          <h3>Línea de tiempo ({linea.length})</h3>
+          <ol className="linea-tiempo">
+            {visibles.map((x) => (
+              <li key={x.id}><span className="mono cuando">{cuando(x.en)}</span><span>{x.fuerte ? <b>{x.texto}</b> : x.texto}</span></li>
             ))}
-          </ul>
+          </ol>
+          {linea.length > 10 && <button type="button" className="linkbtn" onClick={() => setTodo((t) => !t)}>{todo ? "Ver menos" : `Ver todo (${linea.length})`}</button>}
         </section>
       )}
     </>

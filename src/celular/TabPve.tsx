@@ -174,6 +174,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const [datos, setDatos] = useState("");
   const [fuera, setFuera] = useState(false);
   const [formulario, setFormulario] = useState<"inicial" | "30" | "extub" | MomentoPostExtub | "falla" | null>(null);
+  const [motivoSin, setMotivoSin] = useState("");
   const [falla, setFalla] = useState<{ si: boolean | null; hip: string; obs: string }>({ si: null, hip: "", obs: "" });
   const [reint, setReint] = useState<{ via: "TET" | "TQT" | null; cal: string; fij: string }>({ via: "TET", cal: "", fij: "" });
 
@@ -217,7 +218,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
         <h3>Prueba de ventilación espontánea</h3>
         <div className="row">
           <Pildora tipo={flujo.fase === "APTO" ? "good" : flujo.fase === "NO_APTO" ? "crit" : flujo.fase === "EN_CURSO" ? "acc" : ""}>
-            {{ SIN_CHECKLIST: "Falta el checklist", NO_APTO: "No apto para PVE", APTO: "Apto: puede iniciar", EN_CURSO: "PVE en curso", TERMINADA: "PVE terminada", POST_EXTUBACION: "Post extubación" }[flujo.fase]}
+            {{ SIN_CHECKLIST: "Falta el checklist", NO_APTO: "No apto para PVE", APTO: "Apto: puede iniciar", EN_CURSO: "PVE en curso", TERMINADA: "PVE tolerada", CERRADA: "PVE del turno cerrada", POST_EXTUBACION: "Post extubación" }[flujo.fase]}
           </Pildora>
         </div>
         {bloqueo && !flujo.bloque && flujo.fase !== "EN_CURSO" && flujo.fase !== "APTO" && flujo.fase !== "TERMINADA" && <div className="mt"><Aviso tipo="warn" pequeno>{bloqueo}</Aviso></div>}
@@ -294,6 +295,13 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
         <section>
           <h3>3 · Extubación</h3>
           <p className="small ink2">Si la PVE fue tolerada y se extuba, registra la extubación: parten los controles de 30, 60 y 120 min y 48 h.</p>
+          {flujo.fase === "TERMINADA" && formulario !== "extub" && (
+            <div className="card stack mb" style={{ padding: 12, gap: 8, marginBottom: 10 }} aria-label="PVE superada sin extubar">
+              <div className="small ink2">¿Superó la PVE pero no se extuba? Queda registrado y la PVE del turno se cierra.</div>
+              <div className="f"><label htmlFor="pve-sin-motivo">Por qué no se extuba</label><input id="pve-sin-motivo" value={motivoSin} placeholder="Por ejemplo, espera de evaluación de deglución" style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setMotivoSin(e.target.value)} /></div>
+              <button type="button" className="btn" onClick={() => { if (motivoSin.trim() === "") return avisar("Escribe por qué no se extuba."); void ev({ tipo: "PVE_SIN_EXTUBAR", motivo: motivoSin.trim() }); setMotivoSin(""); avisar("Registrado: PVE superada sin extubar."); }}>PVE superada sin extubar</button>
+            </div>
+          )}
           {formulario === "extub" ? (
             <div className="card stack" style={{ padding: 12, gap: 8 }}>
               <b>Extubación programada · queda en</b>
@@ -303,6 +311,18 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
           ) : (
             <button type="button" className="btn primary" onClick={() => setFormulario("extub")}>Registrar extubación</button>
           )}
+        </section>
+      )}
+
+      {flujo.fase === "CERRADA" && (
+        <section>
+          <Aviso tipo="warn" pequeno>
+            {(() => {
+              const sin = [...eventos].reverse().find((e): e is Extract<EventoClinico, { tipo: "PVE_SIN_EXTUBAR" }> => e.tipo === "PVE_SIN_EXTUBAR");
+              const fin = [...eventos].reverse().find((e): e is Extract<EventoClinico, { tipo: "FIN_PVE" }> => e.tipo === "FIN_PVE");
+              return fin && !fin.exitosa ? `PVE no tolerada a las ${fin.hora}: vuelve al soporte. La próxima se evalúa en otro turno.` : `PVE superada sin extubar${sin ? ` a las ${sin.hora}: ${sin.motivo}` : ""}.`;
+            })()}
+          </Aviso>
         </section>
       )}
 

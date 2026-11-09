@@ -164,7 +164,7 @@ export function Evaluaciones({ ctx }: { ctx: ContextoCama }) {
           {pestana === "PVE" && (
             <button type="button" className="ev-item" data-escala="PVE" disabled={!pve} onClick={() => irA("pve", ep.id)}>
               <b><Timer size={14} aria-hidden /> {pve ? pve.texto : "PVE"}</b>
-              <span>{pve ? "Checklist, control de inicio y término, extubación" : sinPve}</span>
+              <span>{pve ? "Checklist, control de inicio y término, extubación" : sinPve ?? "La PVE de este turno ya se cerró."}</span>
             </button>
           )}
           {escalasDePestana(pestana).map(boton)}

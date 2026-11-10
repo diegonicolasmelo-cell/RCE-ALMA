@@ -265,6 +265,14 @@ async function esperarServidor() {
       assert.ok(await m.locator(".cel-top").isVisible(), "al ocultar el teclado vuelve la cabecera");
       // Agregar una droga deja el teclado en su dosis; ▲ ▼ titulan sin cerrar el teclado ni mover la hoja.
       // Seleccion multiple: se marcan varias y se agregan juntas, sin abrir el teclado ni mover la hoja.
+      const hojaAntes = await m.evaluate(() => ({ top: document.getElementById("cuerpo").scrollTop, alto: document.getElementById("cuerpo").scrollHeight }));
+      await m.tap(".agregar-inf");
+      await m.waitForSelector('[role=dialog][aria-label="Agregar drogas o infusiones"]');
+      const hojaAbierto = await m.evaluate(() => ({ top: document.getElementById("cuerpo").scrollTop, alto: document.getElementById("cuerpo").scrollHeight }));
+      assert.deepEqual(hojaAbierto, hojaAntes, "el panel flota: la hoja no cambia de tamano ni se mueve");
+      // Tocar fuera del panel lo cierra sin agregar nada.
+      await m.mouse.click(195, 60);
+      await m.waitForSelector('[role=dialog][aria-label="Agregar drogas o infusiones"]', { state: "detached" });
       await m.tap(".agregar-inf");
       for (const id of ["fentanilo", "midazolam", "adrenalina"]) await m.tap(`.elegir-inf button[data-id="${id}"]`);
       await m.tap('.elegir-inf button[data-id="midazolam"]');

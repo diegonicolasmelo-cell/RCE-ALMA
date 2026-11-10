@@ -434,14 +434,22 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 .hoja-simple .fila.bloq .et::after{content:" · bloqueado por asincronía";color:var(--crit-ink);font-weight:400;font-size:12px}
 .hoja-simple .acciones{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
 .hoja-simple .acciones select,.hoja-simple .agregar-inf{width:100%;min-height:40px;border:1px dashed var(--accent);border-radius:8px;background:var(--panel);color:var(--accent);font:600 15px var(--font-ui);padding:0 10px;cursor:pointer;text-align:left}
-/* Agregar varias drogas de una vez: se marcan y se agregan juntas. */
-.hoja-simple .elegir-inf{width:100%;display:flex;flex-direction:column;gap:10px}
-.hoja-simple .grupo-inf .sub-titulo{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:4px}
-.hoja-simple .marcas{display:flex;flex-wrap:wrap;gap:6px}
-.hoja-simple .marcas button{-webkit-tap-highlight-color:transparent;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 14px var(--font-ui);cursor:pointer}
-.hoja-simple .marcas button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.hoja-simple .pie-inf{display:flex;gap:8px}
-.hoja-simple .pie-inf .btn{flex:1}
+/* Agregar varias drogas de una vez: panel flotante que sube desde abajo, sobre la hoja. */
+.fondo-flotante{position:fixed;inset:0;z-index:50;background:rgba(15,26,36,.38);display:flex;align-items:flex-end;justify-content:center}
+.panel-flotante{width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;background:var(--panel);border-radius:16px 16px 0 0;box-shadow:0 -10px 30px rgba(15,26,36,.25)}
+.pf-cabeza{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);font-size:15px}
+.pf-cerrar{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:10px;background:var(--panel-2);color:var(--ink);cursor:pointer}
+.pf-cuerpo{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:10px max(14px,env(safe-area-inset-right,0px)) 12px max(14px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.panel-flotante .sub-titulo{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:5px}
+.panel-flotante .marcas{display:flex;flex-wrap:wrap;gap:6px}
+.panel-flotante .marcas button{-webkit-tap-highlight-color:transparent;min-height:42px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 14px var(--font-ui);cursor:pointer}
+.panel-flotante .marcas button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.panel-flotante .pie-inf{display:flex;gap:8px;padding:10px max(14px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel)}
+.panel-flotante .pie-inf .btn{flex:1;min-height:48px;font-size:15px}
+.panel-flotante .pie-inf .btn.primary{flex:2}
+@keyframes sube-panel{from{transform:translateY(100%)}to{transform:none}}
+@keyframes aparece-fondo{from{background:rgba(15,26,36,0)}}
+@media (prefers-reduced-motion:no-preference){.panel-flotante{animation:sube-panel .2s ease-out}.fondo-flotante{animation:aparece-fondo .2s ease-out}}
 /* La fila recien agregada se resalta y se desvanece: el ojo la encuentra sin mover la hoja. */
 @keyframes resalte-inf{from{background:var(--accent-soft)}to{background:transparent}}
 .hoja-simple .fila.inf.reciente{animation:resalte-inf 1.6s ease-out}

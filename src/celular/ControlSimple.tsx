@@ -5,7 +5,7 @@
  */
 
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ChangeEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import {
   CAMPOS_POR_MODALIDAD,
@@ -178,6 +178,19 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
   const [marcadas, setMarcadas] = useState<readonly IdInfusion[]>([]);
   const [recientes, setRecientes] = useState<readonly IdInfusion[]>([]);
   const alternarMarca = (id: IdInfusion): void => setMarcadas((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]));
+  const cerrarPanel = (): void => {
+    setMarcadas([]);
+    setEligiendo(false);
+  };
+  // Escape tambien cierra el panel (en el PC).
+  useEffect(() => {
+    if (!eligiendo) return;
+    const alTeclear = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") cerrarPanel();
+    };
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [eligiendo]);
   const agregarMarcadas = (): void => {
     const ids = marcadas;
     editar((y) => ids.reduce((acc, id) => iniciarInfusion(acc, id), y));
@@ -267,34 +280,42 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           );
         })}
         <div className="acciones">
-          {!eligiendo ? (
-            <button type="button" className="agregar-inf" onClick={() => setEligiendo(true)}>+ Agregar drogas o infusiones</button>
-          ) : (
-            <div className="elegir-inf" role="group" aria-label="Elegir drogas o infusiones">
-              {GRUPOS_INF.map(([g, t]) => {
-                const libres = INFUSIONES.filter((x) => x.grupo === g && !b.infusiones[x.id].activa);
-                return libres.length ? (
-                  <div key={g} className="grupo-inf">
-                    <div className="sub-titulo">{t}</div>
-                    <div className="marcas">
-                      {libres.map((x) => (
-                        <button key={x.id} type="button" data-id={x.id} aria-pressed={marcadas.includes(x.id)} onClick={() => alternarMarca(x.id)}>
-                          {x.nombre}
-                        </button>
-                      ))}
+          <button type="button" className="agregar-inf" aria-haspopup="dialog" onClick={() => setEligiendo(true)}>+ Agregar drogas o infusiones</button>
+        </div>
+        {eligiendo && (
+          // Panel flotante: sube desde abajo sobre la hoja, que no cambia de tamano ni se mueve.
+          <div className="fondo-flotante" onClick={cerrarPanel}>
+            <div className="panel-flotante elegir-inf" role="dialog" aria-modal="true" aria-label="Agregar drogas o infusiones" onClick={(e) => e.stopPropagation()}>
+              <header className="pf-cabeza">
+                <b>Agregar drogas o infusiones</b>
+                <button type="button" className="pf-cerrar" aria-label="Cerrar sin agregar" onClick={cerrarPanel}><X size={20} aria-hidden /></button>
+              </header>
+              <div className="pf-cuerpo">
+                {GRUPOS_INF.map(([g, t]) => {
+                  const libres = INFUSIONES.filter((x) => x.grupo === g && !b.infusiones[x.id].activa);
+                  return libres.length ? (
+                    <div key={g} className="grupo-inf">
+                      <div className="sub-titulo">{t}</div>
+                      <div className="marcas">
+                        {libres.map((x) => (
+                          <button key={x.id} type="button" data-id={x.id} aria-pressed={marcadas.includes(x.id)} onClick={() => alternarMarca(x.id)}>
+                            {x.nombre}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : null;
-              })}
+                  ) : null;
+                })}
+              </div>
               <div className="pie-inf">
+                <button type="button" className="btn" onClick={cerrarPanel}>Cancelar</button>
                 <button type="button" className="btn primary" disabled={marcadas.length === 0} onClick={agregarMarcadas}>
                   {marcadas.length === 0 ? "Marca una o más" : `Agregar (${marcadas.length})`}
                 </button>
-                <button type="button" className="btn" onClick={() => { setMarcadas([]); setEligiendo(false); }}>Cancelar</button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       <section aria-label="Terapia ventilatoria">

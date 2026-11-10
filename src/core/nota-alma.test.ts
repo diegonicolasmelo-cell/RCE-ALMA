@@ -111,7 +111,8 @@ describe("eventos en la nota", () => {
     const e = unEvento<Extract<EventoClinico, { tipo: "AUTOEXTUBACION" }>>({ tipo: "AUTOEXTUBACION", dispositivo: "CNAF", hora: "15:40", comentario: "Tracciona TET durante aseo." });
     const n = nota({ eventos: [e] });
     expect(n).toContain("EVENTOS DE SEGURIDAD DEL PACIENTE");
-    expect(n).toContain("AUTOEXTUBACIÓN NO PLANIFICADA");
+    expect(n).toContain("AUTOEXTUBACIÓN, queda en");
+    expect(n).not.toMatch(/NO PLANIFICADA/i);
     expect(n).toContain("Notificado para gestión de riesgo");
   });
 

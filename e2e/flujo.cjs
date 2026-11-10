@@ -364,7 +364,7 @@ async function esperarServidor() {
       assert.equal(await cel.locator('button:has-text("Extubación programada")').count(), 1);
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /^hoy \d\d:\d\d\s*Reintubación TET calibre 7\.5/, linea.join(" | "));
-      assert.ok(linea.some((x) => /AUTOEXTUBACIÓN NO PLANIFICADA/.test(x)), "la autoextubacion queda en la linea: " + linea.join(" | "));
+      assert.ok(linea.some((x) => /AUTOEXTUBACIÓN, queda en/.test(x)), "la autoextubacion queda en la linea: " + linea.join(" | "));
       assert.ok(linea.some((x) => /Control · ACVC/.test(x)), "los controles tambien");
       await cel.click('[role=tab]:has-text("Control")');
     });
@@ -386,7 +386,7 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".banda .l1"), /TET 8 · 23 cm/);
       await cel.click('[role=tab]:has-text("Eventos")');
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
-      assert.ok(linea.some((x) => /AUTOEXTUBACIÓN NO PLANIFICADA, con reintubación inmediata/.test(x)), linea.join(" | "));
+      assert.ok(linea.some((x) => /AUTOEXTUBACIÓN con reintubación inmediata/.test(x)), linea.join(" | "));
       await cel.click('[role=tab]:has-text("Control")');
     });
 
@@ -596,7 +596,8 @@ async function esperarServidor() {
       // La autoextubacion se registro en la cama 2 desde su tarjeta.
       await pc.click(".cama.alerta");
       const informe = await pc.locator("pre.nota").first().textContent();
-      assert.match(informe, /Autoextubación no planificada/);
+      assert.match(informe, /Evento: Autoextubación/);
+      assert.doesNotMatch(informe, /no planificada/i);
       assert.match(informe, /tracciona el TET/);
       assert.match(informe, /Paciente Prueba Dos · RUT 9\.876\.543-\w/);
       assert.match(informe, /Contexto de las horas previas/);

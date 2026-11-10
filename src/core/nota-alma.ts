@@ -201,7 +201,7 @@ export function describirEvento(ev: EventoClinico): string {
     case "EXTUBACION_PROGRAMADA":
       return `Extubación programada, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "AUTOEXTUBACION":
-      return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN NO PLANIFICADA, con reintubación inmediata" : `AUTOEXTUBACIÓN NO PLANIFICADA, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
+      return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN con reintubación inmediata" : `AUTOEXTUBACIÓN, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "REINTUBACION":
       return `Reintubación ${ev.via} calibre ${ev.calibre}, fijación ${ev.fijacionCm} cm`;
     case "TRAQUEOSTOMIA":

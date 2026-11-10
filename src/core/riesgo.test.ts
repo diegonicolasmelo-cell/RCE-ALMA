@@ -33,7 +33,8 @@ describe("componerInformeRiesgo", () => {
 
   it("arma el informe con los datos del celular: hora, descripción y dispositivo", () => {
     const t = informe();
-    expect(t).toContain("Evento: Autoextubación no planificada");
+    expect(t).toContain("Evento: Autoextubación");
+    expect(t).not.toMatch(/no planificada/i);
     expect(t).toContain("Hora: 15:40   Cama: UCI-01");
     expect(t).toContain("Tracciona el TET durante el aseo.");
     expect(t).toContain("Queda en: CNAF");

@@ -40,7 +40,7 @@ export function etiquetaEventoRiesgo(ev: EventoClinico): string {
 function tituloEvento(ev: EventoClinico): string {
   switch (ev.tipo) {
     case "AUTOEXTUBACION":
-      return "Autoextubación no planificada";
+      return "Autoextubación";
     case "PCR":
       return `Paro cardiorrespiratorio, reanimación ${ev.duracionReanimacionMin} min`;
     case "EVENTO_CENTINELA":

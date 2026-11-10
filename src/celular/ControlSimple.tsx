@@ -5,6 +5,7 @@
  */
 
 import { X } from "lucide-react";
+import { useState } from "react";
 import type { ChangeEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import {
   CAMPOS_POR_MODALIDAD,
@@ -170,9 +171,20 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
     const destino = dosis[i + 1] ?? dosis[i - 1] ?? despues ?? otras.at(-1);
     destino?.focus({ preventScroll: true });
   };
-  const agregar = (id: IdInfusion): void => {
-    editar((y) => iniciarInfusion(y, id));
-    setTimeout(() => document.getElementById(`in-inf-${id}-dosis`)?.focus(), 60);
+  // Agregar varias de una vez: se marcan en un panel y se agregan juntas. No se abre el
+  // teclado (abrirlo movia la hoja): las nuevas quedan resaltadas un momento y la dosis se toca
+  // cuando se quiera.
+  const [eligiendo, setEligiendo] = useState(false);
+  const [marcadas, setMarcadas] = useState<readonly IdInfusion[]>([]);
+  const [recientes, setRecientes] = useState<readonly IdInfusion[]>([]);
+  const alternarMarca = (id: IdInfusion): void => setMarcadas((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]));
+  const agregarMarcadas = (): void => {
+    const ids = marcadas;
+    editar((y) => ids.reduce((acc, id) => iniciarInfusion(acc, id), y));
+    setMarcadas([]);
+    setEligiendo(false);
+    setRecientes(ids);
+    setTimeout(() => setRecientes([]), 1600);
   };
 
   const m = ep.monitoreo;
@@ -237,7 +249,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           const sem = def.semaforo && dosis !== null ? semaforoCatecolamina(dosis) : "SIN_DVA";
           const titular = (s: 1 | -1): string => (def.escalones ? titularPorEscalon(def.id, x.dosis, s) : titularDosis(x.dosis, def.paso ?? 0.01, s));
           return (
-            <div className="fila inf" key={def.id} aria-label={def.nombre}>
+            <div className={`fila inf${recientes.includes(def.id) ? " reciente" : ""}`} key={def.id} aria-label={def.nombre}>
               <span className="et">
                 {def.nombre} <span className="u">{def.unidad}</span>
                 <button type="button" className="quitar" aria-label={`Suspender ${def.nombre}`} {...sinRobarFoco} onClick={() => suspender(def.id, def.nombre)}><X size={15} aria-hidden /></button>
@@ -255,17 +267,33 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           );
         })}
         <div className="acciones">
-          <select aria-label="Agregar droga o infusión" value="" onChange={(e) => { if (e.target.value) agregar(e.target.value as IdInfusion); }}>
-            <option value="">+ Agregar droga o infusión</option>
-            {GRUPOS_INF.map(([g, t]) => {
-              const libres = INFUSIONES.filter((x) => x.grupo === g && !b.infusiones[x.id].activa);
-              return libres.length ? (
-                <optgroup key={g} label={t}>
-                  {libres.map((x) => <option key={x.id} value={x.id}>{x.nombre} · {x.unidad}</option>)}
-                </optgroup>
-              ) : null;
-            })}
-          </select>
+          {!eligiendo ? (
+            <button type="button" className="agregar-inf" onClick={() => setEligiendo(true)}>+ Agregar drogas o infusiones</button>
+          ) : (
+            <div className="elegir-inf" role="group" aria-label="Elegir drogas o infusiones">
+              {GRUPOS_INF.map(([g, t]) => {
+                const libres = INFUSIONES.filter((x) => x.grupo === g && !b.infusiones[x.id].activa);
+                return libres.length ? (
+                  <div key={g} className="grupo-inf">
+                    <div className="sub-titulo">{t}</div>
+                    <div className="marcas">
+                      {libres.map((x) => (
+                        <button key={x.id} type="button" data-id={x.id} aria-pressed={marcadas.includes(x.id)} onClick={() => alternarMarca(x.id)}>
+                          {x.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })}
+              <div className="pie-inf">
+                <button type="button" className="btn primary" disabled={marcadas.length === 0} onClick={agregarMarcadas}>
+                  {marcadas.length === 0 ? "Marca una o más" : `Agregar (${marcadas.length})`}
+                </button>
+                <button type="button" className="btn" onClick={() => { setMarcadas([]); setEligiendo(false); }}>Cancelar</button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

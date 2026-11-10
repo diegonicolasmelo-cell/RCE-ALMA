@@ -433,7 +433,19 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 .hoja-simple .sub-grupo{padding:6px 12px;border-top:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:var(--panel-2)}
 .hoja-simple .fila.bloq .et::after{content:" · bloqueado por asincronía";color:var(--crit-ink);font-weight:400;font-size:12px}
 .hoja-simple .acciones{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
-.hoja-simple .acciones select{width:100%;min-height:40px;border:1px dashed var(--accent);border-radius:8px;background:var(--panel);color:var(--accent);font:600 15px var(--font-ui);padding:0 10px}
+.hoja-simple .acciones select,.hoja-simple .agregar-inf{width:100%;min-height:40px;border:1px dashed var(--accent);border-radius:8px;background:var(--panel);color:var(--accent);font:600 15px var(--font-ui);padding:0 10px;cursor:pointer;text-align:left}
+/* Agregar varias drogas de una vez: se marcan y se agregan juntas. */
+.hoja-simple .elegir-inf{width:100%;display:flex;flex-direction:column;gap:10px}
+.hoja-simple .grupo-inf .sub-titulo{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:4px}
+.hoja-simple .marcas{display:flex;flex-wrap:wrap;gap:6px}
+.hoja-simple .marcas button{-webkit-tap-highlight-color:transparent;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 14px var(--font-ui);cursor:pointer}
+.hoja-simple .marcas button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.hoja-simple .pie-inf{display:flex;gap:8px}
+.hoja-simple .pie-inf .btn{flex:1}
+/* La fila recien agregada se resalta y se desvanece: el ojo la encuentra sin mover la hoja. */
+@keyframes resalte-inf{from{background:var(--accent-soft)}to{background:transparent}}
+.hoja-simple .fila.inf.reciente{animation:resalte-inf 1.6s ease-out}
+@media (prefers-reduced-motion:reduce){.hoja-simple .fila.inf.reciente{animation:none;background:var(--accent-soft)}}
 .hoja-simple .sw{display:flex;gap:4px}
 .hoja-simple .sw button{flex:1;min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:600 14px var(--font-ui);cursor:pointer}
 .hoja-simple .sw button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -515,3 +527,6 @@ body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
 /* Lista de camas del celular, como en el registro simple: libres punteadas, en su lugar. */
 .cama-num{font:700 20px var(--font-data);letter-spacing:.02em}
 .cama-sin{border-style:dashed;background:var(--panel-2)}
+/* La hoja no usa el anclaje automatico del navegador: al cerrar el panel de drogas mantenia fijo
+   lo de abajo y subia las filas nuevas fuera de la vista. La posicion la cuida la app. */
+#cuerpo,.cel-cuerpo{overflow-anchor:none}

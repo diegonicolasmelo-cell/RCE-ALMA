@@ -61,6 +61,24 @@ export function siguienteCasilla(el: HTMLElement): void {
   }
 }
 
+/**
+ * Aplica un cambio de diseno (cabecera que aparece, relleno que se va) sin que se mueva lo que
+ * se esta mirando: toma un elemento de la hoja como ancla y corrige el desplazamiento en el
+ * mismo instante, antes de que se pinte.
+ */
+function quieto(cambio: () => void): void {
+  const caja = document.querySelector<HTMLElement>(".escribiendo") ?? document.getElementById("cuerpo");
+  if (!caja) return cambio();
+  const r = caja.getBoundingClientRect();
+  const visibleAbajo = Math.min(r.bottom, window.innerHeight);
+  const y = r.top + Math.max(0, (visibleAbajo - r.top) * 0.3);
+  let ancla = document.elementFromPoint(r.left + r.width / 2, y) as HTMLElement | null;
+  if (ancla && !caja.contains(ancla)) ancla = null;
+  const antes = ancla?.getBoundingClientRect().top ?? null;
+  cambio();
+  if (ancla && antes !== null && document.body.contains(ancla)) caja.scrollTop += ancla.getBoundingClientRect().top - antes;
+}
+
 /** Lleva la fila al 40 % de lo que se ve sobre el teclado, no al borde. */
 function centrar(activa: HTMLElement | null, kb: HTMLElement | null): void {
   const cuerpo = cajaDe(activa);
@@ -113,8 +131,12 @@ export function TecladoPropio() {
         activa.current?.closest(".fila")?.classList.remove("activa");
         activa.current = null;
         setVisible(false);
-        document.body.classList.remove("teclado-propio");
-        document.querySelectorAll(".escribiendo").forEach((x) => x.classList.remove("escribiendo"));
+        // Al cerrar vuelve la cabecera y se va el espacio del teclado: lo que se estaba mirando
+        // queda en el mismo lugar de la pantalla (sin tiron).
+        quieto(() => {
+          document.body.classList.remove("teclado-propio");
+          document.querySelectorAll(".escribiendo").forEach((x) => x.classList.remove("escribiendo"));
+        });
       }, 60);
     };
     // Enter = casilla siguiente, como en la hoja.

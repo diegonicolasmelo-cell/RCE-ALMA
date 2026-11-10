@@ -16,6 +16,14 @@ const URL = `http://localhost:${PUERTO}/`;
 const { chromium } = require("playwright");
 
 let pasadas = 0;
+/** Agrega varias drogas de una vez con el panel de seleccion multiple. */
+const agregarDrogas = async (pg, ids, tocar = false) => {
+  const toque = (sel) => (tocar ? pg.tap(sel) : pg.click(sel));
+  await toque(".agregar-inf");
+  for (const id of ids) await toque(`.elegir-inf button[data-id="${id}"]`);
+  await toque('.pie-inf button:has-text("Agregar (")');
+};
+
 const prueba = async (nombre, fn) => {
   try {
     await fn();
@@ -203,7 +211,7 @@ async function esperarServidor() {
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.04", "▲ sube un paso");
       await cel.click('button[aria-label="Bajar Noradrenalina"]');
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03");
-      await cel.selectOption('select[aria-label="Agregar droga o infusión"]', "rocuronio");
+      await agregarDrogas(cel, ["rocuronio"]);
       assert.equal(await cel.locator('.fila.inf[aria-label="Rocuronio"]').count(), 1, "el bloqueo neuromuscular va en la misma lista");
       await cel.click('button[aria-label="Suspender Rocuronio"]');
       assert.equal(await cel.locator('.fila.inf[aria-label="Rocuronio"]').count(), 0);
@@ -212,7 +220,7 @@ async function esperarServidor() {
     await prueba("sedante: al agregarlo parte en el escalon 1, las flechas titulan por escalon y se guarda la dosis; suspender se puede deshacer", async () => {
       const fila = cel.locator('.fila.inf[aria-label="Propofol"]');
       assert.equal(await fila.count(), 0, "lo que no esta en curso no ocupa lugar hasta agregarlo");
-      await cel.selectOption('select[aria-label="Agregar droga o infusión"]', "propofol");
+      await agregarDrogas(cel, ["propofol"]);
       assert.equal(await cel.inputValue("#in-inf-propofol-dosis"), "0.5", "parte en la dosis del escalon 1");
       await cel.click('button[aria-label="Subir Propofol"]');
       assert.equal(await cel.inputValue("#in-inf-propofol-dosis"), "1", "la flecha sube al escalon siguiente");
@@ -256,7 +264,25 @@ async function esperarServidor() {
       assert.equal(await m.locator(".kb").isVisible(), false);
       assert.ok(await m.locator(".cel-top").isVisible(), "al ocultar el teclado vuelve la cabecera");
       // Agregar una droga deja el teclado en su dosis; ▲ ▼ titulan sin cerrar el teclado ni mover la hoja.
-      await m.selectOption('select[aria-label="Agregar droga o infusión"]', "noradrenalina");
+      // Seleccion multiple: se marcan varias y se agregan juntas, sin abrir el teclado ni mover la hoja.
+      await m.tap(".agregar-inf");
+      for (const id of ["fentanilo", "midazolam", "adrenalina"]) await m.tap(`.elegir-inf button[data-id="${id}"]`);
+      await m.tap('.elegir-inf button[data-id="midazolam"]');
+      await m.tap('.elegir-inf button[data-id="noradrenalina"]');
+      assert.match(await m.textContent(".pie-inf .btn.primary"), /Agregar \(3\)/, "marcar y desmarcar cuenta bien");
+      const filasAntes = await m.locator(".fila.inf").count();
+      // Con el boton a la vista (como lo tendria la persona), se mide la hoja antes y despues.
+      await m.locator('.pie-inf button:has-text("Agregar (")').scrollIntoViewIfNeeded();
+      const antesAgregar = await m.evaluate(() => ({ top: document.getElementById("cuerpo").scrollTop, panel: document.querySelector(".hoja-simple .acciones").getBoundingClientRect().top }));
+      await m.tap('.pie-inf button:has-text("Agregar (")');
+      await m.waitForTimeout(300);
+      assert.equal(await m.locator(".fila.inf").count(), filasAntes + 3, "se agregan las tres juntas");
+      assert.equal(await m.locator(".kb").isVisible(), false, "agregar no abre el teclado");
+      assert.ok(await m.locator(".cel-top").isVisible(), "la cabecera no se oculta: la hoja no salta");
+      const despues = await m.evaluate(() => ({ top: document.getElementById("cuerpo").scrollTop, nueva: document.querySelector(".fila.inf.reciente").getBoundingClientRect().top }));
+      assert.ok(Math.abs(despues.nueva - antesAgregar.panel) < 4, `las nuevas aparecen donde estaba el panel (${antesAgregar.panel} -> ${despues.nueva})`);
+      assert.equal(await m.locator(".fila.inf.reciente").count(), 3, "las nuevas se resaltan un momento");
+      await m.tap("#in-inf-noradrenalina-dosis");
       await m.waitForSelector(".kb:not([hidden])");
       await m.waitForTimeout(500);
       const yAntes = (await m.locator("#in-inf-noradrenalina-dosis").boundingBox()).y;
@@ -270,17 +296,23 @@ async function esperarServidor() {
       assert.ok(Math.abs(yDespues - yAntes) < 4, `la fila no se mueve (${yAntes} -> ${yDespues})`);
       // Suspender con el cursor en la dosis: con otra infusion debajo, el cursor pasa a ella y
       // el teclado sigue abierto; la fila vecina ocupa el lugar sin que la hoja salte.
-      await m.selectOption('select[aria-label="Agregar droga o infusión"]', "vasopresina");
+      await m.tap('.kb [data-kb="ocultar"]');
+      await m.waitForTimeout(200);
+      await agregarDrogas(m, ["vasopresina"], true);
       await m.waitForTimeout(400);
       await m.tap("#in-inf-noradrenalina-dosis");
       await m.waitForTimeout(500);
       const yNora = (await m.locator("#in-inf-noradrenalina-dosis").boundingBox()).y;
+      const vecina = await m.evaluate(() => {
+        const l = [...document.querySelectorAll('.fila.inf input[id^="in-inf-"]')].map((x) => x.id);
+        return l[l.indexOf("in-inf-noradrenalina-dosis") + 1];
+      });
       await m.tap('button[aria-label="Suspender Noradrenalina"]');
       await m.waitForTimeout(500);
-      assert.equal(await m.evaluate(() => document.activeElement.id), "in-inf-vasopresina-dosis", "el cursor pasa a la dosis vecina");
+      assert.equal(await m.evaluate(() => document.activeElement.id), vecina, "el cursor pasa a la dosis de la fila de abajo");
       assert.ok(await m.locator(".kb").isVisible(), "el teclado sigue abierto");
       assert.equal(await m.locator(".cel-top").isVisible(), false, "sin tiron: la cabecera no vuelve");
-      const yVaso = (await m.locator("#in-inf-vasopresina-dosis").boundingBox()).y;
+      const yVaso = (await m.locator(`#${vecina}`).boundingBox()).y;
       assert.ok(Math.abs(yVaso - yNora) < 6, `la vecina ocupa el lugar (${yNora} -> ${yVaso})`);
       // Suspender todas: con la ultima, el cursor pasa a la casilla siguiente de la hoja y el
       // teclado sigue abierto (sin cabecera que vuelva ni salto).
@@ -636,7 +668,9 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
       await cel.click('[role=tab]:has-text("Control")');
-      assert.ok((await cel.locator('select[aria-label="Agregar droga o infusión"] optgroup[label="Bloqueo neuromuscular"]').count()) === 1, "el BNM se agrega en las infusiones en curso, con la sedacion");
+      await cel.click(".agregar-inf");
+      assert.ok((await cel.locator('.elegir-inf .sub-titulo:text-is("Bloqueo neuromuscular")').count()) === 1, "el BNM se agrega en las infusiones en curso, con la sedacion");
+      await cel.click('.pie-inf button:text-is("Cancelar")');
       await cel.click('[role=tab]:has-text("Eventos")');
       assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
       await cel.click('button:has-text("Cambio de filtro HME")');

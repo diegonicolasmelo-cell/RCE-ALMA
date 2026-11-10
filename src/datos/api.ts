@@ -54,7 +54,8 @@ export interface ClienteApi {
    * El primer PC registra la HUELLA (SHA-256) de la llave de estacion que creo en su
    * navegador: Google nunca recibe la llave. Solo funciona con el registro abierto.
    */
-  registrarEstacion(huella: string): Promise<{ ok: boolean; error?: string }>;
+  /** Registra las huellas de las llaves que creo este PC (con el registro abierto en el editor). */
+  registrarLlaves(huellas: HuellasLlaves): Promise<{ ok: boolean; error?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +112,20 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
   return crearApiRemota({ post, get }, cfg);
 }
 
+export interface HuellasLlaves {
+  readonly huellaApp?: string;
+  readonly huellaEstacion?: string;
+}
+
+/**
+ * Registro de llaves: no lleva token, porque el primer PC aun no tiene ninguna. El servidor lo
+ * acepta solo mientras el registro esta abierto desde el editor (15 minutos).
+ */
+export async function registrarLlavesPor(t: Transporte, huellas: HuellasLlaves): Promise<{ ok: boolean; error?: string }> {
+  const r = await t.post({ accion: "registrarLlaves", ...huellas });
+  return r["ok"] === true ? { ok: true } : { ok: false, error: typeof r["error"] === "string" ? (r["error"] as string) : "ERROR_DESCONOCIDO" };
+}
+
 /** El cliente de la API sobre cualquier transporte. Los tokens viajan en cada peticion. */
 export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; readonly stationToken: string | null }): ClienteApi {
   const { post, get } = t;
@@ -129,9 +144,8 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
     },
 
-    async registrarEstacion(huella) {
-      const r = await post({ token: cfg.appToken, accion: "registrarEstacion", huella });
-      return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
+    async registrarLlaves(huellas) {
+      return registrarLlavesPor(t, huellas);
     },
 
     async sincronizar(lote) {
@@ -222,7 +236,7 @@ export function crearApiLocal(): ClienteApi {
       for (const id of ids) referencias.delete(id);
       return { ok: true };
     },
-    async registrarEstacion() {
+    async registrarLlaves() {
       return { ok: true };
     }
   };

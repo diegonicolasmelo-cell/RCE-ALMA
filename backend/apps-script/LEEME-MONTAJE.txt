@@ -28,10 +28,9 @@ PRIMERA VEZ
 5. Guarda (icono de disquete).
 
 6. Arriba, en el selector de funciones, elige  inicializarLibro  y pulsa Ejecutar.
-   La primera vez pide permisos: aceptalos. Crea las hojas y la llave de la app.
-   Abre "Registro de ejecucion" y copia:
-     APP_TOKEN  -> para conectar los celulares y los PC.
-   La llave de estacion (la de los PC) NO la crea Google: ver paso 11.
+   La primera vez pide permisos: aceptalos. Crea las hojas.
+   Las llaves (la de la app y la de estacion) NO las crea Google: las crea el
+   primer PC en el paso 10, y Google guarda solo sus HUELLAS.
 
 7. Elige  cargarDotacion  y Ejecutar. Carga a los profesionales sin clave; cada
    uno define la suya la primera vez que entra. (Revisa que los RUT de la hoja
@@ -60,22 +59,29 @@ PRIMERA VEZ
      <URL /exec>?demo=1
    Correo: diegonicolas.melo@gmail.com   Clave: kine
 
-10. Conecta cada equipo UNA vez abriendo su enlace (la app guarda la llave en ese
-    navegador y la borra de la barra de direcciones):
-     Celulares y PC:       <URL /exec>#config?a=<APP_TOKEN>
-    Desde ahi basta abrir <URL /exec> en el celular, o <URL /exec>#estacion en el PC.
-    Un equipo sin conectar muestra un aviso y no ve ningun dato.
+10. PRIMER PC (crea las dos llaves; ninguna queda en Google).
+     a. En el editor de Apps Script elige  abrirRegistroLlaves  y Ejecutar
+        (queda abierto 15 minutos).
+     b. En el PC abre  <URL /exec>  y pulsa "Configurar este PC como el primero".
+        La pagina se recarga conectada: este PC ya tiene la llave de la app y la de
+        estacion. Google guardo solo sus huellas (APP_TOKEN_HASH y
+        STATION_TOKEN_HASH), que no sirven para entrar.
+    Si la unidad ya funciona, NO uses ese boton en otro PC: crearia llaves nuevas.
 
-11. LLAVE DE ESTACION (solo los PC; es lo que impide que un celular lea nombres y RUT).
-    La crea el primer PC y Google guarda solo su HUELLA: la llave nunca queda en Google.
-     a. En el editor de Apps Script ejecuta  abrirRegistroEstacion  (abre 15 minutos).
-     b. En el primer PC: <URL /exec>#estacion -> pestana Estado -> "Crear llave de
-        estacion". Recarga la pagina.
-     c. Para los demas PC: en ese mismo panel, "Copiar enlace para otro PC" y abre en
-        cada PC  <URL /exec>#estacion?t=<llave>  (despues de su paso 10).
-    Nunca abras ese enlace en un celular.
-    Si la llave se pierde en todos los PC, no se recupera desde Google: repite a. y b.
-    (queda una llave nueva) y reconecta los PC con el enlace nuevo.
+11. LOS DEMAS EQUIPOS. En el primer PC: <URL /exec>#estacion -> pestana Estado ->
+    "Llaves de la unidad". Ahi estan los dos enlaces:
+     - Otro PC de la estacion: "Copiar enlace para otro PC" y abre en ese PC
+          <URL /exec>#estacion?a=<llave app>&t=<llave estacion>
+       Nunca abras ese enlace en un celular.
+     - Celulares: pega la URL /exec en la casilla y "Copiar enlace para celulares".
+       Abre ese enlace una vez en cada celular: lleva a la app instalable (GitHub
+       Pages) y solo la llave de la app. Despues: menu del navegador -> "Instalar
+       app" / "Agregar a pantalla de inicio".
+    La app guarda la llave en ese equipo y la borra de la barra de direcciones. Un
+    equipo sin conectar muestra un aviso y no ve ningun dato.
+    Si una llave se filtra o se pierde en todos los equipos, no se recupera desde
+    Google: ejecuta abrirRegistroLlaves, en el primer PC "Crear llaves nuevas…" y
+    reconecta cada equipo con los enlaces nuevos.
 
 12. CONTRASENA DE LA UNIDAD (cifra nombre y RUT). En el primer PC: Estado -> instalar
     la contrasena de la unidad, marcando "Es el primer PC". En los demas PC se escribe
@@ -111,3 +117,17 @@ LO QUE NO FUNCIONA DENTRO DE APPS SCRIPT (y por que)
 - Cada celular guarda sus datos en su navegador, separado por implementacion: si un
   dia se crea una implementacion nueva, los borradores sin subir de la anterior no
   se ven en la nueva.
+
+
+APP INSTALABLE PARA LOS CELULARES (GitHub Pages)
+------------------------------------------------
+
+Los PC usan <URL /exec> (sirve aunque el hospital bloquee paginas externas). Los
+celulares usan la app instalable publicada en GitHub Pages, que guarda en la misma
+hoja a traves de la misma URL /exec.
+
+1. En GitHub: Settings -> Pages -> Source: "GitHub Actions" (una sola vez).
+2. Cada vez que la rama main recibe una version, GitHub la publica sola en
+     https://diegonicolasmelo-cell.github.io/RCE-ALMA/
+3. Esa direccion, sin enlace de configuracion, no muestra datos ni la
+   demostracion (para la demostracion: agregar ?demo=1).

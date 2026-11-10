@@ -42,8 +42,11 @@ const pagina = () =>
   const gas = crearAppsScriptSimulado();
   gas.llamar("inicializarLibro");
   gas.llamar("cargarDotacion");
-  const APP = gas.propiedades.get("APP_TOKEN");
+  assert.equal(gas.propiedades.get("APP_TOKEN"), undefined, "inicializarLibro ya no crea la llave de la app");
   assert.equal(gas.propiedades.get("STATION_TOKEN"), undefined, "inicializarLibro ya no crea la llave de estacion");
+  // Las crea el primer PC (prueba de abajo).
+  let APP = "";
+  let LLAVE = "";
   const llamadas = [];
 
   const navegador = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {});
@@ -117,6 +120,42 @@ const pagina = () =>
       await ctx.close();
     });
 
+    const primerPc = await navegador.newContext({ viewport: { width: 1280, height: 900 } });
+    await prueba("el primer PC crea las dos llaves y Google guarda solo sus huellas", async () => {
+      const a = await abrir({}, primerPc);
+      await a.p.waitForSelector("text=aún no está conectado", { timeout: 10000 });
+      // Sin abrir el registro desde el editor, no se puede.
+      await a.p.click('button:has-text("Configurar este PC como el primero")');
+      await a.p.waitForSelector("text=El registro está cerrado");
+      gas.llamar("abrirRegistroLlaves");
+      await a.p.click('button:has-text("Configurar este PC como el primero")');
+      await a.p.waitForSelector("#rut", { timeout: 10000 });
+      await a.p.close();
+      const b = await abrir({ hash: "estacion" }, primerPc);
+      await b.p.waitForSelector(".estacion", { timeout: 10000 });
+      await b.p.click('[role=tab]:has-text("Estado")');
+      assert.match(await b.p.textContent("body"), /Con llave de estación/);
+      const enlace = (await b.p.locator('[aria-label="Llaves de la unidad"] .mono').first().textContent()).trim();
+      const m = /^#estacion\?a=([A-Za-z0-9_-]{43})&t=([A-Za-z0-9_-]{43})$/.exec(enlace);
+      assert.ok(m, `enlace: ${enlace}`);
+      [, APP, LLAVE] = m;
+      const huella = (x) => require("node:crypto").createHash("sha256").update(x, "utf8").digest("hex");
+      assert.equal(gas.propiedades.get("APP_TOKEN_HASH"), huella(APP));
+      assert.equal(gas.propiedades.get("STATION_TOKEN_HASH"), huella(LLAVE));
+      const enGoogle = [...gas.propiedades.values()];
+      assert.ok(!enGoogle.includes(APP) && !enGoogle.includes(LLAVE), "las llaves no estan en Google");
+      assert.ok(!llamadas.some((l) => JSON.stringify(l).includes(LLAVE)), "la llave de estacion nunca viajo al servidor");
+      // El registro se cierra solo: nadie mas puede cambiar las llaves.
+      assert.equal(JSON.parse(gas.llamar("rcePost", JSON.stringify({ accion: "registrarLlaves", huellaApp: "a".repeat(64) }))).error, "REGISTRO_CERRADO");
+      assert.equal(JSON.parse(gas.llamar("rceGet", { recurso: "referencia", token: LLAVE })).ok, true);
+      assert.equal(JSON.parse(gas.llamar("rceGet", { recurso: "referencia", token: "otra" })).ok, false);
+      // El enlace de los celulares lleva la PWA, la direccion /exec y solo la llave de la app.
+      await b.p.fill('input[type=url] >> nth=0', "https://script.google.com/macros/s/ABC/exec");
+      const cel = (await b.p.locator('[aria-label="Llaves de la unidad"] .mono').nth(1).textContent()).trim();
+      assert.equal(cel, `https://diegonicolasmelo-cell.github.io/RCE-ALMA/#config?u=${encodeURIComponent("https://script.google.com/macros/s/ABC/exec")}&a=${APP}`);
+      await b.p.close();
+    });
+
     const celular = await navegador.newContext({ viewport: { width: 390, height: 844 } });
     await prueba("el enlace #config?a= conecta el celular y la llave se borra de la barra de afuera", async () => {
       const { p } = await abrir({ hash: `config?a=${APP}` }, celular);
@@ -143,7 +182,7 @@ const pagina = () =>
       const usuarios = gas.hojas.get("usuarios").filas;
       const fila = usuarios.find((f) => f[0] === "16.452.891-K");
       assert.ok(fila[2] && fila[2] !== "kine" && !usuarios.flat().includes("kine"));
-      const posts = llamadas.filter((l) => l.tipo === "post");
+      const posts = llamadas.filter((l) => l.tipo === "post" && l.cuerpo.accion !== "registrarLlaves");
       assert.ok(posts.every((l) => l.cuerpo.token === APP && l.cuerpo.rut === "16.452.891-K"), "al servidor viaja el RUT, no el correo");
       await new Promise((r) => setTimeout(r, 800));
       assert.ok(llamadas.some((l) => l.tipo === "get" && l.params.token === APP && !l.params.recurso));
@@ -165,46 +204,16 @@ const pagina = () =>
       await ctx.close();
     });
 
-    await prueba("la llave de estacion la crea el primer PC y Google guarda solo su huella", async () => {
-      const pc = await navegador.newContext({ viewport: { width: 1280, height: 900 } });
-      const a = await abrir({ hash: `config?a=${APP}` }, pc);
-      await a.p.waitForSelector("#rut", { timeout: 10000 });
-      await a.p.close();
-      const b = await abrir({ hash: "estacion" }, pc);
-      await b.p.waitForSelector(".estacion", { timeout: 10000 });
-      await b.p.click('[role=tab]:has-text("Estado")');
-      // Sin abrir el registro desde el editor, no se puede.
-      await b.p.click('button:has-text("Crear llave de estación")');
-      await b.p.waitForSelector("text=El registro está cerrado");
-      gas.llamar("abrirRegistroEstacion");
-      await b.p.click('button:has-text("Crear llave de estación")');
-      await b.p.waitForSelector("text=Google guardó solo su huella");
-      const enlace = (await b.p.locator('[aria-label="Llave de estación"] .mono').textContent()).trim();
-      const llave = enlace.replace("#estacion?t=", "");
-      assert.match(llave, /^[A-Za-z0-9_-]{43}$/);
-      const huella = require("node:crypto").createHash("sha256").update(llave, "utf8").digest("hex");
-      assert.equal(gas.propiedades.get("STATION_TOKEN_HASH"), huella, "Google guarda la huella");
-      assert.ok(![...gas.propiedades.values()].includes(llave), "la llave no esta en Google");
-      assert.ok(!llamadas.some((l) => JSON.stringify(l).includes(llave)), "la llave nunca viajo al servidor en el registro");
-      // Con la llave, el servidor entrega las referencias cifradas; con otra, no.
-      assert.equal(JSON.parse(gas.llamar("rceGet", { recurso: "referencia", token: llave })).ok, true);
-      assert.equal(JSON.parse(gas.llamar("rceGet", { recurso: "referencia", token: "otra" })).ok, false);
-      // El registro se cierra solo: otro intento no cambia la llave.
-      assert.equal(JSON.parse(gas.llamar("rcePost", JSON.stringify({ token: APP, accion: "registrarEstacion", huella: "a".repeat(64) }))).error, "REGISTRO_CERRADO");
-      await b.p.close();
-      // Otro PC se conecta con el enlace, y la llave no queda en la barra de afuera.
+    await prueba("otro PC se conecta con un solo enlace y las llaves no quedan en la barra de afuera", async () => {
       const otro = await navegador.newContext({ viewport: { width: 1280, height: 900 } });
-      const c = await abrir({ hash: `config?a=${APP}` }, otro);
-      await c.p.waitForSelector("#rut", { timeout: 10000 });
-      await c.p.close();
-      const d = await abrir({ hash: `estacion?t=${llave}` }, otro);
+      const d = await abrir({ hash: `estacion?a=${APP}&t=${LLAVE}` }, otro);
       await d.p.waitForSelector(".estacion", { timeout: 10000 });
       const afuera = await d.p.evaluate(() => window.__hashAfuera);
       assert.ok(afuera.includes("estacion"), `barra de afuera: ${JSON.stringify(afuera)}`);
-      assert.ok(afuera.every((h) => !h.includes(llave) && !h.includes(APP)));
+      assert.ok(afuera.every((h) => !h.includes(LLAVE) && !h.includes(APP)));
       await d.p.click('[role=tab]:has-text("Estado")');
       assert.match(await d.p.textContent(".app, body"), /Con llave de estación/);
-      await pc.close();
+      await primerPc.close();
       await otro.close();
     });
 

@@ -8,4 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_APP_TOKEN?: string;
   /** Plantilla del enlace a Sinapse, con {rut}, {rutPuntos}, {cuerpo} y {dv}. */
   readonly VITE_SINAPSE_URL?: string;
+  /** "1" en la PWA publicada: sin enlace de configuracion no abre la demostracion (salvo ?demo=1). */
+  readonly VITE_EXIGIR_CONFIG?: string;
 }

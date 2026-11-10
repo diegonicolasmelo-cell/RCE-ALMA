@@ -56,6 +56,10 @@ export const MENSAJE_SIN_CONFIGURAR =
   "Este equipo aún no está conectado a la unidad. Abre una vez el enlace de configuración que entrega coordinación " +
   "(la dirección de la aplicación terminada en #config?a=…). Para ver la demostración, agrega ?demo=1 a la dirección.";
 
+export const MENSAJE_SIN_CONFIGURAR_PWA =
+  "Este celular aún no está conectado a la unidad. Abre una vez el enlace de configuración que entrega coordinación " +
+  "(la dirección de la aplicación terminada en #config?u=…&a=…). Para ver la demostración, agrega ?demo=1 a la dirección.";
+
 let contexto: ContextoAppsScript | null = null;
 export const contextoAppsScript = (): ContextoAppsScript | null => contexto;
 export function fijarContextoAppsScript(c: ContextoAppsScript | null): void {

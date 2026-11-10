@@ -32,6 +32,7 @@ jobs:
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_SINAPSE_URL: ${{ vars.SINAPSE_URL }}
+          VITE_EXIGIR_CONFIG: "1"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

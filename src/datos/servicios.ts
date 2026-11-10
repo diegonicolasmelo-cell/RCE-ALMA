@@ -4,11 +4,12 @@
  */
 
 import { BaseLocal, guardarMeta, leerMeta } from "./db";
-import { crearApiHttp, crearApiLocal, crearApiRemota } from "./api";
+import { crearApiHttp, crearApiLocal, crearApiRemota, registrarLlavesPor } from "./api";
 import type { ClienteApi } from "./api";
 import { combinarConfig, leerConfigEntorno, modoLocal, parsearHash } from "./config";
 import type { ConexionDispositivo, ConfigApp } from "./config";
-import { MENSAJE_SIN_CONFIGURAR, URL_APPS_SCRIPT, contextoAppsScript, googleScript, reemplazarHashExterno, transporteAppsScript } from "./gas";
+import { crearLlave, huellaDe } from "./llaves";
+import { MENSAJE_SIN_CONFIGURAR, MENSAJE_SIN_CONFIGURAR_PWA, URL_APPS_SCRIPT, contextoAppsScript, googleScript, reemplazarHashExterno, transporteAppsScript } from "./gas";
 import { Repositorio } from "./repositorio";
 import { sembrarSiVacia } from "./semilla";
 import { Sincronizador } from "./sync";
@@ -38,7 +39,7 @@ async function crear(): Promise<Servicios> {
   const gas = contextoAppsScript();
   const gs = gas ? googleScript() : null;
   // La demostracion usa otra base local: sus pacientes inventados nunca se mezclan con los reales.
-  const db = gas?.demo ? new BaseLocal("upc-pulse-demo") : new BaseLocal();
+  const db = gas?.demo || (!gas && import.meta.env.VITE_EXIGIR_CONFIG === "1" && demoPedida()) ? new BaseLocal("upc-pulse-demo") : new BaseLocal();
 
   // Llaves y conexion llegan en un enlace (#config?u=..&a=.. / #estacion?t=..), se guardan en
   // este navegador y se borran de la barra. No van en el codigo publicado.
@@ -61,6 +62,8 @@ async function crear(): Promise<Servicios> {
     : combinarConfig(leerConfigEntorno(), guardada);
   const local = gas ? gas.demo : modoLocal(config);
   if (gs && !local && !config.appToken) throw new Error(MENSAJE_SIN_CONFIGURAR);
+  // La PWA publicada no cae sola en la demostracion: sin enlace de configuracion lo dice.
+  if (!gs && local && import.meta.env.VITE_EXIGIR_CONFIG === "1" && !demoPedida()) throw new Error(MENSAJE_SIN_CONFIGURAR_PWA);
   const tokenEstacion = (await leerMeta<string>(db, CLAVE_TOKEN_ESTACION)) ?? null;
 
   const api: ClienteApi = local
@@ -78,4 +81,25 @@ async function crear(): Promise<Servicios> {
   // En produccion ningun nombre se guarda en el disco: se borran restos de versiones anteriores.
   else await db.identidades.clear();
   return { db, api, sync, repo, config, local, tokenEstacion };
+}
+
+const demoPedida = (): boolean => new URLSearchParams(window.location.search).get("demo") === "1";
+
+/**
+ * Primer PC de la unidad, en la app servida por Apps Script: crea aqui la llave de la app y la
+ * de estacion, registra en Google solo sus huellas (con el registro abierto desde el editor) y
+ * las deja guardadas en este navegador. Despues hay que recargar.
+ */
+export async function configurarPrimerPc(): Promise<{ ok: boolean; error?: string }> {
+  const gs = googleScript();
+  if (!gs) return { ok: false, error: "SOLO_APPS_SCRIPT" };
+  const app = crearLlave();
+  const estacion = crearLlave();
+  const r = await registrarLlavesPor(transporteAppsScript(gs), { huellaApp: await huellaDe(app), huellaEstacion: await huellaDe(estacion) });
+  if (!r.ok) return r;
+  const db = new BaseLocal();
+  await guardarMeta(db, CLAVE_CONEXION, { apiUrl: URL_APPS_SCRIPT, appToken: app } satisfies ConexionDispositivo);
+  await guardarMeta(db, CLAVE_TOKEN_ESTACION, estacion);
+  db.close();
+  return { ok: true };
 }

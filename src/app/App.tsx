@@ -7,6 +7,8 @@ import { ProveedorFranja } from "../celular/franja";
 import { leerMeta } from "../datos/db";
 import { parsearHash } from "../datos/config";
 import { iniciarServicios } from "../datos/servicios";
+import { MENSAJE_SIN_CONFIGURAR, MENSAJE_SIN_CONFIGURAR_PWA, esAppsScript } from "../datos/gas";
+import { SinConfigurar } from "../estacion/PrimerPc";
 import type { Servicios } from "../datos/servicios";
 import { Estacion } from "../estacion/Estacion";
 import { ServiciosContext } from "./contexto";
@@ -74,6 +76,8 @@ export function App() {
 
   useCicloDeSincronia(servicios);
 
+  if (error === MENSAJE_SIN_CONFIGURAR && esAppsScript()) return <SinConfigurar mensaje={error} />;
+  if (error === MENSAJE_SIN_CONFIGURAR_PWA) return <div className="login"><div className="notice warn">{error}</div></div>;
   if (error) return <div className="login"><div className="notice crit">No se pudo iniciar la aplicación: {error}</div></div>;
   if (!servicios || !lista) return <div className="login"><p className="muted">Cargando…</p></div>;
 

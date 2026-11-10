@@ -103,7 +103,7 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
         </div>
         {!local && !tokenEstacion && (
           <Aviso tipo="warn" pequeno>
-            Este equipo no tiene la llave de estación, así que ve la unidad sin nombres. Si otro PC ya la tiene, abre aquí su enlace (<span className="mono">…#estacion?t=&lt;llave&gt;</span>) una vez; si es el primer PC, créala en «Llave de estación».
+            Este equipo no tiene la llave de estación, así que ve la unidad sin nombres. Si otro PC ya la tiene, abre aquí el enlace que muestra ese PC en «Llaves de la unidad» una vez; si es el primer PC, créala en «Llaves de la unidad».
           </Aviso>
         )}
         {!local && (

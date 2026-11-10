@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { crearLlave, huellaDe } from "./llaveEstacion";
+import { crearLlave, huellaDe } from "./llaves";
 
 describe("llave de estación creada en el PC", () => {
   it("es larga y al azar: dos llaves nunca son iguales", () => {

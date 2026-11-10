@@ -82,12 +82,19 @@ export interface Transporte {
 export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): ClienteApi {
   const timeoutMs = cfg.timeoutMs ?? 20_000;
 
-  async function pedir(init: () => Promise<Response>): Promise<Obj> {
+  async function pedir(init: (signal: AbortSignal) => Promise<Response>): Promise<Obj> {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const res = await init();
-      return (await res.json()) as Obj;
+      const res = await init(ctrl.signal);
+      const texto = await res.text();
+      try {
+        return JSON.parse(texto) as Obj;
+      } catch {
+        // Llego una pagina (inicio de sesion de Google, «pagina no encontrada»…) en vez de datos:
+        // hay red, pero la direccion no es la de la app o la implementacion no es publica.
+        return { ok: false, error: "RESPUESTA_NO_ES_LA_APP" };
+      }
     } catch {
       return { ok: false, error: "SIN_CONEXION" };
     } finally {
@@ -96,8 +103,9 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
   }
 
   const post = (cuerpo: Obj): Promise<Obj> =>
-    pedir(() =>
+    pedir((signal) =>
       fetchImpl(cfg.url, {
+        signal,
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(cuerpo),
@@ -106,7 +114,7 @@ export function crearApiHttp(cfg: ConfigHttp, fetchImpl: typeof fetch = fetch): 
     );
 
   const get = (params: Record<string, string>): Promise<Obj> =>
-    pedir(() => fetchImpl(`${cfg.url}?${new URLSearchParams(params).toString()}`, { redirect: "follow" }));
+    pedir((signal) => fetchImpl(`${cfg.url}?${new URLSearchParams(params).toString()}`, { redirect: "follow", signal }));
 
   return crearApiRemota({ post, get }, cfg);
 }

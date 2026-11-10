@@ -4,6 +4,7 @@ import type { Profesional } from "@core/index";
 import { PIN_DEMO } from "../datos/api";
 import { guardarMeta, leerMeta } from "../datos/db";
 import { refrescarDotacion } from "../datos/servicios";
+import type { EstadoDotacion } from "../datos/servicios";
 import { useServicios } from "../app/contexto";
 import { Logo } from "../app/Logo";
 import { useApp } from "../app/store";
@@ -87,7 +88,7 @@ export function Login() {
     setError(null);
     // Un colega recien agregado a la hoja: se vuelve a pedir la dotacion antes de rechazarlo.
     let prof = buscarUsuario(rut);
-    let estado: Awaited<ReturnType<typeof refrescarDotacion>> = true;
+    let estado: EstadoDotacion = true;
     if (!prof && !local) {
       setCargando(true);
       estado = await refrescarDotacion(db, api);
@@ -99,7 +100,10 @@ export function Login() {
         local ? "Ese usuario no está en la dotación de la unidad."
         : estado === "servidor" ? "El servidor todavía no entrega la lista de usuarios: en Apps Script falta pegar el Codigo.gs nuevo y publicar una nueva versión."
         : estado === "vacia" ? "La hoja «usuarios» está vacía: en el editor de Apps Script ejecuta cargarDotacion."
-        : estado === false ? "Sin conexión con el servidor: no se pudo revisar la lista de usuarios."
+        : estado === "llave" ? "Este equipo tiene una llave antigua de la app (se crearon llaves nuevas). Abre de nuevo el enlace para celulares que muestra el PC en Estado → «Llaves de la unidad»."
+        : estado === "direccion" ? "La dirección del servidor guardada en este equipo no responde como la app. Revisa que la implementación tenga acceso «Cualquier persona» y vuelve a abrir el enlace para celulares del PC."
+        : estado === "red" ? "Sin conexión con el servidor: revisa la señal o el wifi y vuelve a intentar."
+        : typeof estado === "string" && estado.startsWith("otro:") ? `El servidor respondió un error (${estado.slice(5)}). Avísale a coordinación.`
         : "Ese correo no está en la hoja «usuarios» de la unidad. Pide a coordinación que lo agregue."
       );
     }
@@ -122,6 +126,8 @@ export function Login() {
       r.error === "PIN_INCORRECTO" ? "Contraseña incorrecta."
       : r.error === "SIN_CONEXION" ? "Sin conexión: el primer ingreso del día necesita red."
       : r.error === "USUARIO_NO_ENCONTRADO" ? "Ese correo no está en la hoja «usuarios» de la unidad."
+      : r.error === "TOKEN_INVALIDO" ? "Este equipo tiene una llave antigua de la app. Abre de nuevo el enlace para celulares que muestra el PC en «Llaves de la unidad»."
+      : r.error === "RESPUESTA_NO_ES_LA_APP" ? "La dirección del servidor guardada en este equipo no responde como la app. Vuelve a abrir el enlace para celulares del PC."
       : "No se pudo ingresar."
     );
   };

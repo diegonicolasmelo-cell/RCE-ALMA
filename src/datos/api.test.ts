@@ -6,7 +6,7 @@ type Llamada = { url: string; init?: RequestInit };
 function fetchFalso(respuesta: unknown, llamadas: Llamada[] = []): typeof fetch {
   return (async (url: string, init?: RequestInit) => {
     llamadas.push({ url: String(url), ...(init ? { init } : {}) });
-    return { json: async () => respuesta } as Response;
+    return { text: async () => JSON.stringify(respuesta) } as Response;
   }) as unknown as typeof fetch;
 }
 
@@ -85,5 +85,22 @@ describe("API local (modo demostración)", () => {
     expect((await api.login("diego.melo@demo.upc", PIN_DEMO)).ok).toBe(true);
     expect((await api.login("diego.melo@demo.upc", "1234")).ok).toBe(false);
     expect((await api.login("nadie@demo.upc", PIN_DEMO)).ok).toBe(false);
+  });
+});
+
+describe("errores del servidor por HTTP, dichos por su nombre", () => {
+  const api = (respuesta: () => Promise<Response>) =>
+    crearApiHttp({ url: "https://script.google.com/macros/s/X/exec", appToken: "A", stationToken: null }, (() => respuesta()) as typeof fetch);
+  it("una página en vez de datos (inicio de sesión de Google) no es «sin conexión»", async () => {
+    const r = await api(async () => new Response("<html>Iniciar sesión</html>")).leerDotacion();
+    expect(r).toEqual({ ok: false, error: "RESPUESTA_NO_ES_LA_APP" });
+  });
+  it("una llave antigua llega como TOKEN_INVALIDO", async () => {
+    const r = await api(async () => new Response(JSON.stringify({ ok: false, error: "TOKEN_INVALIDO" }))).leerDotacion();
+    expect(r).toEqual({ ok: false, error: "TOKEN_INVALIDO" });
+  });
+  it("sin red sí es sin conexión", async () => {
+    const r = await api(async () => { throw new TypeError("Failed to fetch"); }).leerDotacion();
+    expect(r).toEqual({ ok: false, error: "SIN_CONEXION" });
   });
 });

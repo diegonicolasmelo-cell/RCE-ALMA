@@ -177,7 +177,12 @@ const pagina = () =>
       assert.match(await p.textContent("[role=alert]"), /no coinciden/);
       await p.fill("#npin", "kine");
       await p.click("button[type=submit]");
-      await p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
+      await p.waitForSelector("text=¿Cuáles son tus camas hoy?", { timeout: 10000 });
+      // Unidad sin pacientes: igual se ven las 18 camas, y las libres se ingresan desde aqui.
+      assert.equal(await p.locator('[aria-label="Camas"] button').count(), 18);
+      await p.click('button:has-text("Ver camas")');
+      await p.waitForSelector('[aria-label="Camas libres"] h3:has-text("Camas libres (18)")');
+      assert.equal(await p.locator("text=No hay camas activas").count(), 0);
       // El servidor guardo un hash, nunca la clave.
       const usuarios = gas.hojas.get("usuarios").filas;
       assert.deepEqual(usuarios[0], ["correo", "sal", "hashPin", "nombre", "turno", "rol"], "la hoja usuarios es por correo, sin RUT");
@@ -209,7 +214,7 @@ const pagina = () =>
       await p.waitForSelector("#npin", { timeout: 10000 });
       await p.fill("#npin", "clave1");
       await p.click("button[type=submit]");
-      await p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
+      await p.waitForSelector("text=¿Cuáles son tus camas hoy?", { timeout: 10000 });
       assert.ok(usuarios.find((f) => f[0] === "Reemplazo.Nuevo@hospital.cl")[2], "quedo su huella de contrasena");
       // Un correo que no esta en la hoja no entra.
       await p.close();
@@ -226,7 +231,7 @@ const pagina = () =>
       assert.match(await a.p.textContent("[role=alert]"), /incorrecta/i);
       await a.p.fill("#pin", "kine");
       await a.p.click("button[type=submit]");
-      await a.p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
+      await a.p.waitForSelector("text=¿Cuáles son tus camas hoy?", { timeout: 10000 });
       await ctx.close();
     });
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
+import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
 import type { Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
@@ -29,12 +29,13 @@ export function useGuardarIdentidad(): (identidad: IdentidadPaciente) => Promise
   };
 }
 
-export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: readonly string[]; onListo: () => void }) {
+export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { camasOcupadas: readonly string[]; onListo: () => void; camaInicial?: string }) {
   const { repo, local } = useServicios();
   const clave = useClaveUnidad();
   const guardarIdentidad = useGuardarIdentidad();
   const avisar = useApp((s) => s.avisar);
-  const [cama, setCama] = useState("");
+  const [cama, setCama] = useState(camaInicial);
+  const libres = CAMAS_UNIDAD.filter((c) => !camasOcupadas.includes(c));
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
   const [edad, setEdad] = useState("");
@@ -94,7 +95,13 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
     <form className="card stack" style={{ gap: 10 }} onSubmit={(ev) => { ev.preventDefault(); void guardar(); }}>
       <h2 style={{ margin: 0 }}>Ingresar paciente</h2>
       <div className="fgrid">
-        <div className="f"><label htmlFor="in-cama">Cama</label><input id="in-cama" value={cama} placeholder="UCI-09" onChange={(e) => setCama(e.target.value)} style={{ textAlign: "left" }} /></div>
+        <div className="f">
+          <label htmlFor="in-cama">Cama</label>
+          <select id="in-cama" value={cama} onChange={(e) => setCama(e.target.value)}>
+            <option value="">Elige…</option>
+            {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
+          </select>
+        </div>
         <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(e) => setEdad(e.target.value)} /></div>
         <div className="f"><label htmlFor="in-talla">Talla (cm)</label><input id="in-talla" inputMode="numeric" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       </div>

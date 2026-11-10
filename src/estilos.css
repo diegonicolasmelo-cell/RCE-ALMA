@@ -509,3 +509,8 @@ body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
 .hoja-simple .btn.danger{background:var(--crit);border-color:var(--crit);color:#fff}
 /* `.bar` es tambien la barra de progreso de la app (6 px): en la hoja, la fila de opciones no la hereda. */
 .hoja-simple .fila.bar{height:auto;background:none;border-radius:0;overflow:visible}
+
+/* Estacion: camas libres, listas para ingresar. */
+.camas-libres{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.cama-libre{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-2);color:var(--ink);cursor:pointer;font:inherit;text-align:left}
+.cama-libre:hover,.cama-libre[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}

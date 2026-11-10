@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
+import { CAMAS_UNIDAD, nombreCama } from "@core/index";
 import { cx } from "../app/util";
 import type { DatosUnidad } from "./datos";
 import { Detalle } from "./Detalle";
@@ -16,7 +17,10 @@ interface Props {
 
 export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
   const [filtro, setFiltro] = useState<string>("todas");
-  const [ingresando, setIngresando] = useState(false);
+  /** null: sin formulario; "": ingreso sin cama elegida; "UCI-05": ingreso a esa cama. */
+  const [ingresando, setIngresando] = useState<string | null>(null);
+  const ocupadas = datos.episodios.map((e) => e.cama.toUpperCase());
+  const libres = CAMAS_UNIDAD.filter((c) => !ocupadas.includes(c));
 
   const titulares = [...new Set(datos.episodios.map((e) => e.rutTitular))];
   const lista = filtro === "todas" ? datos.episodios : datos.episodios.filter((e) => e.rutTitular === filtro);
@@ -37,21 +41,19 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
         </div>
         <div className="row">
           <span className="small muted">{transcritas} de {datos.episodios.length} camas transcritas a ALMA</span>
-          <button type="button" className="btn sm primary" onClick={() => setIngresando(true)}>
+          <button type="button" className="btn sm primary" onClick={() => setIngresando("")}>
             <UserPlus size={14} aria-hidden /> Ingresar paciente
           </button>
         </div>
       </div>
 
-      {ingresando && (
+      {ingresando !== null && (
         <div style={{ marginBottom: 16 }}>
-          <IngresoPaciente camasOcupadas={datos.episodios.map((e) => e.cama.toUpperCase())} onListo={() => setIngresando(false)} />
+          <IngresoPaciente key={ingresando} camaInicial={ingresando} camasOcupadas={ocupadas} onListo={() => setIngresando(null)} />
         </div>
       )}
 
-      {datos.episodios.length === 0 ? (
-        <div className="card"><p className="muted">No hay pacientes activos. Usa “Ingresar paciente” para registrar el primero.</p></div>
-      ) : (
+      {datos.episodios.length > 0 && (
         <div className="camas">
           {lista.map((ep) => (
             <TarjetaCama
@@ -67,6 +69,20 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
             />
           ))}
         </div>
+      )}
+
+      {filtro === "todas" && libres.length > 0 && (
+        <section aria-label="Camas libres" style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: "12px 0 8px" }}>Camas libres ({libres.length})</h3>
+          <div className="camas-libres">
+            {libres.map((c) => (
+              <button key={c} type="button" className="cama-libre" aria-label={`Ingresar paciente en ${nombreCama(c)}`} aria-pressed={ingresando === c} onClick={() => setIngresando(c)}>
+                <b>{nombreCama(c)}</b>
+                <span className="small muted">Libre · Ingresar</span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {sel && (

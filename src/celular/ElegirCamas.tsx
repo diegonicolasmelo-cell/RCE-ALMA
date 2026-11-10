@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CAMAS_UNIDAD } from "@core/index";
 import type { Episodio } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
@@ -15,26 +16,28 @@ export function ElegirCamas() {
   const setMisCamas = useApp((s) => s.setMisCamas);
   const irA = useApp((s) => s.irA);
   const episodios = useConsulta<readonly Episodio[]>(() => repo.episodiosActivos(), [repo], []);
-  const camas = [...episodios].sort((a, b) => a.cama.localeCompare(b.cama));
+  // Las 18 camas de la unidad, con o sin paciente: el turno se reparte por cama.
+  const ocupadas = new Set(episodios.map((e) => e.cama));
+  const camas = CAMAS_UNIDAD;
   const [sel, setSel] = useState<readonly string[] | null>(null);
 
   // Parte con lo que eligio la vez anterior; si es la primera, con las que ya tiene como titular.
   useEffect(() => {
-    if (sel !== null || camas.length === 0) return;
+    if (sel !== null) return;
     void leerMeta<string[]>(db, claveMisCamas(sesion.rut)).then((g) => {
-      setSel(g ?? camas.filter((e) => e.rutTitular === sesion.rut).map((e) => e.cama));
+      setSel(g ?? episodios.filter((e) => e.rutTitular === sesion.rut).map((e) => e.cama));
     });
-  }, [db, sesion.rut, camas, sel]);
+  }, [db, sesion.rut, episodios, sel]);
 
   const actual = new Set(sel ?? []);
   const alternar = (cama: string): void => setSel((s) => (s ?? []).includes(cama) ? (s ?? []).filter((x) => x !== cama) : [...(s ?? []), cama]);
   const grupos: string[][] = [];
-  for (let i = 0; i < camas.length; i += TAMANO_GRUPO) grupos.push(camas.slice(i, i + TAMANO_GRUPO).map((e) => e.cama));
+  for (let i = 0; i < camas.length; i += TAMANO_GRUPO) grupos.push(camas.slice(i, i + TAMANO_GRUPO));
   const completo = (g: string[]): boolean => g.every((c) => actual.has(c));
   const alternarGrupo = (g: string[]): void => setSel((s) => (completo(g) ? (s ?? []).filter((c) => !g.includes(c)) : [...new Set([...(s ?? []), ...g])]));
 
   const continuar = async (): Promise<void> => {
-    const lista = camas.map((e) => e.cama).filter((c) => actual.has(c));
+    const lista = camas.filter((c) => actual.has(c));
     await guardarMeta(db, claveMisCamas(sesion.rut), lista);
     setMisCamas(lista);
     irA("camas");
@@ -44,7 +47,7 @@ export function ElegirCamas() {
     <div className="cel-cuerpo" style={{ display: "grid", gap: 14 }}>
       <div>
         <h2 style={{ margin: 0 }}>¿Cuáles son tus camas hoy?</h2>
-        <p className="small ink2">{sesion.nombre}. Con ellas parte la portada; las demás igual se pueden abrir para ayudar a un colega.</p>
+        <p className="small ink2">{sesion.nombre}. Con ellas parte la portada; las demás igual se pueden abrir para ayudar a un colega. Las camas claras están libres.</p>
       </div>
 
       <section>
@@ -62,9 +65,9 @@ export function ElegirCamas() {
       <section>
         <h3>Camas</h3>
         <div className="row" style={{ flexWrap: "wrap", gap: 8 }} role="group" aria-label="Camas">
-          {camas.map((e) => (
-            <button key={e.id} type="button" className="chip" aria-pressed={actual.has(e.cama)} onClick={() => alternar(e.cama)}>
-              {e.cama.slice(-2)}
+          {camas.map((c) => (
+            <button key={c} type="button" className="chip" aria-pressed={actual.has(c)} title={ocupadas.has(c) ? "Con paciente" : "Libre"} style={ocupadas.has(c) ? undefined : { opacity: 0.6 }} onClick={() => alternar(c)}>
+              {c.slice(-2)}
             </button>
           ))}
         </div>

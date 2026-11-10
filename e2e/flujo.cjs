@@ -643,10 +643,15 @@ async function esperarServidor() {
       assert.match(await pc.evaluate(() => navigator.clipboard.readText()), /EVOLUCIÓN KINESIOLOGÍA UPC/);
     });
 
-    await prueba("ingresar un paciente valida el RUT y crea la cama", async () => {
+    await prueba("una cama libre aparece en la estacion; ingresar valida el RUT y la ocupa", async () => {
       await pc.click('[role=tab]:has-text("Tablero")');
-      await pc.click('button:has-text("Ingresar paciente")');
-      await pc.fill("#in-cama", "UCI-19");
+      assert.equal(await pc.locator('[aria-label="Camas libres"]').count(), 0, "unidad llena: sin camas libres");
+      await pc.click('.cama:has-text("UCI-17")');
+      await pc.click('button:text-is("Dar de alta")');
+      await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
+      await pc.waitForSelector('[aria-label="Camas libres"] h3:has-text("Camas libres (1)")');
+      await pc.click('button[aria-label="Ingresar paciente en Cama 17"]');
+      assert.equal(await pc.inputValue("#in-cama"), "UCI-17", "el ingreso parte con la cama elegida");
       await pc.fill("#in-edad", "58");
       await pc.fill("#in-talla", "175");
       await pc.fill("#in-nombre", "Paciente Prueba Nueve");
@@ -656,7 +661,8 @@ async function esperarServidor() {
       await pc.fill("#in-rut", "12345678-5");
       await pc.click('button[type=submit]:has-text("Ingresar")');
       await pc.waitForTimeout(600);
-      assert.equal(await pc.locator(".cama").count(), 19);
+      assert.equal(await pc.locator(".cama").count(), 18);
+      assert.equal(await pc.locator('[aria-label="Camas libres"]').count(), 0);
     });
 
     await prueba("ingreso rapido a pie de cama: el celular ingresa sin nombre ni RUT y el PC completa la identidad", async () => {

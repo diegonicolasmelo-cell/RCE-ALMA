@@ -212,8 +212,35 @@ export function Celular() {
     if (ep && camaId !== ep.id) useApp.setState({ camaId: ep.id });
   }, [ep, camaId]);
 
+  const turno = turnoDe(ahora);
+  const cabecera = (
+      <div className="cel-top">
+        <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
+        <span className="row" style={{ gap: 8 }}>
+          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => void sync.ciclo()} aria-label="Sincronizar ahora">
+            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}
+          </button>
+          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
+        </span>
+      </div>
+  );
+
+  // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
+  // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.
   if (!ep || !base) {
-    return <div className="cel-cuerpo"><p className="muted">No hay camas activas. Un PC de la estación debe ingresar a los pacientes.</p></div>;
+    return (
+      <div className="app-cel">
+        {cabecera}
+        {vista === "elegir" ? (
+          <ElegirCamas />
+        ) : (
+          <>
+            <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Toca una cama libre para ingresar al paciente</span></div>
+            <ListaCamas />
+          </>
+        )}
+      </div>
+    );
   }
 
   // Un borrador de una version anterior de la app se completa con los campos nuevos.
@@ -223,7 +250,6 @@ export function Celular() {
   const ctx: ContextoCama = { ep, ultimo, controles, eventos, apks, b, editar, pbw, ahora, rutAutor: sesion.rut };
 
   const prono = estadoProno(eventos, ahora);
-  const turno = turnoDe(ahora);
 
   const guardar = async (): Promise<void> => {
     const problemas = validarBorrador(b, {
@@ -294,17 +320,6 @@ export function Celular() {
   );
   const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); setTab("control"); avisar(t); }} />;
 
-  const cabecera = (
-      <div className="cel-top">
-        <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
-        <span className="row" style={{ gap: 8 }}>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => void sync.ciclo()} aria-label="Sincronizar ahora">
-            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}
-          </button>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
-        </span>
-      </div>
-  );
 
   if (vista === "elegir") {
     return (

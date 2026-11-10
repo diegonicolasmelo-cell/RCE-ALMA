@@ -26,6 +26,7 @@ import { filasSabana } from "./sabana";
 import { PanelCircuitoYEvaluaciones, PanelPve } from "./PanelPve";
 import { Tendencia } from "./Tendencia";
 import { CompletarIdentidad } from "./CompletarIdentidad";
+import { FechaIngreso } from "./FechaIngreso";
 import { VENTANA_ALERTA_MS, copiarTexto, nombreProfesional } from "./util";
 
 interface Props {
@@ -97,6 +98,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
             {textoEdad(ep.edad)} · {ep.diagnostico || "diagnóstico pendiente"}
           </div>
           <div className="small ink2">Equipos: {describirEquipos(ep.equipos)}</div>
+          <FechaIngreso ep={ep} eventos={eventos} ahora={ahora} />
           {!identidad && ep.edad === 0 && <div className="mt"><CompletarIdentidad ep={ep} /></div>}
           <div className="small ink2">
             APK · turno anterior: {apkPrevia ? `${apkPrevia.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkPrevia.hora} (${nombreProfesional(apkPrevia.rutAutor)})` : "sin registro"} · este turno:{" "}

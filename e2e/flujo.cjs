@@ -117,7 +117,7 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".ctl-cabeza h1"), /^Control · Cama 1$/);
       assert.match(await cel.textContent(".ctl-cabeza .fecha"), /^\S+ \d{1,2} \S+$/, "la fecha va al lado del titulo: " + (await cel.textContent(".ctl-cabeza .fecha")));
       assert.equal(await cel.locator(".banda > div").count(), 2, "la banda tiene dos lineas");
-      assert.match(await cel.textContent(".banda .l1"), /TET .* · VM día/);
+      assert.match(await cel.textContent(".banda .l1"), /TET .* · VM \d+ [hd]/);
       assert.match(await cel.textContent(".banda .l2"), /PI \d+(,\d)? kg · Vt 6-8 ml\/kg: \d+-\d+ ml · talla 172 cm/);
     });
 
@@ -454,7 +454,7 @@ async function esperarServidor() {
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /la vía aérea vuelve a TET/);
       await cel.click('button:has-text("‹ Camas")');
-      assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET · VM día/);
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET · VM \d+ [hd]/);
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
     });
 
@@ -703,6 +703,22 @@ async function esperarServidor() {
       await pc.waitForTimeout(600);
       assert.match(await pc.textContent(".detail-head h2"), /Paciente Prueba Dieciocho/);
       assert.match(await pc.textContent(".detail-head"), /50 a · Neumonía grave/);
+      // El ingreso quedo grabado solo, con la hora del registro (llego ventilado: VM desde ahi).
+      assert.match(await pc.textContent(".detail-head"), /Ingreso a la UCI: \d\d-\d\d-\d{4} \d\d:\d\d · VM 0 h/);
+      // Se corrige en el PC: 30 horas antes, y la VM pasa a contarse desde ahi.
+      await pc.click('.detail-head button:has-text("Corregir")');
+      const antes = new Date(Date.now() - 30 * 3600_000);
+      const p2 = (n) => String(n).padStart(2, "0");
+      await pc.fill("#fi-ingreso", `${antes.getFullYear()}-${p2(antes.getMonth() + 1)}-${p2(antes.getDate())}T${p2(antes.getHours())}:${p2(antes.getMinutes())}`);
+      await pc.click('form[aria-label="Corregir ingreso"] button:has-text("Guardar")');
+      await pc.waitForSelector('.detail-head :text("VM 1 d")');
+      // En el futuro no se puede.
+      await pc.click('.detail-head button:has-text("Corregir")');
+      const despues = new Date(Date.now() + 3 * 3600_000);
+      await pc.fill("#fi-ingreso", `${despues.getFullYear()}-${p2(despues.getMonth() + 1)}-${p2(despues.getDate())}T${p2(despues.getHours())}:${p2(despues.getMinutes())}`);
+      await pc.click('form[aria-label="Corregir ingreso"] button:has-text("Guardar")');
+      assert.match(await pc.textContent('form[aria-label="Corregir ingreso"] [role=alert]'), /futuro/);
+      await pc.click('form[aria-label="Corregir ingreso"] button:has-text("Cancelar")');
     });
 
     console.log("Sin conexion y en pantalla de celular");

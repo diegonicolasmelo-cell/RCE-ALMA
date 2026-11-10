@@ -65,6 +65,7 @@ export interface EpisodioNube {
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
   readonly diasVM: number;
+  readonly ingresadoEn?: string;
   readonly equipos: readonly { tipo: string; modelo: string; numero: number | null; enUso: boolean }[];
   readonly monitoreo: { capnografia: boolean; pic: boolean; dve: boolean };
   readonly rutTitular: string;
@@ -93,6 +94,7 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     calibreVia: e.calibreVia,
     fijacionCm: e.fijacionCm,
     diasVM: e.diasVM,
+    ...(e.ingresadoEn ? { ingresadoEn: e.ingresadoEn } : {}),
     equipos: e.equipos.map((q) => ({ ...q })),
     monitoreo: { ...e.monitoreo },
     rutTitular: e.rutTitular,

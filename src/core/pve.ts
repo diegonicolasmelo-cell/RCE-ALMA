@@ -13,7 +13,7 @@
  */
 
 import { turnoDe } from "./turnos";
-import type { EventoClinico, LecturasPve, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
+import type { Episodio, EventoClinico, LecturasPve, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
 import { estadoPve } from "./eventos";
 import type { EstadoPve } from "./eventos";
 
@@ -246,6 +246,15 @@ function inicioTuboActual(eventos: readonly EventoClinico[]): string | null {
   return r.at(-1)?.registradoEn ?? null;
 }
 
+/**
+ * Desde cuando corre la VM del tubo actual: la ultima intubacion registrada; si no hay, y el
+ * paciente sigue con via aerea artificial, la hora de su ingreso (llego ventilado: hora cero de
+ * la unidad, sin contar la urgencia).
+ */
+export function inicioVm(ep: Pick<Episodio, "viaAereaActual" | "ingresadoEn">, eventos: readonly EventoClinico[]): string | null {
+  return inicioTuboActual(eventos) ?? (ep.viaAereaActual !== "NATURAL" ? ep.ingresadoEn ?? null : null);
+}
+
 /** Horas de ventilacion mecanica del tubo actual, o null si no se puede saber. */
 export interface HorasVm {
   readonly horas: number;
@@ -258,10 +267,17 @@ export interface HorasVm {
  * hay, un episodio que ya trae dias de VM lleva al menos esos dias; si llego intubado hoy, se
  * cuenta desde el primer control del episodio. `null` si no hay de donde contar.
  */
-export function horasDeVm(diasVM: number, eventos: readonly EventoClinico[], primerControlEn: string | null, ahora: Date): HorasVm | null {
-  const tubo = inicioTuboActual(eventos);
-  const desde = tubo ?? (diasVM > 0 ? null : primerControlEn);
-  if (!desde) return diasVM > 0 ? { horas: diasVM * 24, desde: null } : null;
+export function horasDeVm(
+  ep: Pick<Episodio, "viaAereaActual" | "ingresadoEn" | "diasVM">,
+  eventos: readonly EventoClinico[],
+  primerControlEn: string | null,
+  ahora: Date
+): HorasVm | null {
+  const inicio = inicioVm(ep, eventos);
+  const diasVM = ep.diasVM;
+  // Registros anteriores a `ingresadoEn`: los dias con que llego, o el primer control.
+  const desde = inicio ?? (ep.viaAereaActual === "NATURAL" ? null : diasVM > 0 ? null : primerControlEn);
+  if (!desde) return diasVM > 0 && ep.viaAereaActual !== "NATURAL" ? { horas: diasVM * 24, desde: null } : null;
   const ms = ahora.getTime() - new Date(desde).getTime();
   return Number.isFinite(ms) ? { horas: Math.max(0, Math.floor(ms / 3_600_000)), desde } : null;
 }
@@ -270,6 +286,12 @@ export function horasDeVm(diasVM: number, eventos: readonly EventoClinico[], pri
  * Aviso suave (no bloquea): con menos de 24 h de VM, en estricto rigor no corresponde una PVE
  * (p. ej. el paciente de pabellon que despierta rapido y se extuba sin protocolo).
  */
+/** «VM 8 h» el primer dia; despues «VM 3 d» (dias completos de 24 h). */
+export function textoVm(h: HorasVm | null): string | null {
+  if (!h) return null;
+  return h.horas < 24 ? `VM ${h.horas} h` : `VM ${Math.floor(h.horas / 24)} d`;
+}
+
 export function avisoMenos24hVm(h: HorasVm | null): string | null {
   if (!h || h.horas >= 24) return null;
   const desde = h.desde ? ` (desde las ${new Date(h.desde).toTimeString().slice(0, 5)})` : "";

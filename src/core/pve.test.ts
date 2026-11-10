@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITERIOS_PVE, accesoPve, avisoMenos24hVm, horasDeVm, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
+import { CRITERIOS_PVE, accesoPve, avisoMenos24hVm, horasDeVm, textoVm, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve } from "./tipos";
 
@@ -226,17 +226,34 @@ describe("PVE superada sin extubar y PVE no tolerada", () => {
 
 describe("aviso de menos de 24 h de VM (no bloquea)", () => {
   const reint = (ahora: Date): EventoClinico => ({ ...base(ahora, "re" + ahora.getTime()), tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22" });
+  const tet = (extra: { diasVM?: number; ingresadoEn?: string } = {}) => ({ viaAereaActual: "TET" as const, diasVM: 0, ...extra });
   it("cuenta desde la última intubación registrada", () => {
-    const h = horasDeVm(0, [reint(t(2))], null, t(10));
+    const h = horasDeVm(tet(), [reint(t(2))], null, t(10));
     expect(h?.horas).toBe(8);
     expect(avisoMenos24hVm(h)).toMatch(/^Menos de 24 h de VM: 8 h \(desde las 02:00\)/);
   });
-  it("un episodio que ya trae días de VM no avisa", () => {
-    expect(avisoMenos24hVm(horasDeVm(3, [], null, t(10)))).toBeNull();
+  it("un episodio antiguo que ya trae días de VM no avisa", () => {
+    expect(avisoMenos24hVm(horasDeVm(tet({ diasVM: 3 }), [], null, t(10)))).toBeNull();
   });
-  it("llegó intubado hoy: cuenta desde el primer control; 24 h o más no avisa", () => {
-    expect(horasDeVm(0, [], t(9).toISOString(), t(10))?.horas).toBe(1);
-    expect(avisoMenos24hVm(horasDeVm(0, [reint(t(9, 0, 3))], null, t(10)))).toBeNull();
-    expect(horasDeVm(0, [], null, t(10))).toBeNull();
+  it("llegó intubado: la hora cero es la del ingreso (la urgencia no cuenta)", () => {
+    expect(horasDeVm(tet({ ingresadoEn: t(9).toISOString() }), [], null, t(10))?.horas).toBe(1);
+    // Corregir la hora de ingreso corrige la VM.
+    expect(horasDeVm(tet({ ingresadoEn: t(2).toISOString() }), [], null, t(10))?.horas).toBe(8);
+    // Una reintubación posterior manda sobre el ingreso.
+    expect(horasDeVm(tet({ ingresadoEn: t(2).toISOString() }), [reint(t(9))], null, t(10))?.horas).toBe(1);
+  });
+  it("sin hora de ingreso (registro antiguo): desde el primer control; sin nada, no se sabe", () => {
+    expect(horasDeVm(tet(), [], t(9).toISOString(), t(10))?.horas).toBe(1);
+    expect(avisoMenos24hVm(horasDeVm(tet(), [reint(t(9, 0, 3))], null, t(10)))).toBeNull();
+    expect(horasDeVm(tet(), [], null, t(10))).toBeNull();
+  });
+  it("con vía natural no hay VM que contar", () => {
+    expect(horasDeVm({ viaAereaActual: "NATURAL", diasVM: 0, ingresadoEn: t(2).toISOString() }, [], null, t(10))).toBeNull();
+  });
+  it("«VM 8 h» el primer día; después días completos de 24 h", () => {
+    expect(textoVm({ horas: 8, desde: null })).toBe("VM 8 h");
+    expect(textoVm({ horas: 24, desde: null })).toBe("VM 1 d");
+    expect(textoVm({ horas: 77, desde: null })).toBe("VM 3 d");
+    expect(textoVm(null)).toBeNull();
   });
 });

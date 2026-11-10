@@ -17,7 +17,9 @@ import {
   nombreCama,
   volumenObjetivoMl,
   turnoDe,
-  validarBorrador
+  validarBorrador,
+  horasDeVm,
+  textoVm
 } from "@core/index";
 import type { BorradorControl } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -361,7 +363,7 @@ export function Celular() {
         <Lock size={13} aria-label="Vía aérea fija: solo la cambia un evento" />
         <span>
           {esViaAereaArtificial(ep.viaAereaActual)
-            ? <><b>{ep.viaAereaActual} {ep.calibreVia}</b>{ep.viaAereaActual === "TET" && ep.fijacionCm ? <> · {ep.fijacionCm}{/\d/.test(ep.fijacionCm) ? " cm" : ""}</> : null} · VM día {ep.diasVM}</>
+            ? <><b>{ep.viaAereaActual} {ep.calibreVia}</b>{ep.viaAereaActual === "TET" && ep.fijacionCm ? <> · {ep.fijacionCm}{/\d/.test(ep.fijacionCm) ? " cm" : ""}</> : null}{textoVm(horasDeVm(ep, eventos, controles[0]?.registradoEn ?? null, ahora)) ? <> · {textoVm(horasDeVm(ep, eventos, controles[0]?.registradoEn ?? null, ahora))}</> : null}</>
             : <b>Vía aérea natural</b>}
         </span>
         {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}

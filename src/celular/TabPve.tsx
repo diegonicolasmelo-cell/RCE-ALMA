@@ -79,7 +79,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const flujo = estadoFlujoPve(eventos, ahora);
   const conTet = ep.viaAereaActual === "TET";
   const bloqueo = motivoSinPve(ep.viaAereaActual, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos);
-  const aviso24 = conTet ? avisoMenos24hVm(horasDeVm(ep.diasVM, eventos, controles[0]?.registradoEn ?? null, ahora)) : null;
+  const aviso24 = conTet ? avisoMenos24hVm(horasDeVm(ep, eventos, controles[0]?.registradoEn ?? null, ahora)) : null;
 
   const [f, setF] = useState<Texto>({});
   const [crit, setCrit] = useState<(boolean | null)[]>(() => CRITERIOS_PVE.map(() => null));

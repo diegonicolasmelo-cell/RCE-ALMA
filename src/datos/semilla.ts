@@ -107,8 +107,11 @@ const FENT = (esc: number, dosis: number): Infusiones => ({ fentanilo: { dosis, 
 export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Date = new Date()): Promise<boolean> {
   if ((await db.episodios.count()) > 0) return false;
 
+  // El ingreso de cada paciente inventado: hace tantos dias como VM trae (y unas horas mas).
+  const haceDias = (d: number): string => new Date(ahora.getTime() - (d * 24 + 5) * 3_600_000).toISOString();
   const ep = (id: string, p: Partial<Episodio> & Pick<Episodio, "cama" | "edad" | "sexo" | "tallaCm" | "diagnostico">): Episodio => ({
     id,
+    ingresadoEn: haceDias(p.diasVM ?? 3),
     tallaOrigen: "ESTIMADA",
     viaAereaActual: "TET",
     calibreVia: "8.0",

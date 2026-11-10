@@ -14,7 +14,7 @@ import { buscarProfesional } from "./dotacion";
 import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
-import { etiquetaMomentoPostExtub } from "./pve";
+import { etiquetaMomentoPostExtub, horasDeVm } from "./pve";
 import { describirEquipos, equipoEnUso, etiquetaEquipo } from "./equipos";
 import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiologia";
 import { describirCardiovasculares, describirInfusiones, sedoanalgesiaActiva } from "./infusiones";
@@ -268,6 +268,12 @@ function notaUltimaAtencion(entrada: EntradaNota, pbw: number): string {
   ].join("\n");
 }
 
+/** Dias completos de VM del tubo actual (la urgencia no cuenta), o «sin VM». */
+function diasVmTexto(episodio: Episodio, eventos: readonly EventoClinico[], primerControlEn: string, ahora: Date): string {
+  const h = horasDeVm(episodio, eventos, primerControlEn, ahora);
+  return h ? String(Math.floor(h.horas / 24)) : "sin VM";
+}
+
 function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
   const { episodio, eventos, apk, ahora } = entrada;
   const lista = ordenados(entrada.controles);
@@ -298,7 +304,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
 
   return [
     `[EVOLUCIÓN KINESIOLOGÍA UPC · RESUMEN DE TURNO · ${episodio.cama}]`,
-    `Diagnóstico: ${episodio.diagnostico} | ${textoEdad(episodio.edad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${episodio.diasVM}`,
+    `Diagnóstico: ${episodio.diagnostico} | ${textoEdad(episodio.edad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${diasVmTexto(episodio, eventos, primero.registradoEn, ahora)}`,
     `Equipos: ${describirEquipos(episodio.equipos)}`,
     ``,
     `1. HEMODINAMIA Y PERFUSIÓN`,

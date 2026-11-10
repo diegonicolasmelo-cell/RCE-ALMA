@@ -71,6 +71,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       calibreVia: null,
       fijacionCm: null,
       diasVM: 0,
+      ingresadoEn: new Date().toISOString(),
       equipos: [],
       monitoreo: { capnografia: false, pic: false, dve: false },
       rutTitular: titular,

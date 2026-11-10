@@ -11,7 +11,9 @@ import {
   filtrosPorCambiar,
   bnmEnCurso,
   bnmVigente,
-  ETIQUETA_ELEMENTO
+  ETIQUETA_ELEMENTO,
+  horasDeVm,
+  textoVm
 } from "@core/index";
 import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -101,7 +103,7 @@ export function ListaCamas() {
               <span className="small muted">{ultimo ? `último ${ultimo.hora} · hace ${haceTexto(minutos ?? 0)}` : "sin controles"}</span>
             </header>
             <div className="small ink2">
-              {esViaAereaArtificial(ep.viaAereaActual) ? `${ep.viaAereaActual} · VM día ${ep.diasVM}` : "Vía aérea natural"}
+              {esViaAereaArtificial(ep.viaAereaActual) ? [ep.viaAereaActual, textoVm(horasDeVm(ep, eventos, null, ahora))].filter(Boolean).join(" · ") : "Vía aérea natural"}
               {!propia && " · de otro colega"}
             </div>
             <div className="row" style={{ gap: 6 }}>

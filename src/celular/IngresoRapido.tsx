@@ -59,6 +59,7 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
       calibreVia: via === "NATURAL" ? null : calibre.trim(),
       fijacionCm: via === "TET" ? cm.trim() : null,
       diasVM: 0,
+      ingresadoEn: new Date().toISOString(),
       equipos: [],
       monitoreo: { capnografia: false, pic: false, dve: false },
       rutTitular: sesion.rut,

@@ -271,7 +271,14 @@ export interface Episodio {
   readonly viaAereaActual: ViaAerea;
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
+  /** Dias de VM con que llego (solo registros antiguos). Los nuevos cuentan desde `ingresadoEn`. */
   readonly diasVM: number;
+  /**
+   * Cuando ingreso a la UCI (ISO). Se graba solo, con la hora en que se registra el ingreso
+   * (captura en tiempo real); coordinacion lo puede corregir en el PC. Si llego con via aerea
+   * artificial, es tambien la hora cero de la VM (la unidad no cuenta el tiempo en urgencia).
+   */
+  readonly ingresadoEn?: string;
   readonly equipos: readonly EquipoEnSala[];
   readonly monitoreo: MonitoreoEpisodio;
   readonly rutTitular: string;

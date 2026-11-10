@@ -10,27 +10,27 @@ import { normalizarRut } from "./sinapse";
 import type { IdTurno, Profesional } from "./tipos";
 
 export const DOTACION: readonly Profesional[] = [
-  { rut: "11.111.111-1", nombre: "Mauricio Ortega", turno: "T1", rol: "KINE_CLINICO" },
-  { rut: "11.111.112-2", nombre: "Felipe Guerrero", turno: "T1", rol: "KINE_CLINICO" },
-  { rut: "11.111.113-3", nombre: "Natalia Parra", turno: "T1", rol: "KINE_CLINICO" },
+  { rut: "11.111.111-1", nombre: "Mauricio Ortega", turno: "T1", rol: "KINE_CLINICO", correo: "mow_13@hotmail.com" },
+  { rut: "11.111.112-2", nombre: "Felipe Guerrero", turno: "T1", rol: "KINE_CLINICO", correo: "felipeguerreroes@gmail.com" },
+  { rut: "11.111.113-3", nombre: "Natalia Parra", turno: "T1", rol: "KINE_CLINICO", correo: "nataliaparrarojas@gmail.com" },
 
-  { rut: "22.222.221-1", nombre: "Sergio Ortiz", turno: "T2", rol: "KINE_CLINICO" },
-  { rut: "22.222.222-2", nombre: "Maria Jose Vega", turno: "T2", rol: "KINE_CLINICO" },
-  { rut: "22.222.223-3", nombre: "Alvaro Wilson", turno: "T2", rol: "KINE_CLINICO" },
+  { rut: "22.222.221-1", nombre: "Sergio Ortiz", turno: "T2", rol: "KINE_CLINICO", correo: "sortizgomez@gmail.com" },
+  { rut: "22.222.222-2", nombre: "Maria Jose Vega", turno: "T2", rol: "KINE_CLINICO", correo: "mariajose.vega27@gmail.com" },
+  { rut: "22.222.223-3", nombre: "Alvaro Wilson", turno: "T2", rol: "KINE_CLINICO", correo: "klgoalvarowilson@gmail.com" },
 
-  { rut: "33.333.331-1", nombre: "Eduardo Gonzalez", turno: "T3", rol: "KINE_CLINICO" },
+  { rut: "33.333.331-1", nombre: "Eduardo Gonzalez", turno: "T3", rol: "KINE_CLINICO", correo: "edogonzaleztapia@gmail.com" },
   { rut: "16.452.891-K", nombre: "Diego Melo", turno: "T3", rol: "KINE_CLINICO", correo: "diegonicolas.melo@gmail.com" },
-  { rut: "33.333.333-3", nombre: "Karen Gonzalez", turno: "T3", rol: "KINE_CLINICO" },
+  { rut: "33.333.333-3", nombre: "Karen Gonzalez", turno: "T3", rol: "KINE_CLINICO", correo: "kren.gv20@gmail.com" },
 
-  { rut: "44.444.441-1", nombre: "Carlos Morales", turno: "T4", rol: "KINE_CLINICO" },
-  { rut: "44.444.442-2", nombre: "Andres Angel", turno: "T4", rol: "KINE_CLINICO" },
-  { rut: "44.444.443-3", nombre: "Manuel Fuentes", turno: "T4", rol: "KINE_CLINICO" },
+  { rut: "44.444.441-1", nombre: "Carlos Morales", turno: "T4", rol: "KINE_CLINICO", correo: "moralesfcarlos@gmail.com" },
+  { rut: "44.444.442-2", nombre: "Andres Angel", turno: "T4", rol: "KINE_CLINICO", correo: "andresangel78@gmail.com" },
+  { rut: "44.444.443-3", nombre: "Manuel Fuentes", turno: "T4", rol: "KINE_CLINICO", correo: "fuentessmanuel@gmail.com" },
 
-  { rut: "55.555.551-1", nombre: "Rodrigo Caamano", turno: "SUBROGANCIA", rol: "COORDINACION" },
-  { rut: "55.555.552-2", nombre: "Magdalena Contardo", turno: "SUBROGANCIA", rol: "COORDINACION" },
+  { rut: "55.555.551-1", nombre: "Rodrigo Caamano", turno: "SUBROGANCIA", rol: "COORDINACION", correo: "rcaamano.tapia@gmail.com" },
+  { rut: "55.555.552-2", nombre: "Magdalena Contardo", turno: "SUBROGANCIA", rol: "COORDINACION", correo: "maida.contardo@gmail.com" },
 
-  { rut: "66.666.661-1", nombre: "Aline Campos", turno: "REEMPLAZO", rol: "KINE_CLINICO" },
-  { rut: "66.666.662-2", nombre: "Scarlett Tabilo", turno: "REEMPLAZO", rol: "KINE_CLINICO" }
+  { rut: "66.666.661-1", nombre: "Aline Campos", turno: "REEMPLAZO", rol: "KINE_CLINICO", correo: "alinecamposrivera@gmail.com" },
+  { rut: "66.666.662-2", nombre: "Scarlett Tabilo", turno: "REEMPLAZO", rol: "KINE_CLINICO", correo: "escarletabilo@gmail.com" }
 ];
 
 export const NOMBRE_TURNO: Readonly<Record<IdTurno, string>> = {

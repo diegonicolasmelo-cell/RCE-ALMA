@@ -255,6 +255,21 @@ async function esperarServidor() {
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false);
       assert.ok(await m.locator(".cel-top").isVisible(), "al ocultar el teclado vuelve la cabecera");
+      // Agregar una droga deja el teclado en su dosis; ▲ ▼ titulan sin cerrar el teclado ni mover la hoja.
+      await m.selectOption('select[aria-label="Agregar droga o infusión"]', "noradrenalina");
+      await m.waitForSelector(".kb:not([hidden])");
+      await m.waitForTimeout(500);
+      const yAntes = (await m.locator("#in-inf-noradrenalina-dosis").boundingBox()).y;
+      for (let i = 0; i < 3; i++) await m.tap('button[aria-label="Subir Noradrenalina"]');
+      await m.tap('button[aria-label="Bajar Noradrenalina"]');
+      await m.waitForTimeout(400);
+      assert.equal(await m.evaluate(() => document.activeElement.id), "in-inf-noradrenalina-dosis", "la dosis sigue con el foco");
+      assert.ok(await m.locator(".kb").isVisible(), "el teclado no se cierra");
+      assert.equal(await m.locator(".cel-top").isVisible(), false, "la cabecera no vuelve (sin tiron)");
+      const yDespues = (await m.locator("#in-inf-noradrenalina-dosis").boundingBox()).y;
+      assert.ok(Math.abs(yDespues - yAntes) < 4, `la fila no se mueve (${yAntes} -> ${yDespues})`);
+      await m.tap('.kb [data-kb="ocultar"]');
+      await m.waitForTimeout(200);
       // Evaluaciones: el MRC-ss con su teclado (solo 0 a 5 y NE); cada toque deja el valor y avanza.
       await m.tap('button:has-text("‹ Camas")');
       await m.tap('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');

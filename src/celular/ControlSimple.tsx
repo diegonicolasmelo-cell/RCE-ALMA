@@ -5,7 +5,7 @@
  */
 
 import { X } from "lucide-react";
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import {
   CAMPOS_POR_MODALIDAD,
   ESCALA_SAS,
@@ -145,6 +145,14 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
     editar((y) => suspenderInfusion(y, id));
     avisar(`${nombre} suspendida.`, () => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [id]: antes } })));
   };
+  /**
+   * Las flechas de la dosis no le quitan el foco a la casilla: si lo hicieran, el teclado se
+   * cerraria, volveria la cabecera y la hoja daria un tiron (y perderia la fila centrada).
+   */
+  const sinRobarFoco = {
+    onPointerDown: (e: PointerEvent) => e.preventDefault(),
+    onMouseDown: (e: MouseEvent) => e.preventDefault()
+  };
   const agregar = (id: IdInfusion): void => {
     editar((y) => iniciarInfusion(y, id));
     setTimeout(() => document.getElementById(`in-inf-${id}-dosis`)?.focus(), 60);
@@ -218,12 +226,13 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
                 <button type="button" className="quitar" aria-label={`Suspender ${def.nombre}`} onClick={() => suspender(def.id, def.nombre)}><X size={15} aria-hidden /></button>
                 <span className="ayuda">{previa ? `antes ${previa.dosis}` : "nueva"}</span>
                 {esc && <span className="ayuda esc">{esc}</span>}
-                {sem !== "SIN_DVA" && <span className={`ayuda dva ${sem.toLowerCase()}`}>DVA {sem.toLowerCase()}</span>}
+                {/* La linea del semaforo se reserva desde el comienzo: al titular la fila no crece ni salta. */}
+                {def.semaforo && <span className={`ayuda dva ${sem === "SIN_DVA" ? "" : sem.toLowerCase()}`}>{sem === "SIN_DVA" ? "DVA —" : `DVA ${sem.toLowerCase()}`}</span>}
               </span>
               <div className="titular">
-                <button type="button" aria-label={`Bajar ${def.nombre}`} onClick={() => setDosis(def.id, titular(-1))}>▼</button>
+                <button type="button" aria-label={`Bajar ${def.nombre}`} {...sinRobarFoco} onClick={() => setDosis(def.id, titular(-1))}>▼</button>
                 <Num id={`in-inf-${def.id}-dosis`} campo={`infusion:${def.id}`} etiqueta={`${def.nombre} dosis`} valor={x.dosis} onCambio={(v) => setDosis(def.id, v)} />
-                <button type="button" aria-label={`Subir ${def.nombre}`} onClick={() => setDosis(def.id, titular(1))}>▲</button>
+                <button type="button" aria-label={`Subir ${def.nombre}`} {...sinRobarFoco} onClick={() => setDosis(def.id, titular(1))}>▲</button>
               </div>
             </div>
           );

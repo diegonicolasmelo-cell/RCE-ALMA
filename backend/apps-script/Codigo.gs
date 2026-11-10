@@ -1,5 +1,5 @@
 /**
- * UPC-Pulse — API de Google Apps Script sobre Google Sheets.
+ * Kapta (antes UPC-Pulse) — API de Google Apps Script sobre Google Sheets.
  *
  * ADVERTENCIA DE ARQUITECTURA, A LA VISTA A PROPOSITO
  * ---------------------------------------------------
@@ -87,7 +87,7 @@ function doGet(e) {
  */
 function servirApp() {
   return HtmlService.createHtmlOutputFromFile("index")
-    .setTitle("UPC-Pulse")
+    .setTitle("Kapta")
     .addMetaTag("viewport", "width=device-width, initial-scale=1, viewport-fit=cover");
 }
 

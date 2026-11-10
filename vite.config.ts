@@ -9,13 +9,13 @@ export default defineConfig({
     VitePWA({
       // La app se actualiza sola; los borradores sobreviven a la recarga (ver src/app/persistencia.ts).
       registerType: "autoUpdate",
-      includeAssets: ["pwa-192.png", "pwa-512.png", "pwa-maskable-512.png"],
+      includeAssets: ["pwa-192.png", "pwa-512.png", "pwa-maskable-512.png", "apple-touch-icon.png", "kapta.svg"],
       manifest: {
-        name: "UPC-Pulse",
-        short_name: "UPC-Pulse",
+        name: "Kapta · Kinesiología UCI",
+        short_name: "Kapta",
         description: "Monitorización kinésica a pie de cama · UCI Adulto",
         lang: "es",
-        theme_color: "#2a78d6",
+        theme_color: "#0f8c86",
         background_color: "#eef1f4",
         display: "standalone",
         orientation: "portrait",

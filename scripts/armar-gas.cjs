@@ -28,7 +28,7 @@ const trozos = (s) => {
 const sello = new Date().toISOString().slice(0, 16).replace("T", " ");
 const html = `<div id="raiz"></div>
 <script>
-/* UPC-Pulse ${version} para Google Apps Script, armado el ${sello}. No editar a mano: se genera con npm run gas. */
+/* Kapta ${version} para Google Apps Script, armado el ${sello}. No editar a mano: se genera con npm run gas. */
 (function () {
   var estilos = ${trozos(b64("app.css"))}.join("");
   var codigo = ${trozos(b64("app.js"))}.join("");

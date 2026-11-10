@@ -10,7 +10,7 @@ const css = fs.readFileSync(path.join(dir, "app.css"), "utf8");
 // "</script" dentro del JS cerraria la etiqueta antes de tiempo.
 const js = fs.readFileSync(path.join(dir, "app.js"), "utf8").replace(/<\/script/gi, "<\\/script");
 
-const html = `<title>UPC-Pulse</title>
+const html = `<title>Kapta</title>
 <style>${css}</style>
 <style>
 html,body{height:100%;overflow:hidden}

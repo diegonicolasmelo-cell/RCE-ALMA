@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Logo } from "../app/Logo";
 import { useServicios } from "../app/contexto";
 import { useAhora } from "../app/hooks";
 import { descifrarIdentidad, soloEpisodios } from "@core/index";
@@ -50,7 +51,7 @@ export function Estacion() {
     <div className="estacion">
       <div className="top">
         <div className="brand">
-          <h1>UPC-Pulse · Estación</h1>
+          <h1 style={{ display: "flex", alignItems: "center", gap: 8 }}><Logo tam={28} />Kapta · Estación</h1>
           <small>Tablero, evolución para ALMA y estado de la unidad</small>
         </div>
         {local && (

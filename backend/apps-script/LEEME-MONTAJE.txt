@@ -15,7 +15,7 @@ arranca.
 PRIMERA VEZ
 -----------
 
-1. Crea una hoja de calculo nueva en Google Sheets. Nombrala "UPC-Pulse - Datos".
+1. Crea una hoja de calculo nueva en Google Sheets. Nombrala "Kapta - Datos".
    Mejor una hoja NUEVA y no la de produccion del RCE: son sistemas distintos.
 
 2. En la hoja: Extensiones -> Apps Script.

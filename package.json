@@ -2,7 +2,7 @@
   "name": "kine-rce-next",
   "version": "0.1.0",
   "private": true,
-  "description": "UPC-Pulse — Plataforma satelite de monitorizacion kinesica a pie de cama (UCI Adulto)",
+  "description": "Kapta — Plataforma satelite de monitorizacion kinesica a pie de cama (UCI Adulto)",
   "type": "module",
   "scripts": {
     "dev": "vite",

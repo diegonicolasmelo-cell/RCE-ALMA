@@ -29,7 +29,7 @@ const prueba = async (nombre, fn) => {
 
 /** Lo que Google pone alrededor del index.html: una pagina con el contenido del archivo. */
 const pagina = () =>
-  `<!DOCTYPE html><html><head><meta charset="utf-8"><title>UPC-Pulse</title><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${fs.readFileSync(INDEX, "utf8")}</body></html>`;
+  `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kapta</title><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${fs.readFileSync(INDEX, "utf8")}</body></html>`;
 
 (async () => {
   if (!fs.existsSync(INDEX)) throw new Error("Falta dist-gas/index.html: corre npm run gas");
@@ -98,7 +98,7 @@ const pagina = () =>
       assert.ok(!/[<>]/.test(html.replace(/<\/?(div|script)[^<>]*>/g, "")));
       const g = gas.llamar("doGet", { parameter: {} });
       assert.equal(g.archivo, "index");
-      assert.equal(g.titulo, "UPC-Pulse");
+      assert.equal(g.titulo, "Kapta");
     });
 
     await prueba("?demo=1 arranca la demostracion sin tocar la hoja", async () => {

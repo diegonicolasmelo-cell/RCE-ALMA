@@ -4,6 +4,7 @@ import { PIN_DEMO } from "../datos/api";
 import { guardarMeta } from "../datos/db";
 import { refrescarDotacion } from "../datos/servicios";
 import { useServicios } from "../app/contexto";
+import { Logo } from "../app/Logo";
 import { useApp } from "../app/store";
 
 export const CLAVE_SESION = "sesion";
@@ -77,7 +78,7 @@ export function Login() {
       }}
     >
       <div>
-        <h1>UPC-Pulse</h1>
+        <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo tam={40} />Kapta</h1>
         <p className="ink2">Captura a pie de cama · UCI Adulto</p>
       </div>
 

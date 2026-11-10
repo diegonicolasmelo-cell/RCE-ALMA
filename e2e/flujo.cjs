@@ -239,6 +239,20 @@ async function esperarServidor() {
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false);
       assert.ok(await m.locator(".cel-top").isVisible(), "al ocultar el teclado vuelve la cabecera");
+      // Evaluaciones: el MRC-ss con su teclado (solo 0 a 5 y NE); cada toque deja el valor y avanza.
+      await m.tap('button:has-text("‹ Camas")');
+      await m.tap('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
+      await m.tap('.pestanas-ev button:text-is("Fuerza y función")');
+      await m.tap('[data-escala="MRC_SS"]');
+      await m.tap("#ev-m1d");
+      await m.waitForSelector(".kb.mrc:not([hidden])");
+      assert.equal(await m.locator('.kb [data-kb="6"]').count(), 0, "el teclado del MRC no tiene 6");
+      assert.equal(await m.locator('.kb [data-kb="NE"]').count(), 1);
+      await m.tap('.kb [data-kb="4"]');
+      assert.equal(await m.inputValue("#ev-m1d"), "4");
+      assert.equal(await m.evaluate(() => document.activeElement.id), "ev-m1i", "avanza solo al lado izquierdo");
+      await m.tap('.kb [data-kb="NE"]');
+      assert.equal(await m.inputValue("#ev-m1i"), "NE");
       await movil.close();
     });
 
@@ -467,7 +481,9 @@ async function esperarServidor() {
       // MRC-ss con botones 0-5: 12 movimientos en 4 = 48, sin DAUCI (el corte es < 48).
       await cel.click('.pestanas-ev button:text-is("Fuerza y función")');
       await cel.click('[data-escala="MRC_SS"]');
-      for (const g of await cel.locator('.ev-ops[aria-label*="·"]').all()) await g.locator('button:text-is("4")').click();
+      // Como el registro simple: una fila por movimiento con Der. e Izq.
+      assert.equal(await cel.locator(".fila.mrc").count(), 6);
+      for (const c of await cel.locator('.fila.mrc input').all()) await c.fill("4");
       assert.match(await cel.textContent(".ev-res"), /MRC-ss 48\/60/);
       assert.match(await cel.textContent(".ev-res"), /Sin DAUCI/);
       await cel.click('button:has-text("Guardar MRC-ss")');
@@ -478,22 +494,22 @@ async function esperarServidor() {
       await cel.click('[data-escala="FRAGILIDAD"]');
       await cel.click('button:has-text("Guardar Fragilidad")');
       assert.match(await cel.textContent('[role=alert]'), /Falta: el nivel de fragilidad/);
-      await cel.locator('.ev-listaop button:has-text("Vive con fragilidad leve")').click();
+      await cel.locator('.ecf button:has-text("Vive con fragilidad leve")').click();
       await cel.click('button:has-text("Guardar Fragilidad")');
       await cel.waitForTimeout(400);
       assert.match(await cel.textContent('[data-escala="FRAGILIDAD"]'), /Registrado: Fragilidad: ECF 5 .* tocar para corregir/);
       await cel.click('[data-escala="FRAGILIDAD"]');
-      assert.equal(await cel.locator('.ev-listaop button[aria-pressed="true"] .n').textContent(), "5", "reabre con lo registrado");
-      await cel.locator('.ev-listaop button:has-text("Vive con fragilidad moderada")').click();
+      assert.equal(await cel.locator('.ecf button[aria-pressed="true"] .n').textContent(), "5", "reabre con lo registrado");
+      await cel.locator('.ecf button:has-text("Vive con fragilidad moderada")').click();
       await cel.click('button:has-text("Guardar corrección")');
       await cel.waitForTimeout(400);
       assert.match(await aviso(), /Corregido: Fragilidad: ECF 6/);
       // Charlson: cada toque baja la pantalla un renglon.
       await cel.click('[data-escala="CHARLSON"]');
-      const y0 = await cel.evaluate(() => document.querySelector(".cel-cuerpo").scrollTop);
+      const y0 = await cel.evaluate(() => document.querySelector("#cuerpo").scrollTop);
       await cel.locator(".ev-chk").nth(2).click();
       await cel.waitForTimeout(500);
-      assert.ok((await cel.evaluate(() => document.querySelector(".cel-cuerpo").scrollTop)) > y0, "al marcar, la pantalla avanza sola");
+      assert.ok((await cel.evaluate(() => document.querySelector("#cuerpo").scrollTop)) > y0, "al marcar, la pantalla avanza sola");
       assert.match(await cel.textContent(".ev-res"), /Charlson 1 pt sin edad/);
       await cel.click('button:text-is("Cancelar")');
     });

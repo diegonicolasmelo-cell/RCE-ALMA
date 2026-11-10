@@ -39,7 +39,7 @@ export function siguienteCasilla(el: HTMLElement): void {
   if (sig) enfocar(sig);
   else {
     el.blur();
-    document.getElementById("btn-guardar-control")?.focus();
+    document.querySelector<HTMLElement>("[data-guardar]")?.focus();
   }
 }
 
@@ -57,8 +57,16 @@ function centrar(activa: HTMLElement | null, kb: HTMLElement | null): void {
   if (Math.abs(delta) > 8) cuerpo.scrollBy({ top: delta, behavior: "smooth" });
 }
 
+/**
+ * Teclados: el numerico general y los de las escalas, que solo traen los valores posibles
+ * (MRC 0-5 y NE; CPAx 0-5; FSS-ICU 0-7 y NE). En los de escala, un toque deja el valor y
+ * salta a la casilla siguiente.
+ */
+type TipoTeclado = "num" | "mrc" | "cpax" | "fss";
+
 export function TecladoPropio() {
   const [visible, setVisible] = useState(false);
+  const [tipo, setTipo] = useState<TipoTeclado>("num");
   const kb = useRef<HTMLDivElement>(null);
   const activa = useRef<HTMLElement | null>(null);
 
@@ -71,6 +79,7 @@ export function TecladoPropio() {
       el.closest(".fila")?.classList.add("activa");
       document.getElementById("cuerpo")?.classList.add("escribiendo");
       const conTeclado = TECLADO_PROPIO && el.classList.contains("num");
+      if (conTeclado) setTipo((el.dataset["teclado"] as TipoTeclado | undefined) ?? "num");
       setVisible(conTeclado);
       document.body.classList.toggle("teclado-propio", conTeclado);
       // Se centra al tiro y otra vez cuando el teclado termina de aparecer.
@@ -112,6 +121,11 @@ export function TecladoPropio() {
     if (!el) return;
     if (k === "sig") return siguienteCasilla(el);
     if (k === "ocultar") return el.blur();
+    if (el.dataset["teclado"] && el.dataset["teclado"] !== "num") {
+      escribir(el, k === "borrar" ? "" : k);
+      if (k !== "borrar") siguienteCasilla(el);
+      return;
+    }
     let v = el.value;
     if (k === "borrar") v = v.slice(0, -1);
     else if (k === ",") {
@@ -123,10 +137,11 @@ export function TecladoPropio() {
   const B = (k: string, txt: string, cls = "", aria?: string) => (
     <button type="button" className={cls || undefined} data-kb={k} aria-label={aria} onClick={() => tecla(k)}>{txt}</button>
   );
+  const fila = (ks: readonly string[]) => ks.map((k) => <span key={k} style={{ display: "contents" }}>{B(k, k)}</span>);
   return (
     <div
       ref={kb}
-      className="kb"
+      className={`kb${tipo === "num" ? "" : ` ${tipo}`}`}
       hidden={!visible}
       role="group"
       aria-label="Teclado numérico"
@@ -134,10 +149,36 @@ export function TecladoPropio() {
       onPointerDown={(e) => e.preventDefault()}
       onMouseDown={(e) => e.preventDefault()}
     >
-      {B("1", "1")}{B("2", "2")}{B("3", "3")}{B("borrar", "⌫", "fn", "Borrar")}
-      {B("4", "4")}{B("5", "5")}{B("6", "6")}{B("sig", "Sig. ›", "sig", "Siguiente casilla")}
-      {B("7", "7")}{B("8", "8")}{B("9", "9")}
-      {B(",", ",", "fn", "Coma decimal")}{B("0", "0")}{B("ocultar", "⌄", "fn", "Ocultar teclado")}
+      {tipo === "num" && (
+        <>
+          {B("1", "1")}{B("2", "2")}{B("3", "3")}{B("borrar", "⌫", "fn", "Borrar")}
+          {B("4", "4")}{B("5", "5")}{B("6", "6")}{B("sig", "Sig. ›", "sig", "Siguiente casilla")}
+          {B("7", "7")}{B("8", "8")}{B("9", "9")}
+          {B(",", ",", "fn", "Coma decimal")}{B("0", "0")}{B("ocultar", "⌄", "fn", "Ocultar teclado")}
+        </>
+      )}
+      {tipo === "mrc" && (
+        <>
+          {fila(["0", "1", "2"])}{B("borrar", "⌫", "fn", "Borrar")}
+          {fila(["3", "4", "5"])}{B("sig", "Sig. ›", "sig", "Siguiente casilla")}
+          {B("NE", "NE · no evaluable", "fn ne", "No evaluable")}{B("ocultar", "⌄", "fn", "Ocultar teclado")}
+        </>
+      )}
+      {tipo === "cpax" && (
+        <>
+          {fila(["0", "1", "2"])}{B("borrar", "⌫", "fn", "Borrar")}
+          {fila(["3", "4", "5"])}{B("sig", "Sig. ›", "sig", "Siguiente casilla")}
+          {B("ocultar", "⌄ ocultar", "fn oc", "Ocultar teclado")}
+        </>
+      )}
+      {tipo === "fss" && (
+        <>
+          {fila(["0", "1", "2"])}{B("borrar", "⌫", "fn", "Borrar")}
+          {fila(["3", "4", "5"])}{B("sig", "Sig. ›", "sig", "Siguiente casilla")}
+          {fila(["6", "7"])}{B("ocultar", "⌄", "fn", "Ocultar teclado")}
+          {B("NE", "NE · no evaluable (no por debilidad)", "fn ne", "No evaluable")}
+        </>
+      )}
     </div>
   );
 }

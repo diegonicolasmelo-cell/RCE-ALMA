@@ -393,6 +393,7 @@ export function Celular() {
         {cabecera}
         {titulo("Evaluaciones")}
         <Evaluaciones ctx={ctx} />
+        <TecladoPropio />
       </div>
     );
   }
@@ -440,7 +441,7 @@ export function Celular() {
             <>
               <button type="button" className="btn" disabled={iTab === 0 && segActual === 0} onClick={atras}>‹ Atrás</button>
               {ultimoSeg ? (
-                <button type="button" id="btn-guardar-control" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+                <button type="button" id="btn-guardar-control" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
               ) : (
                 <>
                   <button type="button" className="btn primary" style={{ flex: 1 }} onClick={siguiente}>Siguiente ›</button>
@@ -449,7 +450,7 @@ export function Celular() {
               )}
             </>
           ) : (
-            <button type="button" id="btn-guardar-control" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+            <button type="button" id="btn-guardar-control" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
           )}
         </div>
         <nav className="cel-camas" aria-label="Camas">

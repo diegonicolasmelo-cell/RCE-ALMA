@@ -29,8 +29,10 @@ import { baseEvento } from "./eventos-ui";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { EVENTO_FIN_PESTANA, EVENTO_FIN_SEGMENTO, asegurarVisible, enfocarPrimero, enfocarPrimeroEn, useFranja } from "./franja";
-import { ORDEN_TABS, SEGMENTOS, SEGMENTOS_CSV, SEGMENTOS_HOJA, ubicacionDeCampo } from "./pasos";
+import { ORDEN_TABS, SEGMENTOS, ubicacionDeCampo } from "./pasos";
 import { InfusionesEnCurso } from "./InfusionesEnCurso";
+import { ControlSimple } from "./ControlSimple";
+import { TecladoPropio } from "./TecladoPropio";
 import type { SegmentoId, TabControl as TabDeControl } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
@@ -234,7 +236,10 @@ export function Celular() {
       if (primero) {
         const u = ubicacionDeCampo(primero.campo);
         setTab(u.tab);
-        pedirSegmento(u.seg);
+        if (u.tab === "control") {
+          // En la hoja del control, al dato que falta (el teclado propio se abre ahi).
+          setTimeout(() => document.querySelector<HTMLElement>(`#cuerpo [data-campo="${primero.campo}"]`)?.focus(), 80);
+        } else pedirSegmento(u.seg);
       }
       avisar(`Falta: ${problemas.map((p) => p.mensaje).join(", ")}.`);
       return;
@@ -285,23 +290,7 @@ export function Celular() {
       <div className="seg-relleno" aria-hidden />
     </>
   );
-  const previoEn = ultimo ? `ant. ${ultimo.hora}` : null;
-  const cuerpoHoja = (
-    <div className="hoja-ctl">
-      {previoEn && <div className="hoja-cab" aria-hidden="true"><span>Parámetro</span><span>Ahora</span><span>{previoEn}</span></div>}
-      {/* Como el registro simple: dos tarjetas, CSV y terapia ventilatoria. */}
-      <div className="hoja-tarjeta" aria-label="CSV">
-        <div className="hoja-grupo">CSV</div>
-        {SEGMENTOS_HOJA.slice(0, SEGMENTOS_CSV).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
-      </div>
-      <div className="hoja-tarjeta" aria-label="Terapia ventilatoria">
-        <div className="hoja-grupo">Terapia ventilatoria</div>
-        {SEGMENTOS_HOJA.slice(SEGMENTOS_CSV).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
-      </div>
-      <div className="seg-relleno" aria-hidden />
-    </div>
-  );
-  const cuerpo = tab === "control" ? cuerpoHoja : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); setTab("control"); avisar(t); }} />;
+  const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); setTab("control"); avisar(t); }} />;
 
   const cabecera = (
       <div className="cel-top">
@@ -451,7 +440,7 @@ export function Celular() {
             <>
               <button type="button" className="btn" disabled={iTab === 0 && segActual === 0} onClick={atras}>‹ Atrás</button>
               {ultimoSeg ? (
-                <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+                <button type="button" id="btn-guardar-control" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
               ) : (
                 <>
                   <button type="button" className="btn primary" style={{ flex: 1 }} onClick={siguiente}>Siguiente ›</button>
@@ -460,7 +449,7 @@ export function Celular() {
               )}
             </>
           ) : (
-            <button type="button" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+            <button type="button" id="btn-guardar-control" className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
           )}
         </div>
         <nav className="cel-camas" aria-label="Camas">
@@ -471,6 +460,7 @@ export function Celular() {
           ))}
         </nav>
       </div>
+      {tab === "control" && <TecladoPropio />}
     </div>
   );
 }

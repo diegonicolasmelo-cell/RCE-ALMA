@@ -403,3 +403,59 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 .hoja-ctl .segmento[data-seg="vent"] .subg{margin:8px -12px 0;padding:6px 12px;background:var(--panel-2);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .subg-hoja.con-boton{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:4px;padding-bottom:4px}
 .subg-hoja .btn.sm{text-transform:none;letter-spacing:0}
+
+/* ===== Control como el registro simple (ControlSimple + TecladoPropio) ===== */
+.hoja-simple{display:flex;flex-direction:column;gap:10px}
+.hoja-simple section{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);padding:0}
+.hoja-simple section > h2{margin:0;padding:8px 12px;background:var(--panel-2);color:var(--accent);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hoja-simple button.peq{min-height:32px;font:600 13px var(--font-ui);padding:0 10px;text-transform:none;letter-spacing:0;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.hoja-simple .fila{display:grid;grid-template-columns:minmax(0,1fr) 8.5em;align-items:center;gap:10px;padding:0 12px;min-height:46px;border-top:1px solid var(--line)}
+.hoja-simple section > h2 + .fila{border-top:0}
+.hoja-simple .fila > .et{font-weight:600;font-size:14.5px}
+.hoja-simple .fila .u{color:var(--ink-2);font-weight:400;font-size:13px}
+.hoja-simple .fila .ayuda{display:block;color:var(--ink-2);font-weight:400;font-size:12px}
+.hoja-simple .ayuda.esc,.hoja-simple .esc{color:var(--accent);font-weight:600}
+.hoja-simple .ayuda.dva.baja{color:var(--good-ink)} .hoja-simple .ayuda.dva.media{color:var(--warn-ink)} .hoja-simple .ayuda.dva.alta{color:var(--crit-ink);font-weight:600}
+.hoja-simple .fila input,.hoja-simple .fila select{width:100%;min-width:0;height:38px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:600 16px var(--font-data);text-align:center;padding:0 4px;box-sizing:border-box}
+.hoja-simple .fila select{font-family:var(--font-ui);font-size:14px;text-align:left;padding:0 6px}
+.hoja-simple .fila input:focus,.hoja-simple .fila select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.hoja-simple .fila input:disabled{background:var(--panel-2);color:var(--ink-2)}
+.hoja-simple .fila.activa{background:var(--accent-soft)}
+.hoja-simple .par{display:flex;align-items:center;gap:4px}
+.hoja-simple .par input{flex:1}
+.hoja-simple .par span{color:var(--ink-2)}
+.hoja-simple .fila.gcs,.hoja-simple .fila.inf{grid-template-columns:minmax(0,1fr) 12em}
+.hoja-simple .tres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.hoja-simple .tres label{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11px;font-weight:700;color:var(--ink-2)}
+.hoja-simple .tres input{height:32px}
+.hoja-simple .calc{font:600 16px var(--font-data);text-align:center;color:var(--ink-2);background:var(--panel-2);border-radius:6px;height:38px;line-height:38px;display:block;width:100%}
+.hoja-simple .calc.t{height:32px;line-height:32px;font-size:15px}
+.hoja-simple .titular{display:grid;grid-template-columns:2.6em minmax(0,1fr) 2.6em;gap:4px}
+.hoja-simple .titular button{min-height:38px;padding:0;font-size:15px;color:var(--accent);border:1px solid var(--accent);border-radius:8px;background:var(--panel);cursor:pointer}
+.hoja-simple .quitar{border:0;background:none;color:var(--ink-2);min-height:28px;padding:0 4px;vertical-align:middle;cursor:pointer}
+.hoja-simple .sub-grupo{padding:6px 12px;border-top:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:var(--panel-2)}
+.hoja-simple .fila.bloq .et::after{content:" · bloqueado por asincronía";color:var(--crit-ink);font-weight:400;font-size:12px}
+.hoja-simple .acciones{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.hoja-simple .acciones select{width:100%;min-height:40px;border:1px dashed var(--accent);border-radius:8px;background:var(--panel);color:var(--accent);font:600 15px var(--font-ui);padding:0 10px}
+.hoja-simple .sw{display:flex;gap:4px}
+.hoja-simple .sw button{flex:1;min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:600 14px var(--font-ui);cursor:pointer}
+.hoja-simple .sw button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.hoja-simple .evento-soporte{margin:0 12px 8px}
+.hoja-simple .guia-pi{padding:8px 12px;border-top:1px solid var(--line)}
+.hoja-simple .equipos-simple{padding:0 12px 10px;border-top:1px solid var(--line)}
+.hoja-simple .equipos-simple h3{display:none}
+/* Escribiendo: abajo queda espacio para centrar hasta la ultima fila. */
+#cuerpo.escribiendo{padding-bottom:65vh}
+/* Teclado numerico propio: mas bajo que el del sistema. «Sig.» bajo el borrar, como en Android. */
+.kb{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#e6ecf2;border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(4,44px);gap:6px;
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
+  touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.kb[hidden]{display:none}
+.kb button{min-height:0;height:100%;padding:0;border:0;border-radius:8px;background:#fff;color:#14243a;font:600 21px var(--font-data);box-shadow:0 1px 0 rgba(20,36,58,.18);cursor:pointer}
+.kb button:active{background:var(--accent-soft)}
+.kb .fn{background:#cfd8e3;font:600 15px var(--font-ui)}
+.kb .sig{grid-column:4;grid-row:2 / span 3;background:var(--accent);color:#fff;font:700 17px var(--font-ui)}
+/* Con el teclado propio abierto se ocultan la cabecera, las pestanas y el pie (no tapan nada). */
+body.teclado-propio .cel-top,body.teclado-propio .ctl-cabeza,body.teclado-propio .banda,body.teclado-propio .ph-tabs,body.teclado-propio .cel-pie{display:none!important}
+body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}

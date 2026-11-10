@@ -327,7 +327,7 @@ function Celda({ valor, etiqueta, bloqueado }: { valor: number | string | null; 
 // ---------------------------------------------------------------------------
 
 /** Talla y peso ideal: se definen al ingreso; aqui solo se ven y, si hace falta, se corrigen. */
-function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
+export function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
   const { ep, pbw } = ctx;
   const { repo } = useServicios();
   const [editando, setEditando] = useState(false);
@@ -357,7 +357,7 @@ function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
   );
 }
 
-function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
+export function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
   const { ep, rutAutor, ahora } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);

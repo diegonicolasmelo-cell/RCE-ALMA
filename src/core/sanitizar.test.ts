@@ -65,7 +65,7 @@ describe("contieneDatoIdentificable", () => {
   });
 
   it("permite rutAutor y rutTitular: identifican al profesional, no al paciente", () => {
-    const payload = { rutAutor: "16.452.891-K", rutTitular: "16.452.891-K" };
+    const payload = { rutAutor: "diego.melo@demo.upc", rutTitular: "diego.melo@demo.upc" };
     expect(contieneDatoIdentificable(payload)).toEqual([]);
   });
 });

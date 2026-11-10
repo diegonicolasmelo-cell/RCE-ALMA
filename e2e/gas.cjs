@@ -105,7 +105,7 @@ const pagina = () =>
       const antes = llamadas.length;
       const { p, ctx } = await abrir({ parametros: { demo: "1" } });
       await p.waitForSelector("#rut", { timeout: 10000 });
-      await p.fill("#rut", "diegonicolas.melo@gmail.com");
+      await p.fill("#rut", "diego.melo@demo.upc");
       await p.fill("#pin", "kine");
       await p.click("button[type=submit]");
       await p.waitForSelector("text=¿Cuáles son tus camas hoy?");
@@ -180,12 +180,38 @@ const pagina = () =>
       await p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
       // El servidor guardo un hash, nunca la clave.
       const usuarios = gas.hojas.get("usuarios").filas;
-      const fila = usuarios.find((f) => f[0] === "16.452.891-K");
+      assert.deepEqual(usuarios[0], ["correo", "sal", "hashPin", "nombre", "turno", "rol"], "la hoja usuarios es por correo, sin RUT");
+      const fila = usuarios.find((f) => f[0] === "diegonicolas.melo@gmail.com");
       assert.ok(fila[2] && fila[2] !== "kine" && !usuarios.flat().includes("kine"));
+      assert.ok(!usuarios.flat().some((v) => /\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]/.test(String(v))), "ningun RUT en la hoja usuarios");
       const posts = llamadas.filter((l) => l.tipo === "post" && l.cuerpo.accion !== "registrarLlaves");
-      assert.ok(posts.every((l) => l.cuerpo.token === APP && l.cuerpo.rut === "16.452.891-K"), "al servidor viaja el RUT, no el correo");
+      assert.ok(posts.every((l) => l.cuerpo.token === APP && l.cuerpo.correo === "diegonicolas.melo@gmail.com"), "al servidor viaja el correo");
+      assert.ok(llamadas.some((l) => l.tipo === "get" && l.params.recurso === "dotacion"), "la dotacion se pide a la hoja");
       await new Promise((r) => setTimeout(r, 800));
       assert.ok(llamadas.some((l) => l.tipo === "get" && l.params.token === APP && !l.params.recurso));
+      await p.close();
+    });
+
+    await prueba("un reemplazo agregado en la hoja entra sin publicar una version nueva", async () => {
+      const ctx = await navegador.newContext({ viewport: { width: 390, height: 844 } });
+      const { p } = await abrir({ hash: `config?a=${APP}` }, ctx);
+      await p.waitForSelector("#rut", { timeout: 10000 });
+      // El celular ya tiene la dotacion guardada; el colega se agrega a la hoja DESPUES.
+      const usuarios = gas.hojas.get("usuarios").filas;
+      usuarios.push(["Reemplazo.Nuevo@hospital.cl", "", "", "Reemplazo Nuevo", "REEMPLAZO", "KINE_CLINICO"]);
+      await p.fill("#rut", "nadie@hospital.cl");
+      await p.fill("#pin", "clave1");
+      await p.click("button[type=submit]");
+      assert.match(await (await p.waitForSelector("[role=alert]")).textContent(), /no está en la hoja/);
+      await p.fill("#rut", "reemplazo.nuevo@hospital.cl");
+      await p.fill("#pin", "clave1");
+      await p.click("button[type=submit]");
+      await p.waitForSelector("#npin", { timeout: 10000 });
+      await p.fill("#npin", "clave1");
+      await p.click("button[type=submit]");
+      await p.waitForSelector("text=No hay camas activas", { timeout: 10000 });
+      assert.ok(usuarios.find((f) => f[0] === "Reemplazo.Nuevo@hospital.cl")[2], "quedo su huella de contrasena");
+      // Un correo que no esta en la hoja no entra.
       await p.close();
     });
 

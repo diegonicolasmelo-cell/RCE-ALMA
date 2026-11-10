@@ -82,8 +82,8 @@ describe("cliente HTTP de Apps Script", () => {
 describe("API local (modo demostración)", () => {
   it("acepta el PIN de demostración para cualquier profesional de la dotación", async () => {
     const api = crearApiLocal();
-    expect((await api.login("16.452.891-K", PIN_DEMO)).ok).toBe(true);
-    expect((await api.login("16.452.891-K", "1234")).ok).toBe(false);
-    expect((await api.login("1-9", PIN_DEMO)).ok).toBe(false);
+    expect((await api.login("diego.melo@demo.upc", PIN_DEMO)).ok).toBe(true);
+    expect((await api.login("diego.melo@demo.upc", "1234")).ok).toBe(false);
+    expect((await api.login("nadie@demo.upc", PIN_DEMO)).ok).toBe(false);
   });
 });

@@ -84,7 +84,6 @@ punta hay que hacerlo con datos ficticios.
   Falta confirmar con informática el almacenamiento institucional permitido.
 - Almacenamiento institucional para el respaldo (consulta pendiente a informática).
 - Formato de la URL de **Sinapse** (`VITE_SINAPSE_URL`).
-- RUT de la dotación: son marcadores de posición (`src/core/dotacion.ts`).
 
 ## Desarrollo
 
@@ -93,14 +92,16 @@ npm install
 ```
 
 Sin configurar nada, la app arranca en **modo demostración**: camas con
-pacientes inventados, todo en el dispositivo. Ingreso: el correo
-`diegonicolas.melo@gmail.com` (o cualquier nombre o RUT de la dotación) y la
+pacientes y correos inventados, todo en el dispositivo. Ingreso: el correo
+`diego.melo@demo.upc` (o cualquier nombre de la dotación de demostración) y la
 contraseña `kine`.
 
-En producción se entra con **correo** (o nombre o RUT) y contraseña. El correo se
-resuelve al RUT en el dispositivo (`src/core/dotacion.ts`, campo `correo`): al
-servidor viaja solo el RUT. La primera vez, la contraseña escrita queda como propia
-al repetirla; el servidor guarda solo su hash.
+En producción se entra con **correo** (o nombre) y contraseña. La dotación vive en
+la hoja «usuarios» (correo, nombre, turno, rol; sin RUT): la app la pide al
+arrancar y la guarda en el equipo. Un reemplazo se agrega escribiendo una fila en
+esa hoja, sin publicar nada. La primera vez, la contraseña escrita queda como propia
+al repetirla; el servidor guarda solo su hash. El código publicado no trae correos
+reales (lo verifica `npm run e2e`).
 
 ```bash
 npm run dev

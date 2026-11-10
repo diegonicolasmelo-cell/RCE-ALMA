@@ -19,7 +19,7 @@ import { turnoDe } from "./turnos";
 
 const f = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m);
 
-const firmar = (id: string, ahora: Date, rut = "16.452.891-K", via: "TET" | "NATURAL" = "TET") =>
+const firmar = (id: string, ahora: Date, rut = "diego.melo@demo.upc", via: "TET" | "NATURAL" = "TET") =>
   firmarApkCumple({ id, episodioId: "ep-1", via, rutAutor: rut, siglas: "DM", ahora });
 const conMarcas = (id: string, ahora: Date, marcas: MarcaApk[]) =>
   firmarApk({ id, episodioId: "ep-1", rutAutor: "x", siglas: "DM", ahora, marcas });
@@ -70,7 +70,7 @@ describe("firma", () => {
     expect(v.turno).toBe("2026-11-04:DIA");
     expect(v.siglas).toBe("DM");
     expect(v.versionPauta).toBe("HSP-APK-1.2-2017");
-    expect(v.rutAutor).toBe("16.452.891-K");
+    expect(v.rutAutor).toBe("diego.melo@demo.upc");
   });
 
   it("siglas a partir del nombre", () => {

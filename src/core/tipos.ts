@@ -521,11 +521,14 @@ export interface ValidacionApk {
 
 export type IdTurno = "T1" | "T2" | "T3" | "T4" | "SUBROGANCIA" | "REEMPLAZO";
 
+/**
+ * Profesional de la dotacion. Su identificador es el CORREO (en minusculas): es lo que va en
+ * `rutAutor` y `rutTitular` (nombres historicos de esos campos). El RUT del profesional no
+ * existe en la app. La lista real vive en la hoja «usuarios» de Google.
+ */
 export interface Profesional {
-  readonly rut: string;
+  readonly correo: string;
   readonly nombre: string;
   readonly turno: IdTurno;
   readonly rol: "KINE_CLINICO" | "COORDINACION";
-  /** Correo con que ingresa a la app (opcional: tambien se entra con nombre o RUT). */
-  readonly correo?: string;
 }

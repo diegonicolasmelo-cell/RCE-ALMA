@@ -67,7 +67,7 @@ export function App() {
     void (async () => {
       const guardada = sesionVigente(await leerMeta<SesionGuardada>(servicios.db, CLAVE_SESION));
       const prof = guardada ? buscarProfesional(guardada.rut) : undefined;
-      if (prof) setSesion({ rut: prof.rut, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
+      if (prof) setSesion({ rut: prof.correo, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
       await restaurarBorradores(servicios.db);
       setLista(true);
     })();

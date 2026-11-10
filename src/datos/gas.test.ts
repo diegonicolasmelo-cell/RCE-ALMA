@@ -31,10 +31,10 @@ function googleFalso(responder: (fn: "rcePost" | "rceGet", arg: unknown) => { ok
 
 describe("la app servida por Apps Script", () => {
   it("manda las peticiones por google.script.run con el token y entiende la respuesta en texto", async () => {
-    const { gs, llamadas } = googleFalso(() => ({ ok: JSON.stringify({ ok: true, rut: "16.452.891-K" }) }));
+    const { gs, llamadas } = googleFalso(() => ({ ok: JSON.stringify({ ok: true, correo: "diego.melo@demo.upc" }) }));
     const api = crearApiRemota(transporteAppsScript(gs), { appToken: "APP", stationToken: null });
-    expect(await api.login("16.452.891-K", "1234")).toEqual({ ok: true, rut: "16.452.891-K" });
-    expect(JSON.parse(String(llamadas[0]?.arg))).toMatchObject({ token: "APP", accion: "login", rut: "16.452.891-K" });
+    expect(await api.login("diego.melo@demo.upc", "1234")).toEqual({ ok: true, correo: "diego.melo@demo.upc" });
+    expect(JSON.parse(String(llamadas[0]?.arg))).toMatchObject({ token: "APP", accion: "login", correo: "diego.melo@demo.upc" });
   });
 
   it("si Google falla o no contesta, es 'sin conexión' y la cola reintenta", async () => {

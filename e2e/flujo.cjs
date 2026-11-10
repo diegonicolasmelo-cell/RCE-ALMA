@@ -65,7 +65,15 @@ async function esperarServidor() {
     await cel.goto(URL + "#celular");
     await cel.waitForSelector("#rut");
 
-    await prueba("un PIN incorrecto no entra y un RUT fuera de la dotacion tampoco", async () => {
+    await prueba("el codigo publicado no trae correos reales ni RUT de profesionales (viven en la hoja usuarios)", async () => {
+      const fs = require("node:fs");
+      const dir = require("node:path").join(__dirname, "..", "dist", "assets");
+      const js = fs.readdirSync(dir).filter((f) => f.endsWith(".js")).map((f) => fs.readFileSync(require("node:path").join(dir, f), "utf8")).join("\n");
+      assert.ok(!/@(gmail|hotmail|outlook|yahoo)\./i.test(js), "hay un correo real en el codigo publicado");
+      assert.ok(!js.includes("16.452.891"), "hay un RUT de profesional en el codigo publicado");
+    });
+
+    await prueba("un correo fuera de la dotacion no entra", async () => {
       await entrar("Diego Melo", "9999");
       assert.match(await cel.textContent("[role=alert]"), /Contraseña incorrecta/);
       await entrar("Nadie Aqui", "Kine");
@@ -73,7 +81,7 @@ async function esperarServidor() {
     });
 
     await prueba("entra con correo y contraseña, elige sus camas y la portada las muestra primero", async () => {
-      await entrar("diegonicolas.melo@gmail.com", "kine");
+      await entrar("diego.melo@demo.upc", "kine");
       await cel.waitForSelector("text=¿Cuáles son tus camas hoy?");
       assert.equal(await cel.locator('[aria-label="Camas"] .chip').count(), 18);
       await cel.click('button:has-text("Ninguna")');
@@ -216,7 +224,7 @@ async function esperarServidor() {
       const m = await movil.newPage();
       vigilar(m);
       await m.goto(URL + "#celular");
-      await m.fill("#rut", "diegonicolas.melo@gmail.com");
+      await m.fill("#rut", "diego.melo@demo.upc");
       await m.fill("#pin", "kine");
       await m.tap("button[type=submit]");
       await m.waitForSelector("text=¿Cuáles son tus camas hoy?");

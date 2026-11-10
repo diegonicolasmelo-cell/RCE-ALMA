@@ -32,9 +32,15 @@ PRIMERA VEZ
    Las llaves (la de la app y la de estacion) NO las crea Google: las crea el
    primer PC en el paso 10, y Google guarda solo sus HUELLAS.
 
-7. Elige  cargarDotacion  y Ejecutar. Carga a los profesionales sin clave; cada
-   uno define la suya la primera vez que entra. (Revisa que los RUT de la hoja
-   "usuarios" sean los reales.)
+7. Elige  cargarDotacion  y Ejecutar. Llena la hoja "usuarios" con los 16
+   profesionales: correo | sal | hashPin | nombre | turno | rol. NO hay RUT: cada
+   uno se identifica por su correo. (Si la hoja tenia el formato antiguo por RUT,
+   la rehace; cada uno define su contrasena de nuevo.)
+   AGREGAR UN REEMPLAZO: escribe una fila nueva en "usuarios" con su correo,
+   nombre, turno (T1, T2, T3, T4, SUBROGANCIA o REEMPLAZO) y rol (KINE_CLINICO o
+   COORDINACION). Deja "sal" y "hashPin" vacias. No hay que publicar nada: la app
+   lo reconoce la proxima vez que esa persona intente entrar.
+   QUITAR A ALGUIEN: borra su fila.
    PRIMER INGRESO (por ejemplo, diegonicolas.melo@gmail.com):
      a. En el equipo ya conectado (paso 10), escribe el correo y la contrasena que
         quieras usar (al menos 4 caracteres) y pulsa Entrar.
@@ -43,8 +49,6 @@ PRIMERA VEZ
    La contrasena no se guarda en ninguna parte: la hoja guarda solo una huella
    (hash) para comprobarla. Si alguien la olvida, no se puede recuperar: en la hoja
    "usuarios" se borran sus celdas "sal" y "hashPin", y al entrar define una nueva.
-   Diego entra con diegonicolas.melo@gmail.com; los demas correos se agregan en
-   src/core/dotacion.ts (campo "correo") y se arma una version nueva.
 
 8. Implementar -> Nueva implementacion -> tipo "Aplicacion web":
      Ejecutar como:      Yo
@@ -55,9 +59,9 @@ PRIMERA VEZ
    la hoja no guarda nombres ni RUT en claro (van cifrados con la contrasena de la
    unidad, que nunca llega a Google).
 
-9. Prueba la demostracion (pacientes inventados, NO toca la hoja):
+9. Prueba la demostracion (pacientes y correos inventados, NO toca la hoja):
      <URL /exec>?demo=1
-   Correo: diegonicolas.melo@gmail.com   Clave: kine
+   Correo: diego.melo@demo.upc   Clave: kine
 
 10. PRIMER PC (crea las dos llaves; ninguna queda en Google).
      a. En el editor de Apps Script elige  abrirRegistroLlaves  y Ejecutar

@@ -1,7 +1,7 @@
 import { Copy, ExternalLink, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
-  DOTACION,
+  dotacion,
   apkDelTurno,
   calcularDerivados,
   calcularPbw,
@@ -118,7 +118,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           <div className="f" style={{ minWidth: 170 }}>
             <label htmlFor="titular">Kinesiólogo titular</label>
             <select id="titular" value={ep.rutTitular} style={{ textAlign: "left" }} onChange={(e) => void repo.guardarEpisodio({ ...ep, rutTitular: e.target.value })}>
-              {DOTACION.map((p) => <option key={p.rut} value={p.rut}>{p.nombre}</option>)}
+              {dotacion().map((p) => <option key={p.correo} value={p.correo}>{p.nombre}</option>)}
             </select>
           </div>
         </div>

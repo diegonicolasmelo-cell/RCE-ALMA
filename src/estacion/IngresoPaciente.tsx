@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DOTACION, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
+import { dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
 import type { Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
@@ -43,7 +43,7 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
   const [origen, setOrigen] = useState<OrigenTalla>("ESTIMADA");
   const [dx, setDx] = useState("");
   const [via, setVia] = useState<ViaAerea>("TET");
-  const [titular, setTitular] = useState(DOTACION.find((p) => p.rol === "KINE_CLINICO")?.rut ?? "");
+  const [titular, setTitular] = useState(dotacion().find((p) => p.rol === "KINE_CLINICO")?.correo ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const guardar = async (): Promise<void> => {
@@ -109,7 +109,7 @@ export function IngresoPaciente({ camasOcupadas, onListo }: { camasOcupadas: rea
       <div className="f">
         <label htmlFor="in-titular">Kinesiólogo titular</label>
         <select id="in-titular" value={titular} onChange={(e) => setTitular(e.target.value)}>
-          {DOTACION.map((p) => <option key={p.rut} value={p.rut}>{p.nombre}</option>)}
+          {dotacion().map((p) => <option key={p.correo} value={p.correo}>{p.nombre}</option>)}
         </select>
       </div>
       {error && <div className="notice crit" role="alert">{error}</div>}

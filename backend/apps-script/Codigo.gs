@@ -127,9 +127,9 @@ function procesarPost(cuerpo) {
     case "purgarReferencia":
       return purgarReferencia(cuerpo.episodioIds);
     case "login":
-      return login(cuerpo.rut, cuerpo.pin);
+      return login(cuerpo.correo || cuerpo.rut, cuerpo.pin);
     case "definirPin":
-      return definirPin(cuerpo.rut, cuerpo.pinActual, cuerpo.pinNuevo);
+      return definirPin(cuerpo.correo || cuerpo.rut, cuerpo.pinActual, cuerpo.pinNuevo);
     case "registrarEstacion":
       return registrarLlaves(null, cuerpo.huella);
     case "sincronizar":
@@ -145,6 +145,7 @@ function procesarGet(p) {
     return { ok: true, referencias: leerHoja(HOJAS.REFERENCIA, "") };
   }
   if (!tokenValido(p.token)) return { ok: false, error: "TOKEN_INVALIDO" };
+  if (p.recurso === "dotacion") return { ok: true, dotacion: leerDotacion() };
   // `desde` es un ISO 8601; permite sincronia incremental en vez de leer todo.
   return leer(p.desde || "");
 }
@@ -268,31 +269,55 @@ function nuevaSal() {
   return Utilities.getUuid().replace(/-/g, "");
 }
 
-function filaUsuario(rut) {
+/**
+ * Hoja «usuarios»: correo | sal | hashPin | nombre | turno | rol. El profesional se
+ * identifica por su CORREO; su RUT no se guarda. Coordinacion agrega reemplazos escribiendo
+ * una fila nueva (correo, nombre, turno, rol): la app la toma sin publicar nada.
+ */
+function normalizarCorreo(c) {
+  return String(c || "").trim().toLowerCase();
+}
+
+function filaUsuario(correo) {
+  var buscado = normalizarCorreo(correo);
+  if (!buscado) return null;
   var hoja = hojaPorNombre(HOJAS.USUARIOS);
   var datos = hoja.getDataRange().getValues();
   for (var i = 1; i < datos.length; i++) {
-    if (String(datos[i][0]).trim().toUpperCase() === String(rut).trim().toUpperCase()) {
-      return { fila: i + 1, rut: datos[i][0], sal: datos[i][1], hash: datos[i][2] };
+    if (normalizarCorreo(datos[i][0]) === buscado) {
+      return { fila: i + 1, correo: buscado, sal: datos[i][1], hash: datos[i][2] };
     }
   }
   return null;
 }
 
-function login(rut, pin) {
-  var u = filaUsuario(rut);
+/** La dotacion para la app: correo, nombre, turno y rol. Nunca la sal ni el hash. */
+function leerDotacion() {
+  var datos = hojaPorNombre(HOJAS.USUARIOS).getDataRange().getValues();
+  var lista = [];
+  for (var i = 1; i < datos.length; i++) {
+    var correo = normalizarCorreo(datos[i][0]);
+    var nombre = String(datos[i][3] || "").trim();
+    if (correo.indexOf("@") < 0 || !nombre) continue;
+    lista.push({ correo: correo, nombre: nombre, turno: String(datos[i][4] || "").trim().toUpperCase(), rol: String(datos[i][5] || "").trim().toUpperCase() });
+  }
+  return lista;
+}
+
+function login(correo, pin) {
+  var u = filaUsuario(correo);
   if (!u) return { ok: false, error: "USUARIO_NO_ENCONTRADO" };
   if (!u.hash) return { ok: false, error: "PIN_NO_DEFINIDO" };
   if (hashPin(pin, u.sal) !== u.hash) {
-    registrarAuditoria(rut, "login_fallido", "");
+    registrarAuditoria(u.correo, "login_fallido", "");
     return { ok: false, error: "PIN_INCORRECTO" };
   }
-  registrarAuditoria(rut, "login", "");
-  return { ok: true, rut: u.rut };
+  registrarAuditoria(u.correo, "login", "");
+  return { ok: true, correo: u.correo };
 }
 
 /** Primer PIN: se define sin PIN previo. Cambios posteriores exigen el actual. */
-function definirPin(rut, pinActual, pinNuevo) {
+function definirPin(correo, pinActual, pinNuevo) {
   if (!pinNuevo || String(pinNuevo).length < 4) {
     return { ok: false, error: "PIN_DEMASIADO_CORTO" };
   }
@@ -300,7 +325,7 @@ function definirPin(rut, pinActual, pinNuevo) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var u = filaUsuario(rut);
+    var u = filaUsuario(correo);
     if (!u) return { ok: false, error: "USUARIO_NO_ENCONTRADO" };
 
     if (u.hash && hashPin(pinActual, u.sal) !== u.hash) {
@@ -311,7 +336,7 @@ function definirPin(rut, pinActual, pinNuevo) {
     var hoja = hojaPorNombre(HOJAS.USUARIOS);
     hoja.getRange(u.fila, 2).setValue(sal);
     hoja.getRange(u.fila, 3).setValue(hashPin(pinNuevo, sal));
-    registrarAuditoria(rut, "pin_definido", "");
+    registrarAuditoria(u.correo, "pin_definido", "");
     return { ok: true };
   } finally {
     lock.releaseLock();
@@ -588,8 +613,8 @@ function inicializarLibro() {
   esquema[HOJAS.EVENTOS] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.APK] = ["id", "episodioId", "registradoEn", "json"];
   esquema[HOJAS.REFERENCIA] = ["id", "episodioId", "registradoEn", "dato"];
-  esquema[HOJAS.USUARIOS] = ["rut", "sal", "hashPin", "nombre", "turno"];
-  esquema[HOJAS.AUDITORIA] = ["registradoEn", "rut", "accion", "detalle"];
+  esquema[HOJAS.USUARIOS] = COLUMNAS_USUARIOS;
+  esquema[HOJAS.AUDITORIA] = ["registradoEn", "usuario", "accion", "detalle"];
 
   for (var nombre in esquema) {
     if (!Object.prototype.hasOwnProperty.call(esquema, nombre)) continue;
@@ -612,41 +637,57 @@ function inicializarLibro() {
   }
 }
 
+var COLUMNAS_USUARIOS = ["correo", "sal", "hashPin", "nombre", "turno", "rol"];
+
 /**
- * Carga la dotacion sin PIN. Cada profesional define el suyo en el primer
- * ingreso mediante la accion definirPin.
+ * Carga la dotacion en la hoja «usuarios» (correo, nombre, turno, rol), sin contrasenas:
+ * cada profesional define la suya en su primer ingreso. No duplica correos que ya esten.
+ * Si la hoja tiene el formato antiguo (por RUT), la rehace: las contrasenas ya definidas se
+ * pierden y cada uno vuelve a definir la suya al entrar.
+ * Para agregar un reemplazo despues, basta escribir una fila nueva en la hoja.
  */
 function cargarDotacion() {
   var dotacion = [
-    ["11.111.111-1", "Mauricio Ortega", "T1"],
-    ["11.111.112-2", "Felipe Guerrero", "T1"],
-    ["11.111.113-3", "Natalia Parra", "T1"],
-    ["22.222.221-1", "Sergio Ortiz", "T2"],
-    ["22.222.222-2", "Maria Jose Vega", "T2"],
-    ["22.222.223-3", "Alvaro Wilson", "T2"],
-    ["33.333.331-1", "Eduardo Gonzalez", "T3"],
-    ["16.452.891-K", "Diego Melo", "T3"],
-    ["33.333.333-3", "Karen Gonzalez", "T3"],
-    ["44.444.441-1", "Carlos Morales", "T4"],
-    ["44.444.442-2", "Andres Angel", "T4"],
-    ["44.444.443-3", "Manuel Fuentes", "T4"],
-    ["55.555.551-1", "Rodrigo Caamano", "SUBROGANCIA"],
-    ["55.555.552-2", "Magdalena Contardo", "SUBROGANCIA"],
-    ["66.666.661-1", "Aline Campos", "REEMPLAZO"],
-    ["66.666.662-2", "Scarlett Tabilo", "REEMPLAZO"]
+    ["mow_13@hotmail.com", "Mauricio Ortega Wanders", "T1", "KINE_CLINICO"],
+    ["felipeguerreroes@gmail.com", "Felipe Guerrero Espinoza", "T1", "KINE_CLINICO"],
+    ["nataliaparrarojas@gmail.com", "Natalia Parra Rojas", "T1", "KINE_CLINICO"],
+    ["sortizgomez@gmail.com", "Sergio Ortiz Gómez", "T2", "KINE_CLINICO"],
+    ["mariajose.vega27@gmail.com", "María José Vega", "T2", "KINE_CLINICO"],
+    ["klgoalvarowilson@gmail.com", "Álvaro Wilson Espinoza", "T2", "KINE_CLINICO"],
+    ["edogonzaleztapia@gmail.com", "Eduardo González Tapia", "T3", "KINE_CLINICO"],
+    ["diegonicolas.melo@gmail.com", "Diego Melo Villagrán", "T3", "KINE_CLINICO"],
+    ["kren.gv20@gmail.com", "Karen González Vázquez", "T3", "KINE_CLINICO"],
+    ["moralesfcarlos@gmail.com", "Carlos Morales Flores", "T4", "KINE_CLINICO"],
+    ["andresangel78@gmail.com", "Andrés Ángel Gómez", "T4", "KINE_CLINICO"],
+    ["fuentessmanuel@gmail.com", "Manuel Fuentes Blanco", "T4", "KINE_CLINICO"],
+    ["rcaamano.tapia@gmail.com", "Rodrigo Caamaño Tapia", "SUBROGANCIA", "COORDINACION"],
+    ["maida.contardo@gmail.com", "Magdalena Contardo Cisternas", "SUBROGANCIA", "COORDINACION"],
+    ["alinecamposrivera@gmail.com", "Aline Rivera Campos", "REEMPLAZO", "KINE_CLINICO"],
+    ["escarletabilo@gmail.com", "Escarlett Tabilo Alfred", "REEMPLAZO", "KINE_CLINICO"]
   ];
 
   var hoja = hojaPorNombre(HOJAS.USUARIOS);
+  var encabezado = hoja.getLastRow() > 0 ? String(hoja.getRange(1, 1).getValue()).trim().toLowerCase() : "";
+  if (encabezado !== "correo") {
+    hoja.clear();
+    hoja.appendRow(COLUMNAS_USUARIOS);
+    hoja.setFrozenRows(1);
+    if (encabezado) Logger.log("La hoja «usuarios» tenia el formato antiguo (por RUT): se rehizo por correo. Cada uno define su contrasena de nuevo.");
+  }
+
   var existentes = {};
   var ultima = hoja.getLastRow();
   if (ultima > 1) {
-    var ruts = hoja.getRange(2, 1, ultima - 1, 1).getValues();
-    for (var i = 0; i < ruts.length; i++) existentes[String(ruts[i][0]).trim().toUpperCase()] = true;
+    var correos = hoja.getRange(2, 1, ultima - 1, 1).getValues();
+    for (var i = 0; i < correos.length; i++) existentes[normalizarCorreo(correos[i][0])] = true;
   }
 
+  var agregados = 0;
   for (var j = 0; j < dotacion.length; j++) {
-    var rut = dotacion[j][0];
-    if (existentes[rut.toUpperCase()]) continue;
-    hoja.appendRow([rut, "", "", dotacion[j][1], dotacion[j][2]]);
+    var correo = normalizarCorreo(dotacion[j][0]);
+    if (existentes[correo]) continue;
+    hoja.appendRow([correo, "", "", dotacion[j][1], dotacion[j][2], dotacion[j][3]]);
+    agregados++;
   }
+  Logger.log("Dotacion: " + agregados + " profesionales agregados a la hoja «usuarios».");
 }

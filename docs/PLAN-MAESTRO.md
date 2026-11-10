@@ -467,7 +467,7 @@ RCE-ALMA/
    ├─ core/                  ◄── DOMINIO PURO. Sin React. Testeado.
    │   ├─ tipos.ts              Entidades y uniones discriminadas
    │   ├─ catalogos.ts          SAS, GCS, IMS, sedantes, niveles, APK
-   │   ├─ dotacion.ts           Los 18 profesionales y turnos
+   │   ├─ dotacion.ts           Dotación vigente (de la hoja) y la de demostración
    │   ├─ fisiologia.ts         PBW, PAM, PPC, ΔP, Crs, Tobin, ROX, PaFi
    │   ├─ validez.ts            Candado de mecánica
    │   ├─ sedacion.ts           Escalones 1-6 + dosis libre

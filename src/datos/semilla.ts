@@ -16,9 +16,9 @@ import type { BaseLocal } from "./db";
 import type { Repositorio } from "./repositorio";
 
 const MIN = 60_000;
-const RUT_DIEGO = "16.452.891-K";
-const RUT_KAREN = "33.333.333-3";
-const RUT_EDUARDO = "33.333.331-1";
+const DIEGO = "diego.melo@demo.upc";
+const KAREN = "karen.gonzalez@demo.upc";
+const EDUARDO = "eduardo.gonzalez@demo.upc";
 
 const hora = (d: Date): string => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -65,7 +65,7 @@ function control(d: DatosControl): Control {
     numero: d.numero,
     hora: hora(t),
     registradoEn: t.toISOString(),
-    rutAutor: d.autor ?? RUT_DIEGO,
+    rutAutor: d.autor ?? DIEGO,
     esControlApoyo: false,
     corrige: null,
     fc: 90,
@@ -116,7 +116,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     diasVM: 3,
     equipos: [],
     monitoreo: { capnografia: false, pic: false, dve: false },
-    rutTitular: RUT_DIEGO,
+    rutTitular: DIEGO,
     transcritoAlma: false,
     horaTranscripcion: null,
     pendienteEntrega: "",
@@ -141,15 +141,15 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     ep("ep-05", { cama: "UCI-05", edad: 58, sexo: "F", tallaCm: 158, diagnostico: "Neumonía grave, posextubación", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0 }),
     ep("ep-06", { cama: "UCI-06", edad: 45, sexo: "M", tallaCm: 175, diagnostico: "Postoperatorio abdominal", diasVM: 1,
       equipos: [{ tipo: "VENTILADOR", modelo: "PB 980", numero: 2, enUso: true }] }),
-    ep("ep-07", { cama: "UCI-07", edad: 67, sexo: "F", tallaCm: 160, diagnostico: "Insuficiencia cardiaca descompensada", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: RUT_KAREN }),
-    ep("ep-08", { cama: "UCI-08", edad: 77, sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: RUT_KAREN }),
+    ep("ep-07", { cama: "UCI-07", edad: 67, sexo: "F", tallaCm: 160, diagnostico: "Insuficiencia cardiaca descompensada", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
+    ep("ep-08", { cama: "UCI-08", edad: 77, sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
     ...EXTRAS.map((x, i) => {
       const n = i + 9;
       const natural = x.via === "NATURAL";
       return ep(`ep-${String(n).padStart(2, "0")}`, {
         cama: `UCI-${String(n).padStart(2, "0")}`, edad: x.edad, sexo: x.sexo, tallaCm: x.talla, diagnostico: x.dx,
         viaAereaActual: x.via, calibreVia: natural ? null : "8.0", fijacionCm: natural ? null : x.via === "TQT" ? "Collarín" : "22", diasVM: natural ? 0 : x.dias,
-        rutTitular: n <= 12 ? RUT_KAREN : RUT_EDUARDO
+        rutTitular: n <= 12 ? KAREN : EDUARDO
       });
     })
   ];
@@ -194,7 +194,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
 
     c("ep-07", 1, 240, { fc: 80, pas: 130, pad: 74, spo2: 95, viaAerea: "NATURAL",
       ventilacion: vent({ modalidad: "CNAF", frProgramada: null, vtProgramado: null, ti: null, peep: null, flujo: 40, fio2: 40, frTotal: 20, vtEspirado: null, pPico: null, pPlateau: null, pMedia: null }),
-      sas: null, vigilia: "VIGIL_ALERTA", kineResp: { auscultacion: "MP conservado", aspecto: null, reologia: null, cantidad: null, tos: "EFICIENTE", flujoPicoTos: 120, deglucion: "PRESENTE" } }, RUT_KAREN)
+      sas: null, vigilia: "VIGIL_ALERTA", kineResp: { auscultacion: "MP conservado", aspecto: null, reologia: null, cantidad: null, tos: "EFICIENTE", flujoPicoTos: 120, deglucion: "PRESENTE" } }, KAREN)
   ];
 
   EXTRAS.forEach((x, i) => {
@@ -208,7 +208,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
           ? vent({ modalidad: "CNAF", frProgramada: null, vtProgramado: null, ti: null, peep: null, flujo: 40, fio2: 40, frTotal: 20, vtEspirado: null, pPico: null, pPlateau: null, pMedia: null })
           : vent({ vtProgramado: 420, vtEspirado: 420, frTotal: 19 }),
         sas: natural ? null : 4, vigilia: natural ? "VIGIL_ALERTA" : null
-      }, n <= 12 ? RUT_KAREN : RUT_EDUARDO)
+      }, n <= 12 ? KAREN : EDUARDO)
     );
   });
 
@@ -218,7 +218,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     tipo: "INICIO_PRONO",
     hora: hora(new Date(ahora.getTime() - 18 * 60 * MIN)),
     registradoEn: new Date(ahora.getTime() - 18 * 60 * MIN).toISOString(),
-    rutAutor: RUT_DIEGO,
+    rutAutor: DIEGO,
     comentario: ""
   };
 
@@ -245,9 +245,9 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
   for (const e of episodios) await repo.guardarEpisodio(e);
   for (const k of controles) await repo.guardarControl(k);
   await repo.registrarEvento(prono);
-  await repo.firmarApk(apkPrevia("ep-01-apk0", "ep-01", "TET", "11.111.112-2"));
-  await repo.firmarApk(apkPrevia("ep-02-apk0", "ep-02", "TET", "11.111.112-2"));
-  await repo.firmarApk(apkPrevia("ep-03-apk0", "ep-03", "TQT", "22.222.222-2"));
+  await repo.firmarApk(apkPrevia("ep-01-apk0", "ep-01", "TET", "felipe.guerrero@demo.upc"));
+  await repo.firmarApk(apkPrevia("ep-02-apk0", "ep-02", "TET", "felipe.guerrero@demo.upc"));
+  await repo.firmarApk(apkPrevia("ep-03-apk0", "ep-03", "TQT", "maria.jose.vega@demo.upc"));
   await db.identidades.bulkPut(identidades);
   return true;
 }

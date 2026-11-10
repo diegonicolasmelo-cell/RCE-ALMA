@@ -8,7 +8,7 @@
  * `Content-Type: text/plain`, que el navegador trata como "solicitud simple".
  */
 
-import { DOTACION, buscarProfesional } from "@core/index";
+import { DOTACION_DEMO, buscarProfesional } from "@core/index";
 import type { ReferenciaNube } from "@core/index";
 
 export interface LoteSync {
@@ -31,7 +31,7 @@ export interface DatosNube {
 }
 
 export type ResultadoLogin =
-  | { readonly ok: true; readonly rut: string }
+  | { readonly ok: true; readonly correo: string }
   | { readonly ok: false; readonly error: string };
 
 export type Resultado<T> = ({ readonly ok: true } & T) | { readonly ok: false; readonly error: string };
@@ -39,8 +39,11 @@ export type Resultado<T> = ({ readonly ok: true } & T) | { readonly ok: false; r
 export interface ClienteApi {
   /** Si no hay servidor (modo demostracion), los datos viven solo en el dispositivo. */
   readonly local: boolean;
-  login(rut: string, pin: string): Promise<ResultadoLogin>;
-  definirPin(rut: string, pinActual: string, pinNuevo: string): Promise<{ ok: boolean; error?: string }>;
+  /** El profesional se identifica por su correo; la contrasena se compara en el servidor. */
+  login(correo: string, pin: string): Promise<ResultadoLogin>;
+  definirPin(correo: string, pinActual: string, pinNuevo: string): Promise<{ ok: boolean; error?: string }>;
+  /** La dotacion de la hoja «usuarios» (correo, nombre, turno, rol), sin claves. */
+  leerDotacion(): Promise<Resultado<{ dotacion: readonly unknown[] }>>;
   sincronizar(lote: LoteSync): Promise<RespuestaSync>;
   leer(desde: string | null): Promise<Resultado<{ datos: DatosNube }>>;
   /**
@@ -50,10 +53,6 @@ export interface ClienteApi {
   leerReferencias(): Promise<Resultado<{ referencias: readonly ReferenciaNube[] }>>;
   guardarReferencias(referencias: readonly ReferenciaNube[]): Promise<{ ok: boolean; error?: string }>;
   purgarReferencias(episodioIds: readonly string[]): Promise<{ ok: boolean; error?: string }>;
-  /**
-   * El primer PC registra la HUELLA (SHA-256) de la llave de estacion que creo en su
-   * navegador: Google nunca recibe la llave. Solo funciona con el registro abierto.
-   */
   /** Registra las huellas de las llaves que creo este PC (con el registro abierto en el editor). */
   registrarLlaves(huellas: HuellasLlaves): Promise<{ ok: boolean; error?: string }>;
 }
@@ -134,14 +133,20 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
   return {
     local: false,
 
-    async login(rut, pin) {
-      const r = await post({ token: cfg.appToken, accion: "login", rut, pin });
-      return r["ok"] === true ? { ok: true, rut: String(r["rut"] ?? rut) } : { ok: false, error: errorDe(r) };
+    async login(correo, pin) {
+      const r = await post({ token: cfg.appToken, accion: "login", correo, pin });
+      return r["ok"] === true ? { ok: true, correo: String(r["correo"] ?? correo) } : { ok: false, error: errorDe(r) };
     },
 
-    async definirPin(rut, pinActual, pinNuevo) {
-      const r = await post({ token: cfg.appToken, accion: "definirPin", rut, pinActual, pinNuevo });
+    async definirPin(correo, pinActual, pinNuevo) {
+      const r = await post({ token: cfg.appToken, accion: "definirPin", correo, pinActual, pinNuevo });
       return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
+    },
+
+    async leerDotacion() {
+      const r = await get({ token: cfg.appToken, recurso: "dotacion" });
+      if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
+      return { ok: true, dotacion: Array.isArray(r["dotacion"]) ? (r["dotacion"] as unknown[]) : [] };
     },
 
     async registrarLlaves(huellas) {
@@ -211,12 +216,15 @@ export function crearApiLocal(): ClienteApi {
   const referencias = new Map<string, ReferenciaNube>();
   return {
     local: true,
-    async login(rut, pin) {
-      if (!buscarProfesional(rut)) return { ok: false, error: "USUARIO_NO_ENCONTRADO" };
-      return pin.trim().toLowerCase() === PIN_DEMO.toLowerCase() ? { ok: true, rut } : { ok: false, error: "PIN_INCORRECTO" };
+    async login(correo, pin) {
+      if (!buscarProfesional(correo)) return { ok: false, error: "USUARIO_NO_ENCONTRADO" };
+      return pin.trim().toLowerCase() === PIN_DEMO.toLowerCase() ? { ok: true, correo } : { ok: false, error: "PIN_INCORRECTO" };
     },
     async definirPin() {
       return { ok: true };
+    },
+    async leerDotacion() {
+      return { ok: true, dotacion: DOTACION_DEMO };
     },
     async sincronizar() {
       // Sin servidor: dar por subido. Los datos ya estan en IndexedDB.
@@ -242,5 +250,3 @@ export function crearApiLocal(): ClienteApi {
   };
 }
 
-/** Lista de RUT validos para el login de demostracion. */
-export const RUT_DEMO: readonly string[] = DOTACION.map((p) => p.rut);

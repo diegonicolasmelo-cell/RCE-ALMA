@@ -27,7 +27,7 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
     diasVM: 4,
     equipos: [{ tipo: "VENTILADOR", modelo: "Savina", numero: 1, enUso: true }],
     monitoreo: { capnografia: false, pic: false, dve: false },
-    rutTitular: "16.452.891-K",
+    rutTitular: "diego.melo@demo.upc",
     transcritoAlma: false,
     horaTranscripcion: null,
     pendienteEntrega: "Candidato a extubación si supera PVE vespertina.",
@@ -88,7 +88,7 @@ export function unControl(over: Partial<Control> = {}): Control {
     numero: 1,
     hora: "09:10",
     registradoEn: "2026-11-04T12:10:00.000Z",
-    rutAutor: "16.452.891-K",
+    rutAutor: "diego.melo@demo.upc",
     esControlApoyo: false,
     corrige: null,
     fc: 96,
@@ -131,7 +131,7 @@ export function unEvento<T extends EventoClinico>(
     episodioId: "ep-1",
     hora: "10:00",
     registradoEn: "2026-11-04T13:00:00.000Z",
-    rutAutor: "16.452.891-K",
+    rutAutor: "diego.melo@demo.upc",
     comentario: "",
     ...especifico
   } as T;

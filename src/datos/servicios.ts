@@ -3,6 +3,7 @@
  * Se crea una sola vez al arrancar la app.
  */
 
+import { DOTACION_DEMO, fijarDotacion } from "@core/index";
 import { BaseLocal, guardarMeta, leerMeta } from "./db";
 import { crearApiHttp, crearApiLocal, crearApiRemota, registrarLlavesPor } from "./api";
 import type { ClienteApi } from "./api";
@@ -27,6 +28,7 @@ export interface Servicios {
 
 export const CLAVE_TOKEN_ESTACION = "tokenEstacion";
 export const CLAVE_CONEXION = "conexion";
+export const CLAVE_DOTACION = "dotacion";
 let instancia: Promise<Servicios> | null = null;
 
 export function iniciarServicios(): Promise<Servicios> {
@@ -77,6 +79,9 @@ async function crear(): Promise<Servicios> {
   const sync = new Sincronizador(db, api);
   const repo = new Repositorio(db, sync);
 
+  if (local) fijarDotacion(DOTACION_DEMO);
+  else await cargarDotacion(db, api);
+
   if (local) await sembrarSiVacia(db, repo);
   // En produccion ningun nombre se guarda en el disco: se borran restos de versiones anteriores.
   else await db.identidades.clear();
@@ -102,4 +107,24 @@ export async function configurarPrimerPc(): Promise<{ ok: boolean; error?: strin
   await guardarMeta(db, CLAVE_TOKEN_ESTACION, estacion);
   db.close();
   return { ok: true };
+}
+
+/**
+ * La dotacion vive en la hoja «usuarios». Se usa la guardada en el equipo (sirve sin senal) y
+ * se refresca desde el servidor; si el equipo aun no tiene ninguna, se espera la respuesta.
+ */
+async function cargarDotacion(db: BaseLocal, api: ClienteApi): Promise<void> {
+  const guardada = await leerMeta<unknown[]>(db, CLAVE_DOTACION);
+  fijarDotacion(guardada ?? []);
+  const refrescar = refrescarDotacion(db, api);
+  if (!guardada) await refrescar;
+}
+
+/** Pide la dotacion al servidor y la deja vigente y guardada. Devuelve si lo logro. */
+export async function refrescarDotacion(db: BaseLocal, api: ClienteApi): Promise<boolean> {
+  const r = await api.leerDotacion();
+  if (!r.ok) return false;
+  const lista = fijarDotacion(r.dotacion);
+  await guardarMeta(db, CLAVE_DOTACION, lista);
+  return true;
 }

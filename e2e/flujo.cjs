@@ -95,9 +95,17 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".app-cel"), /Mis camas \(12\)/);
       assert.match(await cel.textContent(".app-cel"), /Otras camas/);
       assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")').count()) === 1);
+      // Mias 07-12: arriba 07..12, despues 01..06 y 13..18, todas en una columna.
+      await cel.click('button:has-text("Cambiar mis camas")');
+      await cel.click('.chip:text-is("01–06")');
+      await cel.click('button:has-text("Ver camas")');
+      await cel.waitForSelector("text=Mis camas (6)");
+      const orden = (await cel.locator('article[aria-label^="Cama"]').evaluateAll((l) => l.map((x) => x.getAttribute("aria-label").slice(-2))));
+      assert.deepEqual(orden, ["07", "08", "09", "10", "11", "12", "01", "02", "03", "04", "05", "06", "13", "14", "15", "16", "17", "18"]);
       // dejar solo 01-06 como "mias" para el resto del recorrido
       await cel.click('button:has-text("Cambiar mis camas")');
       await cel.click('.chip:text-is("07–12")');
+      await cel.click('.chip:text-is("01–06")');
       await cel.click('button:has-text("Ver camas")');
       await cel.waitForSelector("text=Mis camas (6)");
       // PVE directa: la cama en CPAP/PS la ofrece en su tarjeta; la que esta en modalidad controlada no.
@@ -454,7 +462,7 @@ async function esperarServidor() {
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /la vía aérea vuelve a TET/);
       await cel.click('button:has-text("‹ Camas")');
-      assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET · VM \d+ [hd]/);
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET 7\.5 · 21 cm · TOT 0 d/);
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
     });
 
@@ -674,8 +682,9 @@ async function esperarServidor() {
       // El celular la ve libre y la ingresa.
       await cel.reload();
       if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
-      await cel.waitForSelector('[aria-label="Camas libres"]');
-      assert.match(await cel.textContent('[aria-label="Camas libres"] h3'), /Camas libres \(1\)/);
+      await cel.waitForSelector("article.cama-sin");
+      assert.equal(await cel.locator("article.cama-sin").count(), 1, "una cama libre, en su lugar de la lista");
+      assert.match(await cel.textContent('article.cama-sin'), /UCI-18[\s\S]*Sin ingreso/);
       await cel.click('button[aria-label="Ingresar Cama 18"]');
       await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
       assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /sexo/);
@@ -730,7 +739,7 @@ async function esperarServidor() {
       await cel.reload();
       await cel.waitForSelector('article[aria-label^="Cama"]', { timeout: 8000 });
       assert.match(await cel.textContent(".cel-top"), /Sin señal/);
-      assert.match(await cel.textContent('article[aria-label="Cama UCI-01"] header'), /Cama 1/);
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-01"] header'), /UCI-01/);
       await ctx.setOffline(false);
     });
 

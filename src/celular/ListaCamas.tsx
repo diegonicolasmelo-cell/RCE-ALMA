@@ -12,10 +12,10 @@ import {
   bnmEnCurso,
   bnmVigente,
   ETIQUETA_ELEMENTO,
-  horasDeVm,
-  textoVm
+  ETIQUETA_MODALIDAD,
+  horasDeVm
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, HorasVm, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta } from "../app/hooks";
 import { useApp } from "../app/store";
@@ -40,7 +40,8 @@ export function ListaCamas() {
   const ahora = useAhora(30_000);
   const [ingresando, setIngresando] = useState<string | null>(null);
 
-  const filas = useConsulta<readonly Fila[]>(
+  // null mientras carga: asi una cama ocupada nunca se ve un instante como «Sin ingreso».
+  const filas = useConsulta<readonly Fila[] | null>(
     async () => {
       const episodios = await repo.episodiosActivos();
       return Promise.all(
@@ -53,29 +54,21 @@ export function ListaCamas() {
       );
     },
     [repo],
-    []
+    null
   );
 
-  const ocupadas = new Set(filas.map((f) => f.ep.cama));
-  const libres = CAMAS_UNIDAD.filter((c) => !ocupadas.has(c));
-  /** Camas sin paciente: se ingresan aqui mismo, a pie de cama (sin nombre ni RUT). */
-  const seccionLibres = (
-    <section aria-label="Camas libres">
-      <h3 style={{ margin: "8px 0 6px" }}>Camas libres ({libres.length})</h3>
-      {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
-      <div className="libres">
-        {libres.map((c) => (
-          <button key={c} type="button" className="btn" aria-label={`Ingresar ${nombreCama(c)}`} aria-pressed={ingresando === c} onClick={() => setIngresando(c)}>
-            {nombreCama(c)}<span className="small muted">Ingresar</span>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-  const esMia = (e: Episodio): boolean => (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
-  // Las mias primero, de la primera a la ultima; despues las demas, tambien en orden.
-  const ordenadas = [...filas].sort((a, b) => Number(esMia(b.ep)) - Number(esMia(a.ep)) || a.ep.cama.localeCompare(b.ep.cama));
-  const nMias = ordenadas.filter((f) => esMia(f.ep)).length;
+  const porCama = new Map((filas ?? []).map((f) => [f.ep.cama, f] as const));
+  const esMiaCama = (c: string): boolean => {
+    if (misCamas) return misCamas.includes(c);
+    const f = porCama.get(c);
+    return f ? f.ep.rutTitular === sesion.rut : false;
+  };
+  // Las 18 camas en una columna: las mias primero (de la primera a la ultima) y despues las
+  // demas, tambien en orden. Las libres van en su lugar, listas para ingresar.
+  const orden = [...CAMAS_UNIDAD.filter(esMiaCama), ...CAMAS_UNIDAD.filter((c) => !esMiaCama(c))];
+  const nMias = orden.filter(esMiaCama).length;
+
+  if (!filas) return <div className="cel-cuerpo"><p className="muted">Cargando camas…</p></div>;
 
   return (
     <div className="cel-cuerpo" style={{ display: "grid", gap: 10 }}>
@@ -84,7 +77,28 @@ export function ListaCamas() {
         <button type="button" className="linkbtn" onClick={() => irA("elegir")}>Cambiar mis camas</button>
       </div>
       {nMias === 0 && <p className="small muted">No elegiste camas. Puedes abrir cualquiera de abajo o usar «Cambiar mis camas».</p>}
-      {ordenadas.map(({ ep, ultimo, eventos, apks }, i) => {
+      {orden.map((cama, i) => {
+        const encabezadoOtras = i === nMias && nMias > 0 && <h3 style={{ margin: "8px 0 0" }}>Otras camas</h3>;
+        const fila = porCama.get(cama);
+        if (!fila) {
+          return (
+            <Fragment key={cama}>
+              {encabezadoOtras}
+              <article className="card stack cama-sin" style={{ padding: 12, gap: 8 }} aria-label={`Cama ${cama}`}>
+                <header className="row" style={{ justifyContent: "space-between" }}>
+                  <b className="cama-num">{cama}</b>
+                </header>
+                <div className="small ink2">Sin ingreso</div>
+                {ingresando === cama ? (
+                  <IngresoRapido key={cama} cama={cama} onCancelar={() => setIngresando(null)} />
+                ) : (
+                  <button type="button" className="btn primary" aria-label={`Ingresar ${nombreCama(cama)}`} onClick={() => setIngresando(cama)}>Ingresar</button>
+                )}
+              </article>
+            </Fragment>
+          );
+        }
+        const { ep, ultimo, eventos, apks } = fila;
         const minutos = ultimo ? Math.max(0, Math.round((ahora.getTime() - Date.parse(ultimo.registradoEn)) / 60000)) : null;
         const apk = apkVigente(apks, ep.id, ahora);
         const flujo = estadoFlujoPve(eventos, ahora);
@@ -92,18 +106,22 @@ export function ListaCamas() {
         // Con via aerea natural no hay filtros ni TrachCare que cambiar.
         const cambios = esViaAereaArtificial(ep.viaAereaActual) ? filtrosPorCambiar(eventos, ahora) : [];
         const duePost = flujo.bloque?.momentos.find((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H");
-        const propia = esMia(ep);
+        const propia = esMiaCama(cama);
         const pve = accesoPve(ep.viaAereaActual, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, ahora);
+        const h = horasDeVm(ep, eventos, null, ahora);
         return (
           <Fragment key={ep.id}>
-          {i === nMias && <h3 style={{ margin: "8px 0 0" }}>Otras camas · para ayudar a un colega</h3>}
+          {encabezadoOtras}
           <article className="card stack" style={{ padding: 12, gap: 8 }} aria-label={`Cama ${ep.cama}`}>
-            <header className="row" style={{ justifyContent: "space-between" }}>
-              <b style={{ fontSize: 19 }}>{nombreCama(ep.cama)}</b>
-              <span className="small muted">{ultimo ? `último ${ultimo.hora} · hace ${haceTexto(minutos ?? 0)}` : "sin controles"}</span>
+            <header className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+              <b className="cama-num">{ep.cama}</b>
+              <span className="small muted">
+                {ultimo ? `último ${ultimo.hora} · ${ETIQUETA_MODALIDAD[ultimo.ventilacion.modalidad] ?? "sin modo"}${minutos !== null && minutos >= 60 ? ` · hace ${haceTexto(minutos)}` : ""}` : "sin controles"}
+              </span>
             </header>
             <div className="small ink2">
-              {esViaAereaArtificial(ep.viaAereaActual) ? [ep.viaAereaActual, textoVm(horasDeVm(ep, eventos, null, ahora))].filter(Boolean).join(" · ") : "Vía aérea natural"}
+              {textoViaCama(ep, h)}
+              {ep.viaAereaActual === "TET" && h && h.horas >= 48 && <> · <b style={{ color: "var(--crit-ink)" }}>NAVM ≥ 48 h</b></>}
               {!propia && " · de otro colega"}
             </div>
             <div className="row" style={{ gap: 6 }}>
@@ -134,7 +152,16 @@ export function ListaCamas() {
           </Fragment>
         );
       })}
-      {seccionLibres}
     </div>
   );
+}
+
+/** «TET 7.5 · 23 cm · TOT 4 d», «TQT 8.0 · TQT 12 d» o «Vía aérea natural», como en el registro simple. */
+function textoViaCama(ep: Episodio, h: HorasVm | null): string {
+  if (ep.viaAereaActual === "NATURAL") return "Vía aérea natural";
+  const via = ep.viaAereaActual === "TET"
+    ? [`TET ${ep.calibreVia ?? ""}`.trim(), ep.fijacionCm ? `${ep.fijacionCm}${/\d$/.test(ep.fijacionCm) ? " cm" : ""}` : null]
+    : [`TQT ${ep.calibreVia ?? ""}`.trim()];
+  const dias = h ? `${ep.viaAereaActual === "TET" ? "TOT" : "TQT"} ${Math.floor(h.horas / 24)} d` : null;
+  return [...via, dias].filter(Boolean).join(" · ");
 }

@@ -181,7 +181,8 @@ const pagina = () =>
       // Unidad sin pacientes: igual se ven las 18 camas, y las libres se ingresan desde aqui.
       assert.equal(await p.locator('[aria-label="Camas"] button').count(), 18);
       await p.click('button:has-text("Ver camas")');
-      await p.waitForSelector('[aria-label="Camas libres"] h3:has-text("Camas libres (18)")');
+      await p.waitForSelector("article.cama-sin");
+      assert.equal(await p.locator("article.cama-sin").count(), 18, "las 18 camas, libres, en una columna");
       assert.equal(await p.locator("text=No hay camas activas").count(), 0);
       // El servidor guardo un hash, nunca la clave.
       const usuarios = gas.hojas.get("usuarios").filas;

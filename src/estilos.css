@@ -305,9 +305,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .botones-cama{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .botones-cama .btn{padding-left:4px;padding-right:4px;font-size:13px;gap:4px}
 /* Camas libres: se ingresan desde el celular. */
-.libres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.libres .btn{flex-direction:column;gap:0;min-height:52px}
-.libres .btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 /* Cabecera del control: titulo con la fecha en una linea y la banda del paciente en dos. */
 .ctl-cabeza{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 14px 6px}
 .ctl-cabeza h1{margin:0;font-size:19px;letter-spacing:.01em}
@@ -514,3 +511,7 @@ body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
 .camas-libres{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 .cama-libre{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-2);color:var(--ink);cursor:pointer;font:inherit;text-align:left}
 .cama-libre:hover,.cama-libre[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+
+/* Lista de camas del celular, como en el registro simple: libres punteadas, en su lugar. */
+.cama-num{font:700 20px var(--font-data);letter-spacing:.02em}
+.cama-sin{border-style:dashed;background:var(--panel-2)}

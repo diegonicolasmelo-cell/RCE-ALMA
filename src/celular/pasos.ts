@@ -11,7 +11,7 @@
  */
 
 export type TabControl = "kine";
-export type SegmentoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "modo" | "vent" | "kine" | "apk" | "tf";
+export type SegmentoId = "fc" | "pa" | "neuro" | "glasgow" | "sas" | "inf" | "modo" | "vent" | "kine" | "apk" | "tf";
 
 export interface DefSegmento {
   readonly id: SegmentoId;
@@ -28,22 +28,23 @@ export const SEGMENTOS: Readonly<Record<TabControl, readonly DefSegmento[]>> = {
 export const ORDEN_TABS: readonly TabControl[] = ["kine"];
 
 /** Orden de la hoja de control: monitorizacion y luego terapia ventilatoria. */
-export const SEGMENTOS_HOJA: readonly SegmentoId[] = ["fc", "pa", "neuro", "glasgow", "sas", "modo", "vent"];
+/** Como el registro simple: CSV (con las infusiones en curso) y terapia ventilatoria. */
+export const SEGMENTOS_HOJA: readonly SegmentoId[] = ["fc", "pa", "neuro", "glasgow", "sas", "inf", "modo", "vent"];
+export const SEGMENTOS_CSV = 6;
 
-const SEDANTES = ["fentanilo", "propofol", "midazolam", "dexmedetomidina", "lorazepam"];
 
 /** Donde esta un campo que falta, para llevar a la persona hasta el. */
 export function ubicacionDeCampo(campo: string): { tab: "control" | TabControl; seg: SegmentoId } {
-  if (campo === "fc") return { tab: "control", seg: "fc" };
+  if (campo === "fc" || campo === "horaControl") return { tab: "control", seg: "fc" };
   if (campo === "pas" || campo === "pad") return { tab: "control", seg: "pa" };
   if (campo === "glasgow") return { tab: "control", seg: "glasgow" };
   if (campo === "sas" || campo === "vigilia") return { tab: "control", seg: "sas" };
   if (campo.startsWith("infusion:")) {
-    return SEDANTES.includes(campo.slice("infusion:".length)) ? { tab: "control", seg: "sas" } : { tab: "control", seg: /amiodarona|dobutamina|milrinona/.test(campo) ? "fc" : "pa" };
+    return { tab: "control", seg: "inf" };
   }
   if (campo === "frTotal") return { tab: "control", seg: "vent" };
   if (campo === "modalidad" || campo === "horaEvento") return { tab: "control", seg: "modo" };
-  if (campo === "spo2") return { tab: "control", seg: "vent" };
+  if (campo === "spo2") return { tab: "control", seg: "pa" };
   if (campo === "kine") return { tab: "kine", seg: "kine" };
   if (campo === "apk") return { tab: "kine", seg: "apk" };
   return { tab: "control", seg: "fc" };

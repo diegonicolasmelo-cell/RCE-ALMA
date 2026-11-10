@@ -100,6 +100,8 @@ export interface BorradorControl {
    * respecto del control anterior. Puede ser antes del control; "" = la de ahora.
    */
   horaEvento: string;
+  /** Hora REAL (HH:mm) del control: puede ser unos minutos antes de guardarlo. "" = la de ahora. */
+  horaControl: string;
   asincronico: boolean;
   /** Uso de musculatura accesoria (CNAF). Observacion del momento: nace en blanco. */
   musculaturaAccesoria: boolean | null;
@@ -200,6 +202,7 @@ export function crearBorradorNuevoControl(
 
     modalidad,
     horaEvento: "",
+    horaControl: "",
     // La asincronia es una observacion del momento: no se hereda.
     asincronico: false,
     musculaturaAccesoria: null,
@@ -304,6 +307,9 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
   if (medicionDe(b.vent.frTotal) === null) falta("frTotal", "FR total");
   if (ctx.viaAerea && !modalidadPermitida(b.modalidad, ctx.viaAerea)) {
     falta("modalidad", `un modo que corresponda a la vía aérea (${ETIQUETA_MODALIDAD[b.modalidad]} no se usa con ${ctx.viaAerea === "NATURAL" ? "vía aérea natural" : ctx.viaAerea})`);
+  }
+  if (b.horaControl.trim() !== "" && !momentoDeEvaluacion(b.horaControl, ctx.ahora ?? new Date())) {
+    falta("horaControl", "la hora real del control (de las últimas 12 horas)");
   }
   if (ctx.viaAerea) {
     const tr = transicionSoporte(ctx.modalidadAnterior ?? null, b.modalidad, ctx.viaAerea);

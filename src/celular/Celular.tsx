@@ -29,7 +29,8 @@ import { baseEvento } from "./eventos-ui";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { EVENTO_FIN_PESTANA, EVENTO_FIN_SEGMENTO, asegurarVisible, enfocarPrimero, enfocarPrimeroEn, useFranja } from "./franja";
-import { ORDEN_TABS, SEGMENTOS, SEGMENTOS_HOJA, ubicacionDeCampo } from "./pasos";
+import { ORDEN_TABS, SEGMENTOS, SEGMENTOS_CSV, SEGMENTOS_HOJA, ubicacionDeCampo } from "./pasos";
+import { InfusionesEnCurso } from "./InfusionesEnCurso";
 import type { SegmentoId, TabControl as TabDeControl } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
@@ -225,7 +226,8 @@ export function Celular() {
     const problemas = validarBorrador(b, {
       apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut),
       viaAerea: ep.viaAereaActual,
-      modalidadAnterior: ultimo?.ventilacion.modalidad ?? null
+      modalidadAnterior: ultimo?.ventilacion.modalidad ?? null,
+      ahora: new Date()
     });
     if (problemas.length > 0) {
       const primero = problemas[0];
@@ -238,7 +240,9 @@ export function Celular() {
       return;
     }
     const t = new Date();
-    const control = materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: t, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo });
+    // La hora que vale es la REAL del control (puede ser unos minutos antes de guardarlo).
+    const realControl = momentoDeEvaluacion(b.horaControl || horaDe(t), t) ?? t;
+    const control = materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: realControl, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo });
     await repo.guardarControl(control);
     // Cambio de soporte (p. ej. CPAP+PS a tubo T / HME): desvinculacion o reconexion, con su hora real.
     const tr = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
@@ -271,6 +275,7 @@ export function Celular() {
     if (prev) { franja.cerrar(); const ult = SEGMENTOS[prev].at(-1); if (ult) pedirSegmento(ult.id); setTab(prev); }
   };
   const renderSeg = (id: SegmentoId): JSX.Element =>
+    id === "inf" ? <InfusionesEnCurso ctx={ctx} /> :
     ["fc", "pa", "modo", "vent"].includes(id) ? <TabControl ctx={ctx} paso={id} /> :
     ["neuro", "glasgow", "sas"].includes(id) ? <TabConciencia ctx={ctx} paso={id} /> :
     <TabKine ctx={ctx} paso={id} />;
@@ -284,10 +289,15 @@ export function Celular() {
   const cuerpoHoja = (
     <div className="hoja-ctl">
       {previoEn && <div className="hoja-cab" aria-hidden="true"><span>Parámetro</span><span>Ahora</span><span>{previoEn}</span></div>}
-      <div className="hoja-grupo">Monitorización</div>
-      {SEGMENTOS_HOJA.slice(0, 5).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
-      <div className="hoja-grupo">Terapia ventilatoria</div>
-      {SEGMENTOS_HOJA.slice(5).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
+      {/* Como el registro simple: dos tarjetas, CSV y terapia ventilatoria. */}
+      <div className="hoja-tarjeta" aria-label="CSV">
+        <div className="hoja-grupo">CSV</div>
+        {SEGMENTOS_HOJA.slice(0, SEGMENTOS_CSV).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
+      </div>
+      <div className="hoja-tarjeta" aria-label="Terapia ventilatoria">
+        <div className="hoja-grupo">Terapia ventilatoria</div>
+        {SEGMENTOS_HOJA.slice(SEGMENTOS_CSV).map((id) => <div key={id} className="segmento" data-seg={id}>{renderSeg(id)}</div>)}
+      </div>
       <div className="seg-relleno" aria-hidden />
     </div>
   );

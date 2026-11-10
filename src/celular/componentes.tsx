@@ -76,10 +76,36 @@ export function CampoNum(props: {
   ariaLabel?: string;
   /** Valor del control anterior: columna aparte, solo en pantallas anchas (como la hoja). */
   previo?: number | string | null;
+  /** Solo la casilla, sin su etiqueta: para filas compuestas (PA, Glasgow). */
+  soloCasilla?: boolean;
 }) {
   const f = useFranja();
   f.registrar(props.clave, props.franja);
   const id = `in-${props.clave.replace(/[^a-z0-9]+/gi, "-")}`;
+  if (props.soloCasilla) {
+    return (
+      <input
+        id={id}
+        className="casilla"
+        data-stop={props.clave}
+        inputMode="decimal"
+        autoComplete="off"
+        value={props.valor}
+        placeholder={props.placeholder ?? ""}
+        disabled={props.deshabilitado}
+        aria-label={props.ariaLabel ?? props.etiqueta}
+        enterKeyHint="next"
+        onFocus={() => f.abrir(props.clave)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            f.siguiente(props.clave);
+          }
+        }}
+        onChange={(e) => props.onCambio(e.target.value)}
+      />
+    );
+  }
   return (
     <div className="f">
       <label htmlFor={id}>

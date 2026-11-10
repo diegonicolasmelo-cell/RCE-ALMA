@@ -1,40 +1,24 @@
-import { useState } from "react";
 import {
   ESCALA_SAS,
   ESTADOS_VIGILIA,
-  INFUSIONES,
-  alternarDosisLibre,
   calcularPam,
   calcularPpc,
   esViaAereaArtificial,
-  iniciarInfusion,
   medicionDe,
-  sedoanalgesiaActivaEnBorrador,
-  suspenderInfusion
+  sedoanalgesiaActivaEnBorrador
 } from "@core/index";
-import type { Glasgow, IdInfusion, ValorSas } from "@core/index";
-import { useApp } from "../app/store";
+import type { Glasgow, ValorSas } from "@core/index";
 import { useServicios } from "../app/contexto";
-import { CampoNum, Pildora, Seg } from "./componentes";
+import { CampoNum, Seg } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { opcionesNumericas } from "./franja";
 import type { DescriptorFranja } from "./franja";
-import { TarjetaInfusion } from "./TarjetaInfusion";
 import type { SegmentoId } from "./pasos";
 
 export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) {
-  const { ep, ultimo, b, editar } = ctx;
-  const avisar = useApp((s) => s.avisar);
+  const { ep, b, editar } = ctx;
   const sedada = sedoanalgesiaActivaEnBorrador(b);
   const artificial = esViaAereaArtificial(ep.viaAereaActual);
-
-  const suspender = (id: IdInfusion): void => {
-    const previo = b.infusiones[id];
-    editar((y) => suspenderInfusion(y, id));
-    avisar(`${INFUSIONES.find((i) => i.id === id)?.nombre ?? "Infusión"} suspendida.`, () =>
-      editar((y) => ({ ...y, infusiones: { ...y.infusiones, [id]: previo } }))
-    );
-  };
 
   /** Acepta solo un digito dentro del rango; el resto se ignora al teclear. */
   const digito = (v: string, min: number, max: number): number | null | undefined => {
@@ -55,101 +39,50 @@ export function TabConciencia({ ctx, paso }: { ctx: ContextoCama; paso: Segmento
   });
 
 
-  // Sedoanalgesia: lo que esta en curso se ve siempre; el resto se agrega con "+".
-  const [abiertos, setAbiertos] = useState<{ sedacion: boolean; agitacion: boolean; bnm: boolean }>({ sedacion: false, agitacion: false, bnm: false });
-  const GRUPO_SEDACION: readonly IdInfusion[] = ["fentanilo", "propofol", "midazolam"];
-  const GRUPO_AGITACION: readonly IdInfusion[] = ["dexmedetomidina", "lorazepam"];
-  const GRUPO_BNM: readonly IdInfusion[] = ["rocuronio", "vecuronio", "atracurio"];
-  const tarjeta = (id: IdInfusion): JSX.Element | null => {
-    const def = INFUSIONES.find((i) => i.id === id);
-    if (!def) return null;
-    return (
-      <TarjetaInfusion
-        key={def.id}
-        def={def}
-        x={b.infusiones[def.id]}
-        ultimo={ultimo}
-        onCambio={(p) => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [def.id]: { ...y.infusiones[def.id], ...p } } }))}
-        onIniciar={() => editar((y) => iniciarInfusion(y, def.id))}
-        onSuspender={() => suspender(def.id)}
-        onAlternarLibre={() => editar((y) => alternarDosisLibre(y, def.id))}
-      />
-    );
-  };
-  const visibles = (grupo: readonly IdInfusion[], abierto: boolean): IdInfusion[] => grupo.filter((id) => abierto || b.infusiones[id].activa);
-
   return (
     <>
       {paso === "neuro" && <Neuromonitoreo ctx={ctx} />}
       {paso === "glasgow" && (
-        <section>
-          <h3>Glasgow</h3>
-          <div className="fgrid4">
-            <CampoNum clave="gcs-o" etiqueta="Ocular" unidad="1-4" valor={b.glasgow.ocular === null ? "" : String(b.glasgow.ocular)}
-              onCambio={(v) => { const n = digito(v, 1, 4); if (n !== undefined) setGlasgow({ ocular: n as Glasgow["ocular"] | null }); }}
-              franja={franjaNum("Ocular", [1, 2, 3, 4], b.glasgow.ocular === null ? "" : String(b.glasgow.ocular), (v) => setGlasgow({ ocular: Number(v) as Glasgow["ocular"] })) } />
-            {artificial ? (
-              <div className="f"><label>Verbal</label><div className="pam mono" title="Con vía aérea artificial el verbal no se evalúa">T</div></div>
-            ) : (
-              <CampoNum clave="gcs-v" etiqueta="Verbal" unidad="1-5" valor={b.glasgow.verbal === null ? "" : String(b.glasgow.verbal)}
-                onCambio={(v) => { const n = digito(v, 1, 5); if (n !== undefined) setGlasgow({ verbal: n as Glasgow["verbal"] | null }); }}
-                franja={franjaNum("Verbal", [1, 2, 3, 4, 5], b.glasgow.verbal === null ? "" : String(b.glasgow.verbal), (v) => setGlasgow({ verbal: Number(v) as Glasgow["verbal"] })) } />
-            )}
-            <CampoNum clave="gcs-m" etiqueta="Motora" unidad="1-6" valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)}
-              onCambio={(v) => { const n = digito(v, 1, 6); if (n !== undefined) setGlasgow({ motora: n as Glasgow["motora"] | null }); }}
-              franja={franjaNum("Motora", [1, 2, 3, 4, 5, 6], b.glasgow.motora === null ? "" : String(b.glasgow.motora), (v) => setGlasgow({ motora: Number(v) as Glasgow["motora"] })) } />
+        <section aria-label="Glasgow">
+          <div className="fila-hoja">
+            <label htmlFor="in-gcs-o">Glasgow <span className="muted">O · V · M</span></label>
+            <div className="gcs-tres">
+              <span><small>O</small><CampoNum soloCasilla clave="gcs-o" etiqueta="Ocular" ariaLabel="Glasgow ocular, 1 a 4" valor={b.glasgow.ocular === null ? "" : String(b.glasgow.ocular)}
+                onCambio={(v) => { const n = digito(v, 1, 4); if (n !== undefined) setGlasgow({ ocular: n as Glasgow["ocular"] | null }); }}
+                franja={franjaNum("Ocular", [1, 2, 3, 4], b.glasgow.ocular === null ? "" : String(b.glasgow.ocular), (v) => setGlasgow({ ocular: Number(v) as Glasgow["ocular"] }))} /></span>
+              {artificial ? (
+                <span><small>V</small><b className="gcs-t" title="Con vía aérea artificial el verbal no se evalúa" aria-label="Verbal T">T</b></span>
+              ) : (
+                <span><small>V</small><CampoNum soloCasilla clave="gcs-v" etiqueta="Verbal" ariaLabel="Glasgow verbal, 1 a 5" valor={b.glasgow.verbal === null ? "" : String(b.glasgow.verbal)}
+                  onCambio={(v) => { const n = digito(v, 1, 5); if (n !== undefined) setGlasgow({ verbal: n as Glasgow["verbal"] | null }); }}
+                  franja={franjaNum("Verbal", [1, 2, 3, 4, 5], b.glasgow.verbal === null ? "" : String(b.glasgow.verbal), (v) => setGlasgow({ verbal: Number(v) as Glasgow["verbal"] }))} /></span>
+              )}
+              <span><small>M</small><CampoNum soloCasilla clave="gcs-m" etiqueta="Motora" ariaLabel="Glasgow motor, 1 a 6" valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)}
+                onCambio={(v) => { const n = digito(v, 1, 6); if (n !== undefined) setGlasgow({ motora: n as Glasgow["motora"] | null }); }}
+                franja={franjaNum("Motora", [1, 2, 3, 4, 5, 6], b.glasgow.motora === null ? "" : String(b.glasgow.motora), (v) => setGlasgow({ motora: Number(v) as Glasgow["motora"] }))} /></span>
+            </div>
           </div>
-          <p className="small muted" style={{ margin: "6px 0 0" }}>Solo O, V y M: el total se ve en la sábana.{artificial ? " Con vía aérea artificial el verbal queda en T." : ""}</p>
         </section>
       )}
       {paso === "sas" && (
-        <>
-          <section>
-            <h3>
-              Sedoanalgesia <Pildora tipo={sedada ? "acc" : ""}>{sedada ? "Sí" : "No"}</Pildora>
-            </h3>
-            <div className="stack" style={{ gap: 6 }}>
-              {visibles(GRUPO_SEDACION, abiertos.sedacion).map(tarjeta)}
-              {visibles(GRUPO_AGITACION, abiertos.agitacion).map(tarjeta)}
-            </div>
-            <div className="row mt" style={{ flexWrap: "wrap" }}>
-              {!abiertos.sedacion && <button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, sedacion: true }))}>+ Agregar sedoanalgesia</button>}
-              {!abiertos.agitacion && <button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, agitacion: true }))}>+ Agregar manejo de agitación</button>}
-            </div>
-            <p className="small muted mt">Fentanilo, propofol y midazolam; Precedex y lorazepam son para el paciente agitado. Lo que estaba en curso se hereda y se ve siempre.</p>
-          </section>
-
+        <section aria-label={sedada ? "SAS" : "Estado de vigilia"}>
           {sedada ? (
-            <section>
-              <h3>Escala SAS</h3>
-              <div className="row" style={{ alignItems: "end", gap: 12 }}>
-                <div style={{ maxWidth: 110 }}>
-                <CampoNum clave="sas" etiqueta="SAS" unidad="1 a 7" previo={ultimo?.sas ?? null} valor={b.sas === null ? "" : String(b.sas)}
-                  onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }}
-                  franja={franjaNum("SAS", [1, 2, 3, 4, 5, 6, 7], b.sas === null ? "" : String(b.sas), (v) => editar((x) => ({ ...x, sas: Number(v) as ValorSas })))} />
-              </div>
-                <div className="sas-desc" aria-live="polite">{b.sas === null ? "" : ESCALA_SAS.find((e) => e.val === b.sas)?.label ?? ""}</div>
-              </div>
-            </section>
+            <div className="fila-hoja">
+              <label htmlFor="in-sas">SAS <span className="muted">1-7</span><span className="ayuda sas-desc" aria-live="polite">{b.sas === null ? "" : ESCALA_SAS.find((e) => e.val === b.sas)?.label ?? ""}</span></label>
+              <CampoNum soloCasilla clave="sas" etiqueta="SAS" ariaLabel="SAS, 1 a 7" valor={b.sas === null ? "" : String(b.sas)}
+                onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }}
+                franja={franjaNum("SAS", [1, 2, 3, 4, 5, 6, 7], b.sas === null ? "" : String(b.sas), (v) => editar((x) => ({ ...x, sas: Number(v) as ValorSas })))} />
+            </div>
           ) : (
-            <section>
-              <h3>Estado de vigilia</h3>
-              <div className="stack" style={{ gap: 6 }}>
-                {ESTADOS_VIGILIA.map((v) => (
-                  <button key={v.val} type="button" className="chip" style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} aria-pressed={b.vigilia === v.val} onClick={() => editar((x) => ({ ...x, vigilia: v.val }))}>
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            </section>
+            <div className="fila-hoja vigilia">
+              <label>Vigilia <span className="ayuda">sin sedoanalgesia en curso</span></label>
+              <select aria-label="Estado de vigilia" value={b.vigilia ?? ""} onChange={(e) => editar((x) => ({ ...x, vigilia: (e.target.value || null) as typeof x.vigilia }))}>
+                <option value="">—</option>
+                {ESTADOS_VIGILIA.map((v) => <option key={v.val} value={v.val}>{v.label}</option>)}
+              </select>
+            </div>
           )}
-
-          <section>
-            <h3>Bloqueo neuromuscular <Pildora tipo={GRUPO_BNM.some((id) => b.infusiones[id].activa) ? "crit" : ""}>{GRUPO_BNM.some((id) => b.infusiones[id].activa) ? "En curso" : "No"}</Pildora></h3>
-            <div className="stack" style={{ gap: 6 }}>{visibles(GRUPO_BNM, abiertos.bnm).map(tarjeta)}</div>
-            {!abiertos.bnm && <div className="row mt"><button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, bnm: true }))}>+ Agregar bloqueo neuromuscular</button></div>}
-          </section>
-        </>
+        </section>
       )}
     </>
   );

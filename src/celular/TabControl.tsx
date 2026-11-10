@@ -6,13 +6,11 @@ import {
   ETIQUETA_GRUPO_MODALIDAD,
   ETIQUETA_MODALIDAD,
   GRUPO_MODALIDAD,
-  INFUSIONES,
   MODALIDADES_CON_VT,
   MODALIDADES_POR_VIA,
   OBJETIVOS_VT_ML_KG,
   VALORES_RAPIDOS,
   agregarEquipo,
-  alternarDosisLibre,
   bandaProteccion,
   calcularDerivados,
   calcularPam,
@@ -26,15 +24,13 @@ import {
   equiposIguales,
   esModalidadControlada,
   etiquetaEquipo,
-  iniciarInfusion,
   materializarControl,
   medicionDe,
   mlPorKg,
   opcionesVolumenObjetivo,
   ponerEnUso,
   quitarEquipo,
-  sugerirAnterior,
-  suspenderInfusion
+  sugerirAnterior
 } from "@core/index";
 import type { CampoVent, CampoVentDef, Modalidad } from "@core/index";
 import { useApp } from "../app/store";
@@ -46,7 +42,6 @@ import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
 import { opcionesNumericas, useFranja } from "./franja";
 import type { DescriptorFranja } from "./franja";
-import { TarjetaInfusion } from "./TarjetaInfusion";
 
 const BANDA = {
   ULTRAPROTECTOR: { tipo: "acc" as const, t: "Ultraprotector" },
@@ -110,6 +105,14 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
   // Cambio de soporte respecto del control anterior: se registra solo, como evento, con su hora real.
   const transicion = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
   const horaEvento = b.horaEvento || horaDe(new Date());
+  // Hora real del control: se sugiere la de ahora y se corrige si se tomo antes.
+  const horaControl = b.horaControl || horaDe(new Date());
+  const momentoControl = momentoDeEvaluacion(horaControl, new Date());
+  const fechaCorta = (d: Date): string => {
+    const hoy = new Date();
+    const dia = d.toDateString() === hoy.toDateString() ? "hoy" : "ayer";
+    return `${dia} ${horaDe(d)} (${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")})`;
+  };
   const momentoEvento = transicion ? momentoDeEvaluacion(horaEvento, new Date()) : null;
   const campos = CAMPOS_POR_MODALIDAD[b.modalidad];
   const sugeribles = camposSugeribles(b, ultimo);
@@ -131,102 +134,41 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         />
       ));
 
-  /** Como la sedoanalgesia: lo que esta en curso se ve siempre; el resto se agrega con "+". */
-  const [abiertos, setAbiertos] = useState<Partial<Record<(typeof INFUSIONES)[number]["grupo"], boolean>>>({});
-  const plegados = (grupoInf: (typeof INFUSIONES)[number]["grupo"], agregar: string): JSX.Element => {
-    const abierto = abiertos[grupoInf] === true;
-    const hayActivas = INFUSIONES.some((i) => i.grupo === grupoInf && b.infusiones[i.id].activa);
-    return (
-      <>
-        {tarjetas(grupoInf, abierto)}
-        {!abierto && (
-          <div className="row">
-            <button type="button" className="btn sm" onClick={() => setAbiertos((a) => ({ ...a, [grupoInf]: true }))}>+ {hayActivas ? "Agregar otra" : `Agregar ${agregar}`}</button>
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const tarjetas = (grupoInf: (typeof INFUSIONES)[number]["grupo"], todas = true) =>
-    INFUSIONES.filter((i) => i.grupo === grupoInf && (todas || b.infusiones[i.id].activa)).map((def) => {
-      const x = b.infusiones[def.id];
-      return (
-        <TarjetaInfusion
-          key={def.id}
-          def={def}
-          x={x}
-          ultimo={ultimo}
-          onCambio={(p) => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [def.id]: { ...y.infusiones[def.id], ...p } } }))}
-          onIniciar={() => editar((y) => iniciarInfusion(y, def.id))}
-          onSuspender={() => suspenderConDeshacer(def.id)}
-          onAlternarLibre={() => editar((y) => alternarDosisLibre(y, def.id))}
-        />
-      );
-    });
-
-  const avisar = useApp((s) => s.avisar);
-  const suspenderConDeshacer = (id: (typeof INFUSIONES)[number]["id"]): void => {
-    const previo = b.infusiones[id];
-    editar((y) => suspenderInfusion(y, id));
-    const nombre = INFUSIONES.find((i) => i.id === id)?.nombre ?? "Infusión";
-    avisar(`${nombre} suspendida.`, () => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [id]: previo } })));
-  };
-
   const pam = calcularPam(medicionDe(b.pas), medicionDe(b.pad));
 
   return (
     <>
       {paso === "fc" && (
-        <>
-      <section>
-        <h3>Frecuencia cardiaca</h3>
-        <div style={{ maxWidth: 160 }}>
+        <section aria-label="Hora y frecuencia cardiaca">
+          <div className="fila-hoja">
+            <label htmlFor="in-hora-control">Hora del control<span className="ayuda">{momentoControl ? `Se guarda: ${fechaCorta(momentoControl)}` : "Esa hora queda a más de 12 h: revísala."}</span></label>
+            <input id="in-hora-control" type="time" value={horaControl} onChange={(e) => editar((x) => ({ ...x, horaControl: e.target.value }))} />
+          </div>
           <CampoNum clave="fc" etiqueta="Frec. cardiaca" unidad="lpm" previo={ultimo?.fc ?? null} valor={b.fc} onCambio={(v) => editar((x) => ({ ...x, fc: v }))} franja={sinFranja("FC")} />
-        </div>
-      </section>
-
-      <section>
-        <h3>Inotrópicos y antiarrítmicos</h3>
-        <div className="stack" style={{ gap: 6 }}>
-          <div className="grpt">Inotrópicos</div>
-          {plegados("INOTROPO", "inotrópico")}
-          <div className="grpt">Antiarrítmicos</div>
-          {plegados("ANTIARRITMICO", "antiarrítmico")}
-        </div>
-      </section>
-
-      {local && (
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <span className="small muted">Modo demostración:</span>
-          <button type="button" className="btn sm" onClick={() => rellenarEjemplo(ctx)}>
-            Rellenar signos de ejemplo
-          </button>
-        </div>
-      )}
-        </>
+          {local && (
+            <div className="row" style={{ justifyContent: "space-between", padding: "6px 0" }}>
+              <span className="small muted">Modo demostración:</span>
+              <button type="button" className="btn sm" onClick={() => rellenarEjemplo(ctx)}>Rellenar signos de ejemplo</button>
+            </div>
+          )}
+        </section>
       )}
       {paso === "pa" && (
-        <>
-      <section>
-        <h3>Presión arterial</h3>
-        <div className="fgrid">
-          <CampoNum clave="pas" etiqueta="PAS" unidad="mmHg" previo={ultimo?.pas ?? null} valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} />
-          <CampoNum clave="pad" etiqueta="PAD" unidad="mmHg" previo={ultimo?.pad ?? null} valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} />
-          <div className="f">
-            <label>PAM</label>
+        <section aria-label="Presión arterial y saturación">
+          <div className="fila-hoja">
+            <label htmlFor="in-pas">P. arterial <span className="muted">mmHg</span></label>
+            <div className="pa-dos">
+              <CampoNum soloCasilla clave="pas" etiqueta="PAS" ariaLabel="Presión sistólica" valor={b.pas} onCambio={(v) => editar((x) => ({ ...x, pas: v }))} franja={sinFranja("PAS")} />
+              <span aria-hidden="true">/</span>
+              <CampoNum soloCasilla clave="pad" etiqueta="PAD" ariaLabel="Presión diastólica" valor={b.pad} onCambio={(v) => editar((x) => ({ ...x, pad: v }))} franja={sinFranja("PAD")} />
+            </div>
+          </div>
+          <div className="fila-hoja">
+            <label>PAM <span className="muted">mmHg</span></label>
             <div className="pam mono" aria-live="polite">{textoNum(pam)}</div>
           </div>
-        </div>
-      </section>
-      
-      <section>
-        <h3>Drogas vasoactivas</h3>
-        <div className="stack" style={{ gap: 6 }}>
-          {plegados("DVA", "droga vasoactiva")}
-        </div>
-      </section>
-        </>
+          <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" previo={ultimo?.spo2 ?? null} valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} />
+        </section>
       )}
       {paso === "modo" && (
       <section>
@@ -239,20 +181,18 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
               {ETIQUETA_MODALIDAD[b.modalidad]}
             </button>
           </div>
-          <div className="f">
-            <label>Sincronía</label>
-            {!conSoporte(b.modalidad) ? (
-              <div className="small muted" style={{ padding: "10px 0" }}>No aplica</div>
-            ) : (
+          {conSoporte(b.modalidad) && (
+            <div className="f">
+              <label>Asincronía</label>
               <Seg
                 ancho
-                etiqueta="Sincronía"
+                etiqueta="Asincronía"
                 valor={b.asincronico}
-                opciones={[{ valor: false, texto: "Sincrónico" }, { valor: true, texto: "Asincrónico" }]}
+                opciones={[{ valor: false, texto: "No" }, { valor: true, texto: "Sí" }]}
                 onCambio={(v) => editar((x) => ({ ...x, asincronico: v }))}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
         {transicion && (
           <div className={`evento-soporte ${transicion.tipo.toLowerCase()} mt`} role="status">
@@ -261,7 +201,7 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
               Hora real de la {transicion.tipo === "DESVINCULACION" ? "desvinculación" : "reconexión"}
               <input id="in-hora-evento" type="time" value={horaEvento} onChange={(e) => editar((x) => ({ ...x, horaEvento: e.target.value }))} />
             </label>
-            <span className="small">{momentoEvento ? `Se guarda: ${momentoEvento.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit" })} ${horaDe(momentoEvento)}` : "Esa hora queda a más de 12 h: revísala."}</span>
+            <span className="small">{momentoEvento ? `Se guarda: ${fechaCorta(momentoEvento)}` : "Esa hora queda a más de 12 h: revísala."}</span>
             <span className="small muted">Si ocurrió antes, cámbiala: es distinta de la hora del control. La desvinculación no es una PVE.</span>
           </div>
         )}
@@ -278,8 +218,8 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
         <>
       <section>
         <h3>Terapia ventilatoria · {ETIQUETA_MODALIDAD[b.modalidad]}</h3>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div className="subg" style={{ margin: 0 }}>Programado</div>
+        <div className="subg-hoja con-boton">
+          <span>Programado</span>
           {sugeribles.length > 0 && (
             <button type="button" className="btn sm" onClick={() => editar((x) => sugerirAnterior(x, ultimo))}>
               Usar lo anterior
@@ -287,10 +227,9 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
           )}
         </div>
         <div className="fgrid">{grupo("PROGRAMADO")}</div>
-        <div className="subg">Lo que hace el paciente</div>
+        <div className="subg-hoja">Lo que hace el paciente</div>
         <div className="fgrid">
           {grupo("OBSERVADO")}
-          <CampoNum clave="spo2" etiqueta="SpO₂" unidad="%" previo={ultimo?.spo2 ?? null} valor={b.spo2} onCambio={(v) => editar((x) => ({ ...x, spo2: v }))} franja={sinFranja("SpO₂")} />
         </div>
         {(b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT") && (
           <div className="mt">

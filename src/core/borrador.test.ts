@@ -489,3 +489,10 @@ describe("modos según la vía aérea y cambio de soporte", () => {
     expect(campos).toContain("horaEvento");
   });
 });
+
+describe("hora real del control", () => {
+  it("si se escribe, debe ser de las últimas 12 horas", () => {
+    expect(validarBorrador({ ...completo(), horaControl: "99:99" }, { apkVigente: apkOk() }).map((p) => p.campo)).toContain("horaControl");
+    expect(validarBorrador({ ...completo(), horaControl: "" }, { apkVigente: apkOk() }).map((p) => p.campo)).not.toContain("horaControl");
+  });
+});

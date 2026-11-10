@@ -125,7 +125,7 @@ async function esperarServidor() {
       assert.equal(await cel.locator(".app-cel.teclado").count(), 1);
       assert.equal(await cel.locator(".banda").isVisible(), false, "la via aerea y las pestanas se ocultan mientras se escribe");
       assert.equal(await cel.locator('.ph-tabs').isVisible(), false);
-      assert.ok(await cel.locator('.segmento[data-seg="fc"] h3:has-text("Inotrópicos")').isVisible(), "se ven las drogas del mismo cuadro");
+      assert.ok(await cel.locator('.hoja-tarjeta[aria-label="CSV"]').isVisible(), "se ve la tarjeta CSV mientras se escribe");
     });
 
     await prueba("'Sig.' (o Enter) va de casilla en casilla por toda la hoja, hasta el Modo", async () => {
@@ -135,7 +135,8 @@ async function esperarServidor() {
         await cel.waitForTimeout(150);
         secuencia.push(await parada());
       }
-      assert.deepEqual(secuencia.slice(0, 4), ["fc", "pas", "pad", "inf:noradrenalina:dosis"], secuencia.join(","));
+      assert.deepEqual(secuencia.slice(0, 4), ["fc", "pas", "pad", "spo2"], secuencia.join(","));
+      assert.ok(secuencia.includes("inf:noradrenalina:dosis"), "las infusiones en curso tambien estan en el recorrido");
       assert.equal(secuencia.at(-1), "modo", "la hoja sigue sin cambiar de pestana hasta el modo");
       assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Control/);
       await cel.click('.franja .qchip:has-text("Listo")');
@@ -182,18 +183,22 @@ async function esperarServidor() {
     });
 
     await prueba("asincronia en modalidad controlada bloquea el plateau", async () => {
-      await cel.click('.seg button:has-text("Asincrónico")');
+      await cel.locator('[aria-label="Asincronía"] button:text-is("Sí")').click();
       assert.equal(await cel.locator("#in-vent-pPlateau").isDisabled(), true);
       assert.match(await cel.textContent(".notice.crit"), /invalidados/);
-      await cel.click('.seg button:has-text("Sincrónico")');
+      await cel.locator('[aria-label="Asincronía"] button:text-is("No")').click();
     });
 
     await prueba("el control es una sola hoja en el orden del papel: monitorizacion y luego terapia ventilatoria", async () => {
       await cel.click('[role=tab]:has-text("Control")');
       const orden = await cel.locator(".hoja-ctl .segmento").evaluateAll((l) => l.map((x) => x.getAttribute("data-seg")));
-      assert.deepEqual(orden, ["fc", "pa", "neuro", "glasgow", "sas", "modo", "vent"]);
-      const grupos = await cel.locator(".hoja-grupo").allTextContents();
-      assert.deepEqual(grupos, ["Monitorización", "Terapia ventilatoria"]);
+      assert.deepEqual(orden, ["fc", "pa", "neuro", "glasgow", "sas", "inf", "modo", "vent"]);
+      const grupos = await cel.locator(".hoja-tarjeta > .hoja-grupo").allTextContents();
+      assert.deepEqual(grupos, ["CSV", "Terapia ventilatoria"], "dos tarjetas, como el registro simple");
+      // Hora real del control, al inicio de la tarjeta CSV; la PA en una fila y la SpO2 en CSV.
+      assert.match(await cel.textContent('.segmento[data-seg="fc"]'), /Hora del control\s*Se guarda: hoy \d\d:\d\d/);
+      assert.equal(await cel.locator('.segmento[data-seg="pa"] #in-pas + span + #in-pad').count(), 1, "PAS / PAD en una fila");
+      assert.equal(await cel.locator('.hoja-tarjeta[aria-label="CSV"] #in-spo2').count(), 1);
       // En Kine resp. siguen Siguiente y Atras entre auscultacion y APK
       await cel.click('[role=tab]:has-text("Kine resp.")');
       await cel.click('button:has-text("Siguiente")');
@@ -202,23 +207,19 @@ async function esperarServidor() {
       await cel.click('[role=tab]:has-text("Control")');
     });
 
-    await prueba("la primera seccion junta la FC con inotropicos y antiarritmicos; la PA, con las drogas vasoactivas", async () => {
+    await prueba("infusiones en curso en filas compactas, con un solo «Agregar droga o infusión»", async () => {
       await cel.click('[role=tab]:has-text("Control")');
-      assert.ok((await cel.locator('.segmento[data-seg="fc"] h3:has-text("Inotrópicos y antiarrítmicos")').count()) === 1);
-      assert.ok((await cel.locator('.segmento[data-seg="pa"] h3:has-text("Drogas vasoactivas")').count()) === 1);
-      assert.ok((await cel.locator('.segmento[data-seg="sas"] h3:has-text("Sedoanalgesia")').count()) === 1, "SAS y los escalones de sedacion van juntos");
-      // Inotropicos, antiarritmicos y DVA plegados si no estan activos; la noradrenalina en curso se ve siempre.
-      assert.equal(await cel.locator('.segmento[data-seg="fc"] [aria-label*="Dobutamina"], .segmento[data-seg="fc"] :text-is("Dobutamina")').count(), 0, "dobutamina plegada");
-      assert.equal(await cel.locator('.segmento[data-seg="pa"] :text-is("Adrenalina")').count(), 0, "adrenalina plegada");
-      assert.ok((await cel.locator('.segmento[data-seg="pa"] :text-is("Noradrenalina")').count()) >= 1, "la noradrenalina activa se ve");
-      await cel.click('.segmento[data-seg="fc"] button:has-text("+ Agregar inotrópico")');
-      assert.ok((await cel.locator('.segmento[data-seg="fc"] :text-is("Dobutamina")').count()) >= 1, "al agregar aparecen los inotropicos");
-      await cel.click('.segmento[data-seg="pa"] button:has-text("+ Agregar otra")');
-      assert.ok((await cel.locator('.segmento[data-seg="pa"] :text-is("Adrenalina")').count()) >= 1);
-
+      const inf = cel.locator('.segmento[data-seg="inf"]');
+      assert.ok((await inf.locator('.inf-fila[aria-label="Noradrenalina"]').count()) === 1, "la noradrenalina en curso se ve con su fila");
+      assert.match(await inf.locator('.inf-fila[aria-label="Noradrenalina"]').textContent(), /antes 0\.03/);
+      assert.equal(await inf.locator('.inf-fila[aria-label="Dobutamina"]').count(), 0, "lo que no esta en curso no ocupa lugar");
+      await cel.selectOption('select[aria-label="Agregar droga o infusión"]', "dobutamina");
+      assert.equal(await inf.locator('.inf-fila[aria-label="Dobutamina"]').count(), 1, "al agregar aparece su fila");
+      await inf.locator('button[aria-label="Suspender Dobutamina"]').click();
+      assert.equal(await inf.locator('.inf-fila[aria-label="Dobutamina"]').count(), 0);
     });
 
-    await prueba("Glasgow solo O, V y M (la V queda en T con TET, sin total), sin S5Q, y bloqueo neuromuscular como tarjeta", async () => {
+    await prueba("Glasgow O, V y M en una fila (la V queda en T con TET, sin total), sin S5Q, y bloqueo neuromuscular en la misma lista", async () => {
       await cel.click('[role=tab]:has-text("Control")');
       await cel.fill("#in-gcs-o", "3");
       await cel.fill("#in-gcs-o", "9");
@@ -226,15 +227,13 @@ async function esperarServidor() {
       await cel.fill("#in-gcs-m", "5");
       assert.doesNotMatch(await cel.textContent('.segmento[data-seg="glasgow"]'), /9T/, "sin total: se ve en la sabana");
       assert.equal(await cel.locator("#in-gcs-v").count(), 0, "con via aerea artificial el verbal no se pide");
-      assert.match(await cel.textContent('.segmento[data-seg="glasgow"]'), /Verbal\s*T/);
+      assert.equal(await cel.locator('.segmento[data-seg="glasgow"] [aria-label="Verbal T"]').count(), 1);
       assert.equal(await cel.locator("#in-s5q").count(), 0, "el S5Q salio del control");
       assert.equal(await cel.locator('.segmento[data-seg="glasgow"] .notice').count(), 0, "sin avisos ni interpretaciones en el celular");
-      await cel.click('button:has-text("+ Agregar bloqueo neuromuscular")');
-      const roc = cel.locator('.infu:has(b:text-is("Rocuronio"))');
-      assert.ok((await roc.locator('button:has-text("Iniciar") svg').count()) === 1, "Iniciar con el icono de play");
-      await roc.locator('button:has-text("Iniciar")').click();
+      await cel.selectOption('select[aria-label="Agregar droga o infusión"]', "rocuronio");
+      const roc = cel.locator('.inf-fila[aria-label="Rocuronio"]');
       assert.ok((await roc.locator("input").count()) === 1, "el bloqueo neuromuscular pide la dosis");
-      await roc.locator('button:has-text("Suspender")').click();
+      await roc.locator('button[aria-label="Suspender Rocuronio"]').click();
       await cel.click('[role=tab]:has-text("Control")');
       assert.ok((await cel.locator('label:has-text("Vol. minuto espirado")').count()) === 1, "el volumen minuto se anota, no se calcula");
       assert.equal(await cel.locator('text=Editar volumen minuto').count(), 0);
@@ -242,32 +241,26 @@ async function esperarServidor() {
       assert.equal(await cel.locator('text=estimada').count(), 0, "la talla no distingue medida/estimada");
     });
 
-    await prueba("sedantes plegados: Iniciar parte en el escalon 1, las flechas titulan por escalon y se guarda la dosis; Suspender se puede deshacer", async () => {
+    await prueba("sedante: al agregarlo parte en el escalon 1, las flechas titulan por escalon y se guarda la dosis; suspender se puede deshacer", async () => {
       await cel.click('[role=tab]:has-text("Control")');
-      const tarjeta = cel.locator('.infu:has(b:text-is("Propofol"))');
-      assert.equal(await tarjeta.count(), 0, "lo que no esta en curso no ocupa lugar hasta agregarlo");
-      assert.equal(await cel.locator('.infu:has(b:text-is("Precedex"))').count(), 0);
-      await cel.click('button:has-text("+ Agregar sedoanalgesia")');
-      assert.equal(await tarjeta.count(), 1);
-      assert.equal(await cel.locator('.infu:has(b:text-is("Precedex"))').count(), 0, "Precedex y lorazepam van en el bundle de agitacion");
-      await tarjeta.locator('button:has-text("Iniciar")').click();
+      const fila = cel.locator('.inf-fila[aria-label="Propofol"]');
+      assert.equal(await fila.count(), 0, "lo que no esta en curso no ocupa lugar hasta agregarlo");
+      await cel.selectOption('select[aria-label="Agregar droga o infusión"]', "propofol");
       await cel.waitForTimeout(200);
-      // Se escribe la DOSIS; el escalon solo se muestra.
-      assert.equal(await tarjeta.locator("input").inputValue(), "0.5", "parte en la dosis del escalon 1");
+      assert.equal(await fila.locator("input").inputValue(), "0.5", "parte en la dosis del escalon 1");
       assert.ok((await franja()).includes("1.5esc. 3"), "la franja ofrece las dosis de los escalones: " + (await franja()).join("|"));
       await cel.click('.franja .qchip:has-text("Listo")');
-      await tarjeta.locator('button[aria-label="Subir Propofol"]').click();
-      assert.equal(await tarjeta.locator("input").inputValue(), "1", "la flecha sube al escalon siguiente");
-      assert.equal((await tarjeta.locator(".st.cur b").textContent()).trim(), "2");
-      assert.match(await tarjeta.textContent(), /1 mg\/kg\/h · escalón 2/);
-      await tarjeta.locator('button[aria-label="Bajar Propofol"]').click();
-      assert.equal(await tarjeta.locator("input").inputValue(), "0.5");
-      await tarjeta.locator('button:has-text("Suspender")').click();
+      await fila.locator('button[aria-label="Subir Propofol"]').click();
+      assert.equal(await fila.locator("input").inputValue(), "1", "la flecha sube al escalon siguiente");
+      assert.match(await fila.textContent(), /escalón 2/);
+      await fila.locator('button[aria-label="Bajar Propofol"]').click();
+      assert.equal(await fila.locator("input").inputValue(), "0.5");
+      await fila.locator('button[aria-label="Suspender Propofol"]').click();
       assert.match(await aviso(), /Propofol suspendida/);
-      assert.equal(await tarjeta.locator('button:has-text("Iniciar")').count(), 1);
+      assert.equal(await fila.count(), 0);
       await cel.click(".toast-btn");
-      assert.equal(await tarjeta.locator('button:has-text("Suspender")').count(), 1);
-      await tarjeta.locator('button:has-text("Suspender")').click();
+      assert.equal(await fila.count(), 1, "deshacer la vuelve a poner");
+      await fila.locator('button[aria-label="Suspender Propofol"]').click();
     });
 
     await prueba("guardar incompleto dice que falta y lleva a la pestana correcta", async () => {
@@ -454,19 +447,21 @@ async function esperarServidor() {
       const ev = cel.locator(".evento-soporte");
       assert.match(await ev.textContent(), /Desvinculación · de CPAP\+PS a Tubo T \/ HME/);
       await cel.fill("#in-hora-evento", "00:00");
-      assert.match(await ev.textContent(), /Se guarda: \d\d-\d\d 00:00|más de 12 h/);
+      assert.match(await ev.textContent(), /Se guarda: (hoy|ayer) 00:00 \(\d\d-\d\d\)|más de 12 h/);
       assert.match(await ev.textContent(), /no es una PVE/);
       // Volver a CPAP+PS: ya no hay cambio de soporte.
       await cel.click("#in-modo, button.pickbtn");
       await cel.click('.franja .qchip:has-text("CPAP+PS")');
       await cel.click('.franja .qchip:has-text("Listo")');
       assert.equal(await cel.locator(".evento-soporte").count(), 0);
-      // Cerrar el teclado (el siguiente paso vuelve a las camas).
-      while (await cel.locator('.franja .qchip:has-text("Listo")').count()) await cel.click('.franja .qchip:has-text("Listo")');
+      // Deja la cama sin guardar: de vuelta a las tarjetas desde cero.
+      await cel.reload();
+      await cel.waitForSelector('article[aria-label^="Cama"], .ctl-cabeza');
     });
 
     await prueba("evaluaciones en cuatro pestañas: cada bloque cabe en la pantalla, con hora real, botones y correccion del dato previo", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      await cel.waitForSelector('article[aria-label="Cama UCI-03"]');
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
       assert.deepEqual(await cel.locator(".pestanas-ev button").allTextContents(), ["Previa a la UCI", "Fuerza y función", "PVE y extubación", "Imagen"]);
@@ -529,11 +524,11 @@ async function esperarServidor() {
       await cel.click('button:text-is("Cancelar")');
     });
 
-    await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive junto a la sedacion", async () => {
+    await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive en las infusiones en curso", async () => {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
       await cel.click('[role=tab]:has-text("Control")');
-      assert.ok((await cel.locator('h3:has-text("Bloqueo neuromuscular")').count()) === 1, "BNM en Monitoreo, con la sedacion");
+      assert.ok((await cel.locator('select[aria-label="Agregar droga o infusión"] optgroup[label="Bloqueo neuromuscular"]').count()) === 1, "el BNM se agrega en las infusiones en curso, con la sedacion");
       await cel.click('[role=tab]:has-text("Eventos")');
       assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
       await cel.click('button:has-text("Cambio de filtro HME")');
@@ -562,14 +557,15 @@ async function esperarServidor() {
       }
     });
 
-    await prueba("CNAF: flujo, temperatura, FiO2, FR, SpO2 y musculatura accesoria en el mismo cuadro", async () => {
+    await prueba("CNAF: flujo, temperatura, FiO2, FR y musculatura accesoria en el mismo cuadro; la SpO2 en CSV", async () => {
       await cel.click('.cel-camas button:text-is("05")');
       await cel.click('[role=tab]:has-text("Control")');
       await cel.click("#in-modo, button.pickbtn");
       await cel.click('.franja .qchip:text-is("CNAF")');
       await cel.waitForTimeout(300);
       const etiquetas = await cel.locator('.segmento[data-seg="vent"] .f label').allTextContents();
-      for (const e of ["Flujo", "Temperatura", "FiO₂", "FR", "SpO₂"]) assert.ok(etiquetas.some((t) => t.startsWith(e)), "falta " + e + " en " + etiquetas.join("|"));
+      assert.equal(await cel.locator('.hoja-tarjeta[aria-label="CSV"] #in-spo2').count(), 1, "la SpO2 va en CSV, como en el registro simple");
+      for (const e of ["Flujo", "Temperatura", "FiO₂", "FR"]) assert.ok(etiquetas.some((t) => t.startsWith(e)), "falta " + e + " en " + etiquetas.join("|"));
       assert.equal(await cel.locator('.segmento[data-seg="vent"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
       if (await cel.locator(".franja").count()) await cel.click('.franja .qchip:has-text("Listo")');
     });

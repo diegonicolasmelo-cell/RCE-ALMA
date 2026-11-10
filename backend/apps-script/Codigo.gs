@@ -128,6 +128,8 @@ function procesarPost(cuerpo) {
       return login(cuerpo.rut, cuerpo.pin);
     case "definirPin":
       return definirPin(cuerpo.rut, cuerpo.pinActual, cuerpo.pinNuevo);
+    case "registrarEstacion":
+      return registrarEstacion(cuerpo.huella);
     case "sincronizar":
       return sincronizar(cuerpo);
     default:
@@ -166,13 +168,56 @@ function tokenValido(token) {
 }
 
 /**
- * Token de estacion: solo lo tienen los PC. Se distribuye como marcador
- * (`.../estacion#t=TOKEN`): el fragmento no viaja al servidor y la app lo
- * guarda en el navegador al primer uso, asi no se re-tipea en cada turno.
+ * Llave de estacion: solo la tienen los PC. La CREA el primer PC (en su navegador) y aqui
+ * se guarda solo su HUELLA (SHA-256): Google nunca tiene la llave. Los demas PC la reciben
+ * con su enlace (`#estacion?t=LLAVE`), cuyo fragmento no viaja al servidor.
+ *
+ * Si se pierde la llave en todos los PC, no se puede recuperar de aqui: se abre el registro
+ * otra vez (abrirRegistroEstacion) y un PC crea una nueva.
  */
 function tokenEstacionValido(token) {
-  var esperado = PropertiesService.getScriptProperties().getProperty("STATION_TOKEN");
-  return Boolean(esperado) && token === esperado;
+  if (!token) return false;
+  var props = PropertiesService.getScriptProperties();
+  var huella = props.getProperty("STATION_TOKEN_HASH");
+  if (huella) return sha256Hex(String(token)) === huella;
+  // Instalaciones anteriores: la llave guardada tal cual, hasta que un PC registre una nueva.
+  var antigua = props.getProperty("STATION_TOKEN");
+  return Boolean(antigua) && token === antigua;
+}
+
+function sha256Hex(texto) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, texto)
+    .map(function (b) {
+      var v = (b < 0 ? b + 256 : b).toString(16);
+      return v.length === 1 ? "0" + v : v;
+    })
+    .join("");
+}
+
+/**
+ * Se ejecuta UNA vez desde el editor, antes de crear la llave en el primer PC. Deja el
+ * registro abierto 15 minutos: en ese lapso, un PC conectado puede registrar la huella de
+ * la llave que creo. Sirve tambien para cambiar la llave (por ejemplo, si se perdio).
+ */
+function abrirRegistroEstacion() {
+  var hasta = new Date(Date.now() + 15 * 60 * 1000);
+  PropertiesService.getScriptProperties().setProperty("ESTACION_REGISTRO_HASTA", hasta.toISOString());
+  Logger.log("Registro de la llave de estacion abierto hasta las " + hasta.toLocaleTimeString() + ".");
+  Logger.log("Ahora, en el PC: Estado -> Crear llave de estacion. Google guardara solo su huella.");
+}
+
+/** El PC registra la huella de la llave que creo. Solo con el registro abierto. */
+function registrarEstacion(huella) {
+  var props = PropertiesService.getScriptProperties();
+  var hasta = props.getProperty("ESTACION_REGISTRO_HASTA");
+  if (!hasta || new Date(hasta).getTime() < Date.now()) return { ok: false, error: "REGISTRO_CERRADO" };
+  if (!/^[0-9a-f]{64}$/.test(String(huella || ""))) return { ok: false, error: "HUELLA_INVALIDA" };
+  props.setProperty("STATION_TOKEN_HASH", String(huella));
+  // La llave antigua (guardada tal cual) deja de existir.
+  props.deleteProperty("STATION_TOKEN");
+  props.deleteProperty("ESTACION_REGISTRO_HASTA");
+  registrarAuditoria("", "llave_estacion_registrada", "");
+  return { ok: true };
 }
 
 /**
@@ -537,11 +582,12 @@ function inicializarLibro() {
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty("APP_TOKEN")) props.setProperty("APP_TOKEN", Utilities.getUuid());
   if (!props.getProperty("PIN_PEPPER")) props.setProperty("PIN_PEPPER", Utilities.getUuid());
-  if (!props.getProperty("STATION_TOKEN")) props.setProperty("STATION_TOKEN", Utilities.getUuid());
 
-  Logger.log("APP_TOKEN (celulares)  = " + props.getProperty("APP_TOKEN"));
-  Logger.log("STATION_TOKEN (PC)     = " + props.getProperty("STATION_TOKEN"));
-  Logger.log("No pongas el STATION_TOKEN en los celulares: es lo que les impide leer la identidad.");
+  Logger.log("APP_TOKEN (celulares y PC) = " + props.getProperty("APP_TOKEN"));
+  if (!props.getProperty("STATION_TOKEN_HASH") && !props.getProperty("STATION_TOKEN")) {
+    Logger.log("Falta la llave de estacion: ejecuta abrirRegistroEstacion y creala en el primer PC (Estado).");
+    Logger.log("Google guarda solo su huella: la llave queda en los PC, nunca aqui.");
+  }
 }
 
 /**

@@ -50,6 +50,11 @@ export interface ClienteApi {
   leerReferencias(): Promise<Resultado<{ referencias: readonly ReferenciaNube[] }>>;
   guardarReferencias(referencias: readonly ReferenciaNube[]): Promise<{ ok: boolean; error?: string }>;
   purgarReferencias(episodioIds: readonly string[]): Promise<{ ok: boolean; error?: string }>;
+  /**
+   * El primer PC registra la HUELLA (SHA-256) de la llave de estacion que creo en su
+   * navegador: Google nunca recibe la llave. Solo funciona con el registro abierto.
+   */
+  registrarEstacion(huella: string): Promise<{ ok: boolean; error?: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +126,11 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
 
     async definirPin(rut, pinActual, pinNuevo) {
       const r = await post({ token: cfg.appToken, accion: "definirPin", rut, pinActual, pinNuevo });
+      return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
+    },
+
+    async registrarEstacion(huella) {
+      const r = await post({ token: cfg.appToken, accion: "registrarEstacion", huella });
       return r["ok"] === true ? { ok: true } : { ok: false, error: errorDe(r) };
     },
 
@@ -210,6 +220,9 @@ export function crearApiLocal(): ClienteApi {
     },
     async purgarReferencias(ids) {
       for (const id of ids) referencias.delete(id);
+      return { ok: true };
+    },
+    async registrarEstacion() {
       return { ok: true };
     }
   };

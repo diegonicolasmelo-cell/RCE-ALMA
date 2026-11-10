@@ -54,7 +54,8 @@ function crearAppsScriptSimulado() {
     PropertiesService: {
       getScriptProperties: () => ({
         getProperty: (k) => (propiedades.has(k) ? propiedades.get(k) : null),
-        setProperty: (k, v) => propiedades.set(k, String(v))
+        setProperty: (k, v) => propiedades.set(k, String(v)),
+        deleteProperty: (k) => propiedades.delete(k)
       })
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock: () => {}, releaseLock: () => {} }) },

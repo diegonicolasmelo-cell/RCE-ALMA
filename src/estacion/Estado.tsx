@@ -8,6 +8,7 @@ import { Aviso, Pildora } from "../celular/componentes";
 import type { DatosUnidad } from "./datos";
 import { useIdentidadesEnMemoria } from "./identidades";
 import { PanelClave } from "./PanelClave";
+import { PanelLlave } from "./PanelLlave";
 import { PanelRespaldo } from "./PanelRespaldo";
 import { archivoLocalSoportado, elegirCarpeta, leerCarpeta, pedirPermiso, permisoConcedido } from "./archivoLocal";
 
@@ -89,6 +90,8 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
         </p>
       </div>
 
+      <PanelLlave />
+
       <PanelRespaldo />
 
       <div className="card stack">
@@ -100,7 +103,7 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
         </div>
         {!local && !tokenEstacion && (
           <Aviso tipo="warn" pequeno>
-            Este equipo no tiene la llave de estación, así que ve la unidad sin nombres. Abre el marcador de estación (<span className="mono">…/#estacion?t=&lt;llave&gt;</span>) una vez: la llave se guarda en este navegador.
+            Este equipo no tiene la llave de estación, así que ve la unidad sin nombres. Si otro PC ya la tiene, abre aquí su enlace (<span className="mono">…#estacion?t=&lt;llave&gt;</span>) una vez; si es el primer PC, créala en «Llave de estación».
           </Aviso>
         )}
         {!local && (

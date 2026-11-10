@@ -28,18 +28,22 @@ PRIMERA VEZ
 5. Guarda (icono de disquete).
 
 6. Arriba, en el selector de funciones, elige  inicializarLibro  y pulsa Ejecutar.
-   La primera vez pide permisos: aceptalos. Crea las hojas y dos llaves.
+   La primera vez pide permisos: aceptalos. Crea las hojas y la llave de la app.
    Abre "Registro de ejecucion" y copia:
-     APP_TOKEN      -> para conectar los celulares y los PC.
-     STATION_TOKEN  -> SOLO para los PC de la estacion. Nunca en un celular:
-                       es lo que impide que un telefono lea nombres y RUT.
+     APP_TOKEN  -> para conectar los celulares y los PC.
+   La llave de estacion (la de los PC) NO la crea Google: ver paso 11.
 
 7. Elige  cargarDotacion  y Ejecutar. Carga a los profesionales sin clave; cada
    uno define la suya la primera vez que entra. (Revisa que los RUT de la hoja
    "usuarios" sean los reales.)
-   Se entra con el CORREO (o el nombre o el RUT) y la contrasena. La primera vez,
-   la contrasena que se escribe queda como propia al repetirla. La clave no se
-   guarda en ninguna parte: la hoja guarda solo una huella (hash).
+   PRIMER INGRESO (por ejemplo, diegonicolas.melo@gmail.com):
+     a. En el equipo ya conectado (paso 10), escribe el correo y la contrasena que
+        quieras usar (al menos 4 caracteres) y pulsa Entrar.
+     b. La app pide repetirla. Si coinciden, queda como tu contrasena.
+     c. Desde ahi se entra siempre con ese correo y esa contrasena.
+   La contrasena no se guarda en ninguna parte: la hoja guarda solo una huella
+   (hash) para comprobarla. Si alguien la olvida, no se puede recuperar: en la hoja
+   "usuarios" se borran sus celdas "sal" y "hashPin", y al entrar define una nueva.
    Diego entra con diegonicolas.melo@gmail.com; los demas correos se agregan en
    src/core/dotacion.ts (campo "correo") y se arma una version nueva.
 
@@ -58,11 +62,26 @@ PRIMERA VEZ
 
 10. Conecta cada equipo UNA vez abriendo su enlace (la app guarda la llave en ese
     navegador y la borra de la barra de direcciones):
-     Celulares:            <URL /exec>#config?a=<APP_TOKEN>
-     PC de la estacion:    <URL /exec>#config?a=<APP_TOKEN>
-                           y despues <URL /exec>#estacion?t=<STATION_TOKEN>
+     Celulares y PC:       <URL /exec>#config?a=<APP_TOKEN>
     Desde ahi basta abrir <URL /exec> en el celular, o <URL /exec>#estacion en el PC.
     Un equipo sin conectar muestra un aviso y no ve ningun dato.
+
+11. LLAVE DE ESTACION (solo los PC; es lo que impide que un celular lea nombres y RUT).
+    La crea el primer PC y Google guarda solo su HUELLA: la llave nunca queda en Google.
+     a. En el editor de Apps Script ejecuta  abrirRegistroEstacion  (abre 15 minutos).
+     b. En el primer PC: <URL /exec>#estacion -> pestana Estado -> "Crear llave de
+        estacion". Recarga la pagina.
+     c. Para los demas PC: en ese mismo panel, "Copiar enlace para otro PC" y abre en
+        cada PC  <URL /exec>#estacion?t=<llave>  (despues de su paso 10).
+    Nunca abras ese enlace en un celular.
+    Si la llave se pierde en todos los PC, no se recupera desde Google: repite a. y b.
+    (queda una llave nueva) y reconecta los PC con el enlace nuevo.
+
+12. CONTRASENA DE LA UNIDAD (cifra nombre y RUT). En el primer PC: Estado -> instalar
+    la contrasena de la unidad, marcando "Es el primer PC". En los demas PC se escribe
+    la misma. Google guarda solo un bloque cifrado para comprobarla, nunca la
+    contrasena. Si se olvida, no se puede recuperar: los nombres ya guardados quedan
+    ilegibles y hay que volver a escribirlos en el PC.
 
 
 CADA VEZ QUE HAYA UNA VERSION NUEVA

@@ -121,10 +121,10 @@ async function cargarDotacion(db: BaseLocal, api: ClienteApi): Promise<void> {
 }
 
 /** Pide la dotacion al servidor y la deja vigente y guardada. Devuelve si lo logro. */
-export async function refrescarDotacion(db: BaseLocal, api: ClienteApi): Promise<boolean> {
+export async function refrescarDotacion(db: BaseLocal, api: ClienteApi): Promise<boolean | "servidor" | "vacia"> {
   const r = await api.leerDotacion();
-  if (!r.ok) return false;
+  if (!r.ok) return r.error === "SERVIDOR_SIN_DOTACION" ? "servidor" : false;
   const lista = fijarDotacion(r.dotacion);
   await guardarMeta(db, CLAVE_DOTACION, lista);
-  return true;
+  return lista.length > 0 ? true : "vacia";
 }

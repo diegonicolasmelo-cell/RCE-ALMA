@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["pwa-192.png", "pwa-512.png", "pwa-maskable-512.png", "apple-touch-icon.png", "kapta.svg"],
       manifest: {
-        name: "Kapta · Kinesiología UCI",
-        short_name: "Kapta",
+        name: "Kapta CSV · Control de signos vitales",
+        short_name: "Kapta CSV",
         description: "Monitorización kinésica a pie de cama · UCI Adulto",
         lang: "es",
         theme_color: "#0f8c86",

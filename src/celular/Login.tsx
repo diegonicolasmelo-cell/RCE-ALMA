@@ -33,8 +33,23 @@ export function Login() {
   const entrar = async (): Promise<void> => {
     setError(null);
     // Un colega recien agregado a la hoja: se vuelve a pedir la dotacion antes de rechazarlo.
-    const prof = buscarUsuario(rut) ?? (!local && (await refrescarDotacion(db, api)) ? buscarUsuario(rut) : undefined);
-    if (!prof) return setError(local ? "Ese usuario no está en la dotación de la unidad." : "Ese correo no está en la hoja «usuarios» de la unidad. Pide a coordinación que lo agregue.");
+    let prof = buscarUsuario(rut);
+    let estado: Awaited<ReturnType<typeof refrescarDotacion>> = true;
+    if (!prof && !local) {
+      setCargando(true);
+      estado = await refrescarDotacion(db, api);
+      setCargando(false);
+      prof = buscarUsuario(rut);
+    }
+    if (!prof) {
+      return setError(
+        local ? "Ese usuario no está en la dotación de la unidad."
+        : estado === "servidor" ? "El servidor todavía no entrega la lista de usuarios: en Apps Script falta pegar el Codigo.gs nuevo y publicar una nueva versión."
+        : estado === "vacia" ? "La hoja «usuarios» está vacía: en el editor de Apps Script ejecuta cargarDotacion."
+        : estado === false ? "Sin conexión con el servidor: no se pudo revisar la lista de usuarios."
+        : "Ese correo no está en la hoja «usuarios» de la unidad. Pide a coordinación que lo agregue."
+      );
+    }
     setCargando(true);
     const r = await api.login(prof.correo, pin);
     setCargando(false);

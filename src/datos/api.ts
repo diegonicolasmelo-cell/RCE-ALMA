@@ -146,7 +146,9 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
     async leerDotacion() {
       const r = await get({ token: cfg.appToken, recurso: "dotacion" });
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
-      return { ok: true, dotacion: Array.isArray(r["dotacion"]) ? (r["dotacion"] as unknown[]) : [] };
+      // Un Codigo.gs anterior no conoce este recurso y responde otra cosa: no es una lista vacia.
+      if (!Array.isArray(r["dotacion"])) return { ok: false, error: "SERVIDOR_SIN_DOTACION" };
+      return { ok: true, dotacion: r["dotacion"] as unknown[] };
     },
 
     async registrarLlaves(huellas) {

@@ -71,3 +71,17 @@ describe("la app servida por Apps Script", () => {
     expect(await ubicacionExterna(null)).toEqual({ hash: "", parametros: {} });
   });
 });
+
+describe("dotación desde la hoja", () => {
+  it("un Codigo.gs anterior (responde sin la lista) no deja la dotación vacía: avisa que falta actualizar el servidor", async () => {
+    const { gs } = googleFalso(() => ({ ok: JSON.stringify({ ok: true, episodios: [], controles: [] }) }));
+    const api = crearApiRemota(transporteAppsScript(gs), { appToken: "APP", stationToken: null });
+    expect(await api.leerDotacion()).toEqual({ ok: false, error: "SERVIDOR_SIN_DOTACION" });
+  });
+  it("con el Codigo.gs nuevo llega la lista", async () => {
+    const { gs, llamadas } = googleFalso(() => ({ ok: JSON.stringify({ ok: true, dotacion: [{ correo: "a@b.cl", nombre: "A" }] }) }));
+    const api = crearApiRemota(transporteAppsScript(gs), { appToken: "APP", stationToken: null });
+    expect(await api.leerDotacion()).toEqual({ ok: true, dotacion: [{ correo: "a@b.cl", nombre: "A" }] });
+    expect(llamadas[0]?.arg).toMatchObject({ token: "APP", recurso: "dotacion" });
+  });
+});

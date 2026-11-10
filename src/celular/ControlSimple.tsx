@@ -142,6 +142,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
   const setDosis = (id: IdInfusion, dosis: string): void => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [id]: { ...y.infusiones[id], dosis } } }));
   const suspender = (id: IdInfusion, nombre: string): void => {
     const antes = b.infusiones[id];
+    sostenerHoja(id);
     editar((y) => suspenderInfusion(y, id));
     avisar(`${nombre} suspendida.`, () => editar((y) => ({ ...y, infusiones: { ...y.infusiones, [id]: antes } })));
   };
@@ -152,6 +153,31 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
   const sinRobarFoco = {
     onPointerDown: (e: PointerEvent) => e.preventDefault(),
     onMouseDown: (e: MouseEvent) => e.preventDefault()
+  };
+  /**
+   * Al suspender, la fila desaparece. Si el cursor estaba en su dosis, pasa a la dosis de la
+   * fila vecina (el teclado sigue abierto); si no hay otra, el teclado se cierra y la hoja se
+   * corrige para que lo que estaba debajo quede donde estaba (sin tiron).
+   */
+  const sostenerHoja = (id: IdInfusion): void => {
+    const casilla = document.getElementById(`in-inf-${id}-dosis`);
+    if (!casilla || document.activeElement !== casilla) return;
+    const fila = casilla.closest(".fila");
+    const dosis = [...document.querySelectorAll<HTMLInputElement>('.fila.inf input[id^="in-inf-"]')];
+    const i = dosis.indexOf(casilla as HTMLInputElement);
+    const vecina = dosis[i + 1] ?? dosis[i - 1];
+    if (vecina) {
+      vecina.focus({ preventScroll: true });
+      return;
+    }
+    const cuerpo = document.getElementById("cuerpo");
+    const ancla = fila?.nextElementSibling as HTMLElement | null;
+    if (!cuerpo || !ancla) return;
+    const y = ancla.getBoundingClientRect().top;
+    // El teclado se cierra 60 ms despues de perder el foco; recien ahi se corrige.
+    setTimeout(() => {
+      if (document.body.contains(ancla)) cuerpo.scrollTop += ancla.getBoundingClientRect().top - y;
+    }, 120);
   };
   const agregar = (id: IdInfusion): void => {
     editar((y) => iniciarInfusion(y, id));
@@ -223,7 +249,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
             <div className="fila inf" key={def.id} aria-label={def.nombre}>
               <span className="et">
                 {def.nombre} <span className="u">{def.unidad}</span>
-                <button type="button" className="quitar" aria-label={`Suspender ${def.nombre}`} onClick={() => suspender(def.id, def.nombre)}><X size={15} aria-hidden /></button>
+                <button type="button" className="quitar" aria-label={`Suspender ${def.nombre}`} {...sinRobarFoco} onClick={() => suspender(def.id, def.nombre)}><X size={15} aria-hidden /></button>
                 <span className="ayuda">{previa ? `antes ${previa.dosis}` : "nueva"}</span>
                 {esc && <span className="ayuda esc">{esc}</span>}
                 {/* La linea del semaforo se reserva desde el comienzo: al titular la fila no crece ni salta. */}

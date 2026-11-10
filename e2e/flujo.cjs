@@ -268,7 +268,30 @@ async function esperarServidor() {
       assert.equal(await m.locator(".cel-top").isVisible(), false, "la cabecera no vuelve (sin tiron)");
       const yDespues = (await m.locator("#in-inf-noradrenalina-dosis").boundingBox()).y;
       assert.ok(Math.abs(yDespues - yAntes) < 4, `la fila no se mueve (${yAntes} -> ${yDespues})`);
-      await m.tap('.kb [data-kb="ocultar"]');
+      // Suspender con el cursor en la dosis: con otra infusion debajo, el cursor pasa a ella y
+      // el teclado sigue abierto; la fila vecina ocupa el lugar sin que la hoja salte.
+      await m.selectOption('select[aria-label="Agregar droga o infusión"]', "vasopresina");
+      await m.waitForTimeout(400);
+      await m.tap("#in-inf-noradrenalina-dosis");
+      await m.waitForTimeout(500);
+      const yNora = (await m.locator("#in-inf-noradrenalina-dosis").boundingBox()).y;
+      await m.tap('button[aria-label="Suspender Noradrenalina"]');
+      await m.waitForTimeout(500);
+      assert.equal(await m.evaluate(() => document.activeElement.id), "in-inf-vasopresina-dosis", "el cursor pasa a la dosis vecina");
+      assert.ok(await m.locator(".kb").isVisible(), "el teclado sigue abierto");
+      assert.equal(await m.locator(".cel-top").isVisible(), false, "sin tiron: la cabecera no vuelve");
+      const yVaso = (await m.locator("#in-inf-vasopresina-dosis").boundingBox()).y;
+      assert.ok(Math.abs(yVaso - yNora) < 6, `la vecina ocupa el lugar (${yNora} -> ${yVaso})`);
+      // La ultima: el teclado se cierra y lo que estaba debajo queda donde estaba.
+      const otras = await m.locator('.fila.inf input[id^="in-inf-"]').count();
+      if (otras === 1) {
+        const yAcc = (await m.locator(".hoja-simple .acciones").first().boundingBox()).y;
+        await m.tap('button[aria-label="Suspender Vasopresina"]');
+        await m.waitForTimeout(500);
+        const yAcc2 = (await m.locator(".hoja-simple .acciones").first().boundingBox()).y;
+        assert.ok(Math.abs(yAcc2 - yAcc) < 60, `al suspender la ultima la hoja no salta (${yAcc} -> ${yAcc2})`);
+      }
+      if (await m.locator(".kb").isVisible()) await m.tap('.kb [data-kb="ocultar"]');
       await m.waitForTimeout(200);
       // Evaluaciones: el MRC-ss con su teclado (solo 0 a 5 y NE); cada toque deja el valor y avanza.
       await m.tap('button:has-text("‹ Camas")');

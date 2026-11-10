@@ -24,6 +24,22 @@ export function enlaceCelular(sitio: string, exec: string, app: string): string 
   return `${sitio.trim().replace(/#.*$/, "")}#config?u=${encodeURIComponent(exec.trim())}&a=${encodeURIComponent(app)}`;
 }
 
+/**
+ * La direccion del servidor a partir de lo que se pegue: acepta lo copiado de la barra del
+ * navegador (con #estacion, ?parametros, espacios o una barra al final) y deja solo la /exec.
+ */
+export function limpiarUrlExec(texto: string): { url: string | null; motivo: string } {
+  const t = texto.trim();
+  if (!t) return { url: null, motivo: "Pega la dirección de la app en Apps Script para armar el enlace." };
+  const m = /https:\/\/script\.google\.com\/[^\s?#]*?\/(exec|dev)(?=$|[\/?#\s])/.exec(t);
+  if (!m) {
+    if (/googleusercontent\.com/.test(t)) return { url: null, motivo: "Esa es la dirección interna de Google. Copia la que empieza con https://script.google.com/… y termina en /exec (Implementar → Administrar implementaciones → URL de la app web)." };
+    return { url: null, motivo: "No reconozco esa dirección. Debe empezar con https://script.google.com/ y terminar en /exec." };
+  }
+  if (m[1] === "dev") return { url: null, motivo: "Esa dirección termina en /dev (la de pruebas, solo para el dueño). Usa la que termina en /exec." };
+  return { url: m[0], motivo: "" };
+}
+
 /** Enlace para otro PC de la estacion: se agrega al final de la direccion /exec. */
 export const enlacePc = (app: string, estacion: string): string => `#estacion?a=${encodeURIComponent(app)}&t=${encodeURIComponent(estacion)}`;
 
@@ -77,7 +93,7 @@ export function PanelLlave() {
 
   const copiar = (texto: string, nota: string): void => void copiarTexto(texto).then((ok) => avisar(ok ? nota : "No se pudo copiar."));
   const guardarUrl = (clave: string, v: string): void => void guardarMeta(db, clave, v.trim());
-  const execValida = /^https:\/\/script\.google\.com\/.+\/exec$/.test(exec.trim());
+  const { url: execLimpia, motivo: motivoExec } = limpiarUrlExec(exec);
 
   return (
     <div className="card stack" aria-label="Llaves de la unidad">
@@ -129,15 +145,15 @@ export function PanelLlave() {
             Dirección de la app instalable
             <input type="url" value={sitio} onChange={(e) => setSitio(e.target.value)} onBlur={(e) => guardarUrl(CLAVE_URL_SITIO, e.target.value)} />
           </label>
-          {execValida ? (
+          {execLimpia ? (
             <>
-              <div className="mono small" style={{ wordBreak: "break-all" }}>{enlaceCelular(sitio, exec, app)}</div>
+              <div className="mono small" style={{ wordBreak: "break-all" }}>{enlaceCelular(sitio, execLimpia, app)}</div>
               <div className="row">
-                <button type="button" className="btn sm" onClick={() => copiar(enlaceCelular(sitio, exec, app), "Enlace copiado. Envíalo por un canal privado y bórralo después de abrirlo.")}>Copiar enlace para celulares</button>
+                <button type="button" className="btn sm primary" onClick={() => copiar(enlaceCelular(sitio, execLimpia, app), "Enlace copiado. Envíalo por un canal privado y bórralo después de abrirlo.")}>Copiar enlace para celulares</button>
               </div>
             </>
           ) : (
-            <p className="small muted" style={{ margin: 0 }}>Pega la dirección /exec para armar el enlace.</p>
+            <Aviso tipo={exec.trim() ? "warn" : "acc"} pequeno>{motivoExec}</Aviso>
           )}
         </div>
       )}

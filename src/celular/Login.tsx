@@ -1,11 +1,17 @@
-import { useState } from "react";
-import { CORREO_DEMO, buscarUsuario } from "@core/index";
+import { useEffect, useState } from "react";
+import { CORREO_DEMO, buscarProfesional, buscarUsuario } from "@core/index";
+import type { Profesional } from "@core/index";
 import { PIN_DEMO } from "../datos/api";
-import { guardarMeta } from "../datos/db";
+import { guardarMeta, leerMeta } from "../datos/db";
 import { refrescarDotacion } from "../datos/servicios";
 import { useServicios } from "../app/contexto";
 import { Logo } from "../app/Logo";
 import { useApp } from "../app/store";
+import { activarHuella, huellaDisponible, leerHuellas, olvidarHuella, verificarHuella } from "./huella";
+import type { HuellaGuardada } from "./huella";
+
+/** Quien dijo «Ahora no» a la huella en este celular: no se le vuelve a ofrecer. */
+const CLAVE_HUELLA_NO = "huellaNo";
 
 export const CLAVE_SESION = "sesion";
 const DURACION_SESION_MS = 12 * 3600 * 1000;
@@ -26,9 +32,56 @@ export function Login() {
   const [rut, setRut] = useState("");
   const [pin, setPin] = useState("");
   const [nuevoPin, setNuevoPin] = useState("");
-  const [fase, setFase] = useState<"ingreso" | "definir">("ingreso");
+  const [fase, setFase] = useState<"ingreso" | "definir" | "huella">("ingreso");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [conHuella, setConHuella] = useState(false);
+  const [huellas, setHuellas] = useState<readonly HuellaGuardada[]>([]);
+  const [porActivar, setPorActivar] = useState<Profesional | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const disponible = await huellaDisponible();
+      setConHuella(disponible);
+      if (disponible) setHuellas((await leerHuellas(db)).filter((h) => buscarProfesional(h.correo)));
+    })();
+  }, [db]);
+
+  /** Abre la sesion de esta persona (despues de la contrasena o de la huella). */
+  const abrirSesion = async (prof: Profesional): Promise<void> => {
+    await guardarMeta(db, CLAVE_SESION, { rut: prof.correo, desde: Date.now() } satisfies SesionGuardada);
+    setSesion({ rut: prof.correo, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
+    // Cada ingreso pregunta cuales son hoy tus camas.
+    useApp.setState({ vista: "elegir" });
+  };
+
+  const entrarConHuella = async (h: HuellaGuardada): Promise<void> => {
+    setError(null);
+    const prof = buscarProfesional(h.correo);
+    if (!prof) return setError("Esa persona ya no está en la hoja «usuarios»: entra con correo y contraseña.");
+    setCargando(true);
+    const r = await verificarHuella(h);
+    setCargando(false);
+    if (r.ok) return abrirSesion(prof);
+    setError(r.error === "CANCELADO" ? "No se confirmó la huella. Vuelve a intentarlo o entra con tu contraseña." : "No se pudo usar la huella en este celular. Entra con tu contraseña.");
+  };
+
+  const activar = async (): Promise<void> => {
+    if (!porActivar) return;
+    setError(null);
+    setCargando(true);
+    const r = await activarHuella(db, porActivar.correo, porActivar.nombre);
+    setCargando(false);
+    if (!r.ok) return setError(r.error === "CANCELADO" ? "No se activó la huella. Puedes intentarlo de nuevo o seguir sin ella." : "Este celular no pudo guardar la huella. Sigue con tu contraseña.");
+    await abrirSesion(porActivar);
+  };
+
+  const sinHuella = async (): Promise<void> => {
+    if (!porActivar) return;
+    const no = (await leerMeta<string[]>(db, CLAVE_HUELLA_NO)) ?? [];
+    await guardarMeta(db, CLAVE_HUELLA_NO, [...new Set([...no, porActivar.correo])]);
+    await abrirSesion(porActivar);
+  };
 
   const entrar = async (): Promise<void> => {
     setError(null);
@@ -54,11 +107,15 @@ export function Login() {
     const r = await api.login(prof.correo, pin);
     setCargando(false);
     if (r.ok) {
-      await guardarMeta(db, CLAVE_SESION, { rut: prof.correo, desde: Date.now() } satisfies SesionGuardada);
-      setSesion({ rut: prof.correo, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
-      // Cada ingreso pregunta cuales son hoy tus camas.
-      useApp.setState({ vista: "elegir" });
-      return;
+      // En un celular con lector, se ofrece la huella una vez (salvo que ya la tenga o dijo que no).
+      const yaTiene = huellas.some((h) => h.correo === prof.correo);
+      const dijoNo = ((await leerMeta<string[]>(db, CLAVE_HUELLA_NO)) ?? []).includes(prof.correo);
+      if (conHuella && !yaTiene && !dijoNo) {
+        setPin("");
+        setPorActivar(prof);
+        return setFase("huella");
+      }
+      return abrirSesion(prof);
     }
     if (r.error === "PIN_NO_DEFINIDO") return setFase("definir");
     setError(
@@ -84,6 +141,24 @@ export function Login() {
     await entrar();
   };
 
+  if (fase === "huella" && porActivar) {
+    return (
+      <div className="login">
+        <div>
+          <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo tam={40} />Kapta</h1>
+          <p className="ink2">Hola, {porActivar.nombre}</p>
+        </div>
+        <div className="notice acc">
+          <b>¿Entrar con tu huella en este celular?</b> La próxima vez no tendrás que escribir la contraseña: el teléfono te pedirá la huella (o tu cara o el PIN de pantalla). La huella no sale del teléfono; ni la app ni Google la ven.
+        </div>
+        {error && <div className="notice crit" role="alert">{error}</div>}
+        <button type="button" className="btn primary grande" disabled={cargando} onClick={() => void activar()}>{cargando ? "Esperando la huella…" : "Usar mi huella"}</button>
+        <button type="button" className="btn" disabled={cargando} onClick={() => void sinHuella()}>Ahora no</button>
+        <p className="small muted" style={{ margin: 0 }}>Solo en este celular y solo para ti. Si cambias de teléfono, entras una vez con la contraseña y la activas de nuevo.</p>
+      </div>
+    );
+  }
+
   return (
     <form
       className="login"
@@ -96,6 +171,27 @@ export function Login() {
         <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo tam={40} />Kapta</h1>
         <p className="ink2">Captura a pie de cama · UCI Adulto</p>
       </div>
+
+      {fase === "ingreso" && huellas.length > 0 && (
+        <div className="stack" aria-label="Entrar con huella">
+          {huellas.map((h) => (
+            <div key={h.correo} className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn primary grande" style={{ flex: 1 }} disabled={cargando} onClick={() => void entrarConHuella(h)}>
+                <HuellaIcono /> Entrar con huella · {buscarProfesional(h.correo)?.nombre ?? h.correo}
+              </button>
+              <button
+                type="button"
+                className="btn sm"
+                aria-label={`Quitar la huella de ${buscarProfesional(h.correo)?.nombre ?? h.correo}`}
+                onClick={() => void olvidarHuella(db, h.correo).then(() => setHuellas((l) => l.filter((x) => x.correo !== h.correo)))}
+              >
+                Quitar
+              </button>
+            </div>
+          ))}
+          <p className="small muted" style={{ margin: 0, textAlign: "center" }}>o con tu correo y contraseña</p>
+        </div>
+      )}
 
       {fase === "ingreso" ? (
         <>
@@ -134,5 +230,19 @@ export function Login() {
       </button>
       {local && <div className="notice new small">Modo demostración (sin servidor): correo <b>{CORREO_DEMO}</b> (o cualquier nombre de la dotación) y contraseña <b className="mono">{PIN_DEMO.toLowerCase()}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
     </form>
+  );
+}
+
+/** Huella dactilar dibujada (sin emoji: el Chrome del hospital no trae los nuevos). */
+function HuellaIcono() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" style={{ verticalAlign: "-4px", marginRight: 6 }}>
+      <path d="M6.5 5.5A8 8 0 0 1 20 11.5" />
+      <path d="M4 9.5a8 8 0 0 0-.2 3.5" />
+      <path d="M8 18.5c1-1.8 1.5-3.8 1.5-6a2.5 2.5 0 0 1 5 0c0 2.6-.4 4.8-1.3 6.8" />
+      <path d="M12 12.5c0 3-.7 5.6-2 7.7" />
+      <path d="M17.2 14.5c-.2 2-.7 3.8-1.4 5.3" />
+      <path d="M6.3 16.5c.5-1.3.7-2.6.7-4a5 5 0 0 1 9.5-2.2" />
+    </svg>
   );
 }

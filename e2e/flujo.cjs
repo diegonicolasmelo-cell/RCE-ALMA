@@ -721,6 +721,57 @@ async function esperarServidor() {
       }
     });
 
+    await prueba("entrar con huella: se ofrece una vez, exige verificar al usuario y abre solo la sesion de esa persona", async () => {
+      const c = await navegador.newContext({ viewport: { width: 390, height: 844 } });
+      const m = await c.newPage();
+      vigilar(m);
+      // Lector de huella virtual (como el del telefono).
+      const cdp = await c.newCDPSession(m);
+      await cdp.send("WebAuthn.enable");
+      const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
+        options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true }
+      });
+      await m.goto(URL + "#celular");
+      await m.waitForSelector("#rut");
+      assert.equal(await m.locator('[aria-label="Entrar con huella"]').count(), 0, "sin huella activada no aparece el boton");
+      await m.fill("#rut", "diego.melo@demo.upc");
+      await m.fill("#pin", "kine");
+      await m.click("button[type=submit]");
+      await m.waitForSelector("text=¿Entrar con tu huella en este celular?");
+      await m.click('button:has-text("Usar mi huella")');
+      await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
+      const { credentials } = await cdp.send("WebAuthn.getCredentials", { authenticatorId });
+      assert.equal(credentials.length, 1, "el telefono guardo una llave de acceso");
+      // Sale y vuelve a entrar: solo con la huella.
+      await m.reload();
+      await m.click('text=Salir');
+      await m.waitForSelector('button:has-text("Entrar con huella · Diego Melo")');
+      await m.click('button:has-text("Entrar con huella")');
+      await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
+      // Si el telefono no verifica a la persona (solo un toque), no abre.
+      await m.reload();
+      await m.click('text=Salir');
+      await cdp.send("WebAuthn.setUserVerified", { authenticatorId, isUserVerified: false });
+      await m.click('button:has-text("Entrar con huella")');
+      await m.waitForSelector("[role=alert]");
+      assert.equal(await m.locator("text=¿Cuáles son tus camas hoy?").count(), 0, "sin verificar no abre");
+      // Quitarla deja solo la contrasena; y quien dijo «Ahora no» no vuelve a ver la oferta.
+      await m.click('button:has-text("Quitar")');
+      await m.waitForSelector('[aria-label="Entrar con huella"]', { state: "detached" });
+      await m.fill("#rut", "karen.gonzalez@demo.upc");
+      await m.fill("#pin", "kine");
+      await m.click("button[type=submit]");
+      await m.click('button:has-text("Ahora no")');
+      await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
+      await m.reload();
+      await m.click('text=Salir');
+      await m.fill("#rut", "karen.gonzalez@demo.upc");
+      await m.fill("#pin", "kine");
+      await m.click("button[type=submit]");
+      await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
+      await c.close();
+    });
+
     await prueba("sin errores en la consola durante todo el recorrido", async () => {
       assert.deepEqual(errores, []);
     });

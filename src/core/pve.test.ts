@@ -184,7 +184,7 @@ describe("contraste del control de inicio con el de término", () => {
   it("pone lado a lado cada dato de la hoja con su diferencia", () => {
     const fin: LecturasPve = { ...LECT, fc: 96, fr: 26, pas: 135, spo2: 93, volMinuto: 7, trabajoResp: "Aumentado", secreciones: "Escasas" };
     const f = contrastarControlesPve({ ...LECT, trabajoResp: "Sin aumento", secreciones: "Escasas" }, fin);
-    expect(f.map((x) => x.etiqueta)).toEqual(["Frec. cardiaca", "Frec. respiratoria", "Presión arterial", "SpO₂", "GCS", "Volumen minuto", "Trabajo respiratorio", "Secreciones bronquiales"]);
+    expect(f.map((x) => x.etiqueta)).toEqual(["Frec. cardiaca", "Frec. respiratoria", "Presión arterial", "SpO₂", "Glasgow", "Volumen minuto", "Trabajo respiratorio", "Secreciones bronquiales"]);
     expect(f[0]).toMatchObject({ inicio: "80", termino: "96", diferencia: "+16" });
     expect(f[2]).toMatchObject({ inicio: "120/70", termino: "135/70", diferencia: "+15" });
     expect(f[3]).toMatchObject({ diferencia: "-3" });

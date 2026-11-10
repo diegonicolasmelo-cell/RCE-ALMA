@@ -175,7 +175,13 @@ export function estadoFlujoPve(eventos: readonly EventoClinico[], ahora: Date): 
   let fase: FasePve;
   if (pve.activa) fase = "EN_CURSO";
   else if (bloqueVigente) fase = "POST_EXTUBACION";
-  else if (idxInicio >= 0 && desde.some((e) => e.tipo === "FIN_PVE") && (!checklist || checklist.registradoEn < (desde[0]?.registradoEn ?? ""))) {
+  else if (
+    idxInicio >= 0 &&
+    desde.some((e) => e.tipo === "FIN_PVE") &&
+    // Un checklist nuevo DESPUES del termino abre otra PVE. El inicio puede quedar con una hora
+    // real anterior a la del checklist (se anoto unos minutos despues): eso no la invalida.
+    (!checklist || checklist.registradoEn <= ([...desde].reverse().find((e) => e.tipo === "FIN_PVE")?.registradoEn ?? ""))
+  ) {
     // Tolerada: queda por registrar la extubacion (o que se supero sin extubar). No tolerada: cerrada.
     const fin = [...desde].reverse().find((e): e is Evento<"FIN_PVE"> => e.tipo === "FIN_PVE");
     const sinExtubar = desde.some((e) => e.tipo === "PVE_SIN_EXTUBAR");
@@ -343,7 +349,13 @@ export function contrastarControlesPve(inicio: LecturasPve, termino: LecturasPve
     num("Frec. respiratoria", "rpm", "fr"),
     { etiqueta: "Presión arterial", unidad: "mmHg", inicio: pa(inicio), termino: pa(termino), diferencia: termino ? dif(inicio.pas, termino.pas) : null },
     num("SpO₂", "%", "spo2"),
-    num("GCS", "", "gcs"),
+    {
+      etiqueta: "Glasgow",
+      unidad: "",
+      inicio: inicio.glasgow ?? texto(inicio.gcs),
+      termino: termino ? termino.glasgow ?? texto(termino.gcs) : "—",
+      diferencia: inicio.glasgow || termino?.glasgow ? null : termino ? dif(inicio.gcs, termino.gcs) : null
+    },
     num("Volumen minuto", "L/min", "volMinuto"),
     cat("Trabajo respiratorio", "trabajoResp"),
     cat("Secreciones bronquiales", "secreciones")

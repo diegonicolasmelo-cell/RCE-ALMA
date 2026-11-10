@@ -1,388 +1,434 @@
+/**
+ * PVE como el registro simple: una sola pantalla que sigue el paso en que va la prueba.
+ *
+ *   checklist (8 criterios) -> control de inicio (parte la PVE) -> control de termino
+ *   contrastado con el inicio -> tolerada / no tolerada -> extubacion programada (queda
+ *   con...) o superada sin extubar -> controles post extubacion (30, 60, 120 min, 48 h) ->
+ *   cierre: falla post extubacion -> reintubacion.
+ *
+ * Filas con la etiqueta a la izquierda y la casilla a la derecha, el teclado numerico propio
+ * y la hora REAL de cada paso (se sugiere la de ahora y se corrige). Todo queda como eventos.
+ */
+
 import { useState } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import {
   CRITERIOS_PVE,
+  ETIQUETA_DISPOSITIVO,
+  avisoMenos24hVm,
   contrastarControlesPve,
   criteriosAptos,
   esViaAereaArtificial,
   estadoFlujoPve,
-  avisoMenos24hVm,
   horasDeVm,
+  momentoDeEvaluacion,
+  momentoPreciso,
   motivoSinPve,
-  etiquetaMomentoPostExtub,
   registrosPve
 } from "@core/index";
-import type { EventoClinico, FasePveControl, LecturasPve, MomentoPostExtub } from "@core/index";
+import type { DispositivoPosterior, EventoClinico, LecturasPve, MomentoPostExtub } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
-import { Aviso, Fichas, Pildora, Seg } from "./componentes";
+import { horaDe } from "../app/util";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
-
-const num = (v: string): number | null => {
-  const n = Number(v.replace(",", "."));
-  return v.trim() === "" || !Number.isFinite(n) ? null : n;
-};
+import { TECLADO_PROPIO } from "./TecladoPropio";
 
 type Texto = Record<string, string>;
-const txt = (n: number | null): string => (n === null ? "—" : String(n));
+const num = (v: string | undefined): number | null => {
+  const n = Number((v ?? "").replace(",", "."));
+  return (v ?? "").trim() === "" || !Number.isFinite(n) ? null : n;
+};
+const TRABAJO = ["Sin aumento", "Aumentado"];
+const SECRECIONES = ["Escasas", "Moderadas", "Abundantes"];
+const MANEJO = ["Maneja", "No maneja"];
+const QUEDA: readonly DispositivoPosterior[] = ["CNAF", "VMNI", "O2_CONVENCIONAL", "AIRE_AMBIENTE"];
 
-/**
- * Una fila de la hoja de PVE, vertical como el papel: dato a la izquierda, casilla a la
- * derecha. Con `referencia`, al medio va el valor del control de inicio para contrastarlo.
- */
-function Fila({ id, etiqueta, unidad, v, set, referencia }: { id: string; etiqueta: string; unidad?: string; v: Texto; set: (x: Texto) => void; referencia?: string }) {
+/** "Se guarda: hoy 09:55 (10-11)". */
+function cuando(hora: string): string {
+  const m = momentoDeEvaluacion(hora, new Date());
+  if (!m) return "Esa hora queda a más de 12 h: revísala.";
+  const dia = m.toDateString() === new Date().toDateString() ? "hoy" : "ayer";
+  return `Se guarda: ${dia} ${horaDe(m)} (${String(m.getDate()).padStart(2, "0")}-${String(m.getMonth() + 1).padStart(2, "0")})`;
+}
+const dif = (a: number | null, b: number | null): string => {
+  if (a === null || b === null) return "";
+  const d = Math.round((b - a) * 10) / 10;
+  return d === 0 ? "=" : d > 0 ? `+${String(d).replace(".", ",")}` : String(d).replace(".", ",");
+};
+const gcsTexto = (o?: string, v?: string, m?: string, tubo = true): string =>
+  o || v || m ? `${o || "–"}-${tubo ? "T" : v || "–"}-${m || "–"}` : "";
+
+function Fila({ etiqueta, unidad, ayuda, children, clase = "" }: { etiqueta: ReactNode; unidad?: string; ayuda?: ReactNode; children: ReactNode; clase?: string }) {
   return (
-    <div className="pve-fila">
-      <label htmlFor={`pve-${id}`}>
+    <div className={`fila ${clase}`}>
+      <span className="et">
         {etiqueta}
-        {unidad && <span className="muted"> {unidad}</span>}
-      </label>
-      {referencia !== undefined && <span className="pve-ref mono" aria-label={`${etiqueta} al inicio`}>{referencia}</span>}
-      <input id={`pve-${id}`} inputMode="decimal" autoComplete="off" value={v[id] ?? ""} onChange={(e) => set({ ...v, [id]: e.target.value })} />
+        {unidad && <span className="u"> {unidad}</span>}
+        {ayuda && <span className="ayuda">{ayuda}</span>}
+      </span>
+      {children}
     </div>
   );
 }
-
-/** Cabecera de las columnas cuando se contrasta con el inicio. */
-function CabeceraContraste({ horaInicio, titulo }: { horaInicio: string; titulo: string }) {
-  return (
-    <div className="pve-fila pve-cab" aria-hidden="true">
-      <span>Parámetro</span>
-      <span>Inicio {horaInicio}</span>
-      <span>{titulo}</span>
-    </div>
-  );
-}
-
-/** El control de inicio y el de termino lado a lado, con la diferencia. */
-function ContrastePve({ inicio, termino, horaInicio, horaTermino }: { inicio: LecturasPve; termino: LecturasPve | null; horaInicio: string; horaTermino: string | null }) {
-  const filas = contrastarControlesPve(inicio, termino);
-  return (
-    <div className="pve-contraste" aria-label="Contraste inicio y término de la PVE">
-      <table>
-        <thead>
-          <tr><th>Parámetro</th><th className="ini">Inicio<br /><span className="mono">{horaInicio}</span></th><th className="ter">Término<br /><span className="mono">{horaTermino ?? "pendiente"}</span></th><th>Dif.</th></tr>
-        </thead>
-        <tbody>
-          {filas.map((f) => (
-            <tr key={f.etiqueta}>
-              <th scope="row">{f.etiqueta}{f.unidad && <span className="muted"> {f.unidad}</span>}</th>
-              <td className="ini mono">{f.inicio}</td>
-              <td className="ter mono">{f.termino}</td>
-              <td className="mono">{f.diferencia ?? ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-const TRABAJO = [{ valor: "Sin aumento", texto: "Sin aumento" }, { valor: "Aumentado", texto: "Aumentado" }];
-const SECRECIONES = [{ valor: "Escasas", texto: "Escasas" }, { valor: "Moderadas", texto: "Moderadas" }, { valor: "Abundantes", texto: "Abundantes" }];
-const MANEJO = [{ valor: "Maneja", texto: "Maneja" }, { valor: "No maneja", texto: "No maneja" }];
-
-/** Hoja de registro de PVE: Hora, FC, PA, FR, SpO2, GCS, Volumen minuto, Trabajo respiratorio, Secreciones. */
-function FormControlPve({
-  titulo,
-  boton,
-  onGuardar,
-  onCancelar,
-  inicio
-}: {
-  titulo: string;
-  boton: string;
-  onGuardar: (l: LecturasPve) => void;
-  onCancelar?: () => void;
-  /** El control de inicio, para tenerlo al lado al anotar el de termino. */
-  inicio?: { readonly lecturas: LecturasPve; readonly hora: string };
-}) {
-  const avisar = useApp((s) => s.avisar);
-  const [v, setV] = useState<Texto>({});
-  const guardar = (): void => {
-    const l: LecturasPve = {
-      fc: num(v["fc"] ?? ""), pas: num(v["pas"] ?? ""), pad: num(v["pad"] ?? ""), fr: num(v["fr"] ?? ""),
-      spo2: num(v["spo2"] ?? ""), gcs: num(v["gcs"] ?? ""), volMinuto: num(v["vm"] ?? ""),
-      trabajoResp: v["trab"] ?? "", secreciones: v["sec"] ?? ""
-    };
-    const falta = (["fc", "pas", "pad", "fr", "spo2"] as const).filter((k) => l[k] === null);
-    if (falta.length > 0) return avisar("Falta: frecuencia cardíaca, presión arterial, FR y SpO₂.");
-    onGuardar(l);
-  };
-  return (
-    <div className="card stack" style={{ padding: 12, gap: 10 }}>
-      <b>{titulo}</b>
-      <div className={`pve-hoja${inicio ? " con-ref" : ""}`}>
-        {inicio && <CabeceraContraste horaInicio={inicio.hora} titulo="Ahora" />}
-        <Fila id="fc" etiqueta="Frec. cardiaca" unidad="lpm" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.fc) } : {})} />
-        <Fila id="fr" etiqueta="Frec. respiratoria" unidad="rpm" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.fr) } : {})} />
-        <Fila id="pas" etiqueta="P. sistólica" unidad="mmHg" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.pas) } : {})} />
-        <Fila id="pad" etiqueta="P. diastólica" unidad="mmHg" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.pad) } : {})} />
-        <Fila id="spo2" etiqueta="SpO₂" unidad="%" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.spo2) } : {})} />
-        <Fila id="gcs" etiqueta="GCS" unidad="3-15" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.gcs) } : {})} />
-        <Fila id="vm" etiqueta="Volumen minuto" unidad="L/min" v={v} set={setV} {...(inicio ? { referencia: txt(inicio.lecturas.volMinuto) } : {})} />
-      </div>
-      <div><div className="small ink2">Trabajo respiratorio{inicio?.lecturas.trabajoResp ? ` · al inicio: ${inicio.lecturas.trabajoResp}` : ""}</div><Fichas etiqueta="Trabajo respiratorio" valor={v["trab"] ?? null} opciones={TRABAJO} onCambio={(x) => setV({ ...v, trab: x })} /></div>
-      <div><div className="small ink2">Secreciones bronquiales{inicio?.lecturas.secreciones ? ` · al inicio: ${inicio.lecturas.secreciones}` : ""}</div><Fichas etiqueta="Secreciones bronquiales" valor={v["sec"] ?? null} opciones={SECRECIONES} onCambio={(x) => setV({ ...v, sec: x })} /></div>
-      <div className="row">
-        <button type="button" className="btn primary" onClick={guardar}>{boton}</button>
-        {onCancelar && <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>}
-      </div>
-    </div>
-  );
-}
-
-function FormReeval({ momento, onGuardar, onCancelar }: { momento: MomentoPostExtub; onGuardar: (v: Texto) => void; onCancelar: () => void }) {
-  const avisar = useApp((s) => s.avisar);
-  const [v, setV] = useState<Texto>({});
-  return (
-    <div className="card stack" style={{ padding: 12, gap: 10 }}>
-      <b>Reevaluación post extubación · {etiquetaMomentoPostExtub(momento)}</b>
-      <div className="pve-hoja">
-        <Fila id="fc" etiqueta="FC" unidad="lpm" v={v} set={setV} />
-        <Fila id="pam" etiqueta="PAM" unidad="mmHg" v={v} set={setV} />
-        <Fila id="gcs" etiqueta="GCS" unidad="3-15" v={v} set={setV} />
-        <Fila id="fr" etiqueta="FR" unidad="rpm" v={v} set={setV} />
-        <Fila id="fio2" etiqueta="FiO₂" unidad="%" v={v} set={setV} />
-        <Fila id="spo2" etiqueta="SpO₂" unidad="%" v={v} set={setV} />
-      </div>
-      <div><div className="small ink2">Trabajo respiratorio</div><Fichas etiqueta="Trabajo respiratorio" valor={v["trab"] ?? null} opciones={TRABAJO} onCambio={(x) => setV({ ...v, trab: x })} /></div>
-      <div><div className="small ink2">Manejo de secreciones</div><Fichas etiqueta="Manejo de secreciones" valor={v["man"] ?? null} opciones={MANEJO} onCambio={(x) => setV({ ...v, man: x })} /></div>
-      <div className="row">
-        <button type="button" className="btn primary" onClick={() => (["fc", "fr", "spo2"] as const).some((k) => num(v[k] ?? "") === null) ? avisar("Falta: FC, FR y SpO₂.") : onGuardar(v)}>Registrar</button>
-        <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
-const hhmm = (iso: string): string => new Date(iso).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false });
 
 export function TabPve({ ctx }: { ctx: ContextoCama }) {
-  const { ep, eventos, ahora, rutAutor } = ctx;
+  const { ep, eventos, ahora, rutAutor, ultimo, controles } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const flujo = estadoFlujoPve(eventos, ahora);
-  // La PVE de hoy: su control de inicio y el de termino (30 min), para contrastarlos.
-  const reg = registrosPve(eventos).at(-1) ?? null;
-  const inicioPve = reg?.inicio ? { lecturas: reg.inicio.lecturas, hora: reg.inicio.hora } : null;
-  const verContraste = inicioPve !== null && reg?.treintaMin != null && (flujo.fase === "EN_CURSO" || flujo.fase === "TERMINADA" || flujo.bloque !== null);
-  const artificial = esViaAereaArtificial(ep.viaAereaActual);
-  // Una PVE nueva: solo con TET y el ultimo control en CPAP+PS posterior al tubo actual.
-  const ult = ctx.ultimo;
-  const bloqueo = motivoSinPve(ep.viaAereaActual, ult ? { modalidad: ult.ventilacion.modalidad, registradoEn: ult.registradoEn } : null, eventos);
   const conTet = ep.viaAereaActual === "TET";
-  const aviso24 = conTet ? avisoMenos24hVm(horasDeVm(ep.diasVM, eventos, ctx.controles[0]?.registradoEn ?? null, ahora)) : null;
-  const [marcas, setMarcas] = useState<(boolean | null)[]>(() => Array<boolean | null>(CRITERIOS_PVE.length).fill(null));
-  const [datos, setDatos] = useState("");
+  const bloqueo = motivoSinPve(ep.viaAereaActual, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos);
+  const aviso24 = conTet ? avisoMenos24hVm(horasDeVm(ep.diasVM, eventos, controles[0]?.registradoEn ?? null, ahora)) : null;
+
+  const [f, setF] = useState<Texto>({});
+  const [crit, setCrit] = useState<(boolean | null)[]>(() => CRITERIOS_PVE.map(() => null));
   const [fuera, setFuera] = useState(false);
-  const [formulario, setFormulario] = useState<"inicial" | "30" | "extub" | MomentoPostExtub | "falla" | null>(null);
-  const [motivoSin, setMotivoSin] = useState("");
-  const [falla, setFalla] = useState<{ si: boolean | null; hip: string; obs: string }>({ si: null, hip: "", obs: "" });
-  const [reint, setReint] = useState<{ via: "TET" | "TQT" | null; cal: string; fij: string }>({ via: "TET", cal: "", fij: "" });
-
-  /** Falla post extubacion: se reintuba aqui mismo, con el evento de siempre (cambia la via aerea del episodio). */
-  const reintubar = async (): Promise<void> => {
-    if (!reint.via) return avisar("Indica la vía: TET o TQT.");
-    if (reint.cal.trim() === "") return avisar("Falta el calibre.");
-    await ev({ tipo: "REINTUBACION", via: reint.via, calibre: reint.cal.trim(), fijacionCm: reint.fij.trim() });
-    setReint({ via: "TET", cal: "", fij: "" });
-    avisar(`Reintubado: la vía aérea queda en ${reint.via} ${reint.cal.trim()}.`);
+  const [hora, setHora] = useState(horaDe(new Date()));
+  const [reeval, setReeval] = useState<MomentoPostExtub | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const set = (k: string, v: string): void => setF((x) => ({ ...x, [k]: v }));
+  const limpiar = (): void => {
+    setF({});
+    setHora(horaDe(new Date()));
+    setMsg(null);
   };
 
-  const ev = async (e: Record<string, unknown>): Promise<void> => {
-    await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), ...e } as EventoClinico);
+  /** Un evento con la hora REAL del paso (puede ser unos minutos antes de anotarlo). */
+  const ev = async (e: Record<string, unknown>): Promise<boolean> => {
+    const t = new Date();
+    const real = momentoDeEvaluacion(hora, t);
+    if (!real) {
+      setMsg("Revisa la hora: la real, de las últimas 12 horas.");
+      return false;
+    }
+    await repo.registrarEvento({ ...baseEvento(ep, rutAutor, momentoPreciso(real, t)), ...e } as EventoClinico);
+    return true;
   };
 
+  const casilla = (k: string, etiqueta: string): JSX.Element => (
+    <input id={`pve-${k}`} className="num" inputMode={TECLADO_PROPIO ? "none" : "decimal"} enterKeyHint="next" autoComplete="off" aria-label={etiqueta} value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
+  );
+  const ops = (k: string, etiqueta: string, opciones: readonly string[], extra?: string): JSX.Element => (
+    <div className="fila bar">
+      <span className="et">{etiqueta}{extra && <span className="u"> {extra}</span>}</span>
+      <div className="ops txt" role="group" aria-label={etiqueta}>
+        {opciones.map((o) => <button key={o} type="button" aria-pressed={f[k] === o} onClick={() => set(k, f[k] === o ? "" : o)}>{o}</button>)}
+      </div>
+    </div>
+  );
+  const horaFila = (etiqueta: string): JSX.Element => (
+    <Fila etiqueta={etiqueta} ayuda={cuando(hora)}>
+      <input id="pve-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+    </Fila>
+  );
+
+  // --- Hoja de lecturas (inicio y termino): con `ref`, cada fila muestra el valor de inicio y la diferencia ---
+  const LECT: readonly (readonly [keyof LecturasPve, string, string])[] = [["fc", "Frec. cardiaca", "lpm"], ["fr", "Frec. respiratoria", "rpm"], ["pas", "P. sistólica", "mmHg"], ["pad", "P. diastólica", "mmHg"], ["spo2", "SpO₂", "%"]];
+  const lecturas = (ref: LecturasPve | null): JSX.Element => (
+    <>
+      {LECT.map(([k, l, u]) => (
+        <Fila key={k} etiqueta={l} unidad={u} ayuda={ref ? <span className="esc">al inicio {String(ref[k] ?? "—")}{dif(ref[k] as number | null, num(f[k]))? ` · ${dif(ref[k] as number | null, num(f[k]))}` : ""}</span> : undefined}>
+          {casilla(k, l)}
+        </Fila>
+      ))}
+      <Fila etiqueta="Glasgow" unidad="O · T · M" clase="gcs" ayuda={ref?.glasgow ? `al inicio ${ref.glasgow}` : undefined}>
+        <div className="tres">
+          <label><span>O</span>{casilla("gcsO", "Glasgow ocular")}</label>
+          <label><span>V</span><b className="calc t" aria-label="Verbal T">T</b></label>
+          <label><span>M</span>{casilla("gcsM", "Glasgow motor")}</label>
+        </div>
+      </Fila>
+      <Fila etiqueta="Volumen minuto" unidad="L/min" ayuda={ref ? <span className="esc">al inicio {String(ref.volMinuto ?? "—")}{dif(ref.volMinuto, num(f["vm"])) ? ` · ${dif(ref.volMinuto, num(f["vm"]))}` : ""}</span> : undefined}>
+        {casilla("vm", "Volumen minuto")}
+      </Fila>
+      {ops("trab", "Trabajo respiratorio", TRABAJO, ref?.trabajoResp ? `al inicio: ${ref.trabajoResp}` : undefined)}
+      {ops("sec", "Secreciones bronquiales", SECRECIONES, ref?.secreciones ? `al inicio: ${ref.secreciones}` : undefined)}
+    </>
+  );
+  const leer = (): LecturasPve | null => {
+    const l: LecturasPve = {
+      fc: num(f["fc"]), fr: num(f["fr"]), pas: num(f["pas"]), pad: num(f["pad"]), spo2: num(f["spo2"]), gcs: null,
+      glasgow: gcsTexto(f["gcsO"], undefined, f["gcsM"]) || undefined, volMinuto: num(f["vm"]), trabajoResp: f["trab"] ?? "", secreciones: f["sec"] ?? ""
+    } as LecturasPve;
+    if ([l.fc, l.fr, l.pas, l.pad, l.spo2].some((x) => x === null)) {
+      setMsg("Falta: FC, FR, presión arterial y SpO₂.");
+      return null;
+    }
+    return l;
+  };
+
+  // --- Acciones ---
   const registrarChecklist = async (): Promise<void> => {
-    if (marcas.some((m) => m === null)) return avisar("Marca los 8 criterios: Sí o No.");
-    const criterios = marcas as boolean[];
-    await ev({ tipo: "EVALUACION_PVE", criterios, apto: criteriosAptos(criterios), datos, extubacionFueraProtocolo: fuera });
-    setMarcas(Array<boolean | null>(CRITERIOS_PVE.length).fill(null));
-    setDatos("");
-    avisar(criteriosAptos(criterios) ? "Cumple los 8 criterios: puedes iniciar la PVE." : "No cumple los criterios: la PVE no se inicia.");
+    if (crit.some((c) => c === null)) return setMsg("Marca los 8 criterios: cumple o no cumple.");
+    const criterios = crit as boolean[];
+    if (!(await ev({ tipo: "EVALUACION_PVE", criterios, apto: criteriosAptos(criterios), datos: (f["datos"] ?? "").trim(), extubacionFueraProtocolo: fuera }))) return;
+    setCrit(CRITERIOS_PVE.map(() => null));
+    limpiar();
+    avisar(criteriosAptos(criterios) ? "Cumple los 8 criterios: puedes iniciar la PVE." : "No cumple los criterios: la PVE no se inicia este turno.");
+  };
+  const iniciar = async (): Promise<void> => {
+    const l = leer();
+    if (!l) return;
+    if (!(await ev({ tipo: "INICIO_PVE", duracionMin: 30 }))) return;
+    await ev({ tipo: "CONTROL_PVE", fase: "INICIAL", lecturas: l });
+    avisar(`PVE iniciada a las ${hora}: corre el tiempo.`);
+    limpiar();
+  };
+  const terminar = async (tolerada: boolean): Promise<void> => {
+    const l = leer();
+    if (!l) return;
+    if (!(await ev({ tipo: "CONTROL_PVE", fase: "30MIN", lecturas: l }))) return;
+    await ev({ tipo: "FIN_PVE", exitosa: tolerada });
+    avisar(tolerada ? "PVE tolerada: registra si se extuba." : "PVE no tolerada: vuelve al soporte. Queda en el historial.");
+    limpiar();
+  };
+  const extubar = async (): Promise<void> => {
+    if (!f["queda"]) return setMsg("Indica con qué queda: CNAF, VMNI, O₂ convencional o aire ambiente.");
+    if (!(await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior }))) return;
+    avisar(`Extubación registrada a las ${hora}: parten los controles de 30, 60 y 120 min y 48 h.`);
+    limpiar();
+  };
+  const sinExtubar = async (): Promise<void> => {
+    if ((f["motivo"] ?? "").trim() === "") return setMsg("Escribe por qué no se extuba.");
+    if (!(await ev({ tipo: "PVE_SIN_EXTUBAR", motivo: f["motivo"]!.trim() }))) return;
+    avisar("Registrado: PVE superada sin extubar.");
+    limpiar();
+  };
+  const guardarReeval = async (): Promise<void> => {
+    if (!reeval) return;
+    if (["fc", "fr", "spo2"].some((k) => num(f[k]) === null)) return setMsg("Falta: FC, FR y SpO₂.");
+    if (!(await ev({
+      tipo: "REEVAL_POST_EXTUB", momento: reeval, fc: num(f["fc"]), pam: num(f["pam"]), gcs: null, glasgow: gcsTexto(f["gcsO"], f["gcsV"], f["gcsM"], false) || undefined,
+      fr: num(f["fr"]), fio2: num(f["fio2"]), spo2: num(f["spo2"]), trabajoResp: f["trab"] ?? "", manejoSecreciones: f["man"] ?? ""
+    }))) return;
+    setReeval(null);
+    avisar("Control post extubación registrado.");
+    limpiar();
+  };
+  const cerrar = async (): Promise<void> => {
+    if (!f["falla"]) return setMsg("Indica si hubo falla post extubación: Sí o No.");
+    if (f["falla"] === "No") {
+      if (!(await ev({ tipo: "FALLA_POST_EXTUB", falla: false, hipotesis: "", observaciones: "" }))) return;
+      avisar("PVE cerrada sin falla post extubación.");
+      return limpiar();
+    }
+    if (!f["rvia"]) return setMsg("Indica la vía de la reintubación: TET o TQT.");
+    if (num(f["rcal"]) === null) return setMsg("Falta el calibre.");
+    if (f["rvia"] === "TET" && num(f["rcm"]) === null) return setMsg("Faltan los cm en la arcada.");
+    if (!(await ev({ tipo: "FALLA_POST_EXTUB", falla: true, hipotesis: (f["hip"] ?? "").trim(), observaciones: (f["obs"] ?? "").trim() }))) return;
+    await ev({ tipo: "REINTUBACION", via: f["rvia"], calibre: f["rcal"]!.trim(), fijacionCm: f["rvia"] === "TET" ? f["rcm"]!.trim() : "" });
+    avisar(`Falla post extubación y reintubación registradas: la vía aérea vuelve a ${f["rvia"]} y los días de TOT parten de nuevo.`);
+    limpiar();
+  };
+  const elegirCrit = (e: MouseEvent<HTMLElement>, i: number, v: boolean): void => {
+    setCrit((c) => c.map((x, j) => (j === i ? v : x)));
+    // Como en el registro simple: al responder, la pantalla avanza a la fila siguiente.
+    const fila = e.currentTarget.closest<HTMLElement>(".fila");
+    const sig = fila?.nextElementSibling as HTMLElement | null;
+    const caja = document.getElementById("cuerpo");
+    if (fila && sig && caja) caja.scrollBy({ top: sig.getBoundingClientRect().top - fila.getBoundingClientRect().top, behavior: "smooth" });
   };
 
-  const iniciar = async (l: LecturasPve): Promise<void> => {
-    await ev({ tipo: "INICIO_PVE", duracionMin: 30 });
-    await ev({ tipo: "CONTROL_PVE", fase: "INICIAL" as FasePveControl, lecturas: l });
-    setFormulario(null);
-    avisar("PVE iniciada: corre el cronómetro.");
-  };
+  const reg = registrosPve(eventos).at(-1) ?? null;
+  const inicioPve = reg?.inicio ?? null;
+  const contraste = (r: NonNullable<typeof reg>): JSX.Element | null =>
+    r.inicio ? (
+      <table className="contraste" aria-label="Contraste inicio y término de la PVE">
+        <thead><tr><th /><th>Inicio<br />{r.inicio.hora}</th><th>Término<br />{r.treintaMin?.hora ?? "—"}</th><th>Dif.</th></tr></thead>
+        <tbody>
+          {contrastarControlesPve(r.inicio.lecturas, r.treintaMin?.lecturas ?? null).map((x) => (
+            <tr key={x.etiqueta}><td>{x.etiqueta}</td><td>{x.inicio}</td><td>{x.termino}</td><td>{x.diferencia ?? ""}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    ) : null;
+  const anteriores = registrosPve(eventos).filter((r) => r.numero !== reg?.numero || (flujo.fase !== "EN_CURSO" && flujo.fase !== "TERMINADA")).reverse();
 
-  const reeval = async (momento: MomentoPostExtub, v: Texto): Promise<void> => {
-    await ev({ tipo: "REEVAL_POST_EXTUB", momento, fc: num(v["fc"] ?? ""), pam: num(v["pam"] ?? ""), gcs: num(v["gcs"] ?? ""), fr: num(v["fr"] ?? ""), fio2: num(v["fio2"] ?? ""), spo2: num(v["spo2"] ?? ""), trabajoResp: v["trab"] ?? "", manejoSecreciones: v["man"] ?? "" });
-    setFormulario(null);
-  };
+  const botones = (children: ReactNode): JSX.Element => <div className="row" style={{ gap: 8 }}>{children}</div>;
 
   return (
-    <>
-      <section>
-        <h3>Prueba de ventilación espontánea</h3>
-        <div className="row">
-          <Pildora tipo={flujo.fase === "APTO" ? "good" : flujo.fase === "NO_APTO" ? "crit" : flujo.fase === "EN_CURSO" ? "acc" : ""}>
-            {{ SIN_CHECKLIST: "Falta el checklist", NO_APTO: "No apto para PVE", APTO: "Apto: puede iniciar", EN_CURSO: "PVE en curso", TERMINADA: "PVE tolerada", CERRADA: "PVE del turno cerrada", POST_EXTUBACION: "Post extubación" }[flujo.fase]}
-          </Pildora>
-        </div>
-        {bloqueo && !flujo.bloque && flujo.fase !== "EN_CURSO" && flujo.fase !== "APTO" && flujo.fase !== "TERMINADA" && <div className="mt"><Aviso tipo="warn" pequeno>{bloqueo}</Aviso></div>}
-      </section>
+    <div className="hoja-simple">
+      {bloqueo && !flujo.bloque && !["EN_CURSO", "APTO", "TERMINADA"].includes(flujo.fase) && <div className="notice warn small">{bloqueo}</div>}
 
-      {conTet && !bloqueo && flujo.fase !== "EN_CURSO" && (
-        <section>
-          <h3>1 · Checklist previo (cumple con 8 criterios)</h3>
-          {aviso24 && <div style={{ marginBottom: 8 }}><Aviso tipo="warn" pequeno>{aviso24}</Aviso></div>}
-          {flujo.checklist && (
-            <div className="mt" style={{ marginBottom: 8 }}>
-              <Aviso tipo={flujo.checklist.apto ? "good" : "crit"} pequeno>
-                Este turno, {flujo.checklist.hora}: {flujo.checklist.apto ? "cumple los 8 criterios." : `no cumple: ${CRITERIOS_PVE.filter((_, i) => !flujo.checklist!.criterios[i]).join(", ")}.`}
-              </Aviso>
-            </div>
+      {/* 1 · Checklist */}
+      {conTet && !bloqueo && (flujo.fase === "SIN_CHECKLIST" || flujo.fase === "NO_APTO") && (
+        <>
+          {aviso24 && <div className="notice warn small">{aviso24}</div>}
+          {flujo.checklist && !flujo.checklist.apto && (
+            <div className="notice crit small">Este turno, {flujo.checklist.hora}: no cumple · {CRITERIOS_PVE.filter((_, i) => !flujo.checklist!.criterios[i]).join(", ")}.</div>
           )}
-          {!(flujo.checklist?.apto) && (
-            <div className="stack" style={{ gap: 8 }}>
-              {CRITERIOS_PVE.map((c, i) => (
-                <div key={c}>
-                  <div className="small ink2">{c}</div>
-                  <Seg ancho etiqueta={c} valor={marcas[i] ?? null} opciones={[{ valor: true, texto: "Cumple" }, { valor: false, texto: "No cumple" }]} onCambio={(x) => setMarcas((m) => m.map((y, j) => (j === i ? x : y)))} />
+          <section aria-label="Checklist">
+            <h2>Checklist: 8 criterios del protocolo</h2>
+            {CRITERIOS_PVE.map((c, i) => (
+              <div className="fila bar" key={c}>
+                <span className="et">{i + 1}. {c}</span>
+                <div className="ops txt" role="group" aria-label={c}>
+                  <button type="button" aria-pressed={crit[i] === true} onClick={(e) => elegirCrit(e, i, true)}>Cumple</button>
+                  <button type="button" aria-pressed={crit[i] === false} onClick={(e) => elegirCrit(e, i, false)}>No cumple</button>
                 </div>
-              ))}
-              <div className="f">
-                <label htmlFor="pve-datos">Datos (PaFi, Hb, etc.)</label>
-                <input id="pve-datos" value={datos} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} autoComplete="off" onChange={(e) => setDatos(e.target.value)} />
               </div>
-              <label className="chk"><input type="checkbox" checked={fuera} onChange={(e) => setFuera(e.target.checked)} /> Extubación fuera de protocolo por indicación médica</label>
-              <button type="button" className="btn primary" onClick={() => void registrarChecklist()}>Registrar checklist</button>
+            ))}
+            <Fila etiqueta="Extubación fuera de protocolo" ayuda="por indicación médica">
+              <div className="sw" role="group" aria-label="Extubación fuera de protocolo">
+                <button type="button" aria-pressed={!fuera} onClick={() => setFuera(false)}>No</button>
+                <button type="button" aria-pressed={fuera} onClick={() => setFuera(true)}>Sí</button>
+              </div>
+            </Fila>
+            {horaFila("Hora de la evaluación")}
+            <div style={{ padding: "10px 12px" }}>
+              <label className="et" htmlFor="pve-datos">Datos <span className="u">opcional · PaFi, Hb, DVA…</span></label>
+              <textarea id="pve-datos" className="nota-eval" maxLength={300} value={f["datos"] ?? ""} onChange={(e) => set("datos", e.target.value)} />
             </div>
-          )}
-        </section>
+          </section>
+          {botones(<button type="button" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void registrarChecklist()}>Registrar checklist</button>)}
+        </>
       )}
 
+      {/* 2 · Control de inicio */}
       {conTet && flujo.fase === "APTO" && (
-        <section>
-          <h3>2 · Control inicial</h3>
-          {formulario === "inicial" ? (
-            <FormControlPve titulo="Control inicial de la PVE" boton="Registrar e iniciar cronómetro" onGuardar={(l) => void iniciar(l)} onCancelar={() => setFormulario(null)} />
-          ) : (
-            <button type="button" className="btn primary" onClick={() => setFormulario("inicial")}>Iniciar PVE</button>
-          )}
-        </section>
+        <>
+          {aviso24 && <div className="notice warn small">{aviso24}</div>}
+          <div className="notice good small">Cumple los 8 criterios ({flujo.checklist?.hora}). Al registrar el control de inicio parte la PVE.</div>
+          <section aria-label="Control de inicio">
+            <h2>Control de inicio</h2>
+            {lecturas(null)}
+            {horaFila("Hora de inicio")}
+          </section>
+          {botones(<button type="button" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void iniciar()}>Iniciar PVE</button>)}
+        </>
       )}
 
+      {/* 3 · Control de termino, contrastado con el inicio */}
       {flujo.fase === "EN_CURSO" && (
-        <section>
-          <h3>PVE en curso</h3>
-          <div className="notice acc">
-            <div className="small">Cronómetro</div>
-            <div className="timer mono" id="pve-timer">{flujo.pve.minutosTranscurridos} / {flujo.pve.duracionMin} min {flujo.pve.completa && "· cumplida"}</div>
-            <div className="small">Control inicial {flujo.controlInicial ? "registrado" : "pendiente"} · control a los 30 min {flujo.control30 ? "registrado" : "pendiente"}</div>
-          </div>
-          {!flujo.control30 && (formulario === "30" ? (
-            <div className="mt"><FormControlPve titulo="Control de término · 30 min" boton="Registrar control" {...(inicioPve ? { inicio: inicioPve } : {})} onGuardar={(l) => { void ev({ tipo: "CONTROL_PVE", fase: "30MIN" as FasePveControl, lecturas: l }); setFormulario(null); }} onCancelar={() => setFormulario(null)} /></div>
-          ) : (
-            <div className="mt"><button type="button" className="btn primary" onClick={() => setFormulario("30")}>Control a los 30 min{flujo.pve.minutosRestantes > 0 ? ` (faltan ${flujo.pve.minutosRestantes})` : ""}</button></div>
-          ))}
-          <div className="row mt">
-            <button type="button" className="btn" onClick={() => void ev({ tipo: "FIN_PVE", exitosa: true })}>Fin · tolerada</button>
-            <button type="button" className="btn" onClick={() => void ev({ tipo: "FIN_PVE", exitosa: false })}>Fin · no tolerada</button>
-          </div>
-        </section>
+        <>
+          <div className="crono" id="pve-timer">PVE en curso desde las <b>{inicioPve?.hora ?? "—"}</b> · <b>{flujo.pve.minutosTranscurridos} / {flujo.pve.duracionMin} min</b>{flujo.pve.completa ? " · cumplida" : ""}</div>
+          <section aria-label="Control de término">
+            <h2>Control de término</h2>
+            {lecturas(inicioPve?.lecturas ?? null)}
+            {horaFila("Hora de término")}
+          </section>
+          {botones(
+            <>
+              <button type="button" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void terminar(true)}>Tolerada</button>
+              <button type="button" className="btn danger" style={{ flex: 1 }} onClick={() => void terminar(false)}>No tolerada</button>
+            </>
+          )}
+        </>
       )}
 
-      {verContraste && inicioPve && reg && (
-        <section>
-          <h3>Inicio y término de la PVE</h3>
-          <ContrastePve inicio={inicioPve.lecturas} termino={reg.treintaMin?.lecturas ?? null} horaInicio={inicioPve.hora} horaTermino={reg.treintaMin?.hora ?? null} />
-        </section>
-      )}
-
+      {/* 4 · Tolerada: extubacion o superada sin extubar */}
       {flujo.fase === "TERMINADA" && conTet && (
-        <section>
-          <h3>3 · Extubación</h3>
-          <p className="small ink2">Si la PVE fue tolerada y se extuba, registra la extubación: parten los controles de 30, 60 y 120 min y 48 h.</p>
-          {flujo.fase === "TERMINADA" && formulario !== "extub" && (
-            <div className="card stack mb" style={{ padding: 12, gap: 8, marginBottom: 10 }} aria-label="PVE superada sin extubar">
-              <div className="small ink2">¿Superó la PVE pero no se extuba? Queda registrado y la PVE del turno se cierra.</div>
-              <div className="f"><label htmlFor="pve-sin-motivo">Por qué no se extuba</label><input id="pve-sin-motivo" value={motivoSin} placeholder="Por ejemplo, espera de evaluación de deglución" style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setMotivoSin(e.target.value)} /></div>
-              <button type="button" className="btn" onClick={() => { if (motivoSin.trim() === "") return avisar("Escribe por qué no se extuba."); void ev({ tipo: "PVE_SIN_EXTUBAR", motivo: motivoSin.trim() }); setMotivoSin(""); avisar("Registrado: PVE superada sin extubar."); }}>PVE superada sin extubar</button>
+        <>
+          {reg && <section aria-label="PVE tolerada"><h2>PVE tolerada · contraste</h2>{contraste(reg)}</section>}
+          <section aria-label="¿Se extuba?">
+            <h2>¿Se extuba?</h2>
+            <div className="fila bar">
+              <span className="et">Queda con</span>
+              <div className="ops txt" role="group" aria-label="Queda con">
+                {QUEDA.map((q) => <button key={q} type="button" aria-pressed={f["queda"] === q} onClick={() => set("queda", q)}>{ETIQUETA_DISPOSITIVO[q].replace(/^./, (c) => c.toUpperCase())}</button>)}
+              </div>
             </div>
-          )}
-          {formulario === "extub" ? (
-            <div className="card stack" style={{ padding: 12, gap: 8 }}>
-              <b>Extubación programada · queda en</b>
-              <Fichas etiqueta="Queda en" valor={null} opciones={[{ valor: "CNAF", texto: "CNAF" }, { valor: "VMNI", texto: "VMNI" }, { valor: "O2_CONVENCIONAL", texto: "O₂ convencional" }, { valor: "AIRE_AMBIENTE", texto: "Aire ambiente" }]}
-                onCambio={(d) => { void ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: d }); setFormulario(null); }} />
+            {horaFila("Hora de la extubación")}
+            <div style={{ padding: "10px 12px" }}><button type="button" data-guardar className="btn primary" style={{ width: "100%" }} onClick={() => void extubar()}>Registrar extubación programada</button></div>
+            <div style={{ padding: "0 12px 12px" }}>
+              <label className="et" htmlFor="pve-motivo">O, si no se extuba, por qué</label>
+              <input id="pve-motivo" className="texto" maxLength={120} value={f["motivo"] ?? ""} placeholder="Por ejemplo, espera de evaluación de deglución" onChange={(e) => set("motivo", e.target.value)} />
+              <button type="button" className="btn" style={{ marginTop: 8 }} onClick={() => void sinExtubar()}>PVE superada sin extubar</button>
             </div>
-          ) : (
-            <button type="button" className="btn primary" onClick={() => setFormulario("extub")}>Registrar extubación</button>
-          )}
-        </section>
+          </section>
+        </>
       )}
 
       {flujo.fase === "CERRADA" && (
-        <section>
-          <Aviso tipo="warn" pequeno>
-            {(() => {
-              const sin = [...eventos].reverse().find((e): e is Extract<EventoClinico, { tipo: "PVE_SIN_EXTUBAR" }> => e.tipo === "PVE_SIN_EXTUBAR");
-              const fin = [...eventos].reverse().find((e): e is Extract<EventoClinico, { tipo: "FIN_PVE" }> => e.tipo === "FIN_PVE");
-              return fin && !fin.exitosa ? `PVE no tolerada a las ${fin.hora}: vuelve al soporte. La próxima se evalúa en otro turno.` : `PVE superada sin extubar${sin ? ` a las ${sin.hora}: ${sin.motivo}` : ""}.`;
-            })()}
-          </Aviso>
-        </section>
+        <div className="notice warn small">
+          {(() => {
+            const sin = [...eventos].reverse().find((e): e is Extract<EventoClinico, { tipo: "PVE_SIN_EXTUBAR" }> => e.tipo === "PVE_SIN_EXTUBAR");
+            const fin = [...eventos].reverse().find((e): e is Extract<EventoClinico, { tipo: "FIN_PVE" }> => e.tipo === "FIN_PVE");
+            return fin && !fin.exitosa ? `PVE no tolerada a las ${fin.hora}: vuelve al soporte. La próxima se evalúa en otro turno.` : `PVE superada sin extubar${sin ? ` a las ${sin.hora}: ${sin.motivo}` : ""}.`;
+          })()}
+        </div>
       )}
 
+      {/* 5 · Post extubacion y cierre */}
       {flujo.bloque && (
-        <section>
-          <h3>Post extubación · extubado a las {flujo.bloque.horaExtubacion}</h3>
-          <div className="stack" style={{ gap: 8 }}>
-            {flujo.bloque.momentos.map((m) => (
-              <div key={m.id}>
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                  <span>
-                    <b>{m.etiqueta}</b> <span className="small muted">{hhmm(m.venceEn)}</span>
-                  </span>
-                  {m.registrado ? <Pildora tipo="good">Registrado</Pildora> : (
-                    <button type="button" className={m.minutosFaltantes <= 0 ? "btn primary sm" : "btn sm"} onClick={() => setFormulario(m.id)}>
-                      {m.minutosFaltantes <= 0 ? "Registrar" : `Registrar · en ${m.minutosFaltantes >= 120 ? Math.round(m.minutosFaltantes / 60) + " h" : m.minutosFaltantes + " min"}`}
-                    </button>
-                  )}
-                </div>
-                {formulario === m.id && <div className="mt"><FormReeval momento={m.id} onGuardar={(v) => void reeval(m.id, v)} onCancelar={() => setFormulario(null)} /></div>}
-              </div>
+        <>
+          <div className="crono">Extubado a las <b>{flujo.bloque.horaExtubacion}</b></div>
+          <section aria-label="Controles post extubación">
+            <h2>Controles post extubación</h2>
+            {flujo.bloque.momentos.filter((m) => m.id !== "EXTUB").map((m) => (
+              <Fila key={m.id} etiqueta={m.etiqueta} ayuda={m.registrado ? "registrado" : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
+                {m.registrado ? <span className="pill good">Hecho</span> : <button type="button" className={m.minutosFaltantes <= 0 ? "btn primary sm" : "btn sm"} onClick={() => { limpiar(); setReeval(m.id); }}>Registrar</button>}
+              </Fila>
             ))}
-          </div>
-          <h3 style={{ marginTop: 14 }}>Falla post extubación</h3>
-          {flujo.bloque.falla ? (
-            <>
-              <Aviso tipo={flujo.bloque.falla.falla ? "crit" : "good"} pequeno>
-                {flujo.bloque.falla.falla ? "Sí" : "No"}{flujo.bloque.falla.hipotesis ? ` · ${flujo.bloque.falla.hipotesis}` : ""}{flujo.bloque.falla.observaciones ? ` · ${flujo.bloque.falla.observaciones}` : ""}
-              </Aviso>
-              {flujo.bloque.falla.falla && !artificial && (
-                <div className="card stack mt" style={{ padding: 12, gap: 8 }} aria-label="Reintubación">
-                  <b>Reintubación / IOT</b>
-                  <Seg ancho etiqueta="Vía" valor={reint.via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={(x) => setReint({ ...reint, via: x })} />
-                  <div className="fgrid2">
-                    <div className="f"><label htmlFor="pve-reint-cal">Calibre</label><input id="pve-reint-cal" inputMode="decimal" autoComplete="off" value={reint.cal} onChange={(e) => setReint({ ...reint, cal: e.target.value })} /></div>
-                    <div className="f"><label htmlFor="pve-reint-fij">Fijación <span className="muted">cm en la arcada dental</span></label><input id="pve-reint-fij" inputMode="decimal" autoComplete="off" value={reint.fij} onChange={(e) => setReint({ ...reint, fij: e.target.value })} /></div>
+          </section>
+          {reeval && (
+            <section aria-label="Control post extubación">
+              <h2>Control post extubación · {flujo.bloque.momentos.find((m) => m.id === reeval)?.etiqueta}</h2>
+              {([["fc", "FC", "lpm"], ["pam", "PAM", "mmHg"], ["fr", "FR", "rpm"], ["fio2", "FiO₂", "%"], ["spo2", "SpO₂", "%"]] as const).map(([k, l, u]) => <Fila key={k} etiqueta={l} unidad={u}>{casilla(k, l)}</Fila>)}
+              <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs">
+                <div className="tres">
+                  <label><span>O</span>{casilla("gcsO", "Glasgow ocular")}</label>
+                  <label><span>V</span>{casilla("gcsV", "Glasgow verbal")}</label>
+                  <label><span>M</span>{casilla("gcsM", "Glasgow motor")}</label>
+                </div>
+              </Fila>
+              {ops("trab", "Trabajo respiratorio", TRABAJO)}
+              {ops("man", "Manejo de secreciones", MANEJO)}
+              {horaFila("Hora del control")}
+              <div className="row" style={{ gap: 8, padding: "10px 12px" }}>
+                <button type="button" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void guardarReeval()}>Registrar</button>
+                <button type="button" className="btn" onClick={() => setReeval(null)}>Cancelar</button>
+              </div>
+            </section>
+          )}
+          {!flujo.bloque.falla && !reeval && (
+            <section aria-label="Cierre">
+              <h2>Cierre: ¿falla post extubación?</h2>
+              {ops("falla", "Falla post extubación", ["No", "Sí"])}
+              {f["falla"] === "Sí" && (
+                <>
+                  <div style={{ padding: "10px 12px", display: "grid", gap: 8 }}>
+                    <label className="et" htmlFor="pve-hip">Hipótesis</label>
+                    <input id="pve-hip" className="texto" maxLength={120} value={f["hip"] ?? ""} onChange={(e) => set("hip", e.target.value)} />
+                    <label className="et" htmlFor="pve-obs">Observaciones</label>
+                    <input id="pve-obs" className="texto" maxLength={200} value={f["obs"] ?? ""} onChange={(e) => set("obs", e.target.value)} />
                   </div>
-                  <button type="button" className="btn danger" onClick={() => void reintubar()}>Registrar reintubación</button>
+                  <div className="sub-grupo">Reintubación</div>
+                  {ops("rvia", "Vía", ["TET", "TQT"])}
+                  <Fila etiqueta="Calibre">{casilla("rcal", "Calibre")}</Fila>
+                  {f["rvia"] !== "TQT" && <Fila etiqueta="Fijación" unidad="cm en la arcada">{casilla("rcm", "Fijación en cm")}</Fila>}
+                </>
+              )}
+              {f["falla"] && horaFila(f["falla"] === "Sí" ? "Hora de la reintubación" : "Hora del cierre")}
+              {f["falla"] && (
+                <div style={{ padding: "10px 12px" }}>
+                  <button type="button" data-guardar className={f["falla"] === "Sí" ? "btn danger" : "btn primary"} style={{ width: "100%" }} onClick={() => void cerrar()}>
+                    {f["falla"] === "Sí" ? "Registrar falla y reintubación" : "Cerrar: sin falla post extubación"}
+                  </button>
                 </div>
               )}
-            </>
-          ) : formulario === "falla" ? (
-            <div className="card stack" style={{ padding: 12, gap: 8 }}>
-              <Seg ancho etiqueta="Falla post extubación" valor={falla.si} opciones={[{ valor: true, texto: "Sí" }, { valor: false, texto: "No" }]} onCambio={(x) => setFalla({ ...falla, si: x })} />
-              <div className="f"><label htmlFor="pve-hip">Hipótesis</label><input id="pve-hip" value={falla.hip} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setFalla({ ...falla, hip: e.target.value })} /></div>
-              <div className="f"><label htmlFor="pve-obs">Observaciones</label><input id="pve-obs" value={falla.obs} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} onChange={(e) => setFalla({ ...falla, obs: e.target.value })} /></div>
-              <div className="row">
-                <button type="button" className="btn primary" onClick={() => { if (falla.si === null) return avisar("Indica si hubo falla: Sí o No."); void ev({ tipo: "FALLA_POST_EXTUB", falla: falla.si, hipotesis: falla.hip, observaciones: falla.obs }); setFormulario(null); }}>{falla.si ? "Registrar falla y pasar a reintubación" : "Registrar"}</button>
-                <button type="button" className="btn" onClick={() => setFormulario(null)}>Cancelar</button>
-              </div>
-            </div>
-          ) : (
-            <button type="button" className="btn" onClick={() => setFormulario("falla")}>Registrar falla post extubación</button>
+            </section>
           )}
+          {flujo.bloque.falla && <div className={`notice ${flujo.bloque.falla.falla ? "crit" : "good"} small`}>Falla post extubación: {flujo.bloque.falla.falla ? `Sí${flujo.bloque.falla.hipotesis ? ` · ${flujo.bloque.falla.hipotesis}` : ""}` : "No"}</div>}
+        </>
+      )}
+
+      {!conTet && !flujo.bloque && flujo.fase !== "EN_CURSO" && !esViaAereaArtificial(ep.viaAereaActual) && !bloqueo && <div className="notice warn small">Sin vía aérea artificial: no hay PVE que iniciar.</div>}
+      {msg && <div className="notice crit small" role="alert">{msg}</div>}
+
+      {/* Las PVE anteriores, con su contraste */}
+      {anteriores.length > 0 && (
+        <section aria-label="PVE anteriores">
+          <h2>PVE anteriores ({anteriores.length})</h2>
+          {anteriores.map((r) => (
+            <details key={r.numero} className="pve-prev">
+              <summary>{r.fecha.split("-").reverse().join("-")} {r.inicio?.hora ?? ""} · {r.fin ? (r.fin.exitosa ? "tolerada" : "no tolerada") : "sin término"}</summary>
+              {contraste(r)}
+            </details>
+          ))}
         </section>
       )}
-    </>
+    </div>
   );
 }

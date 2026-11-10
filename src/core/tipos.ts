@@ -352,7 +352,8 @@ export interface EventoBase {
   readonly comentario: string;
 }
 
-export type DispositivoPosterior = "CNAF" | "VMNI" | "O2_CONVENCIONAL" | "AIRE_AMBIENTE";
+/** Con que queda tras extubarse. Una autoextubacion puede terminar en reintubacion inmediata. */
+export type DispositivoPosterior = "CNAF" | "VMNI" | "O2_CONVENCIONAL" | "AIRE_AMBIENTE" | "REINTUBACION_INMEDIATA";
 export type MotivoAjusteTubo = "DESPLAZAMIENTO_SUPERFICIAL" | "CONTROL_RADIOLOGICO";
 
 /** Una lectura de la hoja de registro de PVE. Todo nace en blanco (null = no medido). */
@@ -363,6 +364,8 @@ export interface LecturasPve {
   readonly fr: Medicion;
   readonly spo2: Medicion;
   readonly gcs: Medicion;
+  /** Glasgow por componentes, como en el control: "4-T-6" (sin total). */
+  readonly glasgow?: string;
   readonly volMinuto: Medicion;
   /** Vocabulario por ratificar con la jefatura (la hoja solo dice "Trabajo respiratorio"). */
   readonly trabajoResp: string;
@@ -413,6 +416,8 @@ export type EventoClinico =
       readonly fc: Medicion;
       readonly pam: Medicion;
       readonly gcs: Medicion;
+      /** Glasgow por componentes: "4-5-6". */
+      readonly glasgow?: string;
       readonly fr: Medicion;
       readonly fio2: Medicion;
       readonly spo2: Medicion;

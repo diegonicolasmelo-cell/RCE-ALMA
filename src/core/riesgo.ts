@@ -11,7 +11,7 @@
  * clinico (el del celular) nunca la lleva.
  */
 
-import { ESCALA_SAS, ETIQUETA_MODALIDAD, textoEdad } from "./catalogos";
+import { ESCALA_SAS, ETIQUETA_DISPOSITIVO, ETIQUETA_MODALIDAD, textoEdad } from "./catalogos";
 import { buscarProfesional } from "./dotacion";
 import { describirEquipos } from "./equipos";
 import { eventosDeRiesgo } from "./eventos";
@@ -85,7 +85,7 @@ export function componerInformeRiesgo(e: EntradaInforme): string {
   const paciente = identidad
     ? `${identidad.nombre}${identidad.rut ? ` · RUT ${formatearRut(identidad.rut)}` : ""} · ${textoEdad(episodio.edad)}`
     : `cama ${episodio.cama} · ${textoEdad(episodio.edad)} (sin identidad disponible en este equipo)`;
-  const queda = evento.tipo === "AUTOEXTUBACION" ? evento.dispositivo : null;
+  const queda = evento.tipo === "AUTOEXTUBACION" ? ETIQUETA_DISPOSITIVO[evento.dispositivo] ?? evento.dispositivo : null;
 
   return [
     "INFORME PRELIMINAR DE GESTIÓN DE RIESGO (pre-llenado)",

@@ -12,6 +12,7 @@ import {
   bnmVigente,
   materializarControl,
   momentoDeEvaluacion,
+  momentoPreciso,
   transicionSoporte,
   nombreCama,
   volumenObjetivoMl,
@@ -246,7 +247,8 @@ export function Celular() {
     }
     const t = new Date();
     // La hora que vale es la REAL del control (puede ser unos minutos antes de guardarlo).
-    const realControl = momentoDeEvaluacion(b.horaControl || horaDe(t), t) ?? t;
+    const horaReal = momentoDeEvaluacion(b.horaControl || horaDe(t), t);
+    const realControl = horaReal ? momentoPreciso(horaReal, t) : t;
     const control = materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: realControl, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo });
     await repo.guardarControl(control);
     // Cambio de soporte (p. ej. CPAP+PS a tubo T / HME): desvinculacion o reconexion, con su hora real.
@@ -380,9 +382,10 @@ export function Celular() {
         {cabecera}
         {titulo("PVE")}
         {banda}
-        <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
+        <div className="cel-cuerpo" id="cuerpo" style={{ alignContent: "start" }}>
           <TabPve ctx={ctx} />
         </div>
+        <TecladoPropio />
       </div>
     );
   }

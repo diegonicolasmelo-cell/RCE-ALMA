@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESCALAS, NE, calcularEscala, camposVisibles, claveChk, escalaDe, escalasDePestana, momentoDeEvaluacion, resumenEvaluacion } from "./evaluaciones";
+import { ESCALAS, NE, calcularEscala, camposVisibles, claveChk, escalaDe, escalasDePestana, momentoDeEvaluacion, momentoPreciso, resumenEvaluacion } from "./evaluaciones";
 
 const todos = (id: Parameters<typeof escalaDe>[0], v: number) => Object.fromEntries(escalaDe(id).campos.map((c) => [c.id, v]));
 
@@ -120,5 +120,15 @@ describe("hora real de la evaluación", () => {
     expect(momentoDeEvaluacion("23:50", ahora)?.getDate()).toBe(8);
     expect(momentoDeEvaluacion("10:00", ahora)).toBeNull();
     expect(momentoDeEvaluacion("25:00", ahora)).toBeNull();
+  });
+});
+
+describe("momento preciso", () => {
+  it("dos registros del mismo minuto quedan en el orden en que se anotaron, y nunca en el futuro", () => {
+    const real = new Date(2026, 10, 10, 15, 9);
+    const a = momentoPreciso(real, new Date(2026, 10, 10, 15, 9, 10));
+    const b = momentoPreciso(real, new Date(2026, 10, 10, 15, 9, 40));
+    expect(a.getTime()).toBeLessThan(b.getTime());
+    expect(momentoPreciso(new Date(2026, 10, 10, 15, 0), new Date(2026, 10, 10, 15, 9, 40)).getMinutes()).toBe(0);
   });
 });

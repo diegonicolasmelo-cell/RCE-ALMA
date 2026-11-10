@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { CAMPOS_POR_MODALIDAD, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub } from "./pve";
@@ -199,9 +199,9 @@ export function describirEvento(ev: EventoClinico): string {
     case "FIN_PVE":
       return `Fin de PVE: ${ev.exitosa ? "tolerada" : "no tolerada"}`;
     case "EXTUBACION_PROGRAMADA":
-      return `Extubación programada, queda en ${ev.dispositivo}`;
+      return `Extubación programada, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "AUTOEXTUBACION":
-      return `AUTOEXTUBACIÓN NO PLANIFICADA, queda en ${ev.dispositivo}`;
+      return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN NO PLANIFICADA, con reintubación inmediata" : `AUTOEXTUBACIÓN NO PLANIFICADA, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "REINTUBACION":
       return `Reintubación ${ev.via} calibre ${ev.calibre}, fijación ${ev.fijacionCm} cm`;
     case "TRAQUEOSTOMIA":

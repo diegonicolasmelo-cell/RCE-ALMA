@@ -497,3 +497,15 @@ body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
 .hoja-simple .nota-eval{width:100%;box-sizing:border-box;min-height:64px;margin-top:6px;border:1px solid var(--line);border-radius:6px;padding:8px;font:14px var(--font-ui);background:var(--panel);color:var(--ink)}
 .hoja-simple label.et{font-weight:600}
 .hoja-simple .u{color:var(--ink-2);font-weight:400;font-size:13px}
+/* PVE en el formato del registro simple */
+.hoja-simple .crono{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:15px}
+.hoja-simple .contraste{width:100%;border-collapse:collapse;font-size:14px}
+.hoja-simple .contraste th,.hoja-simple .contraste td{padding:6px 8px;border-top:1px solid var(--line);text-align:center}
+.hoja-simple .contraste td:first-child,.hoja-simple .contraste th:first-child{text-align:left}
+.hoja-simple .contraste td:nth-child(2),.hoja-simple .contraste td:nth-child(3){font:600 15px var(--font-data)}
+.hoja-simple .contraste td:last-child{color:var(--accent);font-weight:700}
+.hoja-simple .pve-prev summary{padding:8px 12px;cursor:pointer;font-weight:600}
+.hoja-simple input.texto{width:100%;box-sizing:border-box;height:40px;border:1px solid var(--line);border-radius:6px;padding:0 10px;font:15px var(--font-ui);background:var(--panel);color:var(--ink);margin-top:4px}
+.hoja-simple .btn.danger{background:var(--crit);border-color:var(--crit);color:#fff}
+/* `.bar` es tambien la barra de progreso de la app (6 px): en la hoja, la fila de opciones no la hereda. */
+.hoja-simple .fila.bar{height:auto;background:none;border-radius:0;overflow:visible}

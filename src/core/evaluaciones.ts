@@ -444,3 +444,12 @@ export function momentoDeEvaluacion(hora: string, ahora: Date, maxHorasAtras = 1
   if (ahora.getTime() - t.getTime() > maxHorasAtras * 3600_000) return null;
   return t;
 }
+
+/**
+ * La hora real escrita (al minuto) con los segundos del momento en que se anota, para que dos
+ * registros del mismo minuto queden en el orden en que se hicieron. Nunca despues de `ahora`.
+ */
+export function momentoPreciso(real: Date, ahora: Date): Date {
+  const t = new Date(real.getTime() + ahora.getSeconds() * 1000 + ahora.getMilliseconds());
+  return t.getTime() > ahora.getTime() ? ahora : t;
+}

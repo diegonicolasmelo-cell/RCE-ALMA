@@ -97,9 +97,9 @@ async function esperarServidor() {
       // Cada tarjeta tiene sus tres accesos directos: Monitorización, Evaluaciones y Eventos.
       assert.deepEqual((await cel.locator('article[aria-label="Cama UCI-02"] .botones-cama button').allTextContents()).map((x) => x.trim()), ["Monitorización", "Evaluaciones", "Eventos"]);
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Evaluar PVE diaria")');
-      await cel.waitForSelector("text=Prueba de ventilación espontánea");
+      await cel.waitForSelector('section[aria-label="Checklist"]');
       assert.match(await cel.textContent(".ctl-cabeza h1"), /PVE · Cama 1/);
-      assert.match(await cel.textContent(".app-cel"), /Checklist previo/);
+      assert.match(await cel.textContent(".app-cel"), /Checklist: 8 criterios del protocolo/);
       assert.equal(await cel.locator('button:has-text("Guardar control")').count(), 0, "la PVE directa no abre el control");
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
@@ -334,6 +334,8 @@ async function esperarServidor() {
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Eventos · Cama 2")');
       await cel.click('button:has-text("Autoextubación")');
+      const opciones = await cel.locator("#evf-disp option").allTextContents();
+      assert.ok(opciones.includes("Reintubación inmediata"), "la autoextubacion puede terminar en reintubacion inmediata: " + opciones.join(" | "));
       await cel.fill("#evf-txt", "tracciona el TET durante el aseo");
       await cel.click('button:has-text("Registrar")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
@@ -367,63 +369,82 @@ async function esperarServidor() {
       await cel.click('[role=tab]:has-text("Control")');
     });
 
-    await prueba("PVE: checklist de 8 criterios, control inicial, cronometro, 30 min y post extubacion", async () => {
-      // La PVE ya no es una pestaña del control: se entra desde la tarjeta de la cama.
+    await prueba("autoextubacion con reintubacion inmediata: sigue por el mismo camino de la intubacion y lleva al control", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-04"] button:has-text("Eventos")');
+      await cel.click('button:has-text("Autoextubación")');
+      await cel.fill("#evf-txt", "se retira el TET en agitación");
+      await cel.selectOption("#evf-disp", "REINTUBACION_INMEDIATA");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector("#evf-cal");
+      assert.match(await aviso(), /Ahora registra la reintubación/);
+      assert.match(await cel.textContent(".card"), /Intubación \/ reintubación/);
+      await cel.fill("#evf-cal", "8");
+      await cel.fill("#evf-fij", "23");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 4")');
+      assert.match(await cel.textContent(".banda .l1"), /TET 8 · 23 cm/);
+      await cel.click('[role=tab]:has-text("Eventos")');
+      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
+      assert.ok(linea.some((x) => /AUTOEXTUBACIÓN NO PLANIFICADA, con reintubación inmediata/.test(x)), linea.join(" | "));
+      await cel.click('[role=tab]:has-text("Control")');
+    });
+
+    await prueba("PVE como el registro simple: checklist, inicio, termino contrastado, extubacion, post extubacion y falla con reintubacion", async () => {
       assert.equal(await cel.locator('[role=tab]:has-text("PVE")').count(), 0, "sin pestaña PVE en el control");
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("PVE")');
-      await cel.waitForSelector("text=Prueba de ventilación espontánea");
-      assert.ok((await cel.locator('button:has-text("Iniciar PVE")').count()) === 0, "sin checklist no se puede iniciar");
-      // un criterio no cumple: no hay PVE
+      await cel.waitForSelector('section[aria-label="Checklist"]');
+      const todos = ["Resolución del cuadro", "Signos de infección", "DVA", "PaFi", "Volumen minuto", "GCS / SAS", "Estab. metab. o vías de corrección", "Hb ≥ 7"];
+      // Un criterio no cumple: no hay PVE.
+      await cel.click('button:has-text("Registrar checklist")');
+      assert.match(await cel.textContent("[role=alert]"), /Marca los 8 criterios/);
       await cel.locator('[aria-label="Resolución del cuadro"] button:text-is("No cumple")').click();
-      for (const n of ["Signos de infección", "DVA", "PaFi", "Volumen minuto", "GCS / SAS", "Estab. metab. o vías de corrección", "Hb ≥ 7"]) {
-        await cel.locator(`[aria-label="${n}"] button:text-is("Cumple")`).click();
-      }
+      for (const n of todos.slice(1)) await cel.locator(`[aria-label="${n}"] button:text-is("Cumple")`).click();
       await cel.click('button:has-text("Registrar checklist")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".notice.crit"), /no cumple/);
-      assert.ok((await cel.locator('button:has-text("Iniciar PVE")').count()) === 0, "checklist no apto bloquea la PVE");
-      // corregido: los 8 cumplen
-      for (const n of ["Resolución del cuadro", "Signos de infección", "DVA", "PaFi", "Volumen minuto", "GCS / SAS", "Estab. metab. o vías de corrección", "Hb ≥ 7"]) {
-        await cel.locator(`[aria-label="${n}"] button:text-is("Cumple")`).click();
-      }
+      assert.match(await cel.textContent(".notice.crit"), /no cumple · Resolución del cuadro/);
+      assert.equal(await cel.locator('button:has-text("Iniciar PVE")').count(), 0, "checklist no apto bloquea la PVE");
+      // Corregido: los 8 cumplen.
+      for (const n of todos) await cel.locator(`[aria-label="${n}"] button:text-is("Cumple")`).click();
       await cel.click('button:has-text("Registrar checklist")');
-      await cel.waitForTimeout(400);
+      await cel.waitForSelector('section[aria-label="Control de inicio"]');
+      // Control de inicio: hora real unos minutos antes.
+      const real = await cel.evaluate(() => { const d = new Date(Date.now() - 5 * 60_000); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; });
+      for (const [id, val] of [["fc", "82"], ["fr", "18"], ["pas", "122"], ["pad", "70"], ["spo2", "96"], ["gcsO", "4"], ["gcsM", "6"], ["vm", "7"]]) await cel.fill(`#pve-${id}`, val);
+      await cel.locator('[aria-label="Trabajo respiratorio"] button:text-is("Sin aumento")').click();
+      await cel.fill("#pve-hora", real);
       await cel.click('button:has-text("Iniciar PVE")');
-      for (const [id, val] of [["fc", "82"], ["fr", "18"], ["pas", "122"], ["pad", "70"], ["spo2", "96"], ["gcs", "15"], ["vm", "7"]]) await cel.fill(`#pve-${id}`, val);
-      await cel.click('button:has-text("Registrar e iniciar cronómetro")');
-      await cel.waitForTimeout(500);
-      assert.match(await cel.textContent("#pve-timer"), /0 \/ 30 min/);
-      await cel.click('button:has-text("Control a los 30 min")');
-      // Hoja vertical, con el valor de inicio al lado de cada casilla del termino.
-      assert.equal(await cel.locator(".pve-hoja.con-ref .pve-ref").count(), 7);
-      assert.equal(await cel.locator('[aria-label="Frec. cardiaca al inicio"]').textContent(), "82");
-      for (const [id, val] of [["fc", "88"], ["fr", "20"], ["pas", "118"], ["pad", "68"], ["spo2", "95"]]) await cel.fill(`#pve-${id}`, val);
-      await cel.click('button:has-text("Registrar control")');
-      await cel.waitForSelector('[aria-label="Contraste inicio y término de la PVE"]');
-      const filaFc = await cel.locator('.pve-contraste tr:has(th:text-is("Frec. cardiacalpm")), .pve-contraste tr:has-text("Frec. cardiaca")').first().textContent();
+      await cel.waitForSelector('section[aria-label="Control de término"]');
+      assert.match(await cel.textContent("#pve-timer"), new RegExp(`desde las ${real} · \\d+ / 30 min`));
+      // Termino: cada fila muestra el valor de inicio y la diferencia.
+      await cel.fill("#pve-fc", "88");
+      assert.match(await cel.textContent('.fila:has(#pve-fc)'), /al inicio 82 · \+6/);
+      for (const [id, val] of [["fr", "20"], ["pas", "118"], ["pad", "68"], ["spo2", "95"]]) await cel.fill(`#pve-${id}`, val);
+      await cel.click('button:text-is("Tolerada")');
+      await cel.waitForSelector('section[aria-label="¿Se extuba?"]');
+      const filaFc = await cel.locator('.contraste tr:has-text("Frec. cardiaca")').textContent();
       assert.match(filaFc, /82\s*88\s*\+6/);
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "el contraste no desborda en 390 px");
-      await cel.click('button:has-text("Fin · tolerada")');
-      await cel.waitForTimeout(400);
-      await cel.click('button:has-text("Registrar extubación")');
-      await cel.click('button:has-text("CNAF")');
-      await cel.waitForTimeout(500);
-      const lista = await cel.textContent(".app-cel");
-      for (const m of ["Extubación", "30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
-      // Falla post extubacion: pasa directo a la reintubacion, que vuelve a dejar la via aerea artificial.
-      await cel.click('button:has-text("Registrar falla post extubación")');
+      // Extubacion programada: con que queda.
+      await cel.click('button:has-text("Registrar extubación programada")');
+      assert.match(await cel.textContent("[role=alert]"), /Indica con qué queda/);
+      await cel.locator('[aria-label="Queda con"] button:text-is("CNAF")').click();
+      await cel.click('button:has-text("Registrar extubación programada")');
+      await cel.waitForSelector('section[aria-label="Controles post extubación"]');
+      const lista = await cel.textContent('section[aria-label="Controles post extubación"]');
+      for (const m of ["30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
+      // Falla post extubacion: pasa directo a la reintubacion.
       await cel.locator('[aria-label="Falla post extubación"] button:text-is("Sí")').click();
       await cel.fill("#pve-hip", "Estridor laríngeo");
-      await cel.click('button:has-text("Registrar falla y pasar a reintubación")');
-      await cel.waitForSelector('[aria-label="Reintubación"]');
-      await cel.click('button:has-text("Registrar reintubación")');
-      assert.match(await aviso(), /Falta el calibre/);
-      await cel.fill("#pve-reint-cal", "7.5");
-      await cel.fill("#pve-reint-fij", "21");
-      await cel.click('button:has-text("Registrar reintubación")');
+      await cel.locator('[aria-label="Vía"] button:text-is("TET")').click();
+      await cel.click('button:has-text("Registrar falla y reintubación")');
+      assert.match(await cel.textContent("[role=alert]"), /Falta el calibre/);
+      await cel.fill("#pve-rcal", "7.5");
+      await cel.fill("#pve-rcm", "21");
+      await cel.click('button:has-text("Registrar falla y reintubación")');
       await cel.waitForTimeout(500);
-      assert.match(await aviso(), /Reintubado: la vía aérea queda en TET 7\.5/);
+      assert.match(await aviso(), /la vía aérea vuelve a TET/);
       await cel.click('button:has-text("‹ Camas")');
       assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET · VM día/);
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');

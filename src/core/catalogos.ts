@@ -2,6 +2,7 @@
 
 import type {
   CampoVent,
+  DispositivoPosterior,
   EstadoVigilia,
   IdInfusion,
   Modalidad,
@@ -457,6 +458,14 @@ export const DESTINOS_IMAGEN: readonly string[] = ["Scanner", "Resonancia", "Otr
 /** Corte institucional de flujo pico de tos para exito de extubacion (L/min). */
 export const PCF_CORTE_EXITO = 55;
 export const PCF_CORTE_OPTIMO = 60;
+
+export const ETIQUETA_DISPOSITIVO: Readonly<Record<DispositivoPosterior, string>> = {
+  CNAF: "CNAF",
+  VMNI: "VMNI",
+  O2_CONVENCIONAL: "O₂ convencional",
+  AIRE_AMBIENTE: "aire ambiente",
+  REINTUBACION_INMEDIATA: "reintubación inmediata"
+};
 
 // ---------------------------------------------------------------------------
 // Camas de la unidad

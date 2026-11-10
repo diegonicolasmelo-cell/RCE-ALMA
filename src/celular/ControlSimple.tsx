@@ -155,9 +155,9 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
     onMouseDown: (e: MouseEvent) => e.preventDefault()
   };
   /**
-   * Al suspender, la fila desaparece. Si el cursor estaba en su dosis, pasa a la dosis de la
-   * fila vecina (el teclado sigue abierto); si no hay otra, el teclado se cierra y la hoja se
-   * corrige para que lo que estaba debajo quede donde estaba (sin tiron).
+   * Al suspender, la fila desaparece. Si el cursor estaba en su dosis, no se cierra el teclado
+   * (eso hacia volver la cabecera y saltar la hoja): el cursor pasa a la dosis de la fila
+   * vecina o, si era la ultima droga, a la casilla siguiente de la hoja, como «Sig.».
    */
   const sostenerHoja = (id: IdInfusion): void => {
     const casilla = document.getElementById(`in-inf-${id}-dosis`);
@@ -165,19 +165,10 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
     const fila = casilla.closest(".fila");
     const dosis = [...document.querySelectorAll<HTMLInputElement>('.fila.inf input[id^="in-inf-"]')];
     const i = dosis.indexOf(casilla as HTMLInputElement);
-    const vecina = dosis[i + 1] ?? dosis[i - 1];
-    if (vecina) {
-      vecina.focus({ preventScroll: true });
-      return;
-    }
-    const cuerpo = document.getElementById("cuerpo");
-    const ancla = fila?.nextElementSibling as HTMLElement | null;
-    if (!cuerpo || !ancla) return;
-    const y = ancla.getBoundingClientRect().top;
-    // El teclado se cierra 60 ms despues de perder el foco; recien ahi se corrige.
-    setTimeout(() => {
-      if (document.body.contains(ancla)) cuerpo.scrollTop += ancla.getBoundingClientRect().top - y;
-    }, 120);
+    const otras = [...document.querySelectorAll<HTMLInputElement>("#cuerpo .fila input.num:not([disabled])")].filter((x) => !fila?.contains(x));
+    const despues = otras.find((x) => casilla.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const destino = dosis[i + 1] ?? dosis[i - 1] ?? despues ?? otras.at(-1);
+    destino?.focus({ preventScroll: true });
   };
   const agregar = (id: IdInfusion): void => {
     editar((y) => iniciarInfusion(y, id));

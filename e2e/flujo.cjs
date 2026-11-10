@@ -282,15 +282,20 @@ async function esperarServidor() {
       assert.equal(await m.locator(".cel-top").isVisible(), false, "sin tiron: la cabecera no vuelve");
       const yVaso = (await m.locator("#in-inf-vasopresina-dosis").boundingBox()).y;
       assert.ok(Math.abs(yVaso - yNora) < 6, `la vecina ocupa el lugar (${yNora} -> ${yVaso})`);
-      // La ultima: el teclado se cierra y lo que estaba debajo queda donde estaba.
-      const otras = await m.locator('.fila.inf input[id^="in-inf-"]').count();
-      if (otras === 1) {
-        const yAcc = (await m.locator(".hoja-simple .acciones").first().boundingBox()).y;
-        await m.tap('button[aria-label="Suspender Vasopresina"]');
-        await m.waitForTimeout(500);
-        const yAcc2 = (await m.locator(".hoja-simple .acciones").first().boundingBox()).y;
-        assert.ok(Math.abs(yAcc2 - yAcc) < 60, `al suspender la ultima la hoja no salta (${yAcc} -> ${yAcc2})`);
+      // Suspender todas: con la ultima, el cursor pasa a la casilla siguiente de la hoja y el
+      // teclado sigue abierto (sin cabecera que vuelva ni salto).
+      while ((await m.locator('.fila.inf input[id^="in-inf-"]').count()) > 0) {
+        const primera = m.locator('.fila.inf input[id^="in-inf-"]').first();
+        const idPrimera = await primera.getAttribute("id");
+        await primera.tap();
+        await m.waitForTimeout(400);
+        await m.tap(`.fila.inf:has(#${idPrimera}) button.quitar`);
+        await m.waitForTimeout(400);
+        assert.ok(await m.locator(".kb").isVisible(), `al suspender ${idPrimera} el teclado sigue abierto`);
+        assert.equal(await m.locator(".cel-top").isVisible(), false, `al suspender ${idPrimera} la cabecera no vuelve`);
       }
+      const foco = await m.evaluate(() => document.activeElement.id);
+      assert.ok(foco && !foco.startsWith("in-inf-"), `tras la ultima, el cursor queda en otra casilla de la hoja (${foco})`);
       if (await m.locator(".kb").isVisible()) await m.tap('.kb [data-kb="ocultar"]');
       await m.waitForTimeout(200);
       // Evaluaciones: el MRC-ss con su teclado (solo 0 a 5 y NE); cada toque deja el valor y avanza.

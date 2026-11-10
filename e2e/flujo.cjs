@@ -269,6 +269,44 @@ async function esperarServidor() {
       assert.equal(await m.evaluate(() => document.activeElement.id), "ev-m1i", "avanza solo al lado izquierdo");
       await m.tap('.kb [data-kb="NE"]');
       assert.equal(await m.inputValue("#ev-m1i"), "NE");
+      await m.tap('.kb [data-kb="ocultar"]');
+      // Eventos: las casillas numericas de los formularios usan el mismo teclado.
+      await m.tap('button:has-text("‹ Camas")');
+      await m.tap('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
+      await m.tap('button:has-text("Ajustar posición del tubo")');
+      assert.equal(await m.getAttribute("#evf-cm", "inputmode"), "none");
+      await m.tap("#evf-cm");
+      await m.waitForSelector(".kb:not([hidden])");
+      assert.ok(await m.locator(".cel-top").isVisible(), "fuera de la hoja la cabecera no se oculta");
+      for (const k of ["borrar", "borrar", "2", "3"]) await m.tap(`.kb [data-kb="${k}"]`);
+      assert.equal(await m.inputValue("#evf-cm"), "23");
+      await m.tap('.kb [data-kb="sig"]');
+      await m.waitForTimeout(200);
+      assert.equal(await m.locator(".kb").isVisible(), false, "en la ultima casilla, Sig. cierra el teclado");
+      // Ingreso de una cama libre: talla, calibre y cm con el teclado propio; Sig. recorre las tres.
+      const est = await movil.newPage();
+      await est.goto(URL + "#estacion");
+      await est.click('.cama:has-text("UCI-18")');
+      await est.click('button:text-is("Dar de alta")');
+      await est.click('button:has-text("Confirmar alta y borrar la identidad")');
+      await est.waitForTimeout(500);
+      await est.close();
+      await m.tap('button:has-text("‹ Camas")');
+      await m.tap('button[aria-label="Ingresar Cama 18"]');
+      await m.locator('[aria-label="Sexo"] button:text-is("Hombre")').tap();
+      await m.locator('[aria-label="Vía aérea"] button:text-is("TET")').tap();
+      assert.equal(await m.getAttribute("#ir-talla", "inputmode"), "none", "el ingreso no abre el teclado del sistema");
+      await m.tap("#ir-talla");
+      await m.waitForSelector(".kb:not([hidden])");
+      for (const k of ["1", "7", "0", "sig", "7", ",", "5", "sig", "2", "2"]) await m.tap(`.kb [data-kb="${k}"]`);
+      assert.deepEqual([await m.inputValue("#ir-talla"), await m.inputValue("#ir-cal"), await m.inputValue("#ir-cm")], ["170", "7,5", "22"]);
+      const cajaKb = await m.locator(".kb").boundingBox();
+      const cajaCm = await m.locator("#ir-cm").boundingBox();
+      assert.ok(cajaCm.y + cajaCm.height <= cajaKb.y, "el teclado no tapa la casilla que se llena");
+      await m.tap('.kb [data-kb="ocultar"]');
+      await m.tap('form[aria-label="Ingreso Cama 18"] button[type=submit]');
+      await m.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 18")');
+      assert.match(await m.textContent(".banda .l1"), /TET 7,5 · 22 cm/);
       await movil.close();
     });
 

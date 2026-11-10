@@ -442,7 +442,7 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 .hoja-simple .equipos-simple{padding:0 12px 10px;border-top:1px solid var(--line)}
 .hoja-simple .equipos-simple h3{display:none}
 /* Escribiendo: abajo queda espacio para centrar hasta la ultima fila. */
-#cuerpo.escribiendo{padding-bottom:65vh}
+#cuerpo.escribiendo,.cel-cuerpo.escribiendo{padding-bottom:65vh}
 /* Teclado numerico propio: mas bajo que el del sistema. «Sig.» bajo el borrar, como en Android. */
 .kb{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#e6ecf2;border-top:1px solid var(--line);
   display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(4,44px);gap:6px;

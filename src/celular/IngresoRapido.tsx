@@ -7,6 +7,7 @@ import { nuevoId } from "../app/util";
 import { guardarMeta } from "../datos/db";
 import { claveMisCamas } from "./ElegirCamas";
 import { Seg } from "./componentes";
+import { casillaNumerica } from "./TecladoPropio";
 
 const numero = (v: string): number | null => {
   const n = Number(v.replace(",", "."));
@@ -87,14 +88,14 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
       <p className="small muted" style={{ margin: 0 }}>Nombre, RUT y edad se ingresan en el PC de la estación. Aquí se registra la vía aérea con que llega y el sexo y la talla para el peso ideal.</p>
       <div className="small ink2">Sexo</div>
       <Seg ancho etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
-      <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" inputMode="numeric" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
+      <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       <div className="notice acc small" aria-live="polite">{pi ?? "Con sexo y talla se calcula el peso ideal y el volumen corriente por kilo."}</div>
       <div className="small ink2">Vía aérea con que llega</div>
       <Seg ancho etiqueta="Vía aérea" valor={via} opciones={[{ valor: "NATURAL", texto: "Natural" }, { valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={setVia} />
       {via && via !== "NATURAL" && (
         <div className="fgrid2">
-          <div className="f"><label htmlFor="ir-cal">Calibre {via === "TET" ? "del tubo" : "de la TQT"}</label><input id="ir-cal" inputMode="decimal" autoComplete="off" value={calibre} onChange={(e) => setCalibre(e.target.value)} /></div>
-          {via === "TET" && <div className="f"><label htmlFor="ir-cm">Fijación <span className="muted">cm en la arcada</span></label><input id="ir-cm" inputMode="decimal" autoComplete="off" value={cm} onChange={(e) => setCm(e.target.value)} /></div>}
+          <div className="f"><label htmlFor="ir-cal">Calibre {via === "TET" ? "del tubo" : "de la TQT"}</label><input id="ir-cal" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={calibre} onChange={(e) => setCalibre(e.target.value)} /></div>
+          {via === "TET" && <div className="f"><label htmlFor="ir-cm">Fijación <span className="muted">cm en la arcada</span></label><input id="ir-cm" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={cm} onChange={(e) => setCm(e.target.value)} /></div>}
         </div>
       )}
       {via === "NATURAL" && <p className="small muted" style={{ margin: 0 }}>Con vía aérea natural se ofrecen oxigenoterapia y VNI.</p>}

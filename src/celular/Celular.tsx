@@ -241,6 +241,7 @@ export function Celular() {
             <ListaCamas />
           </>
         )}
+        <TecladoPropio />
       </div>
     );
   }
@@ -338,6 +339,7 @@ export function Celular() {
         {cabecera}
         <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Monitorización, Evaluaciones, Eventos o PVE</span></div>
         <ListaCamas />
+        <TecladoPropio />
       </div>
     );
   }
@@ -389,6 +391,7 @@ export function Celular() {
         <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
           <TabEventos ctx={ctx} onCambioVia={alCambiarVia} />
         </div>
+        <TecladoPropio />
       </div>
     );
   }
@@ -481,7 +484,7 @@ export function Celular() {
           ))}
         </nav>
       </div>
-      {tab === "control" && <TecladoPropio />}
+      <TecladoPropio />
     </div>
   );
 }

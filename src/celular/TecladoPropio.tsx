@@ -14,8 +14,23 @@ import { useEffect, useRef, useState } from "react";
 
 export const TECLADO_PROPIO = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
 
-const SELECTOR = "#cuerpo .fila input, #cuerpo .fila select";
+// Las casillas de la hoja (#cuerpo .fila) y, fuera de ella, cualquier casilla numerica marcada
+// con data-teclado (ingreso de una cama, formularios de eventos, talla, numero de equipo).
+const SELECTOR = "#cuerpo .fila input, #cuerpo .fila select, input[data-teclado]";
 const SELECTOR_SIG = "#cuerpo .fila input:not([disabled]), #cuerpo .fila select:not([disabled])";
+const SELECTOR_SUELTAS = "input[data-teclado]:not([disabled])";
+
+/**
+ * Lo que lleva una casilla numerica fuera de la hoja para usar este teclado: en un celular no
+ * abre el teclado del sistema; en un PC se escribe con el teclado fisico.
+ */
+export const casillaNumerica = (decimal = true): { inputMode: "none" | "decimal" | "numeric"; "data-teclado": "num" } => ({
+  inputMode: TECLADO_PROPIO ? "none" : decimal ? "decimal" : "numeric",
+  "data-teclado": "num"
+});
+
+/** La caja que se desplaza alrededor de una casilla: la hoja, o el cuerpo de la pantalla. */
+const cajaDe = (el: HTMLElement | null): HTMLElement | null => el?.closest<HTMLElement>("#cuerpo, .cel-cuerpo") ?? document.getElementById("cuerpo");
 
 /** Cambia el valor de una casilla de React como si se hubiera tecleado (dispara onChange). */
 function escribir(el: HTMLInputElement, valor: string): void {
@@ -34,20 +49,23 @@ function enfocar(el: HTMLElement): void {
 
 /** Casilla siguiente (Enter o «Sig.»). En la ultima se cierra el teclado y queda listo Guardar. */
 export function siguienteCasilla(el: HTMLElement): void {
-  const lista = [...document.querySelectorAll<HTMLElement>(SELECTOR_SIG)];
+  // Fuera de la hoja, «Sig.» recorre las casillas numericas del mismo formulario o tarjeta.
+  const enHoja = el.matches(SELECTOR_SIG);
+  const ambito = enHoja ? document : el.closest<HTMLElement>("form, article, .card") ?? document;
+  const lista = [...ambito.querySelectorAll<HTMLElement>(enHoja ? SELECTOR_SIG : SELECTOR_SUELTAS)];
   const sig = lista[lista.indexOf(el) + 1];
   if (sig) enfocar(sig);
   else {
     el.blur();
-    document.querySelector<HTMLElement>("[data-guardar]")?.focus();
+    if (enHoja) document.querySelector<HTMLElement>("[data-guardar]")?.focus();
   }
 }
 
 /** Lleva la fila al 40 % de lo que se ve sobre el teclado, no al borde. */
 function centrar(activa: HTMLElement | null, kb: HTMLElement | null): void {
-  const cuerpo = document.getElementById("cuerpo");
+  const cuerpo = cajaDe(activa);
   if (!activa || !cuerpo || !document.body.contains(activa)) return;
-  const fila = activa.closest<HTMLElement>(".fila") ?? activa;
+  const fila = activa.closest<HTMLElement>(".fila, .f") ?? activa;
   const caja = cuerpo.getBoundingClientRect();
   const vv = window.visualViewport;
   const abajo = kb && !kb.hidden ? kb.getBoundingClientRect().top : vv ? vv.offsetTop + vv.height : window.innerHeight;
@@ -77,11 +95,12 @@ export function TecladoPropio() {
       activa.current?.closest(".fila")?.classList.remove("activa");
       activa.current = el;
       el.closest(".fila")?.classList.add("activa");
-      document.getElementById("cuerpo")?.classList.add("escribiendo");
-      const conTeclado = TECLADO_PROPIO && el.classList.contains("num");
+      cajaDe(el)?.classList.add("escribiendo");
+      const conTeclado = TECLADO_PROPIO && (el.classList.contains("num") || el.dataset["teclado"] !== undefined);
       if (conTeclado) setTipo((el.dataset["teclado"] as TipoTeclado | undefined) ?? "num");
       setVisible(conTeclado);
-      document.body.classList.toggle("teclado-propio", conTeclado);
+      // La cabecera y el pie se ocultan solo al escribir en la hoja; en un formulario suelto se quedan.
+      document.body.classList.toggle("teclado-propio", conTeclado && el.matches(SELECTOR_SIG));
       // Se centra al tiro y otra vez cuando el teclado termina de aparecer.
       requestAnimationFrame(() => centrar(el, kb.current));
       setTimeout(() => centrar(el, kb.current), 320);
@@ -95,7 +114,7 @@ export function TecladoPropio() {
         activa.current = null;
         setVisible(false);
         document.body.classList.remove("teclado-propio");
-        document.getElementById("cuerpo")?.classList.remove("escribiendo");
+        document.querySelectorAll(".escribiendo").forEach((x) => x.classList.remove("escribiendo"));
       }, 60);
     };
     // Enter = casilla siguiente, como en la hoja.

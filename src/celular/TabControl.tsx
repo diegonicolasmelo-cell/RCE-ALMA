@@ -42,6 +42,7 @@ import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
 import { opcionesNumericas, useFranja } from "./franja";
 import type { DescriptorFranja } from "./franja";
+import { casillaNumerica } from "./TecladoPropio";
 
 const BANDA = {
   ULTRAPROTECTOR: { tipo: "acc" as const, t: "Ultraprotector" },
@@ -345,7 +346,7 @@ export function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
     <div className="small muted" style={{ fontWeight: 700, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
       <span>Peso ideal <span className="mono">{pbw} kg</span> · talla</span>
       {editando ? (
-        <input aria-label="Talla en cm" inputMode="numeric" autoFocus autoComplete="off" value={talla} style={{ width: 80, minHeight: 34 }}
+        <input aria-label="Talla en cm" {...casillaNumerica(false)} autoFocus autoComplete="off" value={talla} style={{ width: 80, minHeight: 34 }}
           onChange={(e) => setTalla(e.target.value)} onBlur={() => void guardar()} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
       ) : (
         <>
@@ -411,7 +412,7 @@ export function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
               ))}
             </select>
             {def?.numerado && (
-              <input inputMode="numeric" value={numero} placeholder="n.º" aria-label="Número del equipo" style={{ width: 70 }} onChange={(e) => setNumero(e.target.value)} />
+              <input {...casillaNumerica(false)} value={numero} placeholder="n.º" aria-label="Número del equipo" style={{ width: 70 }} onChange={(e) => setNumero(e.target.value)} />
             )}
             <button type="button" className="btn sm" onClick={agregar}>Agregar</button>
           </div>

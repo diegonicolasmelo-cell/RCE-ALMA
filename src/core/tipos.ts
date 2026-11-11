@@ -376,6 +376,8 @@ export interface EventoBase {
 /** Con que queda tras extubarse. Una autoextubacion puede terminar en reintubacion inmediata. */
 export type DispositivoPosterior = "CNAF" | "VMNI" | "O2_CONVENCIONAL" | "AIRE_AMBIENTE" | "REINTUBACION_INMEDIATA";
 export type MotivoAjusteTubo = "DESPLAZAMIENTO_SUPERFICIAL" | "CONTROL_RADIOLOGICO";
+/** Por que se extuba sin PVE (fuera de protocolo). */
+export type MotivoExtubacionSinPve = "MENOS_24H_VM" | "AET" | "VENTILACION_DOMICILIARIA" | "OTRO";
 /** Por que se recambia un tubo o una canula (el paciente sigue ventilado: no es reintubacion). */
 export type MotivoCambioVia = "CUFF_DANADO" | "OBSTRUCCION" | "FUGA" | "CAMBIO_CALIBRE" | "PROGRAMADO" | "OTRO";
 
@@ -452,7 +454,11 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "FIN_PVE"; readonly exitosa: boolean })
   /** PVE tolerada y NO se extuba (p. ej. espera de evaluacion de deglucion): cierra la PVE del turno. */
   | (EventoBase & { readonly tipo: "PVE_SIN_EXTUBAR"; readonly motivo: string })
-  | (EventoBase & { readonly tipo: "EXTUBACION_PROGRAMADA"; readonly dispositivo: DispositivoPosterior })
+  /**
+   * Extubacion planificada. Sin `sinPve` vino despues de una PVE; con `sinPve` fue fuera de
+   * protocolo (sin PVE) y el motivo dice por que.
+   */
+  | (EventoBase & { readonly tipo: "EXTUBACION_PROGRAMADA"; readonly dispositivo: DispositivoPosterior; readonly sinPve?: MotivoExtubacionSinPve })
   | (EventoBase & { readonly tipo: "AUTOEXTUBACION"; readonly dispositivo: DispositivoPosterior })
   | (EventoBase & { readonly tipo: "REINTUBACION"; readonly via: "TET" | "TQT"; readonly calibre: string; readonly fijacionCm: string })
   | (EventoBase & { readonly tipo: "TRAQUEOSTOMIA"; readonly calibre: string })

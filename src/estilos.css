@@ -547,3 +547,6 @@ body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
 .kb-vals{display:grid;grid-auto-rows:56px;gap:7px}
 .kb-fn{display:grid;grid-template-rows:56px minmax(56px,1fr) 56px;gap:7px}
 .kb-fn .sig{grid-column:auto!important;grid-row:auto!important}
+
+/* PVE dentro de Eventos: el mismo acento que en la tarjeta de la cama. */
+.evgrid .btn.pve-ev{border-color:var(--accent);color:var(--accent);font-weight:700}

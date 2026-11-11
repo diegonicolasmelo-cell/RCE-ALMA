@@ -9,9 +9,13 @@ import {
   vigenciaFiltros,
   ETIQUETA_ELEMENTO,
   ETIQUETA_MODALIDAD,
-  ETIQUETA_MOTIVO_CAMBIO
+  ETIQUETA_MOTIVO_CAMBIO,
+  ETIQUETA_MOTIVO_SIN_PVE,
+  accesoPve,
+  horasDeVm,
+  motivoSinPve
 } from "@core/index";
-import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia } from "@core/index";
+import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { Pildora } from "./componentes";
@@ -30,6 +34,8 @@ interface Item {
   req?: "art" | "nat" | "tet" | "tqt";
   peligro?: boolean;
   deshabilitado?: boolean;
+  /** Por que esta deshabilitado (se muestra bajo el boton). */
+  ayuda?: string;
   campos?: readonly CampoForm[];
   /** El texto libre "Qué pasó" va como comentario del evento. */
   comentarioDe?: string;
@@ -46,6 +52,11 @@ const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ val
 
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
 const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "decan"];
+
+const MOTIVOS_SIN_PVE: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => ({
+  valor: k,
+  texto: ETIQUETA_MOTIVO_SIN_PVE[k].charAt(0).toUpperCase() + ETIQUETA_MOTIVO_SIN_PVE[k].slice(1)
+}));
 
 const MOTIVOS_CAMBIO: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_CAMBIO) as MotivoCambioVia[]).map((k) => ({
   valor: k,
@@ -64,6 +75,13 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   const [valores, setValores] = useState<Record<string, string>>({});
 
   const prono = estadoProno(eventos, ahora);
+  const irA = useApp((s) => s.irA);
+  // PVE: el mismo acceso que en la tarjeta de la cama (solo TET con el ultimo control en CPAP+PS).
+  const ultimoPve = ctx.ultimo ? { modalidad: ctx.ultimo.ventilacion.modalidad, registradoEn: ctx.ultimo.registradoEn } : null;
+  const pve = accesoPve(ep.viaAereaActual, ultimoPve, eventos, ahora);
+  // Con menos de 24 h de VM la extubacion fuera de protocolo viene con ese motivo marcado.
+  const h = horasDeVm(ep, eventos, ctx.controles[0]?.registradoEn ?? null, ahora);
+  const menos24 = h !== null && h.horas < 24;
   // Si ya se retiro la via aerea en este episodio, la proxima intubacion es REintubacion.
   const yaRetiradaVia = eventos.some((e) => e.tipo === "EXTUBACION_PROGRAMADA" || e.tipo === "AUTOEXTUBACION" || e.tipo === "DECANULACION");
 
@@ -71,7 +89,15 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     {
       titulo: "Vía aérea",
       items: [
-        { k: "extub", texto: "Extubación programada", req: "tet", campos: [{ id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }], crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
+        { k: "pve", texto: pve ? pve.texto : "PVE", req: "tet", deshabilitado: !pve, ...(pve ? {} : { ayuda: motivoSinPve(ep.viaAereaActual, ultimoPve, eventos) ?? "" }), crear: (_v, b) => b as never },
+        {
+          k: "extub", texto: "Extubación fuera de protocolo", req: "tet",
+          campos: [
+            { id: "mot", etiqueta: "Por qué sin PVE", valor: menos24 ? "MENOS_24H_VM" : "AET", opciones: MOTIVOS_SIN_PVE },
+            { id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }
+          ],
+          crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior, sinPve: (v["mot"] ?? "OTRO") as MotivoExtubacionSinPve })
+        },
         { k: "reint", texto: yaRetiradaVia ? "Reintubación" : "Intubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "" }) },
         { k: "traq", texto: "Traqueostomía", req: "tet", campos: [{ id: "cal", etiqueta: "Calibre", num: true }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
         { k: "ajuste", texto: "Ajustar posición del tubo", req: "tet", campos: [{ id: "cm", etiqueta: "Centímetros en la arcada dental", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: [{ valor: "DESPLAZAMIENTO_SUPERFICIAL", texto: "Desplazamiento superficial" }, { valor: "CONTROL_RADIOLOGICO", texto: "Control radiológico" }] }], crear: (v, b) => ({ ...b, tipo: "AJUSTE_TUBO", fijacionCm: v["cm"] ?? "", motivo: (v["mot"] ?? "DESPLAZAMIENTO_SUPERFICIAL") as MotivoAjusteTubo }) },
@@ -174,6 +200,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   };
 
   const clic = (it: Item): void => {
+    if (it.k === "pve") {
+      irA("pve", ep.id);
+      return;
+    }
     if (it.campos) {
       setAbierto(it.k);
       setValores(Object.fromEntries(it.campos.map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
@@ -253,8 +283,9 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
             {g.items.filter(aplica).map((it) => {
               const off = it.deshabilitado;
               return (
-                <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : "btn"} disabled={off} onClick={() => clic(it)}>
+                <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : it.k === "pve" && !off ? "btn pve-ev" : "btn"} disabled={off} title={it.ayuda} onClick={() => clic(it)}>
                   {it.texto}
+                  {off && it.ayuda && <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{it.ayuda}</span>}
                 </button>
               );
             })}

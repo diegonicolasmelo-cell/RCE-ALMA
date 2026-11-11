@@ -502,7 +502,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       // Con via aerea natural no hay cambios de HME, HEPA ni TrachCare, ni el cuadro de filtros.
-      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación programada", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación", "Iniciar prono"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
+      for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación fuera de protocolo", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación", "Iniciar prono"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
       assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0);
       // Ya se extubo (autoextubacion): lo que se ofrece es una REintubacion.
       assert.equal(await cel.locator('.evgrid button:text-is("Intubación")').count(), 0);
@@ -518,7 +518,7 @@ async function esperarServidor() {
       // La linea de tiempo junta los eventos y los controles, del mas nuevo al mas antiguo, con fecha y hora.
       await cel.click('[role=tab]:has-text("Eventos")');
       assert.equal(await cel.locator('.evgrid button:text-is("Reintubación")').count(), 0, "intubado: ya no se ofrece intubar");
-      assert.equal(await cel.locator('button:has-text("Extubación programada")').count(), 1);
+      assert.equal(await cel.locator('.evgrid button:text-is("Extubación fuera de protocolo")').count(), 1);
       // Con TET: cambio de tubo si; lo de la canula (TQT), no.
       for (const t of ["Cambio de cánula", "Decanulación"]) assert.equal(await cel.locator(`.evgrid button:text-is("${t}")`).count(), 0, t);
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
@@ -551,6 +551,29 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.0 · 23 cm/);
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /Cambio de tubo: TET calibre 7\.0, fijación 23 cm \(fuga\)/, linea.join(" | "));
+      await cel.click('[role=tab]:has-text("Control")');
+    });
+
+    await prueba("extubacion fuera de protocolo (sin PVE) desde Eventos, con su motivo; la PVE tambien se abre desde ahi", async () => {
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
+      // En ACVC la PVE no se puede iniciar: el boton dice por que.
+      const pveBtn = cel.locator('.evgrid button:has-text("PVE")');
+      assert.equal(await pveBtn.isDisabled(), true);
+      assert.match(await pveBtn.textContent(), /último control en CPAP\+PS/);
+      assert.equal(await cel.locator('.evgrid button:text-is("Extubación programada")').count(), 0, "la extubacion tras PVE se registra en el flujo de la PVE");
+      await cel.click('.evgrid button:text-is("Extubación fuera de protocolo")');
+      const motivos = await cel.locator("#evf-mot option").allTextContents();
+      assert.deepEqual(motivos, ["Menos de 24 h de VM", "Adecuación del esfuerzo terapéutico", "Ventilación mecánica domiciliaria", "Otro motivo"]);
+      assert.equal(await cel.inputValue("#evf-mot"), "AET", "con mas de 24 h de VM no se marca «menos de 24 h»");
+      await cel.selectOption("#evf-mot", "VENTILACION_DOMICILIARIA");
+      await cel.selectOption("#evf-disp", "VMNI");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 9")');
+      assert.match(await cel.textContent(".banda"), /Vía aérea natural/);
+      await cel.click('[role=tab]:has-text("Eventos")');
+      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
+      assert.match(linea[0] ?? "", /Extubación fuera de protocolo \(sin PVE: ventilación mecánica domiciliaria\), queda en/, linea.join(" | "));
       await cel.click('[role=tab]:has-text("Control")');
     });
 

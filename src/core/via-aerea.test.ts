@@ -60,3 +60,18 @@ describe("decanulación", () => {
     expect(resumirTurno([], [dec], []).decanulaciones).toBe(1);
   });
 });
+
+describe("extubación fuera de protocolo (sin PVE)", () => {
+  it("cambia la vía, dice el motivo y se cuenta aparte dentro de las programadas", () => {
+    const sin = ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", sinPve: "MENOS_24H_VM" }, 3);
+    const con = ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF" }, 4);
+    expect(viaAereaVigente("TET", [sin])).toBe("NATURAL");
+    expect(describirEvento(sin)).toBe("Extubación fuera de protocolo (sin PVE: menos de 24 h de VM), queda en CNAF");
+    expect(describirEvento(con)).toMatch(/^Extubación programada/);
+    const r = resumirTurno([], [sin, con], []);
+    expect([r.extubacionesProgramadas, r.extubacionesSinPve]).toEqual([2, 1]);
+    // Despues de ella, una nueva intubacion es REintubacion.
+    const reint = ev({ tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22" }, 6);
+    expect(esReintubacion(reint, [sin, reint])).toBe(true);
+  });
+});

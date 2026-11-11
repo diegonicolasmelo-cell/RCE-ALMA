@@ -33,6 +33,8 @@ export interface ResumenTurno {
   /** Recambios de tubo o de canula (no son reintubaciones). */
   readonly recambiosTubo: number;
   readonly decanulaciones: number;
+  /** Extubaciones planificadas sin PVE (fuera de protocolo), incluidas en las programadas. */
+  readonly extubacionesSinPve: number;
   readonly extubacionesProgramadas: number;
   readonly autoextubaciones: number;
   readonly pcr: number;
@@ -88,6 +90,8 @@ export function resumirTurno(
     recambiosTubo: porTipo("CAMBIO_TUBO") + porTipo("CAMBIO_CANULA"),
     decanulaciones: porTipo("DECANULACION"),
     extubacionesProgramadas: porTipo("EXTUBACION_PROGRAMADA"),
+    // De ellas, las que fueron fuera de protocolo (sin PVE).
+    extubacionesSinPve: eventos.filter((e) => e.tipo === "EXTUBACION_PROGRAMADA" && e.sinPve !== undefined).length,
     autoextubaciones: porTipo("AUTOEXTUBACION"),
     pcr: porTipo("PCR"),
     eventosCentinela: porTipo("EVENTO_CENTINELA"),
@@ -126,6 +130,7 @@ export function consolidarRem28(resumenes: readonly ResumenTurno[]): ResumenTurn
     reintubaciones: sumar((r) => r.reintubaciones),
     recambiosTubo: sumar((r) => r.recambiosTubo),
     decanulaciones: sumar((r) => r.decanulaciones),
+    extubacionesSinPve: sumar((r) => r.extubacionesSinPve),
     extubacionesProgramadas: sumar((r) => r.extubacionesProgramadas),
     autoextubaciones: sumar((r) => r.autoextubaciones),
     pcr: sumar((r) => r.pcr),

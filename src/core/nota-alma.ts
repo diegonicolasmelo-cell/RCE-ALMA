@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub, horasDeVm } from "./pve";
@@ -203,7 +203,9 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
     case "FIN_PVE":
       return `Fin de PVE: ${ev.exitosa ? "tolerada" : "no tolerada"}`;
     case "EXTUBACION_PROGRAMADA":
-      return `Extubación programada, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
+      return ev.sinPve
+        ? `Extubación fuera de protocolo (sin PVE: ${ETIQUETA_MOTIVO_SIN_PVE[ev.sinPve]}), queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`
+        : `Extubación programada, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "AUTOEXTUBACION":
       return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN con reintubación inmediata" : `AUTOEXTUBACIÓN, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "REINTUBACION": {

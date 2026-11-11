@@ -4,6 +4,7 @@ import type {
   CampoVent,
   DispositivoPosterior,
   MotivoCambioVia,
+  MotivoExtubacionSinPve,
   EstadoVigilia,
   IdInfusion,
   Modalidad,
@@ -459,6 +460,14 @@ export const DESTINOS_IMAGEN: readonly string[] = ["Scanner", "Resonancia", "Otr
 /** Corte institucional de flujo pico de tos para exito de extubacion (L/min). */
 export const PCF_CORTE_EXITO = 55;
 export const PCF_CORTE_OPTIMO = 60;
+
+/** Por que una extubacion fue fuera de protocolo (sin PVE). */
+export const ETIQUETA_MOTIVO_SIN_PVE: Readonly<Record<MotivoExtubacionSinPve, string>> = {
+  MENOS_24H_VM: "menos de 24 h de VM",
+  AET: "adecuación del esfuerzo terapéutico",
+  VENTILACION_DOMICILIARIA: "ventilación mecánica domiciliaria",
+  OTRO: "otro motivo"
+};
 
 /** Motivos de un recambio de tubo o de canula. */
 export const ETIQUETA_MOTIVO_CAMBIO: Readonly<Record<MotivoCambioVia, string>> = {

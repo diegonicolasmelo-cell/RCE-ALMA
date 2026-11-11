@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import { OBJETIVOS_VT_ML_KG, calcularPbw, nombreCama, volumenObjetivoMl } from "@core/index";
 import type { Episodio, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -83,27 +84,34 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
 
   const pi = textoPesoIdeal(t, sexo);
   return (
-    <form className="card stack" style={{ padding: 12, gap: 10 }} aria-label={`Ingreso ${nombreCama(cama)}`} onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
-      <b>Ingreso · {nombreCama(cama)}</b>
-      <p className="small muted" style={{ margin: 0 }}>Nombre, RUT y edad se ingresan en el PC de la estación. Aquí se registra la vía aérea con que llega y el sexo y la talla para el peso ideal.</p>
-      <div className="small ink2">Sexo</div>
-      <Seg ancho etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
-      <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
-      <div className="notice acc small" aria-live="polite">{pi ?? "Con sexo y talla se calcula el peso ideal y el volumen corriente por kilo."}</div>
-      <div className="small ink2">Vía aérea con que llega</div>
-      <Seg ancho etiqueta="Vía aérea" valor={via} opciones={[{ valor: "NATURAL", texto: "Natural" }, { valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={setVia} />
-      {via && via !== "NATURAL" && (
-        <div className="fgrid2">
-          <div className="f"><label htmlFor="ir-cal">Calibre {via === "TET" ? "del tubo" : "de la TQT"}</label><input id="ir-cal" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={calibre} onChange={(e) => setCalibre(e.target.value)} /></div>
-          {via === "TET" && <div className="f"><label htmlFor="ir-cm">Fijación <span className="muted">cm en la arcada</span></label><input id="ir-cm" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={cm} onChange={(e) => setCm(e.target.value)} /></div>}
+    <div className="fondo-flotante">
+      <form className="panel-flotante" role="dialog" aria-modal="true" aria-label={`Ingreso ${nombreCama(cama)}`} onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
+        <header className="pf-cabeza">
+          <b>Ingreso · {nombreCama(cama)}</b>
+          <button type="button" className="pf-cerrar" aria-label="Cerrar sin ingresar" onClick={onCancelar}><X size={20} aria-hidden /></button>
+        </header>
+        <div className="pf-cuerpo">
+          <p className="small muted" style={{ margin: 0 }}>Nombre, RUT y edad se ingresan en el PC de la estación. Aquí se registra la vía aérea con que llega y el sexo y la talla para el peso ideal.</p>
+          <div className="small ink2">Sexo</div>
+          <Seg ancho etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
+          <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
+          <div className="notice acc small" aria-live="polite">{pi ?? "Con sexo y talla se calcula el peso ideal y el volumen corriente por kilo."}</div>
+          <div className="small ink2">Vía aérea con que llega</div>
+          <Seg ancho etiqueta="Vía aérea" valor={via} opciones={[{ valor: "NATURAL", texto: "Natural" }, { valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={setVia} />
+          {via && via !== "NATURAL" && (
+            <div className="fgrid2">
+              <div className="f"><label htmlFor="ir-cal">Calibre {via === "TET" ? "del tubo" : "de la TQT"}</label><input id="ir-cal" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={calibre} onChange={(e) => setCalibre(e.target.value)} /></div>
+              {via === "TET" && <div className="f"><label htmlFor="ir-cm">Fijación <span className="muted">cm en la arcada</span></label><input id="ir-cm" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={cm} onChange={(e) => setCm(e.target.value)} /></div>}
+            </div>
+          )}
+          {via === "NATURAL" && <p className="small muted" style={{ margin: 0 }}>Con vía aérea natural se ofrecen oxigenoterapia y VNI.</p>}
+          {error && <div className="notice crit small" role="alert">{error}</div>}
         </div>
-      )}
-      {via === "NATURAL" && <p className="small muted" style={{ margin: 0 }}>Con vía aérea natural se ofrecen oxigenoterapia y VNI.</p>}
-      {error && <div className="notice crit small" role="alert">{error}</div>}
-      <div className="row">
-        <button type="submit" className="btn primary" style={{ flex: 1 }}>Registrar ingreso</button>
-        <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>
-      </div>
-    </form>
+        <div className="pie-inf">
+          <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">Registrar ingreso</button>
+        </div>
+      </form>
+    </div>
   );
 }

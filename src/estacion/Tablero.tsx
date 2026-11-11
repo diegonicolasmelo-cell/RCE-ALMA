@@ -66,8 +66,12 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
       </div>
 
       {ingresando !== null && (
-        <div style={{ marginBottom: 16 }}>
-          <IngresoPaciente key={ingresando} camaInicial={ingresando} camasOcupadas={ocupadas} onListo={() => setIngresando(null)} />
+        <div className="fondo-flotante centrado">
+          <div className="panel-flotante" role="dialog" aria-modal="true" aria-label="Ingresar paciente">
+            <div className="pf-cuerpo">
+              <IngresoPaciente key={ingresando} camaInicial={ingresando} camasOcupadas={ocupadas} onListo={() => setIngresando(null)} />
+            </div>
+          </div>
         </div>
       )}
 

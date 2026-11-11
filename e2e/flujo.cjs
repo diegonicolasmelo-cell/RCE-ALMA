@@ -928,6 +928,8 @@ async function esperarServidor() {
       assert.equal(await cel.locator("article.cama-sin").count(), 1, "una cama libre, en su lugar de la lista");
       assert.match(await cel.textContent('article.cama-sin'), /UCI-18[\s\S]*Sin ingreso/);
       await cel.click('button[aria-label="Ingresar Cama 18"]');
+      assert.equal(await cel.locator('.fondo-flotante form[role=dialog][aria-label="Ingreso Cama 18"]').count(), 1, "el ingreso abre en una ventana flotante");
+      assert.equal(await cel.locator('article.cama-sin form').count(), 0, "el ingreso no se abre dentro de la lista de camas");
       await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
       assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /sexo/);
       await cel.locator('[aria-label="Sexo"] button:text-is("Mujer")').click();

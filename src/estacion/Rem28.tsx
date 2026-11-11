@@ -107,14 +107,16 @@ export function Rem28({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
       <h3 style={{ margin: 0 }}>B.6 y REM BS</h3>
       <table className="sab sab-plana" aria-label="B.6 y BS">
         <tbody>
+          <tr><td style={{ textAlign: "left" }}>B.6 Ejercicios terapéuticos (sesiones motoras)</td><td className="v"><b>{r.ejerciciosTerapeuticos}</b></td></tr>
           <tr><td style={{ textAlign: "left" }}>B.6 Terapia respiratoria y funcional pulmonar</td><td className="v"><b>{r.terapiaRespiratoria}</b></td></tr>
           <tr><td style={{ textAlign: "left" }}>0601101 Evaluación kinesiológica integral</td><td className="v"><b>{r.bs.evaluacionIntegral}</b></td></tr>
           <tr><td style={{ textAlign: "left" }}>0601104 Atención kinesiológica integral UPC</td><td className="v"><b>{r.bs.atencionIntegralUpc}</b></td></tr>
           <tr><td style={{ textAlign: "left" }}>0601024 Reeducación motriz</td><td className="v"><b>{r.bs.reeducacionMotriz}</b></td></tr>
-          <tr><td style={{ textAlign: "left" }}>0601171 Asistencia en IOT o cambio de cánula de TQT</td><td className="v"><b>{r.bs.asistenciaIotCanula}</b></td></tr>
+          <tr><td style={{ textAlign: "left" }}>0601030 Maniobras de permeabilización de la vía aérea</td><td className="v"><b>{r.bs.permeabilizacionViaAerea}</b></td></tr>
+          <tr><td style={{ textAlign: "left" }}>0601171 Asistencia en IOT, VMNI o cambio de cánula de TQT</td><td className="v"><b>{r.bs.asistenciaIotCanula}</b></td></tr>
         </tbody>
       </table>
-      <p className="small muted" style={{ margin: 0 }}>Quedan a mano: ejercicios terapéuticos (B.6), permeabilización de vía aérea (0601030), reeducación de la tos (0102501), asistencia en VMNI y el desglose MAI/MLE de beneficiarios.</p>
+      <p className="small muted" style={{ margin: 0 }}>BS cuenta personas (una atención por persona en el mes). Conexiones a VMNI del mes: {r.conexionesVmni}. Queda a mano el desglose MAI/MLE de beneficiarios; la reeducación de la tos (0102501) no aplica.</p>
     </section>
   );
 }

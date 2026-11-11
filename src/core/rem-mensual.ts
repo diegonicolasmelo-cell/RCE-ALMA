@@ -6,10 +6,12 @@
  *   B.2 evaluacion inicial: una por ingreso del mes.
  *   B.3 evaluacion intermedia: cualquier reevaluacion (una escala que ya se habia medido en el episodio).
  *   B.4 sesiones: solo las motoras (controles con terapia fisica realizada).
+ *   B.6 ejercicios terapeuticos = sesiones motoras; terapia respiratoria = controles.
+ *   Asistencia en VMNI: cada conexion de un paciente a la VMNI.
  *   BS: una atencion por persona en el mes.
  */
 
-import { CATEGORIAS_REM, MOTIVOS_EGRESO, RANGOS_EDAD } from "./catalogos";
+import { CATEGORIAS_REM, GRUPO_MODALIDAD, MOTIVOS_EGRESO, RANGOS_EDAD } from "./catalogos";
 import type { CategoriaRem, MotivoEgreso, RangoEdad } from "./catalogos";
 import type { Control, Episodio, EventoClinico } from "./tipos";
 
@@ -55,6 +57,10 @@ export interface RemMensual {
   readonly sesionesMotoras: FilaRango;
   /** B.6 Terapia respiratoria y funcional pulmonar: controles del mes. */
   readonly terapiaRespiratoria: number;
+  /** B.6 Ejercicios terapeuticos: sesiones motoras del mes. */
+  readonly ejerciciosTerapeuticos: number;
+  /** Conexiones de pacientes a la VMNI en el mes (cada paso de otro soporte a VNI). */
+  readonly conexionesVmni: number;
   readonly bs: {
     /** 0601101 Evaluacion kinesiologica integral: ingresos del mes. */
     readonly evaluacionIntegral: number;
@@ -62,7 +68,9 @@ export interface RemMensual {
     readonly atencionIntegralUpc: number;
     /** 0601024 Reeducacion motriz: personas con al menos una sesion motora. */
     readonly reeducacionMotriz: number;
-    /** 0601171 Asistencia en IOT o cambio de canula de TQT: personas con ese evento en el mes. */
+    /** 0601030 Maniobras de permeabilizacion de la via aerea: personas con al menos una sesion respiratoria. */
+    readonly permeabilizacionViaAerea: number;
+    /** 0601171 Asistencia en IOT, VMNI o cambio de canula de TQT: personas con eso en el mes. */
     readonly asistenciaIotCanula: number;
   };
 }
@@ -113,6 +121,8 @@ export function consolidarRemMensual(
   let atendidas = 0;
   let conMotora = 0;
   let conAsistencia = 0;
+  let conRespiratoria = 0;
+  let conexionesVmni = 0;
 
   for (const ep of episodios) {
     if (ep.ingresadoEn && mesDe(ep.ingresadoEn) === mes) {
@@ -130,7 +140,16 @@ export function consolidarRemMensual(
       }
     }
 
-    const cs = (controles.get(ep.id) ?? []).filter((c) => mesDe(c.registradoEn) === mes);
+    const todosCs = [...(controles.get(ep.id) ?? [])].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
+    const cs = todosCs.filter((c) => mesDe(c.registradoEn) === mes);
+    if (cs.length > 0) conRespiratoria++;
+    let vmniDelMes = 0;
+    todosCs.forEach((c, i) => {
+      const enVni = GRUPO_MODALIDAD[c.ventilacion.modalidad] === "VNI";
+      const veniaEnVni = i > 0 && GRUPO_MODALIDAD[todosCs[i - 1]!.ventilacion.modalidad] === "VNI";
+      if (enVni && !veniaEnVni && mesDe(c.registradoEn) === mes) vmniDelMes++;
+    });
+    conexionesVmni += vmniDelMes;
     const nMotoras = cs.filter((c) => c.terapiaFisica.estado === "REALIZADA").length;
     terapiaRespiratoria += cs.length;
     if (nMotoras > 0) {
@@ -141,7 +160,7 @@ export function consolidarRemMensual(
     const evs = eventos.get(ep.id) ?? [];
     const delMes = evs.filter((e) => mesDe(e.registradoEn) === mes);
     if (cs.length > 0 || delMes.length > 0) atendidas++;
-    if (delMes.some((e) => EVENTOS_ASISTENCIA_IOT.includes(e.tipo))) conAsistencia++;
+    if (vmniDelMes > 0 || delMes.some((e) => EVENTOS_ASISTENCIA_IOT.includes(e.tipo))) conAsistencia++;
 
     // Reevaluacion: una escala que ya se habia medido antes en el mismo episodio.
     const vistas = new Set<string>();
@@ -164,7 +183,15 @@ export function consolidarRemMensual(
     evaluacionIntermedia: intermedia,
     sesionesMotoras: motoras,
     terapiaRespiratoria,
-    bs: { evaluacionIntegral: ingresos.total, atencionIntegralUpc: atendidas, reeducacionMotriz: conMotora, asistenciaIotCanula: conAsistencia }
+    ejerciciosTerapeuticos: motoras.total,
+    conexionesVmni,
+    bs: {
+      evaluacionIntegral: ingresos.total,
+      atencionIntegralUpc: atendidas,
+      reeducacionMotriz: conMotora,
+      permeabilizacionViaAerea: conRespiratoria,
+      asistenciaIotCanula: conAsistencia
+    }
   };
 }
 
@@ -196,13 +223,17 @@ export function remMensualCsv(r: RemMensual): string {
     ["B.4 Sesiones de rehabilitación · Kinesiólogo/a", ...soloRango(r.sesionesMotoras)],
     [],
     ["SECCIÓN B.6: PROCEDIMIENTOS Y ACTIVIDADES"],
+    ["Ejercicios terapéuticos", r.ejerciciosTerapeuticos],
     ["Terapia respiratoria y funcional pulmonar", r.terapiaRespiratoria],
     [],
     ["REM BS · Atención cerrada (personas)"],
     ["0601101 Evaluación Kinesiológica Integral", r.bs.evaluacionIntegral],
     ["0601104 Atención Kinesiológica Integral UPC", r.bs.atencionIntegralUpc],
     ["0601024 Reeducación motriz", r.bs.reeducacionMotriz],
-    ["0601171 Asistencia en IOT, VMNI, cambio de cánula de TQT", r.bs.asistenciaIotCanula]
+    ["0601030 Maniobras permeabilización de la vía aérea", r.bs.permeabilizacionViaAerea],
+    ["0601171 Asistencia en IOT, VMNI, cambio de cánula de TQT", r.bs.asistenciaIotCanula],
+    [],
+    ["Detalle (no va al REM): conexiones a VMNI en el mes", r.conexionesVmni]
   ];
   const celda = (v: string | number): string => (typeof v === "number" ? String(v) : /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   return filas.map((f) => f.map(celda).join(";")).join("\r\n");

@@ -108,6 +108,10 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
         </header>
         <div className="pf-cuerpo">
           <p className="small muted" style={{ margin: 0 }}>Nombre, RUT y edad se ingresan en el PC de la estación. Aquí se registra la vía aérea con que llega y el sexo y la talla para el peso ideal.</p>
+          <div className="small ink2">Equipos de la sala</div>
+          <p className="small muted" style={{ margin: 0 }}>El ventilador vive en la cama: regístralo siempre, esté en uso o no.{equipos?.length ? " Viene lo que quedó en esta sala." : ""}</p>
+          {/* Sin via elegida se ofrece todo; al elegirla, la lista se ajusta sola. */}
+          <EditorEquipos idBase="ir-eq" lista={equipos ?? []} via={via ?? "TQT"} onCambio={setEquipos} />
           <div className="small ink2">Sexo</div>
           <Seg ancho etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
           <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
@@ -121,13 +125,6 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
             </div>
           )}
           {via === "NATURAL" && <p className="small muted" style={{ margin: 0 }}>Con vía aérea natural se ofrecen oxigenoterapia y VNI.</p>}
-          {via && (
-            <>
-              <div className="small ink2">Equipos de la sala</div>
-              <p className="small muted" style={{ margin: 0 }}>El ventilador vive en la cama: regístralo siempre, esté en uso o no.{equipos?.length ? " Viene lo que quedó en esta sala." : ""}</p>
-              <EditorEquipos idBase="ir-eq" lista={equipos ?? []} via={via} onCambio={setEquipos} />
-            </>
-          )}
           {error && <div className="notice crit small" role="alert">{error}</div>}
         </div>
         <div className="pie-inf">

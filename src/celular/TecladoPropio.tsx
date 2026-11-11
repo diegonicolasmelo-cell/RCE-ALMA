@@ -30,7 +30,8 @@ export const casillaNumerica = (decimal = true): { inputMode: "none" | "decimal"
 });
 
 /** La caja que se desplaza alrededor de una casilla: la hoja, o el cuerpo de la pantalla. */
-const cajaDe = (el: HTMLElement | null): HTMLElement | null => el?.closest<HTMLElement>("#cuerpo, .cel-cuerpo") ?? document.getElementById("cuerpo");
+// Dentro de una ventana flotante se desplaza la ventana, no la pagina que queda detras.
+const cajaDe = (el: HTMLElement | null): HTMLElement | null => el?.closest<HTMLElement>(".pf-cuerpo, #cuerpo, .cel-cuerpo") ?? document.getElementById("cuerpo");
 
 /** Cambia el valor de una casilla de React como si se hubiera tecleado (dispara onChange). */
 function escribir(el: HTMLInputElement, valor: string): void {

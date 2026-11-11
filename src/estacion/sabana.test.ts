@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnasSabana, filasSabana, otrosEventos } from "./sabana";
+import { columnasSabana, dvaCorta, filasSabana, otrosEventos, sedacionCorta } from "./sabana";
 import { unControl, unEvento, unaVentilacion } from "@core/fixtures";
 
 const SIN_MONITOREO = { capnografia: false, pic: false, dve: false };
@@ -102,5 +102,17 @@ describe("columnas por control y eventos aparte", () => {
   });
   it("filtros, cultivos y demás van en la lista aparte, del más nuevo al más antiguo", () => {
     expect(otrosEventos(eventos, "24H", ahora).map((e) => e.tipo)).toEqual(["CAMBIO_HMEF", "TOMA_CULTIVO"]);
+  });
+});
+
+describe("sedación y DVA en la sábana, cortas", () => {
+  it("sedación: solo el escalón de cada droga", () => {
+    expect(sedacionCorta(unControl({ infusiones: { fentanilo: { dosis: 1.2, escalon: 2 } } }))).toBe("Fentanilo esc. 2");
+    expect(sedacionCorta(unControl({ infusiones: {} }))).toBe("—");
+  });
+  it("DVA: solo el número, sin la unidad", () => {
+    const c = unControl({ infusiones: { noradrenalina: { dosis: 0.08, escalon: null } } });
+    expect(dvaCorta(c)).toBe("Noradrenalina 0.08");
+    expect(dvaCorta(unControl({ infusiones: {} }))).toBe("—");
   });
 });

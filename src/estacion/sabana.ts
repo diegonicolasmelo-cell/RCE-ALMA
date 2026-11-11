@@ -9,8 +9,9 @@ import {
   ETIQUETA_MODALIDAD,
   calcularDerivados,
   calcularGlasgow,
-  describirCardiovasculares,
   describirInfusiones,
+  infusionesActivas,
+  textoEscalon,
   esModalidadControlada,
   esReintubacion,
   mecanicaBloqueadaPorAsincronia,
@@ -35,6 +36,21 @@ export interface FilaSabana {
 
 const n = (v: number | string | null | undefined, vacio = "--"): string => (v === null || v === undefined ? vacio : String(v));
 const t = (texto: string): Celda => ({ texto });
+
+/** Sedacion en la sabana: solo el escalon de cada droga («Fentanilo esc. 2»); sin escalera, el numero. */
+export function sedacionCorta(c: Control): string {
+  const l = infusionesActivas(c.infusiones, "SEDANTE").map((a) => {
+    const esc = a.escalon !== null ? `esc. ${a.escalon}` : textoEscalon(a.id, a.dosis).replace(/escalón/g, "esc.");
+    return esc ? `${a.nombre} ${esc}` : `${a.nombre} ${a.dosis ?? ""}`.trim();
+  });
+  return l.length > 0 ? l.join(" · ") : "—";
+}
+
+/** DVA e inotropicos en la sabana: solo el numero de la dosis, sin la unidad («Noradrenalina 0.08»). */
+export function dvaCorta(c: Control): string {
+  const l = [...infusionesActivas(c.infusiones, "DVA"), ...infusionesActivas(c.infusiones, "INOTROPO")].map((a) => `${a.nombre} ${a.dosis ?? ""}`.trim());
+  return l.length > 0 ? l.join(" · ") : "—";
+}
 
 export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly FilaSabana[] {
   const d = (c: Control) => calcularDerivados(c, pbw);
@@ -66,8 +82,8 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     { grupo: M, etiqueta: "SpO₂", celda: (c) => t(n(c.spo2)) },
     { grupo: M, etiqueta: "Glasgow", celda: glasgowDe },
     { grupo: M, etiqueta: "SAS / vigilia", celda: (c) => t(sedoanalgesiaActiva(c.infusiones) ? `SAS ${n(c.sas)}` : c.vigilia ? c.vigilia.toLowerCase().replace("_", " ") : "--") },
-    { grupo: M, etiqueta: "Sedación", celda: (c) => t(describirInfusiones(c.infusiones, "SEDANTE") || "—") },
-    { grupo: M, etiqueta: "DVA / inotrópicos", celda: (c) => t(describirCardiovasculares(c.infusiones).replace("sin requerimiento de DVA ni inotrópicos", "—")) },
+    { grupo: M, etiqueta: "Sedación", celda: (c) => t(sedacionCorta(c)) },
+    { grupo: M, etiqueta: "DVA / inotrópicos", celda: (c) => t(dvaCorta(c)) },
     { grupo: M, etiqueta: "Bloqueo neuromuscular", celda: (c) => t(describirInfusiones(c.infusiones, "BNM") || "—") }
   );
   if (monitoreo.capnografia) filas.push({ grupo: M, etiqueta: "EtCO₂", celda: (c) => t(n(c.neuro?.etco2)) });

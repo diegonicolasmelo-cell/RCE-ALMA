@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { OBJETIVOS_VT_ML_KG, calcularPbw, equiposDeLaCama, equiposParaVia, nombreCama, problemaEquipos, volumenObjetivoMl } from "@core/index";
 import type { EquipoEnSala, Episodio, Sexo, ViaAerea } from "@core/index";
@@ -49,6 +49,12 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
     });
     return () => { vivo = false; };
   }, [db, cama]);
+  // Se abre listo para escribir: con el foco en la talla aparece el teclado propio.
+  const tallaRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const t = setTimeout(() => tallaRef.current?.focus({ preventScroll: true }), 250);
+    return () => clearTimeout(t);
+  }, []);
   const elegirVia = (v: ViaAerea): void => {
     setVia(v);
     setEquipos((l) => equiposParaVia(l ?? [], v));
@@ -111,7 +117,7 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
           <EditorEquipos idBase="ir-eq" lista={equipos ?? []} via={via ?? "TQT"} onCambio={setEquipos} />
           <div className="small ink2">Sexo</div>
           <Seg ancho etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
-          <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
+          <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" ref={tallaRef} {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
           <div className="notice acc small" aria-live="polite">{pi ?? "Con sexo y talla se calcula el peso ideal y el volumen corriente por kilo."}</div>
           <div className="small ink2">Vía aérea con que llega</div>
           <Seg ancho etiqueta="Vía aérea" valor={via} opciones={[{ valor: "NATURAL", texto: "Natural" }, { valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={elegirVia} />

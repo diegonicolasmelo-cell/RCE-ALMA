@@ -117,14 +117,18 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
   return (
     <form className="card stack" style={{ gap: 10 }} onSubmit={(ev) => { ev.preventDefault(); void guardar(); }}>
       <h2 style={{ margin: 0 }}>Ingresar paciente</h2>
+      <div className="f" style={{ maxWidth: 280 }}>
+        <label htmlFor="in-cama">Cama</label>
+        <select id="in-cama" value={cama} onChange={(e) => setCama(e.target.value)}>
+          <option value="">Elige…</option>
+          {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
+        </select>
+      </div>
+      <div className="f">
+        <span className="small ink2">Equipos de la sala · el ventilador vive en la cama: regístralo siempre, esté en uso o no</span>
+        <EditorEquipos idBase="in-eq" lista={equipos} via={via} onCambio={setEquipos} />
+      </div>
       <div className="fgrid">
-        <div className="f">
-          <label htmlFor="in-cama">Cama</label>
-          <select id="in-cama" value={cama} onChange={(e) => setCama(e.target.value)}>
-            <option value="">Elige…</option>
-            {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
-          </select>
-        </div>
         <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(ev) => setEdad(ev.target.value)} /></div>
         <div className="f"><label htmlFor="in-talla">Talla (cm)</label><input id="in-talla" inputMode="numeric" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       </div>
@@ -132,10 +136,6 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
         <Seg etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
         <Seg etiqueta="Origen de la talla" valor={origen} opciones={[{ valor: "ESTIMADA", texto: "Estimada" }, { valor: "MEDIDA", texto: "Medida" }]} onCambio={setOrigen} />
         <Seg etiqueta="Vía aérea de ingreso" valor={via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }, { valor: "NATURAL", texto: "Natural" }]} onCambio={elegirVia} />
-      </div>
-      <div className="f">
-        <span className="small ink2">Equipos de la sala · el ventilador vive en la cama: regístralo siempre, esté en uso o no</span>
-        <EditorEquipos idBase="in-eq" lista={equipos} via={via} onCambio={setEquipos} />
       </div>
       <div className="f"><label htmlFor="in-nombre">Nombre (solo en la estación)</label><input id="in-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
       <div className="f"><label htmlFor="in-rut">RUT (para abrir Sinapse)</label><input id="in-rut" value={rut} onChange={(e) => setRut(e.target.value)} onBlur={() => normalizarRut(rut) && setRut(formatearRut(rut))} style={{ textAlign: "left" }} /></div>

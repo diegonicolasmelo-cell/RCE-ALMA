@@ -1,12 +1,26 @@
-/** Ícono de Kapta: un visor de captura con la línea de pulso adentro. */
-export function Logo({ tam = 40 }: { readonly tam?: number }) {
-  return (
-    <svg width={tam} height={tam} viewBox="0 0 52 52" aria-hidden="true" style={{ flex: "none" }}>
-      <rect width="52" height="52" rx="12" fill="#0f8c86" />
-      <g fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" transform="translate(6.5 6.5) scale(.75)">
-        <path d="M6 16V9a3 3 0 0 1 3-3h7M36 6h7a3 3 0 0 1 3 3v7M46 36v7a3 3 0 0 1-3 3h-7M16 46H9a3 3 0 0 1-3-3v-7" strokeWidth="3" opacity=".85" />
-        <path d="M10 27h8l4-11 6 20 4-9h10" strokeWidth="5" />
-      </g>
-    </svg>
-  );
+import { useEffect } from "react";
+import iconoCsv from "./iconos/kapta-csv.png?inline";
+import iconoEstacion from "./iconos/kapta-estacion.png?inline";
+
+/** Verde = Kapta CSV (celular, control de signos vitales). Azul = Kapta Estación (computador). */
+export type VarianteLogo = "csv" | "estacion";
+
+const ICONO: Record<VarianteLogo, string> = { csv: iconoCsv, estacion: iconoEstacion };
+
+export function Logo({ tam = 40, variante = "csv" }: { readonly tam?: number; readonly variante?: VarianteLogo }) {
+  return <img src={ICONO[variante]} width={tam} height={tam} alt="" aria-hidden="true" style={{ flex: "none", display: "block" }} />;
+}
+
+/** La pestaña del navegador lleva el ícono de la parte que está abierta. */
+export function useFavicon(variante: VarianteLogo): void {
+  useEffect(() => {
+    let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.type = "image/png";
+    link.href = ICONO[variante];
+  }, [variante]);
 }

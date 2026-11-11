@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       // La app se actualiza sola; los borradores sobreviven a la recarga (ver src/app/persistencia.ts).
       registerType: "autoUpdate",
-      includeAssets: ["pwa-192.png", "pwa-512.png", "pwa-maskable-512.png", "apple-touch-icon.png", "kapta.svg"],
+      includeAssets: ["pwa-192.png", "pwa-512.png", "pwa-maskable-512.png", "apple-touch-icon.png"],
       manifest: {
         name: "Kapta CSV · Control de signos vitales",
         short_name: "Kapta CSV",

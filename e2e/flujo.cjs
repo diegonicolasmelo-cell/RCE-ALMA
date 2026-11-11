@@ -1033,6 +1033,45 @@ async function esperarServidor() {
       await c.close();
     });
 
+    await prueba("cambiar un paciente de cama: solo a camas libres, y todo lo suyo lo sigue", async () => {
+      // Se libera la 16 desde el PC (una cama libre es el unico destino posible).
+      await pc.click('[role=tab]:has-text("Tablero")');
+      await pc.click('.cama:has-text("UCI-16")');
+      await pc.click('button:text-is("Dar de alta")');
+      await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
+      await pc.waitForTimeout(600);
+      await cel.goto(URL + "#celular");
+      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      await cel.waitForSelector('article[aria-label="Cama UCI-04"]');
+      await cel.click('article[aria-label="Cama UCI-04"] button:has-text("Eventos")');
+      await cel.waitForSelector('[aria-label="Línea de tiempo"]');
+      const antes = await cel.textContent(".banda .l1");
+      await cel.click('.evgrid button:text-is("Cambiar de cama")');
+      const opciones = await cel.locator("#evf-cama option").allTextContents();
+      assert.ok(opciones.includes("Cama 16"), opciones.join(" | "));
+      assert.ok(!opciones.includes("Cama 3"), "una cama ocupada no se ofrece: " + opciones.join(" | "));
+      await cel.selectOption("#evf-cama", "UCI-16");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Eventos · Cama 16")');
+      assert.match(await aviso(), /aseo terminal/);
+      assert.equal(await cel.textContent(".banda .l1"), antes, "la vía, el tubo y los días de VM no cambian");
+      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
+      assert.match(linea[0] ?? "", /Traslado de cama: UCI-04 → UCI-16/, linea.join(" | "));
+      // La cama que deja queda libre, y el PC muestra al paciente en la nueva.
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.waitForSelector("article.cama-sin");
+      assert.equal(await cel.locator('article.cama-sin:has-text("UCI-04")').count(), 1, "la cama que deja queda libre");
+      await pc.waitForTimeout(900);
+      await pc.click('.cama:has-text("UCI-16")');
+      assert.match(await pc.textContent(".detail-head"), /UCI-16 · Paciente Prueba Cuatro/);
+      // Y desde el PC vuelve a su cama.
+      await pc.click('button:has-text("Cambiar de cama")');
+      await pc.selectOption("#tc-cama", "UCI-04");
+      await pc.click('button:text-is("Trasladar")');
+      await pc.waitForTimeout(700);
+      assert.match(await pc.textContent(".detail-head"), /UCI-04 · Paciente Prueba Cuatro/);
+    });
+
     await prueba("sin errores en la consola durante todo el recorrido", async () => {
       assert.deepEqual(errores, []);
     });

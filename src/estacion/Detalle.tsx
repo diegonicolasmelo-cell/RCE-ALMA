@@ -26,6 +26,7 @@ import { PanelCircuitoYEvaluaciones, PanelPve } from "./PanelPve";
 import { CompletarIdentidad } from "./CompletarIdentidad";
 import { FechaIngreso } from "./FechaIngreso";
 import { SabanaVista } from "./SabanaVista";
+import { TrasladoCama } from "./TrasladoCama";
 import { VENTANA_ALERTA_MS, copiarTexto, nombreProfesional } from "./util";
 
 interface Props {
@@ -140,6 +141,8 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
 
       <PanelPve eventos={eventos} ahora={ahora} />
       <PanelCircuitoYEvaluaciones eventos={eventos} ahora={ahora} />
+
+      <TrasladoCama ep={ep} />
 
       <section>
         <h3>Alta</h3>

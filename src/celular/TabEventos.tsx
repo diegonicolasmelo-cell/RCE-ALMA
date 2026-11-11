@@ -11,12 +11,15 @@ import {
   ETIQUETA_MODALIDAD,
   ETIQUETA_MOTIVO_CAMBIO,
   ETIQUETA_MOTIVO_SIN_PVE,
+  CAMAS_UNIDAD,
+  nombreCama,
   botonExtubacion,
   motivoSinPve
 } from "@core/index";
 import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
+import { useConsulta } from "../app/hooks";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
@@ -77,6 +80,9 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   const irA = useApp((s) => s.irA);
   // PVE: el mismo acceso que en la tarjeta de la cama (solo TET con el ultimo control en CPAP+PS).
   const ultimoPve = ctx.ultimo ? { modalidad: ctx.ultimo.ventilacion.modalidad, registradoEn: ctx.ultimo.registradoEn } : null;
+  // Camas libres: el traslado solo va a una de ellas (la que se deja necesita aseo terminal).
+  const activas = useConsulta(() => repo.episodiosActivos(), [repo], null);
+  const libres = CAMAS_UNIDAD.filter((c) => !(activas ?? []).some((e) => e.cama === c));
   const boton = botonExtubacion(ep, ultimoPve, eventos, ctx.controles[0]?.registradoEn ?? null, ahora);
   const pve = boton?.tipo === "PVE" ? boton.acceso : null;
   // Si ya se retiro la via aerea en este episodio, la proxima intubacion es REintubacion.
@@ -117,6 +123,17 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
           crear: (v, b) => ({ ...b, tipo: "DECANULACION", dispositivo: (v["disp"] ?? "CNAF") as Exclude<DispositivoPosterior, "REINTUBACION_INMEDIATA">, accidental: v["acc"] === "si" })
         },
         { k: "autoext", texto: "Autoextubación", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) }
+      ]
+    },
+    {
+      titulo: "Cama",
+      items: [
+        {
+          k: "traslado", texto: "Cambiar de cama",
+          ...(libres.length === 0 ? { deshabilitado: true, ayuda: "No hay camas libres." } : {}),
+          campos: [{ id: "cama", etiqueta: "Cama nueva · solo las libres", opciones: libres.map((c) => ({ valor: c, texto: nombreCama(c) })) }],
+          crear: (v, b) => ({ ...b, tipo: "TRASLADO_CAMA", desde: ep.cama, hasta: v["cama"] ?? ep.cama })
+        }
       ]
     },
     {
@@ -176,6 +193,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       const sexo = v["sexo"] === "F" ? "F" : "M";
       if (t !== ep.tallaCm || sexo !== ep.sexo) await repo.guardarEpisodio({ ...ep, tallaCm: t, sexo });
     }
+    if (it.k === "traslado") {
+      const destino = v["cama"] ?? "";
+      if (!libres.includes(destino)) return avisar("Elige una cama libre.");
+    }
     const ahoraReal = new Date();
     const comentario = it.comentarioDe ? (v[it.comentarioDe] ?? "") : "";
     const ev = it.crear(v, baseEvento(ep, rutAutor, ahoraReal, comentario));
@@ -190,6 +211,13 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         setValores(Object.fromEntries(reint.campos.map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
       }
       avisar("Autoextubación registrada. Ahora registra la reintubación: el tubo, los cm y la hora.");
+      return;
+    }
+    if (it.k === "traslado") {
+      // La cama nueva pasa a ser mía si la anterior lo era: el paciente sigue en mi lista.
+      const mias = useApp.getState().misCamas;
+      if (mias?.includes(ep.cama)) useApp.getState().setMisCamas([...mias.filter((c) => c !== ep.cama), v["cama"] ?? ""].sort());
+      avisar(`Paciente trasladado a ${nombreCama(v["cama"] ?? "")}. ${nombreCama(ep.cama)} queda libre: recuerda el aseo terminal antes de ocuparla.`);
       return;
     }
     if (CAMBIAN_VIA.includes(it.k) && onCambioVia) {

@@ -508,7 +508,12 @@ export type EventoClinico =
       readonly realizadaEn: string;
     })
   /** Cambio en los equipos de la sala (rastreo de la ubicacion de ventiladores). */
-  | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[] });
+  | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[] })
+  /**
+   * El paciente cambia de cama. Solo a una cama libre: la que deja necesita aseo terminal.
+   * Todo lo demas (dias de VM, PVE, filtros, identidad cifrada) sigue al episodio.
+   */
+  | (EventoBase & { readonly tipo: "TRASLADO_CAMA"; readonly desde: string; readonly hasta: string });
 
 export type TipoEvento = EventoClinico["tipo"];
 

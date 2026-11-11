@@ -79,6 +79,7 @@ export function viaAereaVigente(
       case "CAMBIO_HMEF":
       case "CAMBIO_FILTRO":
       case "EVALUACION_PUNTUAL":
+      case "TRASLADO_CAMA":
       case "CAMBIO_EQUIPOS":
       case "DESVINCULACION":
       case "RECONEXION":
@@ -285,6 +286,8 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
       return { ...ep, fijacionCm: ev.fijacionCm };
     case "CAMBIO_EQUIPOS":
       return { ...ep, equipos: ev.equipos };
+    case "TRASLADO_CAMA":
+      return { ...ep, cama: ev.hasta };
     default:
       return ep;
   }

@@ -250,6 +250,8 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
     case "CAMBIO_EQUIPOS":
       return `Cambio de equipos: ${describirEquipos(ev.equipos)}`;
+    case "TRASLADO_CAMA":
+      return `Traslado de cama: ${ev.desde} → ${ev.hasta}`;
     case "PVE_SIN_EXTUBAR":
       return `PVE superada sin extubar${ev.motivo ? `: ${ev.motivo}` : ""}`;
     case "DESVINCULACION":

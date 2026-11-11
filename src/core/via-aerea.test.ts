@@ -75,3 +75,20 @@ describe("extubación fuera de protocolo (sin PVE)", () => {
     expect(esReintubacion(reint, [sin, reint])).toBe(true);
   });
 });
+
+describe("cambio de cama", () => {
+  const ep = unEpisodio({ cama: "UCI-03", viaAereaActual: "TET", calibreVia: "7.5", fijacionCm: "22", ingresadoEn: en(0), diasVM: 0 });
+  const traslado = ev({ tipo: "TRASLADO_CAMA", desde: "UCI-03", hasta: "UCI-07" }, 6);
+  it("cambia la cama y nada más: vía, días de VM y estadística siguen al paciente", () => {
+    const d = aplicarEventoAEpisodio(ep, traslado);
+    expect(d.cama).toBe("UCI-07");
+    expect([d.viaAereaActual, d.calibreVia, d.fijacionCm, d.ingresadoEn]).toEqual(["TET", "7.5", "22", en(0)]);
+    expect(viaAereaVigente("TET", [traslado])).toBe("TET");
+    expect(horasDeVm(ep, [traslado], null, new Date(en(10)))?.horas).toBe(10);
+    const r = resumirTurno([], [traslado], []);
+    expect([r.reintubaciones, r.extubacionesProgramadas, r.recambiosTubo]).toEqual([0, 0, 0]);
+  });
+  it("queda en la línea de tiempo con el origen y el destino", () => {
+    expect(describirEvento(traslado)).toBe("Traslado de cama: UCI-03 → UCI-07");
+  });
+});

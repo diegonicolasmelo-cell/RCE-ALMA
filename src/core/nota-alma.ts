@@ -11,14 +11,14 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub, horasDeVm } from "./pve";
 import { describirEquipos, equipoEnUso, etiquetaEquipo } from "./equipos";
 import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiologia";
 import { describirCardiovasculares, describirInfusiones, sedoanalgesiaActiva } from "./infusiones";
-import { estadoProno, eventosDeRiesgo } from "./eventos";
+import { esReintubacion, estadoProno, eventosDeRiesgo } from "./eventos";
 import { resumirTurno } from "./rem28";
 import { esModalidadControlada, mecanicaBloqueadaPorAsincronia } from "./validez";
 import type {
@@ -184,7 +184,11 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
   return p.join(", ");
 }
 
-export function describirEvento(ev: EventoClinico): string {
+/**
+ * El texto de un evento. Con `eventos` (los del episodio) la intubacion se distingue de la
+ * reintubacion; sin ellos se dice «Intubación / reintubación».
+ */
+export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClinico[]): string {
   switch (ev.tipo) {
     case "EVALUACION_PVE":
       return ev.apto ? "Checklist de PVE: cumple los 8 criterios" : "Checklist de PVE: no cumple los criterios, PVE no iniciada";
@@ -202,8 +206,16 @@ export function describirEvento(ev: EventoClinico): string {
       return `Extubación programada, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "AUTOEXTUBACION":
       return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN con reintubación inmediata" : `AUTOEXTUBACIÓN, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
-    case "REINTUBACION":
-      return `Reintubación ${ev.via} calibre ${ev.calibre}, fijación ${ev.fijacionCm} cm`;
+    case "REINTUBACION": {
+      const que = !eventos ? "Intubación / reintubación" : esReintubacion(ev, eventos) ? "Reintubación" : "Intubación";
+      return `${que} ${ev.via} calibre ${ev.calibre}${ev.via === "TET" && ev.fijacionCm ? `, fijación ${ev.fijacionCm} cm` : ""}`;
+    }
+    case "CAMBIO_TUBO":
+      return `Cambio de tubo: TET calibre ${ev.calibre}, fijación ${ev.fijacionCm} cm (${ETIQUETA_MOTIVO_CAMBIO[ev.motivo]})`;
+    case "CAMBIO_CANULA":
+      return `Cambio de cánula: TQT calibre ${ev.calibre} (${ETIQUETA_MOTIVO_CAMBIO[ev.motivo]})`;
+    case "DECANULACION":
+      return `${ev.accidental ? "DECANULACIÓN ACCIDENTAL" : "Decanulación"}, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "TRAQUEOSTOMIA":
       return `Traqueostomía calibre ${ev.calibre}`;
     case "AJUSTE_TUBO":
@@ -290,7 +302,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
 
   const cronologia = lista
     .map((c) => {
-      const evs = eventos.filter((e) => e.hora === c.hora).map(describirEvento);
+      const evs = eventos.filter((e) => e.hora === c.hora).map((e) => describirEvento(e, eventos));
       const sec = textoSecreciones(c);
       return `  · [#${c.numero} · ${c.hora} hrs${c.esControlApoyo ? " · apoyo" : ""}] ${textoTerapiaFisica(c)}${sec ? ` | ${sec}` : ""}${evs.length ? ` | Hitos: ${evs.join("; ")}` : ""}${c.observaciones ? ` ${c.observaciones}` : ""}`;
     })
@@ -299,7 +311,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
   const aparte = eventos
     .filter((e) => !lista.some((c) => c.hora === e.hora))
     // La evaluacion ya trae su nota clinica dentro de la descripcion.
-    .map((e) => `  · [${e.hora} hrs] ${describirEvento(e)}${e.comentario && e.tipo !== "EVALUACION_PUNTUAL" ? `. ${e.comentario}` : ""}`)
+    .map((e) => `  · [${e.hora} hrs] ${describirEvento(e, eventos)}${e.comentario && e.tipo !== "EVALUACION_PUNTUAL" ? `. ${e.comentario}` : ""}`)
     .join("\n");
 
   return [

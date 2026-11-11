@@ -49,6 +49,7 @@ export function viaAereaVigente(
     switch (ev.tipo) {
       case "EXTUBACION_PROGRAMADA":
       case "AUTOEXTUBACION":
+      case "DECANULACION":
         via = "NATURAL";
         break;
       case "REINTUBACION":
@@ -59,6 +60,8 @@ export function viaAereaVigente(
         break;
       // No alteran la via aerea:
       case "AJUSTE_TUBO":
+      case "CAMBIO_TUBO":
+      case "CAMBIO_CANULA":
       case "EVALUACION_PVE":
       case "CONTROL_PVE":
       case "REEVAL_POST_EXTUB":
@@ -102,6 +105,24 @@ export function viaAereaVigente(
  */
 export function contarIntubaciones(eventos: readonly EventoClinico[]): number {
   return eventos.filter((e) => e.tipo === "REINTUBACION").length;
+}
+
+/**
+ * Una intubacion es REintubacion si antes, en el mismo episodio, se retiro la via aerea
+ * (extubacion programada, autoextubacion o decanulacion). El paciente que llega con via
+ * natural y se intuba por primera vez tiene una intubacion, no una reintubacion.
+ * Un recambio de tubo o de canula nunca es reintubacion: el paciente no dejo la VM.
+ */
+export function esReintubacion(ev: EventoClinico, eventos: readonly EventoClinico[]): boolean {
+  if (ev.tipo !== "REINTUBACION") return false;
+  return eventos.some(
+    (x) => (x.tipo === "EXTUBACION_PROGRAMADA" || x.tipo === "AUTOEXTUBACION" || x.tipo === "DECANULACION") && x.registradoEn <= ev.registradoEn && x.id !== ev.id
+  );
+}
+
+/** Solo las reintubaciones (para la estadistica): las primeras intubaciones no cuentan. */
+export function contarReintubaciones(eventos: readonly EventoClinico[]): number {
+  return eventos.filter((e) => esReintubacion(e, eventos)).length;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,7 +271,12 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
   switch (ev.tipo) {
     case "EXTUBACION_PROGRAMADA":
     case "AUTOEXTUBACION":
+    case "DECANULACION":
       return { ...ep, viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null };
+    case "CAMBIO_TUBO":
+      return { ...ep, calibreVia: ev.calibre, fijacionCm: ev.fijacionCm };
+    case "CAMBIO_CANULA":
+      return { ...ep, calibreVia: ev.calibre };
     case "REINTUBACION":
       return { ...ep, viaAereaActual: ev.via, calibreVia: ev.calibre, fijacionCm: ev.fijacionCm };
     case "TRAQUEOSTOMIA":

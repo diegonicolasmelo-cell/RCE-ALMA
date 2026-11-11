@@ -45,7 +45,7 @@ import { useServicios } from "../app/contexto";
 import { horaDe, textoNum } from "../app/util";
 import type { ContextoCama } from "./contextoCama";
 import { PanelEquipos, PesoIdeal } from "./TabControl";
-import { TECLADO_PROPIO } from "./TecladoPropio";
+import { TECLADO_PROPIO, tecladoRango } from "./TecladoPropio";
 
 const GRUPOS_INF: readonly (readonly [GrupoInfusion, string])[] = [
   ["SEDANTE", "Sedoanalgesia y agitación"],
@@ -65,11 +65,12 @@ function cuando(hora: string): string {
 }
 
 /** Casilla numerica de la hoja: en el celular abre el teclado propio, no el del sistema. */
-function Num(props: { id: string; campo?: string; valor: string; etiqueta: string; onCambio: (v: string) => void; deshabilitado?: boolean; placeholder?: string }) {
+function Num(props: { id: string; campo?: string; valor: string; etiqueta: string; onCambio: (v: string) => void; deshabilitado?: boolean; placeholder?: string; teclado?: string }) {
   return (
     <input
       id={props.id}
       className="num"
+      data-teclado={props.teclado}
       data-campo={props.campo}
       inputMode={TECLADO_PROPIO ? "none" : "decimal"}
       enterKeyHint="next"
@@ -228,18 +229,18 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         </Fila>
         <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs">
           <div className="tres">
-            <label><span>O</span><Num id="in-gcs-o" campo="glasgow" etiqueta="Glasgow ocular, 1 a 4" valor={b.glasgow.ocular === null ? "" : String(b.glasgow.ocular)} onCambio={setGlasgow("ocular", 4)} /></label>
+            <label><span>O</span><Num id="in-gcs-o" campo="glasgow" etiqueta="Glasgow ocular, 1 a 4" teclado={tecladoRango(1, 4)} valor={b.glasgow.ocular === null ? "" : String(b.glasgow.ocular)} onCambio={setGlasgow("ocular", 4)} /></label>
             {artificial ? (
               <label><span>V</span><b className="calc t" aria-label="Verbal T" title="Con vía aérea artificial el verbal no se evalúa">T</b></label>
             ) : (
-              <label><span>V</span><Num id="in-gcs-v" campo="glasgow" etiqueta="Glasgow verbal, 1 a 5" valor={b.glasgow.verbal === null ? "" : String(b.glasgow.verbal)} onCambio={setGlasgow("verbal", 5)} /></label>
+              <label><span>V</span><Num id="in-gcs-v" campo="glasgow" etiqueta="Glasgow verbal, 1 a 5" teclado={tecladoRango(1, 5)} valor={b.glasgow.verbal === null ? "" : String(b.glasgow.verbal)} onCambio={setGlasgow("verbal", 5)} /></label>
             )}
-            <label><span>M</span><Num id="in-gcs-m" campo="glasgow" etiqueta="Glasgow motor, 1 a 6" valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)} onCambio={setGlasgow("motora", 6)} /></label>
+            <label><span>M</span><Num id="in-gcs-m" campo="glasgow" etiqueta="Glasgow motor, 1 a 6" teclado={tecladoRango(1, 6)} valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)} onCambio={setGlasgow("motora", 6)} /></label>
           </div>
         </Fila>
         {sedada ? (
           <Fila etiqueta="SAS" unidad="1-7" ayuda={b.sas === null ? undefined : ESCALA_SAS.find((e) => e.val === b.sas)?.label}>
-            <Num id="in-sas" campo="sas" etiqueta="SAS, 1 a 7" valor={b.sas === null ? "" : String(b.sas)} onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }} />
+            <Num id="in-sas" campo="sas" etiqueta="SAS, 1 a 7" teclado={tecladoRango(1, 7)} valor={b.sas === null ? "" : String(b.sas)} onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }} />
           </Fila>
         ) : (
           <Fila etiqueta="Vigilia" ayuda="sin sedoanalgesia en curso">

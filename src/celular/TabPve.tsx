@@ -32,7 +32,7 @@ import { useServicios } from "../app/contexto";
 import { horaDe } from "../app/util";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
-import { TECLADO_PROPIO } from "./TecladoPropio";
+import { TECLADO_PROPIO, tecladoRango } from "./TecladoPropio";
 
 type Texto = Record<string, string>;
 const num = (v: string | undefined): number | null => {
@@ -106,8 +106,8 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     return true;
   };
 
-  const casilla = (k: string, etiqueta: string): JSX.Element => (
-    <input id={`pve-${k}`} className="num" inputMode={TECLADO_PROPIO ? "none" : "decimal"} enterKeyHint="next" autoComplete="off" aria-label={etiqueta} value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
+  const casilla = (k: string, etiqueta: string, teclado?: string): JSX.Element => (
+    <input id={`pve-${k}`} className="num" data-teclado={teclado} inputMode={TECLADO_PROPIO ? "none" : "decimal"} enterKeyHint="next" autoComplete="off" aria-label={etiqueta} value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
   );
   const ops = (k: string, etiqueta: string, opciones: readonly string[], extra?: string): JSX.Element => (
     <div className="fila bar">
@@ -134,9 +134,9 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
       ))}
       <Fila etiqueta="Glasgow" unidad="O · T · M" clase="gcs" ayuda={ref?.glasgow ? `al inicio ${ref.glasgow}` : undefined}>
         <div className="tres">
-          <label><span>O</span>{casilla("gcsO", "Glasgow ocular")}</label>
+          <label><span>O</span>{casilla("gcsO", "Glasgow ocular", tecladoRango(1, 4))}</label>
           <label><span>V</span><b className="calc t" aria-label="Verbal T">T</b></label>
-          <label><span>M</span>{casilla("gcsM", "Glasgow motor")}</label>
+          <label><span>M</span>{casilla("gcsM", "Glasgow motor", tecladoRango(1, 6))}</label>
         </div>
       </Fila>
       <Fila etiqueta="Volumen minuto" unidad="L/min" ayuda={ref ? <span className="esc">al inicio {String(ref.volMinuto ?? "—")}{dif(ref.volMinuto, num(f["vm"])) ? ` · ${dif(ref.volMinuto, num(f["vm"]))}` : ""}</span> : undefined}>
@@ -368,9 +368,9 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
               {([["fc", "FC", "lpm"], ["pam", "PAM", "mmHg"], ["fr", "FR", "rpm"], ["fio2", "FiO₂", "%"], ["spo2", "SpO₂", "%"]] as const).map(([k, l, u]) => <Fila key={k} etiqueta={l} unidad={u}>{casilla(k, l)}</Fila>)}
               <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs">
                 <div className="tres">
-                  <label><span>O</span>{casilla("gcsO", "Glasgow ocular")}</label>
-                  <label><span>V</span>{casilla("gcsV", "Glasgow verbal")}</label>
-                  <label><span>M</span>{casilla("gcsM", "Glasgow motor")}</label>
+                  <label><span>O</span>{casilla("gcsO", "Glasgow ocular", tecladoRango(1, 4))}</label>
+                  <label><span>V</span>{casilla("gcsV", "Glasgow verbal", tecladoRango(1, 5))}</label>
+                  <label><span>M</span>{casilla("gcsM", "Glasgow motor", tecladoRango(1, 6))}</label>
                 </div>
               </Fila>
               {ops("trab", "Trabajo respiratorio", TRABAJO)}

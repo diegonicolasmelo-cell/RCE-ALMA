@@ -8,15 +8,17 @@ import {
   estadoProno,
   vigenciaFiltros,
   ETIQUETA_ELEMENTO,
-  ETIQUETA_MODALIDAD
+  ETIQUETA_MODALIDAD,
+  ETIQUETA_MOTIVO_CAMBIO
 } from "@core/index";
-import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo } from "@core/index";
+import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
 import { casillaNumerica } from "./TecladoPropio";
+import { CorregirVia } from "./CorregirVia";
 
 type Base = ReturnType<typeof baseEvento>;
 interface Opcion { valor: string; texto: string }
@@ -24,7 +26,8 @@ interface CampoForm { id: string; etiqueta: string; opciones?: readonly Opcion[]
 interface Item {
   k: string;
   texto: string;
-  req?: "art" | "nat";
+  /** Con que via aerea se ofrece: artificial (TET o TQT), natural, solo TET o solo TQT. */
+  req?: "art" | "nat" | "tet" | "tqt";
   peligro?: boolean;
   deshabilitado?: boolean;
   campos?: readonly CampoForm[];
@@ -42,7 +45,12 @@ const DISPOSITIVOS: readonly Opcion[] = [
 const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ valor: x, texto: x }));
 
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
-const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext"];
+const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "decan"];
+
+const MOTIVOS_CAMBIO: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_CAMBIO) as MotivoCambioVia[]).map((k) => ({
+  valor: k,
+  texto: ETIQUETA_MOTIVO_CAMBIO[k].charAt(0).toUpperCase() + ETIQUETA_MOTIVO_CAMBIO[k].slice(1)
+}));
 
 /**
  * `onCambioVia`: que hacer tras un evento que cambia la via aerea (intubacion, extubacion,
@@ -56,16 +64,33 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   const [valores, setValores] = useState<Record<string, string>>({});
 
   const prono = estadoProno(eventos, ahora);
+  // Si ya se retiro la via aerea en este episodio, la proxima intubacion es REintubacion.
+  const yaRetiradaVia = eventos.some((e) => e.tipo === "EXTUBACION_PROGRAMADA" || e.tipo === "AUTOEXTUBACION" || e.tipo === "DECANULACION");
 
   const grupos: { titulo: string; items: Item[] }[] = [
     {
       titulo: "Vía aérea",
       items: [
-        { k: "extub", texto: "Extubación programada", req: "art", campos: [{ id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }], crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
-        { k: "reint", texto: "Intubación / reintubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "" }) },
-        { k: "traq", texto: "Traqueostomía", req: "art", campos: [{ id: "cal", etiqueta: "Calibre", num: true }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
-        { k: "ajuste", texto: "Ajustar posición del tubo", req: "art", campos: [{ id: "cm", etiqueta: "Centímetros en la arcada dental", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: [{ valor: "DESPLAZAMIENTO_SUPERFICIAL", texto: "Desplazamiento superficial" }, { valor: "CONTROL_RADIOLOGICO", texto: "Control radiológico" }] }], crear: (v, b) => ({ ...b, tipo: "AJUSTE_TUBO", fijacionCm: v["cm"] ?? "", motivo: (v["mot"] ?? "DESPLAZAMIENTO_SUPERFICIAL") as MotivoAjusteTubo }) },
-        { k: "autoext", texto: "Autoextubación", req: "art", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) }
+        { k: "extub", texto: "Extubación programada", req: "tet", campos: [{ id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }], crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
+        { k: "reint", texto: yaRetiradaVia ? "Reintubación" : "Intubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "" }) },
+        { k: "traq", texto: "Traqueostomía", req: "tet", campos: [{ id: "cal", etiqueta: "Calibre", num: true }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
+        { k: "ajuste", texto: "Ajustar posición del tubo", req: "tet", campos: [{ id: "cm", etiqueta: "Centímetros en la arcada dental", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: [{ valor: "DESPLAZAMIENTO_SUPERFICIAL", texto: "Desplazamiento superficial" }, { valor: "CONTROL_RADIOLOGICO", texto: "Control radiológico" }] }], crear: (v, b) => ({ ...b, tipo: "AJUSTE_TUBO", fijacionCm: v["cm"] ?? "", motivo: (v["mot"] ?? "DESPLAZAMIENTO_SUPERFICIAL") as MotivoAjusteTubo }) },
+        {
+          k: "cambioTubo", texto: "Cambio de tubo", req: "tet",
+          campos: [{ id: "cal", etiqueta: "Calibre del tubo nuevo", valor: ep.calibreVia ?? "", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: MOTIVOS_CAMBIO }],
+          crear: (v, b) => ({ ...b, tipo: "CAMBIO_TUBO", calibre: (v["cal"] ?? "").trim(), fijacionCm: (v["fij"] ?? "").trim(), motivo: (v["mot"] ?? "OTRO") as MotivoCambioVia })
+        },
+        {
+          k: "cambioCanula", texto: "Cambio de cánula", req: "tqt",
+          campos: [{ id: "cal", etiqueta: "Calibre de la cánula nueva", valor: ep.calibreVia ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: MOTIVOS_CAMBIO }],
+          crear: (v, b) => ({ ...b, tipo: "CAMBIO_CANULA", calibre: (v["cal"] ?? "").trim(), motivo: (v["mot"] ?? "OTRO") as MotivoCambioVia })
+        },
+        {
+          k: "decan", texto: "Decanulación", req: "tqt",
+          campos: [{ id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }, { id: "acc", etiqueta: "¿Fue planificada?", opciones: [{ valor: "no", texto: "Sí, planificada" }, { valor: "si", texto: "No: accidental" }] }],
+          crear: (v, b) => ({ ...b, tipo: "DECANULACION", dispositivo: (v["disp"] ?? "CNAF") as Exclude<DispositivoPosterior, "REINTUBACION_INMEDIATA">, accidental: v["acc"] === "si" })
+        },
+        { k: "autoext", texto: "Autoextubación", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) }
       ]
     },
     {
@@ -98,10 +123,24 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   ];
 
   const todos = grupos.flatMap((g) => g.items);
+  /** Cada evento solo con la via que corresponde (lo del tubo con TET, lo de la canula con TQT). */
+  const aplica = (it: Item): boolean =>
+    !it.req ||
+    (it.req === "art" && esViaAereaArtificial(ep.viaAereaActual)) ||
+    (it.req === "nat" && ep.viaAereaActual === "NATURAL") ||
+    (it.req === "tet" && ep.viaAereaActual === "TET") ||
+    (it.req === "tqt" && ep.viaAereaActual === "TQT");
   const item = abierto ? todos.find((i) => i.k === abierto) : undefined;
   const artificial = esViaAereaArtificial(ep.viaAereaActual);
 
   const registrar = async (it: Item, v: Record<string, string>): Promise<void> => {
+    const numOk = (x: string | undefined, min: number, max: number): boolean => {
+      const n = Number((x ?? "").replace(",", "."));
+      return (x ?? "").trim() !== "" && Number.isFinite(n) && n >= min && n <= max;
+    };
+    if ((it.k === "cambioTubo" || it.k === "cambioCanula" || it.k === "traq") && !numOk(v["cal"], 2, 12)) return avisar("Revisa el calibre (entre 2 y 12).");
+    if (it.k === "cambioTubo" && !numOk(v["fij"], 10, 35)) return avisar("Revisa los cm en la arcada (entre 10 y 35).");
+    if (it.k === "ajuste" && !numOk(v["cm"], 10, 35)) return avisar("Revisa los cm en la arcada (entre 10 y 35).");
     if (it.k === "reint") {
       const t = Number((v["talla"] ?? "").replace(",", "."));
       if ((v["cal"] ?? "").trim() === "") return avisar("Falta el calibre.");
@@ -146,7 +185,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   // Linea de tiempo: todo lo que paso en la cama, del mas nuevo al mas antiguo, con su fecha y hora.
   const [todo, setTodo] = useState(false);
   const linea = [
-    ...eventos.map((e) => ({ id: e.id, en: ("realizadaEn" in e && typeof e.realizadaEn === "string" ? e.realizadaEn : e.registradoEn), texto: describirEvento(e), fuerte: e.tipo !== "EVALUACION_PUNTUAL" && e.tipo !== "CAMBIO_HMEF" && e.tipo !== "CAMBIO_FILTRO" })),
+    ...eventos.map((e) => ({ id: e.id, en: ("realizadaEn" in e && typeof e.realizadaEn === "string" ? e.realizadaEn : e.registradoEn), texto: describirEvento(e, eventos), fuerte: e.tipo !== "EVALUACION_PUNTUAL" && e.tipo !== "CAMBIO_HMEF" && e.tipo !== "CAMBIO_FILTRO" })),
     ...ctx.controles.map((c) => ({ id: c.id, en: c.registradoEn, texto: `Control · ${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? c.ventilacion.modalidad}`, fuerte: false }))
   ].sort((a, b) => b.en.localeCompare(a.en));
   const visibles = todo ? linea : linea.slice(0, 10);
@@ -159,6 +198,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
 
   return (
     <>
+      <CorregirVia key={`${ep.calibreVia}-${ep.fijacionCm}`} ep={ep} rutAutor={rutAutor} />
       {prono.enProno && (
         <div className="row">
           {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
@@ -204,14 +244,14 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </section>
       )}
 
-      {grupos.filter((g) => g.items.some((it) => (it.req !== "art" || artificial) && (it.req !== "nat" || !artificial))).map((g) => (
+      {grupos.filter((g) => g.items.some(aplica)).map((g) => (
         <section key={g.titulo}>
           <h3>{g.titulo}</h3>
           <div className="evgrid">
             {/* Lo del tubo y la TQT (extubar, TQT, ajustar el tubo, autoextubacion, filtros, TrachCare y
                 prono) no se ofrece con via aerea natural: ni se muestra. Con via artificial, no se ofrece intubar. */}
-            {g.items.filter((it) => (it.req !== "art" || artificial) && (it.req !== "nat" || !artificial)).map((it) => {
-              const off = it.deshabilitado || (it.req === "art" && !artificial) || (it.req === "nat" && artificial);
+            {g.items.filter(aplica).map((it) => {
+              const off = it.deshabilitado;
               return (
                 <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : "btn"} disabled={off} onClick={() => clic(it)}>
                   {it.texto}

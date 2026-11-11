@@ -82,7 +82,8 @@ function quieto(cambio: () => void): void {
 /** Lleva la fila al 40 % de lo que se ve sobre el teclado, no al borde. */
 function centrar(activa: HTMLElement | null, kb: HTMLElement | null): void {
   const cuerpo = cajaDe(activa);
-  if (!activa || !cuerpo || !document.body.contains(activa)) return;
+  // Si mientras tanto se cerro el teclado o se paso a otra casilla, no se mueve nada.
+  if (!activa || !cuerpo || !document.body.contains(activa) || document.activeElement !== activa) return;
   const fila = activa.closest<HTMLElement>(".fila, .f") ?? activa;
   const caja = cuerpo.getBoundingClientRect();
   const vv = window.visualViewport;
@@ -98,7 +99,16 @@ function centrar(activa: HTMLElement | null, kb: HTMLElement | null): void {
  * (MRC 0-5 y NE; CPAx 0-5; FSS-ICU 0-7 y NE). En los de escala, un toque deja el valor y
  * salta a la casilla siguiente.
  */
-type TipoTeclado = "num" | "mrc" | "cpax" | "fss";
+type TipoTeclado = "num" | "mrc" | "cpax" | "fss" | `r${number}-${number}`;
+
+/** "r1-4" -> [1, 4]: teclado con solo los valores enteros de ese rango (Glasgow, SAS…). */
+const rangoDe = (t: string): readonly [number, number] | null => {
+  const m = /^r(\d+)-(\d+)$/.exec(t);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+};
+
+/** El atributo de una casilla de escala con valores enteros del rango indicado. */
+export const tecladoRango = (min: number, max: number): `r${number}-${number}` => `r${min}-${max}`;
 
 export function TecladoPropio() {
   const [visible, setVisible] = useState(false);
@@ -182,7 +192,7 @@ export function TecladoPropio() {
   return (
     <div
       ref={kb}
-      className={`kb${tipo === "num" ? "" : ` ${tipo}`}`}
+      className={`kb${tipo === "num" ? "" : rangoDe(tipo) ? " rango" : ` ${tipo}`}`}
       hidden={!visible}
       role="group"
       aria-label="Teclado numérico"
@@ -212,6 +222,23 @@ export function TecladoPropio() {
           {B("ocultar", "⌄ ocultar", "fn oc", "Ocultar teclado")}
         </>
       )}
+      {(() => {
+        const r = rangoDe(tipo);
+        if (!r) return null;
+        const vals = Array.from({ length: r[1] - r[0] + 1 }, (_, i) => String(r[0] + i));
+        return (
+          <div className="kb-rango">
+            <div className="kb-vals" style={{ gridTemplateColumns: `repeat(${Math.min(vals.length, 4)}, minmax(0,1fr))` }}>
+              {vals.map((v) => <span key={v} style={{ display: "contents" }}>{B(v, v)}</span>)}
+            </div>
+            <div className="kb-fn">
+              {B("borrar", "⌫", "fn", "Borrar")}
+              {B("sig", "Sig. ›", "sig", "Siguiente casilla")}
+              {B("ocultar", "⌄", "fn", "Ocultar teclado")}
+            </div>
+          </div>
+        );
+      })()}
       {tipo === "fss" && (
         <>
           {fila(["0", "1", "2"])}{B("borrar", "⌫", "fn", "Borrar")}

@@ -3,6 +3,7 @@
 import type {
   CampoVent,
   DispositivoPosterior,
+  MotivoCambioVia,
   EstadoVigilia,
   IdInfusion,
   Modalidad,
@@ -458,6 +459,16 @@ export const DESTINOS_IMAGEN: readonly string[] = ["Scanner", "Resonancia", "Otr
 /** Corte institucional de flujo pico de tos para exito de extubacion (L/min). */
 export const PCF_CORTE_EXITO = 55;
 export const PCF_CORTE_OPTIMO = 60;
+
+/** Motivos de un recambio de tubo o de canula. */
+export const ETIQUETA_MOTIVO_CAMBIO: Readonly<Record<MotivoCambioVia, string>> = {
+  CUFF_DANADO: "cuff dañado",
+  OBSTRUCCION: "obstrucción",
+  FUGA: "fuga",
+  CAMBIO_CALIBRE: "cambio de calibre",
+  PROGRAMADO: "recambio programado",
+  OTRO: "otro motivo"
+};
 
 export const ETIQUETA_DISPOSITIVO: Readonly<Record<DispositivoPosterior, string>> = {
   CNAF: "CNAF",

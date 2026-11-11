@@ -465,10 +465,10 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 #cuerpo.escribiendo,.cel-cuerpo.escribiendo{padding-bottom:65vh}
 /* Teclado numerico propio: mas bajo que el del sistema. «Sig.» bajo el borrar, como en Android. */
 .kb{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#e6ecf2;border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(4,44px);gap:6px;
-  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(4,52px);gap:7px;
+  padding:8px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
   touch-action:manipulation;user-select:none;-webkit-user-select:none}
-.kb[hidden]{display:none}
+.kb[hidden]{display:none!important}
 .kb button{min-height:0;height:100%;padding:0;border:0;border-radius:8px;background:#fff;color:#14243a;font:600 21px var(--font-data);box-shadow:0 1px 0 rgba(20,36,58,.18);cursor:pointer}
 .kb button:active{background:var(--accent-soft)}
 .kb .fn{background:#cfd8e3;font:600 15px var(--font-ui)}
@@ -476,10 +476,10 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 /* Con el teclado propio abierto se ocultan la cabecera, las pestanas y el pie (no tapan nada). */
 body.teclado-propio .cel-top,body.teclado-propio .ctl-cabeza,body.teclado-propio .banda,body.teclado-propio .ph-tabs,body.teclado-propio .cel-pie{display:none!important}
 body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
-.kb.mrc{grid-template-rows:repeat(3,52px)}
-.kb.cpax{grid-template-rows:repeat(3,52px)}
+.kb.mrc{grid-template-rows:repeat(3,56px)}
+.kb.cpax{grid-template-rows:repeat(3,56px)}
 .kb.cpax .oc{grid-column:1 / span 3}
-.kb.fss{grid-template-rows:repeat(4,44px)}
+.kb.fss{grid-template-rows:repeat(4,52px)}
 .kb .ne{grid-column:1 / span 2;font:700 16px var(--font-ui)}
 .kb.fss .sig{grid-row:2 / span 3}
 .kb.fss .ne{grid-column:1 / span 3}
@@ -538,3 +538,12 @@ body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
 /* La hoja no usa el anclaje automatico del navegador: al cerrar el panel de drogas mantenia fijo
    lo de abajo y subia las filas nuevas fuera de la vista. La posicion la cuida la app. */
 #cuerpo,.cel-cuerpo{overflow-anchor:none}
+
+/* Teclado de escala por rango (Glasgow 1-4/1-5/1-6, SAS 1-7): solo los valores validos.
+   Teclas de 56 px de alto: sobre el minimo de 44-48 px que piden Apple y Google para tocar
+   con el pulgar sin esfuerzo. */
+.kb.rango{display:block}
+.kb-rango{display:grid;grid-template-columns:minmax(0,1fr) 26%;gap:7px}
+.kb-vals{display:grid;grid-auto-rows:56px;gap:7px}
+.kb-fn{display:grid;grid-template-rows:56px minmax(56px,1fr) 56px;gap:7px}
+.kb-fn .sig{grid-column:auto!important;grid-row:auto!important}

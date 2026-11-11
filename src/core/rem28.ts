@@ -7,6 +7,7 @@
  */
 
 import { NIVEL_POR_ACTIVIDAD } from "./catalogos";
+import { contarReintubaciones } from "./eventos";
 import type { Control, EventoClinico, TipoEvento, ValidacionApk } from "./tipos";
 
 export type ConteoPorNivel = Readonly<Record<1 | 2 | 3 | 4, number>>;
@@ -29,6 +30,9 @@ export interface ResumenTurno {
   readonly traslados: number;
   /** Intubaciones reales. Un AJUSTE_TUBO no cuenta. */
   readonly reintubaciones: number;
+  /** Recambios de tubo o de canula (no son reintubaciones). */
+  readonly recambiosTubo: number;
+  readonly decanulaciones: number;
   readonly extubacionesProgramadas: number;
   readonly autoextubaciones: number;
   readonly pcr: number;
@@ -79,7 +83,10 @@ export function resumirTurno(
     asistenciasFbc: porTipo("ASISTENCIA_FBC"),
     asistenciaProcedimientos: porTipo("ASISTENCIA_PROCEDIMIENTO"),
     traslados: porTipo("TRASLADO_IMAGEN"),
-    reintubaciones: porTipo("REINTUBACION"),
+    // Solo REintubaciones: la primera intubacion de quien llego con via natural no cuenta.
+    reintubaciones: contarReintubaciones(eventos),
+    recambiosTubo: porTipo("CAMBIO_TUBO") + porTipo("CAMBIO_CANULA"),
+    decanulaciones: porTipo("DECANULACION"),
     extubacionesProgramadas: porTipo("EXTUBACION_PROGRAMADA"),
     autoextubaciones: porTipo("AUTOEXTUBACION"),
     pcr: porTipo("PCR"),
@@ -117,6 +124,8 @@ export function consolidarRem28(resumenes: readonly ResumenTurno[]): ResumenTurn
     asistenciaProcedimientos: sumar((r) => r.asistenciaProcedimientos),
     traslados: sumar((r) => r.traslados),
     reintubaciones: sumar((r) => r.reintubaciones),
+    recambiosTubo: sumar((r) => r.recambiosTubo),
+    decanulaciones: sumar((r) => r.decanulaciones),
     extubacionesProgramadas: sumar((r) => r.extubacionesProgramadas),
     autoextubaciones: sumar((r) => r.autoextubaciones),
     pcr: sumar((r) => r.pcr),

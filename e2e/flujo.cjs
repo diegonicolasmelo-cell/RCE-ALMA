@@ -263,13 +263,31 @@ async function esperarServidor() {
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false);
       assert.ok(await m.locator(".cel-top").isVisible(), "al ocultar el teclado vuelve la cabecera");
+      // Glasgow: teclado con solo los valores validos (O 1-4, M 1-6); un toque deja el valor y avanza.
+      await m.tap("#in-gcs-o");
+      await m.waitForSelector(".kb.rango:not([hidden])");
+      assert.deepEqual(await m.locator(".kb-vals button").allTextContents(), ["1", "2", "3", "4"], "ocular: 1 a 4");
+      const kbCaja = await m.locator(".kb").boundingBox();
+      const tecla = await m.locator(".kb-vals button").first().boundingBox();
+      assert.ok(tecla.height >= 48, `teclas de al menos 48 px de alto (${tecla.height})`);
+      assert.ok(kbCaja.height <= 844 * 0.4, `el teclado no tapa mas del 40 % de la pantalla (${kbCaja.height} px)`);
+      await m.tap('.kb-vals button:text-is("3")');
+      assert.equal(await m.inputValue("#in-gcs-o"), "3");
+      assert.equal(await m.evaluate(() => document.activeElement.id), "in-gcs-m", "con TQT el verbal es T: pasa directo al motor");
+      assert.deepEqual(await m.locator(".kb-vals button").allTextContents(), ["1", "2", "3", "4", "5", "6"], "motor: 1 a 6");
+      await m.tap('.kb-vals button:text-is("6")');
+      assert.equal(await m.inputValue("#in-gcs-m"), "6");
+      await m.waitForTimeout(200);
+      assert.equal(await m.locator(".kb").isVisible(), false, "tras el motor sigue un desplegable: el teclado de escala se oculta del todo");
       // Agregar una droga deja el teclado en su dosis; ▲ ▼ titulan sin cerrar el teclado ni mover la hoja.
       // Seleccion multiple: se marcan varias y se agregan juntas, sin abrir el teclado ni mover la hoja.
+      await m.locator(".agregar-inf").scrollIntoViewIfNeeded();
       const hojaAntes = await m.evaluate(() => ({ top: document.getElementById("cuerpo").scrollTop, alto: document.getElementById("cuerpo").scrollHeight }));
       await m.tap(".agregar-inf");
       await m.waitForSelector('[role=dialog][aria-label="Agregar drogas o infusiones"]');
       const hojaAbierto = await m.evaluate(() => ({ top: document.getElementById("cuerpo").scrollTop, alto: document.getElementById("cuerpo").scrollHeight }));
-      assert.deepEqual(hojaAbierto, hojaAntes, "el panel flota: la hoja no cambia de tamano ni se mueve");
+      assert.equal(hojaAbierto.alto, hojaAntes.alto, "el panel flota: la hoja no cambia de tamano");
+      assert.ok(Math.abs(hojaAbierto.top - hojaAntes.top) < 8, `ni se mueve (${hojaAntes.top} -> ${hojaAbierto.top})`);
       // Tocar fuera del panel lo cierra sin agregar nada.
       await m.mouse.click(195, 60);
       await m.waitForSelector('[role=dialog][aria-label="Agregar drogas o infusiones"]', { state: "detached" });
@@ -486,7 +504,9 @@ async function esperarServidor() {
       // Con via aerea natural no hay cambios de HME, HEPA ni TrachCare, ni el cuadro de filtros.
       for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación programada", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación", "Iniciar prono"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
       assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0);
-      await cel.click('button:has-text("Intubación / reintubación")');
+      // Ya se extubo (autoextubacion): lo que se ofrece es una REintubacion.
+      assert.equal(await cel.locator('.evgrid button:text-is("Intubación")').count(), 0);
+      await cel.click('.evgrid button:text-is("Reintubación")');
       assert.equal(await cel.inputValue("#evf-talla"), "162", "la talla del paciente viene puesta");
       await cel.click('button:text-is("Registrar")');
       assert.match(await aviso(), /Falta el calibre/);
@@ -497,12 +517,40 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.5 · 22 cm/);
       // La linea de tiempo junta los eventos y los controles, del mas nuevo al mas antiguo, con fecha y hora.
       await cel.click('[role=tab]:has-text("Eventos")');
-      assert.equal(await cel.locator('button:has-text("Intubación / reintubación")').count(), 0, "intubado: ya no se ofrece intubar");
+      assert.equal(await cel.locator('.evgrid button:text-is("Reintubación")').count(), 0, "intubado: ya no se ofrece intubar");
       assert.equal(await cel.locator('button:has-text("Extubación programada")').count(), 1);
+      // Con TET: cambio de tubo si; lo de la canula (TQT), no.
+      for (const t of ["Cambio de cánula", "Decanulación"]) assert.equal(await cel.locator(`.evgrid button:text-is("${t}")`).count(), 0, t);
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /^hoy \d\d:\d\d\s*Reintubación TET calibre 7\.5/, linea.join(" | "));
       assert.ok(linea.some((x) => /AUTOEXTUBACIÓN, queda en/.test(x)), "la autoextubacion queda en la linea: " + linea.join(" | "));
       assert.ok(linea.some((x) => /Control · ACVC/.test(x)), "los controles tambien");
+      await cel.click('[role=tab]:has-text("Control")');
+    });
+
+    await prueba("corregir un dato mal anotado no crea evento; un cambio de tubo real si, y no es reintubacion", async () => {
+      await cel.click('[role=tab]:has-text("Eventos")');
+      const nLinea = await cel.locator('[aria-label="Línea de tiempo"] li').count();
+      // Correccion: el colega anoto 7.5 / 22 y era 8.0 / 23.
+      await cel.click('[aria-label="Vía aérea actual"] button:has-text("Corregir dato")');
+      await cel.fill("#cv-calibre", "8.0");
+      await cel.fill("#cv-cm", "23");
+      await cel.click('button:has-text("Guardar corrección")');
+      await cel.waitForSelector('.toast-app:has-text("No se registró ningún evento")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent('[aria-label="Vía aérea actual"]'), /TET 8\.0 · 23 cm[\s\S]*Corregido por Klgo\.? ?Diego Melo|TET 8\.0 · 23 cm[\s\S]*Corregido por Diego Melo/);
+      assert.match(await cel.textContent(".banda .l1"), /TET 8\.0 · 23 cm/);
+      assert.equal(await cel.locator('[aria-label="Línea de tiempo"] li').count(), nLinea, "la correccion no aparece como evento");
+      // Cambio de tubo real: queda en la linea de tiempo con su motivo, sin reintubar.
+      await cel.click('.evgrid button:text-is("Cambio de tubo")');
+      assert.equal(await cel.inputValue("#evf-cal"), "8.0", "parte con el calibre actual");
+      await cel.fill("#evf-cal", "7.0");
+      await cel.selectOption("#evf-mot", "FUGA");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForTimeout(500);
+      assert.match(await cel.textContent(".banda .l1"), /TET 7\.0 · 23 cm/);
+      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
+      assert.match(linea[0] ?? "", /Cambio de tubo: TET calibre 7\.0, fijación 23 cm \(fuga\)/, linea.join(" | "));
       await cel.click('[role=tab]:has-text("Control")');
     });
 
@@ -515,7 +563,7 @@ async function esperarServidor() {
       await cel.click('button:text-is("Registrar")');
       await cel.waitForSelector("#evf-cal");
       assert.match(await aviso(), /Ahora registra la reintubación/);
-      assert.match(await cel.textContent(".card"), /Intubación \/ reintubación/);
+      assert.match(await cel.textContent(".card:has(#evf-cal)"), /Reintubación/);
       await cel.fill("#evf-cal", "8");
       await cel.fill("#evf-fij", "23");
       await cel.click('button:text-is("Registrar")');

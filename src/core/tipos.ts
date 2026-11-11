@@ -279,6 +279,11 @@ export interface Episodio {
    * artificial, es tambien la hora cero de la VM (la unidad no cuenta el tiempo en urgencia).
    */
   readonly ingresadoEn?: string;
+  /**
+   * Correcciones de datos mal anotados de la via aerea (calibre, cm). NO son eventos clinicos:
+   * no cuentan en estadistica ni cambian los dias de VM. Quedan con quien, cuando y el valor previo.
+   */
+  readonly correcciones?: readonly CorreccionVia[];
   readonly equipos: readonly EquipoEnSala[];
   readonly monitoreo: MonitoreoEpisodio;
   readonly rutTitular: string;
@@ -292,6 +297,15 @@ export interface Episodio {
    * No identifica a nadie: son ids al azar.
    */
   readonly apkArchivada: string | null;
+}
+
+export interface CorreccionVia {
+  readonly campo: "calibre" | "fijacion";
+  readonly antes: string | null;
+  readonly despues: string;
+  /** Correo de quien corrigio. */
+  readonly rutAutor: string;
+  readonly registradoEn: string;
 }
 
 /** Identidad del paciente: canal propio, token de estacion, purga al alta. */
@@ -362,6 +376,8 @@ export interface EventoBase {
 /** Con que queda tras extubarse. Una autoextubacion puede terminar en reintubacion inmediata. */
 export type DispositivoPosterior = "CNAF" | "VMNI" | "O2_CONVENCIONAL" | "AIRE_AMBIENTE" | "REINTUBACION_INMEDIATA";
 export type MotivoAjusteTubo = "DESPLAZAMIENTO_SUPERFICIAL" | "CONTROL_RADIOLOGICO";
+/** Por que se recambia un tubo o una canula (el paciente sigue ventilado: no es reintubacion). */
+export type MotivoCambioVia = "CUFF_DANADO" | "OBSTRUCCION" | "FUGA" | "CAMBIO_CALIBRE" | "PROGRAMADO" | "OTRO";
 
 /** Una lectura de la hoja de registro de PVE. Todo nace en blanco (null = no medido). */
 export interface LecturasPve {
@@ -442,6 +458,12 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "TRAQUEOSTOMIA"; readonly calibre: string })
   /** Cambio de centimetros a la comisura. NO cuenta como intubacion. */
   | (EventoBase & { readonly tipo: "AJUSTE_TUBO"; readonly fijacionCm: string; readonly motivo: MotivoAjusteTubo })
+  /** Recambio del TET por otro: sigue la misma VM, no cuenta como reintubacion. */
+  | (EventoBase & { readonly tipo: "CAMBIO_TUBO"; readonly calibre: string; readonly fijacionCm: string; readonly motivo: MotivoCambioVia })
+  /** Recambio de la canula de TQT. */
+  | (EventoBase & { readonly tipo: "CAMBIO_CANULA"; readonly calibre: string; readonly motivo: MotivoCambioVia })
+  /** Retiro de la TQT: queda con via aerea natural. Accidental si no fue planificada. */
+  | (EventoBase & { readonly tipo: "DECANULACION"; readonly dispositivo: Exclude<DispositivoPosterior, "REINTUBACION_INMEDIATA">; readonly accidental: boolean })
   | (EventoBase & { readonly tipo: "INICIO_PRONO" })
   | (EventoBase & { readonly tipo: "SUPINACION" })
   | (EventoBase & { readonly tipo: "INICIO_BNM"; readonly farmaco: string })

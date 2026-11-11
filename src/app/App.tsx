@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useFavicon } from "./Logo";
 import { buscarProfesional } from "@core/index";
 import { Login, CLAVE_SESION, sesionVigente } from "../celular/Login";
 import type { SesionGuardada } from "../celular/Login";
@@ -57,6 +58,7 @@ export function App() {
   const sesion = useApp((s) => s.sesion);
   const setSesion = useApp((s) => s.setSesion);
   const ruta = useRuta();
+  useFavicon(ruta === "estacion" ? "estacion" : "csv");
 
   useEffect(() => {
     iniciarServicios().then(setServicios).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));

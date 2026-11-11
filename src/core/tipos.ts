@@ -9,6 +9,8 @@
  */
 
 /** Valor fisiologico medido. `null` = no medido (nunca 0 por defecto). */
+import type { RangoEdad } from "./catalogos";
+
 export type Medicion = number | null;
 /** Identificador opaco generado en el cliente. Permite sincronia idempotente. */
 export type Uuid = string;
@@ -261,7 +263,8 @@ export interface EquipoEnSala {
 export interface Episodio {
   readonly id: Uuid;
   readonly cama: string;
-  readonly edad: number;
+  /** Rango etario (nunca la edad exacta). null hasta que el PC completa la identidad. */
+  readonly rangoEdad: RangoEdad | null;
   readonly sexo: Sexo;
   /** Talla para el peso ideal. Se ingresa al ingreso del paciente. */
   readonly tallaCm: number;

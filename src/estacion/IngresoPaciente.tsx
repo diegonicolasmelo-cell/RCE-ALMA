@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
-import type { Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
+import { RANGOS_EDAD } from "@core/index";
+import type { Episodio, IdentidadPaciente, OrigenTalla, RangoEdad, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
@@ -38,7 +39,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
   const libres = CAMAS_UNIDAD.filter((c) => !camasOcupadas.includes(c));
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
-  const [edad, setEdad] = useState("");
+  const [rangoEdad, setRangoEdad] = useState<RangoEdad | "">("");
   const [sexo, setSexo] = useState<Sexo>("M");
   const [talla, setTalla] = useState("");
   const [origen, setOrigen] = useState<OrigenTalla>("ESTIMADA");
@@ -49,20 +50,19 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
 
   const guardar = async (): Promise<void> => {
     const camaTxt = cama.trim().toUpperCase();
-    const e = Number(edad);
     const t = Number(talla.replace(",", "."));
     if (camaTxt === "") return setError("Falta la cama.");
     if (camasOcupadas.includes(camaTxt)) return setError(`La cama ${camaTxt} ya tiene un paciente activo.`);
     if (nombre.trim() === "") return setError("Falta el nombre del paciente (queda solo en la estación).");
     if (rut.trim() !== "" && !validarRut(rut)) return setError("El RUT no es válido (revisa el dígito verificador).");
-    if (!Number.isFinite(e) || e < 0 || e > 120) return setError("La edad debe estar entre 0 y 120.");
+    if (rangoEdad === "") return setError("Elige el rango de edad.");
     if (!Number.isFinite(t) || t < 100 || t > 230) return setError("La talla debe estar entre 100 y 230 cm (se usa para el peso ideal).");
 
     const id = nuevoId();
     const ep: Episodio = {
       id,
       cama: camaTxt,
-      edad: e,
+      rangoEdad,
       sexo,
       tallaCm: t,
       tallaOrigen: origen,
@@ -103,7 +103,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
             {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
           </select>
         </div>
-        <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(e) => setEdad(e.target.value)} /></div>
+        <div className="f"><label htmlFor="in-edad">Rango de edad</label><select id="in-edad" value={rangoEdad} onChange={(e) => setRangoEdad(e.target.value as RangoEdad | "")}><option value="">— elegir —</option>{RANGOS_EDAD.map((r) => <option key={r} value={r}>{r} años</option>)}</select></div>
         <div className="f"><label htmlFor="in-talla">Talla (cm)</label><input id="in-talla" inputMode="numeric" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       </div>
       <div className="row">

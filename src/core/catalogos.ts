@@ -502,9 +502,20 @@ export function nombreCama(cama: string): string {
 }
 
 /**
- * La edad la pone el PC (va junto a la identidad). Un ingreso hecho desde el celular la deja
- * en 0 hasta que la estacion la completa.
+ * Rango etario, no la edad exacta: es lo que se guarda en la nube (minimizacion de datos).
+ * Un ingreso hecho desde el celular lo deja en null hasta que la estacion lo completa.
  */
-export function textoEdad(edad: number): string {
-  return edad > 0 ? `${edad} a` : "edad pendiente";
+export const RANGOS_EDAD = ["18–39", "40–59", "60–69", "70–79", "80 o más"] as const;
+export type RangoEdad = (typeof RANGOS_EDAD)[number];
+
+export function rangoDeEdad(edad: number): RangoEdad {
+  if (edad < 40) return "18–39";
+  if (edad < 60) return "40–59";
+  if (edad < 70) return "60–69";
+  if (edad < 80) return "70–79";
+  return "80 o más";
+}
+
+export function textoEdad(rango: RangoEdad | null): string {
+  return rango ? `${rango} años` : "edad pendiente";
 }

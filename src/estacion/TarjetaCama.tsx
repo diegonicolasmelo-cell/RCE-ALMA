@@ -72,7 +72,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
       )}
       <div>
         <div className="nm">{identidad ? identidad.nombre : <span className="muted">Sin identidad en este equipo</span>}</div>
-        <div className="meta">{textoEdad(ep.edad)} · {ep.sexo} · {ep.diagnostico || "diagnóstico pendiente"}</div>
+        <div className="meta">{textoEdad(ep.rangoEdad)} · {ep.sexo} · {ep.diagnostico || "diagnóstico pendiente"}</div>
       </div>
       <div className="pills">
         <Pildora tipo="acc">{ep.viaAereaActual === "NATURAL" ? "Vía natural" : ep.viaAereaActual}</Pildora>

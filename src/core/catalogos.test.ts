@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAMAS_UNIDAD, MODALIDADES_POR_VIA, nombreCama, textoEdad, transicionSoporte } from "./catalogos";
+import { CAMAS_UNIDAD, MODALIDADES_POR_VIA, nombreCama, rangoDeEdad, textoEdad, transicionSoporte } from "./catalogos";
 
 describe("camas de la unidad", () => {
   it("son 18, de UCI-01 a UCI-18", () => {
@@ -12,9 +12,12 @@ describe("camas de la unidad", () => {
     expect(nombreCama("UCI-18")).toBe("Cama 18");
     expect(nombreCama("Box A")).toBe("Box A");
   });
-  it("la edad que aun no pone el PC se dice pendiente", () => {
-    expect(textoEdad(64)).toBe("64 a");
-    expect(textoEdad(0)).toBe("edad pendiente");
+  it("guarda rango etario, no la edad exacta, y la que aun no pone el PC se dice pendiente", () => {
+    expect(rangoDeEdad(64)).toBe("60–69");
+    expect(rangoDeEdad(18)).toBe("18–39");
+    expect(rangoDeEdad(80)).toBe("80 o más");
+    expect(textoEdad("60–69")).toBe("60–69 años");
+    expect(textoEdad(null)).toBe("edad pendiente");
   });
 });
 

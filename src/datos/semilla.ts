@@ -3,7 +3,7 @@
  * Nunca se cargan cuando hay una API configurada.
  */
 
-import { construirRut, firmarApkCumple, turnoAnterior } from "@core/index";
+import { construirRut, firmarApkCumple, rangoDeEdad, turnoAnterior } from "@core/index";
 import type {
   Control,
   Episodio,
@@ -109,7 +109,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
 
   // El ingreso de cada paciente inventado: hace tantos dias como VM trae (y unas horas mas).
   const haceDias = (d: number): string => new Date(ahora.getTime() - (d * 24 + 5) * 3_600_000).toISOString();
-  const ep = (id: string, p: Partial<Episodio> & Pick<Episodio, "cama" | "edad" | "sexo" | "tallaCm" | "diagnostico">): Episodio => ({
+  const ep = (id: string, p: Partial<Episodio> & Pick<Episodio, "cama" | "rangoEdad" | "sexo" | "tallaCm" | "diagnostico">): Episodio => ({
     id,
     ingresadoEn: haceDias(p.diasVM ?? 3),
     tallaOrigen: "ESTIMADA",
@@ -129,28 +129,28 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
   });
 
   const episodios: Episodio[] = [
-    ep("ep-01", { cama: "UCI-01", edad: 64, sexo: "M", tallaCm: 172, diagnostico: "Shock séptico foco pulmonar / SDRA en resolución", diasVM: 4,
+    ep("ep-01", { cama: "UCI-01", rangoEdad: rangoDeEdad(64), sexo: "M", tallaCm: 172, diagnostico: "Shock séptico foco pulmonar / SDRA en resolución", diasVM: 4,
       equipos: [{ tipo: "VENTILADOR", modelo: "Servo U", numero: null, enUso: true }, { tipo: "HUMIDIFICADOR", modelo: "Humidificador MR850", numero: 1, enUso: true }],
       pendienteEntrega: "Candidato a extubación si mantiene SAS 4 y supera PVE vespertina." }),
-    ep("ep-02", { cama: "UCI-02", edad: 39, sexo: "F", tallaCm: 162, tallaOrigen: "MEDIDA", diagnostico: "TEC grave / neuromonitoreo", calibreVia: "7.5", fijacionCm: "21", diasVM: 6,
+    ep("ep-02", { cama: "UCI-02", rangoEdad: rangoDeEdad(39), sexo: "F", tallaCm: 162, tallaOrigen: "MEDIDA", diagnostico: "TEC grave / neuromonitoreo", calibreVia: "7.5", fijacionCm: "21", diasVM: 6,
       equipos: [{ tipo: "VENTILADOR", modelo: "Savina", numero: 1, enUso: true }],
       monitoreo: { capnografia: true, pic: true, dve: true },
       pendienteEntrega: "Neuroprotección estricta: SAS 1-2, PPC > 70 mmHg y normocapnia." }),
-    ep("ep-03", { cama: "UCI-03", edad: 71, sexo: "M", tallaCm: 168, diagnostico: "EPOC reagudizado / destete prolongado en TQT", viaAereaActual: "TQT", fijacionCm: "Collarín", diasVM: 12,
+    ep("ep-03", { cama: "UCI-03", rangoEdad: rangoDeEdad(71), sexo: "M", tallaCm: 168, diagnostico: "EPOC reagudizado / destete prolongado en TQT", viaAereaActual: "TQT", fijacionCm: "Collarín", diasVM: 12,
       equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true }],
       transcritoAlma: true, horaTranscripcion: "12:40", pendienteEntrega: "Evaluar válvula de fonación mañana." }),
-    ep("ep-04", { cama: "UCI-04", edad: 52, sexo: "M", tallaCm: 178, diagnostico: "SDRA grave, en prono", calibreVia: "8.5", fijacionCm: "23", diasVM: 3,
+    ep("ep-04", { cama: "UCI-04", rangoEdad: rangoDeEdad(52), sexo: "M", tallaCm: 178, diagnostico: "SDRA grave, en prono", calibreVia: "8.5", fijacionCm: "23", diasVM: 3,
       equipos: [{ tipo: "VENTILADOR", modelo: "Meckis", numero: 3, enUso: true }] }),
-    ep("ep-05", { cama: "UCI-05", edad: 58, sexo: "F", tallaCm: 158, diagnostico: "Neumonía grave, posextubación", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0 }),
-    ep("ep-06", { cama: "UCI-06", edad: 45, sexo: "M", tallaCm: 175, diagnostico: "Postoperatorio abdominal", diasVM: 1,
+    ep("ep-05", { cama: "UCI-05", rangoEdad: rangoDeEdad(58), sexo: "F", tallaCm: 158, diagnostico: "Neumonía grave, posextubación", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0 }),
+    ep("ep-06", { cama: "UCI-06", rangoEdad: rangoDeEdad(45), sexo: "M", tallaCm: 175, diagnostico: "Postoperatorio abdominal", diasVM: 1,
       equipos: [{ tipo: "VENTILADOR", modelo: "PB 980", numero: 2, enUso: true }] }),
-    ep("ep-07", { cama: "UCI-07", edad: 67, sexo: "F", tallaCm: 160, diagnostico: "Insuficiencia cardiaca descompensada", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
-    ep("ep-08", { cama: "UCI-08", edad: 77, sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
+    ep("ep-07", { cama: "UCI-07", rangoEdad: rangoDeEdad(67), sexo: "F", tallaCm: 160, diagnostico: "Insuficiencia cardiaca descompensada", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
+    ep("ep-08", { cama: "UCI-08", rangoEdad: rangoDeEdad(77), sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
     ...EXTRAS.map((x, i) => {
       const n = i + 9;
       const natural = x.via === "NATURAL";
       return ep(`ep-${String(n).padStart(2, "0")}`, {
-        cama: `UCI-${String(n).padStart(2, "0")}`, edad: x.edad, sexo: x.sexo, tallaCm: x.talla, diagnostico: x.dx,
+        cama: `UCI-${String(n).padStart(2, "0")}`, rangoEdad: rangoDeEdad(x.edad), sexo: x.sexo, tallaCm: x.talla, diagnostico: x.dx,
         viaAereaActual: x.via, calibreVia: natural ? null : "8.0", fijacionCm: natural ? null : x.via === "TQT" ? "Collarín" : "22", diasVM: natural ? 0 : x.dias,
         rutTitular: n <= 12 ? KAREN : EDUARDO
       });

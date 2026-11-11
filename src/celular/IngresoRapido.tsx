@@ -51,7 +51,7 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
       id: nuevoId(),
       cama,
       // Edad y diagnostico los completa el PC junto con la identidad.
-      edad: 0,
+      rangoEdad: null,
       sexo,
       tallaCm: t,
       tallaOrigen: "ESTIMADA",

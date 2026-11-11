@@ -320,7 +320,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
 
   return [
     `[EVOLUCIÓN KINESIOLOGÍA UPC · RESUMEN DE TURNO · ${episodio.cama}]`,
-    `Diagnóstico: ${episodio.diagnostico} | ${textoEdad(episodio.edad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${diasVmTexto(episodio, eventos, primero.registradoEn, ahora)}`,
+    `Diagnóstico: ${episodio.diagnostico} | ${textoEdad(episodio.rangoEdad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${diasVmTexto(episodio, eventos, primero.registradoEn, ahora)}`,
     `Equipos: ${describirEquipos(episodio.equipos)}`,
     ``,
     `1. HEMODINAMIA Y PERFUSIÓN`,

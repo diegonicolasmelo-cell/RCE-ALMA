@@ -16,7 +16,7 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
   return {
     id: "ep-1",
     cama: "UCI-01",
-    edad: 64,
+    rangoEdad: "60–69",
     sexo: "M",
     tallaCm: 172,
     tallaOrigen: "ESTIMADA",

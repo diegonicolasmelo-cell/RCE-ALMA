@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
-import { RANGOS_EDAD } from "@core/index";
-import type { Episodio, IdentidadPaciente, OrigenTalla, RangoEdad, Sexo, ViaAerea } from "@core/index";
+import { rangoDeEdad } from "@core/index";
+import type { Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
@@ -39,7 +39,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
   const libres = CAMAS_UNIDAD.filter((c) => !camasOcupadas.includes(c));
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
-  const [rangoEdad, setRangoEdad] = useState<RangoEdad | "">("");
+  const [edad, setEdad] = useState("");
   const [sexo, setSexo] = useState<Sexo>("M");
   const [talla, setTalla] = useState("");
   const [origen, setOrigen] = useState<OrigenTalla>("ESTIMADA");
@@ -51,18 +51,19 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
   const guardar = async (): Promise<void> => {
     const camaTxt = cama.trim().toUpperCase();
     const t = Number(talla.replace(",", "."));
+    const e = Number(edad);
     if (camaTxt === "") return setError("Falta la cama.");
     if (camasOcupadas.includes(camaTxt)) return setError(`La cama ${camaTxt} ya tiene un paciente activo.`);
     if (nombre.trim() === "") return setError("Falta el nombre del paciente (queda solo en la estación).");
     if (rut.trim() !== "" && !validarRut(rut)) return setError("El RUT no es válido (revisa el dígito verificador).");
-    if (rangoEdad === "") return setError("Elige el rango de edad.");
+    if (!Number.isFinite(e) || e < 18 || e > 120) return setError("La edad debe estar entre 18 y 120.");
     if (!Number.isFinite(t) || t < 100 || t > 230) return setError("La talla debe estar entre 100 y 230 cm (se usa para el peso ideal).");
 
     const id = nuevoId();
     const ep: Episodio = {
       id,
       cama: camaTxt,
-      rangoEdad,
+      rangoEdad: rangoDeEdad(e),
       sexo,
       tallaCm: t,
       tallaOrigen: origen,
@@ -81,7 +82,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       activo: true,
       apkArchivada: null
     };
-    const identidad = { episodioId: id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null };
+    const identidad = { episodioId: id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null, edad: e };
 
     // En produccion la identidad solo sube CIFRADA; sin la clave de la unidad no se ingresa.
     if (!local && !clave) return setError("Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.");
@@ -103,7 +104,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
             {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
           </select>
         </div>
-        <div className="f"><label htmlFor="in-edad">Rango de edad</label><select id="in-edad" value={rangoEdad} onChange={(e) => setRangoEdad(e.target.value as RangoEdad | "")}><option value="">— elegir —</option>{RANGOS_EDAD.map((r) => <option key={r} value={r}>{r} años</option>)}</select></div>
+        <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(ev) => setEdad(ev.target.value)} /></div>
         <div className="f"><label htmlFor="in-talla">Talla (cm)</label><input id="in-talla" inputMode="numeric" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       </div>
       <div className="row">

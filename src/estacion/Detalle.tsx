@@ -12,7 +12,7 @@ import {
   eventosDeRiesgo,
   formatearRut,
   purgaDeIdentidadLista,
-  textoEdad,
+  textoEdadPaciente,
   turnoAnterior,
   turnoDe
 } from "@core/index";
@@ -93,7 +93,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           </h2>
           <div className="small ink2">
             {identidad?.rut ? <>RUT <span className="mono">{formatearRut(identidad.rut)}</span> · </> : null}
-            {textoEdad(ep.rangoEdad)} · {ep.diagnostico || "diagnóstico pendiente"}
+            {textoEdadPaciente(ep.rangoEdad, identidad?.edad)} · {ep.diagnostico || "diagnóstico pendiente"}
           </div>
           <div className="small ink2">Equipos: {describirEquipos(ep.equipos)}</div>
           <FechaIngreso ep={ep} eventos={eventos} ahora={ahora} />

@@ -890,7 +890,7 @@ async function esperarServidor() {
       await pc.waitForSelector('[aria-label="Camas libres"] h3:has-text("Camas libres (1)")');
       await pc.click('button[aria-label="Ingresar paciente en Cama 17"]');
       assert.equal(await pc.inputValue("#in-cama"), "UCI-17", "el ingreso parte con la cama elegida");
-      await pc.selectOption("#in-edad", "40–59");
+      await pc.fill("#in-edad", "58");
       await pc.fill("#in-talla", "175");
       await pc.fill("#in-nombre", "Paciente Prueba Nueve");
       await pc.fill("#in-rut", "12345678-9");
@@ -936,12 +936,12 @@ async function esperarServidor() {
       await pc.waitForSelector('form[aria-label="Completar identidad"]');
       assert.match(await pc.textContent(".detail-head"), /edad pendiente/);
       await pc.fill("#ci-nombre", "Paciente Prueba Dieciocho");
-      await pc.selectOption("#ci-edad", "40–59");
+      await pc.fill("#ci-edad", "50");
       await pc.fill("#ci-dx", "Neumonía grave");
       await pc.click('button:has-text("Guardar identidad")');
       await pc.waitForTimeout(600);
       assert.match(await pc.textContent(".detail-head h2"), /Paciente Prueba Dieciocho/);
-      assert.match(await pc.textContent(".detail-head"), /40–59 años · Neumonía grave/);
+      assert.match(await pc.textContent(".detail-head"), /50 años · Neumonía grave/);
       // El ingreso quedo grabado solo, con la hora del registro (llego ventilado: VM desde ahi).
       assert.match(await pc.textContent(".detail-head"), /Ingreso a la UCI: \d\d-\d\d-\d{4} \d\d:\d\d · VM 0 h/);
       // Se corrige en el PC: 30 horas antes, y la VM pasa a contarse desde ahi.

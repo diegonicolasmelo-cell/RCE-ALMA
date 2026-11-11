@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { RANGOS_EDAD, formatearRut, normalizarRut, validarRut } from "@core/index";
-import type { Episodio, RangoEdad } from "@core/index";
+import { formatearRut, normalizarRut, rangoDeEdad, validarRut } from "@core/index";
+import type { Episodio } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { useGuardarIdentidad } from "./IngresoPaciente";
@@ -16,17 +16,18 @@ export function CompletarIdentidad({ ep }: { ep: Episodio }) {
   const avisar = useApp((s) => s.avisar);
   const [nombre, setNombre] = useState("");
   const [rut, setRut] = useState("");
-  const [rangoEdad, setRangoEdad] = useState<RangoEdad | "">(ep.rangoEdad ?? "");
+  const [edad, setEdad] = useState("");
   const [dx, setDx] = useState(ep.diagnostico);
   const [error, setError] = useState<string | null>(null);
 
   const guardar = async (): Promise<void> => {
     if (nombre.trim() === "") return setError("Falta el nombre del paciente (queda solo en la estación).");
     if (rut.trim() !== "" && !validarRut(rut)) return setError("El RUT no es válido (revisa el dígito verificador).");
-    if (rangoEdad === "") return setError("Elige el rango de edad.");
-    const r = await guardarIdentidad({ episodioId: ep.id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null });
+    const e = Number(edad);
+    if (!Number.isFinite(e) || e < 18 || e > 120) return setError("La edad debe estar entre 18 y 120.");
+    const r = await guardarIdentidad({ episodioId: ep.id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null, edad: e });
     if (r.error) return setError(r.error);
-    await repo.guardarEpisodio({ ...ep, rangoEdad, diagnostico: dx.trim() });
+    await repo.guardarEpisodio({ ...ep, rangoEdad: rangoDeEdad(e), diagnostico: dx.trim() });
     avisar(r.subida?.ok ? `Identidad de ${ep.cama} completada.` : `Identidad de ${ep.cama} guardada en este PC, pero no se pudo subir (${r.subida?.error ?? "sin conexión"}): reintenta desde Estado.`);
   };
 
@@ -36,7 +37,7 @@ export function CompletarIdentidad({ ep }: { ep: Episodio }) {
       <div className="fgrid">
         <div className="f"><label htmlFor="ci-nombre">Nombre</label><input id="ci-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
         <div className="f"><label htmlFor="ci-rut">RUT</label><input id="ci-rut" value={rut} onChange={(e) => setRut(e.target.value)} onBlur={() => normalizarRut(rut) && setRut(formatearRut(rut))} style={{ textAlign: "left" }} /></div>
-        <div className="f"><label htmlFor="ci-edad">Rango de edad</label><select id="ci-edad" value={rangoEdad} onChange={(e) => setRangoEdad(e.target.value as RangoEdad | "")}><option value="">— elegir —</option>{RANGOS_EDAD.map((r) => <option key={r} value={r}>{r} años</option>)}</select></div>
+        <div className="f"><label htmlFor="ci-edad">Edad</label><input id="ci-edad" inputMode="numeric" value={edad} onChange={(ev) => setEdad(ev.target.value)} /></div>
       </div>
       <div className="f"><label htmlFor="ci-dx">Diagnóstico</label><input id="ci-dx" value={dx} onChange={(e) => setDx(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
       {error && <div className="notice crit" role="alert">{error}</div>}

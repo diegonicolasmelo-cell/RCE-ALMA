@@ -519,3 +519,8 @@ export function rangoDeEdad(edad: number): RangoEdad {
 export function textoEdad(rango: RangoEdad | null): string {
   return rango ? `${rango} años` : "edad pendiente";
 }
+
+/** En la estacion, con la identidad a la vista, la edad exacta; sin ella, el rango. */
+export function textoEdadPaciente(rango: RangoEdad | null, edadExacta: number | null | undefined): string {
+  return edadExacta ? `${edadExacta} años` : textoEdad(rango);
+}

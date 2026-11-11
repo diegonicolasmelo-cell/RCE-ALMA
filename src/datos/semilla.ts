@@ -243,7 +243,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     ["ep-08", "Paciente Prueba Ocho", 16000004],
     ...EXTRAS.map((_, i): [string, string, number] => [`ep-${String(i + 9).padStart(2, "0")}`, `Paciente Prueba ${i + 9}`, 18000000 + i * 1111])
   ];
-  const identidades: IdentidadPaciente[] = nombres.map(([episodioId, nombre, cuerpo]) => ({ episodioId, nombre, rut: construirRut(cuerpo), ficha: null }));
+  const identidades: IdentidadPaciente[] = nombres.map(([episodioId, nombre, cuerpo]) => ({ episodioId, nombre, rut: construirRut(cuerpo), ficha: null, edad: null }));
 
   for (const e of episodios) await repo.guardarEpisodio(e);
   for (const k of controles) await repo.guardarControl(k);

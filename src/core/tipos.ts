@@ -317,6 +317,8 @@ export interface IdentidadPaciente {
   readonly nombre: string;
   readonly rut: string | null;
   readonly ficha: string | null;
+  /** Edad exacta: viaja cifrada, solo para la estacion. La nube solo ve el rango del episodio. */
+  readonly edad?: number | null;
 }
 
 // ---------------------------------------------------------------------------

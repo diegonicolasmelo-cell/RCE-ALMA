@@ -357,11 +357,13 @@ export function PesoIdeal({ ctx }: { ctx: ContextoCama }) {
 }
 
 export function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
-  const { ep, rutAutor, ahora } = ctx;
+  const { ep, rutAutor, ahora, ultimo } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState(false);
   const [lista, setLista] = useState(ep.equipos);
+  // Desvinculado (el ultimo control sin soporte, p. ej. tubo T): el ventilador puede quedar sin uso.
+  const conectado = ep.viaAereaActual !== "NATURAL" && (ultimo ? conSoporte(ultimo.ventilacion.modalidad) : ep.viaAereaActual === "TET");
   const [motivo, setMotivo] = useState<MotivoCambioEquipo | "">("");
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -376,7 +378,7 @@ export function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
   };
   const aplicar = async (): Promise<void> => {
     if (!equiposIguales(lista, ep.equipos)) {
-      const problema = problemaEquipos(lista, ep.viaAereaActual);
+      const problema = problemaEquipos(lista, ep.viaAereaActual, conectado);
       if (problema) return setError(problema);
       if (cambiaVentilador && motivo === "") return setError("Indica por qué se cambia el ventilador.");
       await repo.registrarEvento({ ...baseEvento(ep, rutAutor, ahora), tipo: "CAMBIO_EQUIPOS", equipos: lista, ...(cambiaVentilador && motivo ? { motivo } : {}) });

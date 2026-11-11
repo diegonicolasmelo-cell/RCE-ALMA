@@ -115,6 +115,23 @@ describe("equipos segun la via aerea y la cama", async () => {
     expect(problemaEquipos([vent(1, false), airvo(true)], "NATURAL")).toBeNull();
   });
 
+  it("con TET o TQT el ventilador puede quedar sin uso solo si el paciente esta desvinculado", () => {
+    expect(problemaEquipos([vent(1, false)], "TET", true)).toMatch(/desvinculado/);
+    expect(problemaEquipos([vent(1, false)], "TQT", true)).toMatch(/desvinculado/);
+    expect(problemaEquipos([vent(1, false)], "TET", false)).toBeNull();
+    expect(problemaEquipos([vent(1, false), airvo(true)], "TQT", true)).toBeNull();
+  });
+
+  it("desvincular deja el ventilador sin uso; reconectar lo vuelve a usar", () => {
+    const ep = unEpisodio({ viaAereaActual: "TQT", equipos: [vent(1, true), airvo(false)] });
+    const desv = aplicarEventoAEpisodio(ep, unEvento({ tipo: "DESVINCULACION", desde: "CPAP_PS", hasta: "TUBO_T", realizadaEn: "2026-11-04T13:00:00.000Z" } as never));
+    expect(desv.equipos.every((e) => !e.enUso)).toBe(true);
+    const aCnaf = aplicarEventoAEpisodio(ep, unEvento({ tipo: "DESVINCULACION", desde: "CPAP_PS", hasta: "CNAF_TQT", realizadaEn: "2026-11-04T13:00:00.000Z" } as never));
+    expect(aCnaf.equipos.find((e) => e.tipo === "ALTO_FLUJO")!.enUso).toBe(true);
+    const rec = aplicarEventoAEpisodio(desv, unEvento({ tipo: "RECONEXION", desde: "TUBO_T", hasta: "ACVC", realizadaEn: "2026-11-04T15:00:00.000Z" } as never));
+    expect(rec.equipos.find((e) => e.tipo === "VENTILADOR")!.enUso).toBe(true);
+  });
+
   it("al pasar a la via, se ordena solo: TET deja el ventilador en uso, natural lo apaga", () => {
     expect(equiposParaVia([vent(1, false)], "TET")[0]!.enUso).toBe(true);
     expect(equiposParaVia([vent(1, true)], "NATURAL")[0]!.enUso).toBe(false);

@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChangeEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import {
+  ASPECTOS_SECRECIONES,
   CAMPOS_POR_MODALIDAD,
   ESCALA_SAS,
   ESTADOS_VIGILIA,
@@ -16,6 +17,7 @@ import {
   GRUPO_MODALIDAD,
   INFUSIONES,
   MODALIDADES_POR_VIA,
+  OPCIONES_DEGLUCION,
   bandaProteccion,
   calcularDerivados,
   calcularPam,
@@ -25,10 +27,12 @@ import {
   conSoporte,
   esModalidadControlada,
   esViaAereaArtificial,
+  hayAspectoDeSecreciones,
   iniciarInfusion,
   materializarControl,
   medicionDe,
   momentoDeEvaluacion,
+  pideMusculaturaAccesoria,
   sedoanalgesiaActivaEnBorrador,
   semaforoCatecolamina,
   sugerirAnterior,
@@ -368,7 +372,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
             })}
           </div>
         ))}
-        {(b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT") && (
+        {pideMusculaturaAccesoria(b.modalidad) && (
           <Fila etiqueta="Musculatura accesoria">
             <div className="sw" role="group" aria-label="Uso de musculatura accesoria">
               <button type="button" aria-pressed={b.musculaturaAccesoria === false} onClick={() => editar((x) => ({ ...x, musculaturaAccesoria: false }))}>No</button>
@@ -389,6 +393,54 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         <div className="guia-pi"><PesoIdeal ctx={ctx} /></div>
         <div className="equipos-simple"><PanelEquipos ctx={ctx} /></div>
       </section>
+      {!esViaAereaArtificial(ep.viaAereaActual) && (
+        <section aria-label="Secreciones, tos y deglución">
+          <h2>Secreciones, tos y deglución</h2>
+          <Fila etiqueta="Secreciones">
+            <select id="in-secreciones" aria-label="Aspecto de las secreciones" value={b.aspecto ?? ""}
+              onChange={(e) => editar((x) => {
+                const aspecto = (e.target.value || null) as typeof x.aspecto;
+                return { ...x, aspecto, ...(hayAspectoDeSecreciones(aspecto) ? {} : { reologia: null, cantidad: null }) };
+              })}>
+              <option value="">—</option>
+              {ASPECTOS_SECRECIONES.map((a) => <option key={a.val} value={a.val}>{a.label}</option>)}
+            </select>
+          </Fila>
+          {hayAspectoDeSecreciones(b.aspecto) && (
+            <>
+              <Fila etiqueta="Reología">
+                <select id="in-reologia" aria-label="Reología de las secreciones" value={b.reologia ?? ""} onChange={(e) => editar((x) => ({ ...x, reologia: (e.target.value || null) as typeof x.reologia }))}>
+                  <option value="">—</option>
+                  <option value="FLUIDA">Fluida</option>
+                  <option value="ESPESA">Espesa</option>
+                  <option value="ADHERENTE">Adherente</option>
+                </select>
+              </Fila>
+              <Fila etiqueta="Cantidad">
+                <select id="in-cantidad" aria-label="Cantidad de secreciones" value={b.cantidad ?? ""} onChange={(e) => editar((x) => ({ ...x, cantidad: (e.target.value || null) as typeof x.cantidad }))}>
+                  <option value="">—</option>
+                  <option value="ESCASA">Escasa</option>
+                  <option value="MODERADA">Moderada</option>
+                  <option value="ABUNDANTE">Abundante</option>
+                </select>
+              </Fila>
+            </>
+          )}
+          <Fila etiqueta="Tos">
+            <select id="in-tos" aria-label="Tos" value={b.tos ?? ""} onChange={(e) => editar((x) => ({ ...x, tos: (e.target.value || null) as typeof x.tos }))}>
+              <option value="">—</option>
+              <option value="EFICIENTE">Eficiente</option>
+              <option value="DEFICIENTE">Deficiente</option>
+            </select>
+          </Fila>
+          <Fila etiqueta="Deglución">
+            <select id="in-deglucion" aria-label="Deglución" value={b.deglucion ?? ""} onChange={(e) => editar((x) => ({ ...x, deglucion: (e.target.value || null) as typeof x.deglucion }))}>
+              <option value="">—</option>
+              {OPCIONES_DEGLUCION.map((o) => <option key={o.val} value={o.val}>{o.label}</option>)}
+            </select>
+          </Fila>
+        </section>
+      )}
       {local && (
         <div className="row" style={{ justifyContent: "space-between" }}>
           <span className="small muted">Modo demostración:</span>

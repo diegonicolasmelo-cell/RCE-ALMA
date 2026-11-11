@@ -131,6 +131,9 @@ export interface TransicionSoporte {
  */
 export function transicionSoporte(previo: Modalidad | null, nuevo: Modalidad, via: ViaAerea): TransicionSoporte | null {
   if (!previo || conSoporte(previo) === conSoporte(nuevo)) return null;
+  // Si el modo anterior no existe en la via de hoy, la cambio un evento (extubacion, decanulacion,
+  // intubacion): eso no es desvincular ni reconectar.
+  if (!modalidadPermitida(previo, via)) return null;
   const natural = via === "NATURAL";
   const desv = conSoporte(previo) && !conSoporte(nuevo);
   return {
@@ -378,6 +381,23 @@ export const OPCIONES_DEGLUCION: readonly { readonly val: import("./tipos").Degl
   { val: "ESPORADICA", label: "Esporádica" },
   { val: "AUSENTE", label: "Ausente" }
 ];
+
+/**
+ * Modo con que parte el control despues de extubar o decanular, segun con que quedo el paciente.
+ * Aire ambiente no tiene modo propio: el control parte en el primero de la via y se elige.
+ */
+export const MODALIDAD_POR_DISPOSITIVO: Readonly<Record<import("./tipos").DispositivoPosterior, Modalidad | null>> = {
+  CNAF: "CNAF",
+  VMNI: "VNI_ST",
+  O2_CONVENCIONAL: "O2_NARICERA",
+  AIRE_AMBIENTE: null,
+  REINTUBACION_INMEDIATA: null
+};
+
+/** La musculatura accesoria se observa con via aerea natural (oxigeno, CNAF o VNI) y con alto flujo por TQT. */
+export function pideMusculaturaAccesoria(m: Modalidad): boolean {
+  return GRUPO_MODALIDAD[m] === "OXIGENOTERAPIA" || GRUPO_MODALIDAD[m] === "VNI" || m === "CNAF_TQT";
+}
 
 /** Sugerencias para escribir la auscultacion (el campo es texto libre). Provisorias. */
 export const SUGERENCIAS_AUSCULTACION: readonly string[] = [

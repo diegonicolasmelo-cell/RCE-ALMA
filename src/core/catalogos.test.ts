@@ -38,4 +38,9 @@ describe("modos por vía aérea", () => {
     expect(transicionSoporte("ACVC", "CPAP_PS", "TET")).toBeNull();
     expect(transicionSoporte(null, "TUBO_T", "TET")).toBeNull();
   });
+  it("extubar o intubar cambia la via: no es desvinculacion ni reconexion", () => {
+    expect(transicionSoporte("ACVC", "CNAF", "NATURAL")).toBeNull();
+    expect(transicionSoporte("CPAP_PS", "O2_NARICERA", "NATURAL")).toBeNull();
+    expect(transicionSoporte("O2_NARICERA", "ACVC", "TET")).toBeNull();
+  });
 });

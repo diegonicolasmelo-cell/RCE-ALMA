@@ -190,6 +190,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const extubar = async (): Promise<void> => {
     if (!f["queda"]) return setMsg("Indica con qué queda: CNAF, VMNI, O₂ convencional o aire ambiente.");
     if (!(await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior }))) return;
+    useApp.getState().descartar(ep.id);
     avisar(`Extubación registrada a las ${hora}: parten los controles de 30, 60 y 120 min y 48 h.`);
     limpiar();
   };
@@ -200,6 +201,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     if (!(await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior, sinPve: f["smot"] as MotivoExtubacionSinPve }))) return;
     limpiar();
     setSinPve(false);
+    useApp.getState().descartar(ep.id);
     useApp.getState().irA("cama", ep.id);
     avisar("Extubación fuera de protocolo registrada. Sigue con el control post evento.");
   };

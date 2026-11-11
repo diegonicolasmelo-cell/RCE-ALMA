@@ -1,4 +1,4 @@
-import { ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useState } from "react";
 import {
   CAMAS_UNIDAD,
@@ -116,9 +116,21 @@ export function ListaCamas() {
           <Fragment key={ep.id}>
           {encabezadoOtras}
           <article className="card stack" style={{ padding: 12, gap: 8 }} aria-label={`Cama ${ep.cama}`}>
-            <header className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-              <b className="cama-num">{ep.cama}</b>
-              <span className="small muted">
+            <header className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <span className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                <b className="cama-num">{ep.cama}</b>
+                {/* Las flechas cambian al paciente de cama (solo a camas libres). */}
+                <button
+                  type="button"
+                  className="btn-cambiar-cama"
+                  aria-label={`Cambiar de cama · ${nombreCama(ep.cama)}`}
+                  title="Cambiar al paciente de cama"
+                  onClick={() => { pedirEvento("traslado"); irA("eventos", ep.id); }}
+                >
+                  <ArrowLeftRight size={17} aria-hidden />
+                </button>
+              </span>
+              <span className="small muted" style={{ textAlign: "right" }}>
                 {ultimo ? `último ${ultimo.hora} · ${ETIQUETA_MODALIDAD[ultimo.ventilacion.modalidad] ?? "sin modo"}${minutos !== null && minutos >= 60 ? ` · hace ${haceTexto(minutos)}` : ""}` : "sin controles"}
               </span>
             </header>

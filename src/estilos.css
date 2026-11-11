@@ -599,3 +599,5 @@ table.sab-plana thead tr:nth-child(2) th:first-child{position:static;text-align:
 .btn-cambiar-cama:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
 .btn-cambiar-cama:disabled{opacity:.45;cursor:not-allowed;color:var(--muted)}
 .detail-head .btn-cambiar-cama{width:34px;height:34px;margin-left:0}
+/* En la tarjeta de la cama: junto al numero, mas chico y sin empujar el resto. */
+article .btn-cambiar-cama{width:34px;height:34px;margin-left:0}

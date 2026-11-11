@@ -1043,12 +1043,11 @@ async function esperarServidor() {
       await cel.goto(URL + "#celular");
       if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
       await cel.waitForSelector('article[aria-label="Cama UCI-04"]');
-      await cel.click('article[aria-label="Cama UCI-04"] button:has-text("Monitorización")');
-      await cel.waitForSelector(".hoja-simple");
-      const antes = await cel.textContent(".banda .l1");
-      // Las flechas de la esquina superior abren el traslado, con el formulario ya listo.
-      await cel.click('button[aria-label="Cambiar de cama · Cama 4"]');
+      // Las flechas de la tarjeta abren el traslado, con el formulario ya listo.
+      await cel.click('article[aria-label="Cama UCI-04"] button[aria-label="Cambiar de cama · Cama 4"]');
       await cel.waitForSelector("#evf-cama");
+      await cel.waitForSelector('[aria-label="Línea de tiempo"]');
+      const antes = await cel.textContent(".banda .l1");
       const opciones = await cel.locator("#evf-cama option").allTextContents();
       assert.ok(opciones.includes("Cama 16"), opciones.join(" | "));
       assert.ok(!opciones.includes("Cama 3"), "una cama ocupada no se ofrece: " + opciones.join(" | "));

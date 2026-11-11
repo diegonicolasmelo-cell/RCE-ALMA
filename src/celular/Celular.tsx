@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeftRight, Lock, Wifi, WifiOff } from "lucide-react";
+import { Lock, Wifi, WifiOff } from "lucide-react";
 import {
   apkVigente,
   completarBorrador,
@@ -356,16 +356,6 @@ export function Celular() {
       <h1>{que} · {nombreCama(ep.cama)}</h1>
       <span className="fecha">{fecha}</span>
       {!esMia(ep) && <Pildora>de apoyo</Pildora>}
-      {/* Cambiar de cama: abre el traslado en Eventos, con las camas libres. */}
-      <button
-        type="button"
-        className="btn-cambiar-cama"
-        aria-label={`Cambiar de cama · ${nombreCama(ep.cama)}`}
-        title="Cambiar al paciente de cama"
-        onClick={() => { franja.cerrar(); useApp.getState().pedirEvento("traslado"); irA("eventos", ep.id); }}
-      >
-        <ArrowLeftRight size={18} aria-hidden />
-      </button>
     </div>
   );
   /** Banda del paciente, a lo ancho y en dos lineas: la via aerea, y el peso ideal con el Vt por kilo. */

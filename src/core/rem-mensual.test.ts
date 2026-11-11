@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { unControl, unEpisodio, unEvento } from "./fixtures";
-import { consolidarRemMensual, remMensualCsv } from "./rem-mensual";
+import { consolidarRemMensual } from "./rem-mensual";
 import type { Control, EventoClinico, Modalidad } from "./tipos";
 
 const NOV = "2026-11";
@@ -68,12 +68,4 @@ describe("REM 28 del mes", () => {
     expect(r.bs.asistenciaIotCanula).toBe(2);
   });
 
-  it("el CSV trae las 17 columnas de rango por sexo y los codigos BS", () => {
-    const csv = remMensualCsv(r);
-    expect(csv).toContain("Total ingresos (Nº de personas);2;1;1;");
-    expect(csv.split("\r\n")[3]!.split(";")).toHaveLength(4 + 17 * 2);
-    expect(csv).toContain("0601171 Asistencia en IOT, VMNI, cambio de cánula de TQT;2");
-    expect(csv).toContain("0601030 Maniobras permeabilización de la vía aérea;3");
-    expect(csv).toContain("Ejercicios terapéuticos;2");
-  });
 });

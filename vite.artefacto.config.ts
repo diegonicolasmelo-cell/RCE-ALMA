@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 /** Compila la app en UN solo script y UNA hoja de estilos, para incrustarlos en una pagina publicada. */
 export default defineConfig({
+  // La plantilla del REM 28 viaja dentro de la app (se importa con ?inline).
+  assetsInclude: ["**/*.xlsx"],
   plugins: [react()],
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
   resolve: { alias: { "@core": fileURLToPath(new URL("./src/core", import.meta.url)) } },

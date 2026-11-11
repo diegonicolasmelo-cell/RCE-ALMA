@@ -15,6 +15,7 @@ import type { MouseEvent, ReactNode } from "react";
 import {
   CRITERIOS_PVE,
   ETIQUETA_DISPOSITIVO,
+  ETIQUETA_MOTIVO_SIN_PVE,
   avisoMenos24hVm,
   contrastarControlesPve,
   criteriosAptos,
@@ -26,7 +27,7 @@ import {
   motivoSinPve,
   registrosPve
 } from "@core/index";
-import type { DispositivoPosterior, EventoClinico, LecturasPve, MomentoPostExtub } from "@core/index";
+import type { DispositivoPosterior, EventoClinico, LecturasPve, MomentoPostExtub, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { horaDe } from "../app/util";
@@ -43,6 +44,8 @@ const TRABAJO = ["Sin aumento", "Aumentado"];
 const SECRECIONES = ["Escasas", "Moderadas", "Abundantes"];
 const MANEJO = ["Maneja", "No maneja"];
 const QUEDA: readonly DispositivoPosterior[] = ["CNAF", "VMNI", "O2_CONVENCIONAL", "AIRE_AMBIENTE"];
+/** Con mas de 24 h de VM: los motivos para no hacer PVE (el de «menos de 24 h» va desde la cama). */
+const MOTIVOS_SIN_PVE: readonly MotivoExtubacionSinPve[] = ["AET", "VENTILACION_DOMICILIARIA", "AGITACION_PSICOMOTORA", "OTRO"];
 
 /** "Se guarda: hoy 09:55 (10-11)". */
 function cuando(hora: string): string {
@@ -84,6 +87,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const [f, setF] = useState<Texto>({});
   const [crit, setCrit] = useState<(boolean | null)[]>(() => CRITERIOS_PVE.map(() => null));
   const [fuera, setFuera] = useState(false);
+  const [sinPve, setSinPve] = useState(false);
   const [hora, setHora] = useState(horaDe(new Date()));
   const [reeval, setReeval] = useState<MomentoPostExtub | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -189,6 +193,16 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     avisar(`Extubación registrada a las ${hora}: parten los controles de 30, 60 y 120 min y 48 h.`);
     limpiar();
   };
+  /** No corresponde PVE (AET, ventilacion domiciliaria, agitacion…): extubacion fuera de protocolo. */
+  const extubarSinPve = async (): Promise<void> => {
+    if (!f["smot"]) return setMsg("Indica por qué no corresponde PVE.");
+    if (!f["queda"]) return setMsg("Indica con qué queda: CNAF, VMNI, O₂ convencional o aire ambiente.");
+    if (!(await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior, sinPve: f["smot"] as MotivoExtubacionSinPve }))) return;
+    limpiar();
+    setSinPve(false);
+    useApp.getState().irA("cama", ep.id);
+    avisar("Extubación fuera de protocolo registrada. Sigue con el control post evento.");
+  };
   const sinExtubar = async (): Promise<void> => {
     if ((f["motivo"] ?? "").trim() === "") return setMsg("Escribe por qué no se extuba.");
     if (!(await ev({ tipo: "PVE_SIN_EXTUBAR", motivo: f["motivo"]!.trim() }))) return;
@@ -247,8 +261,40 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
 
   const botones = (children: ReactNode): JSX.Element => <div className="row" style={{ gap: 8 }}>{children}</div>;
 
+  // Con mas de 24 h el boton de la cama es la PVE; si no corresponde (AET, ventilacion
+  // domiciliaria, agitacion…), se extuba fuera de protocolo desde aqui.
+  const puedeSinPve = conTet && !flujo.bloque && flujo.fase !== "EN_CURSO" && flujo.fase !== "TERMINADA";
+
   return (
     <div className="hoja-simple">
+      {puedeSinPve && !sinPve && (
+        <button type="button" className="linkbtn" style={{ alignSelf: "flex-start", padding: 0 }} onClick={() => { limpiar(); setSinPve(true); }}>
+          No corresponde PVE: extubar fuera de protocolo
+        </button>
+      )}
+      {puedeSinPve && sinPve && (
+        <section aria-label="Extubación fuera de protocolo">
+          <h2>
+            Extubación fuera de protocolo
+            <button type="button" className="peq" onClick={() => { setSinPve(false); limpiar(); }}>Cancelar</button>
+          </h2>
+          <div className="fila bar">
+            <span className="et">Por qué sin PVE</span>
+            <div className="ops txt" role="group" aria-label="Por qué sin PVE">
+              {MOTIVOS_SIN_PVE.map((m) => <button key={m} type="button" aria-pressed={f["smot"] === m} onClick={() => set("smot", m)}>{ETIQUETA_MOTIVO_SIN_PVE[m].replace(/^./, (c) => c.toUpperCase())}</button>)}
+            </div>
+          </div>
+          <div className="fila bar">
+            <span className="et">Queda con</span>
+            <div className="ops txt" role="group" aria-label="Queda con">
+              {QUEDA.map((q) => <button key={q} type="button" aria-pressed={f["queda"] === q} onClick={() => set("queda", q)}>{ETIQUETA_DISPOSITIVO[q].replace(/^./, (c) => c.toUpperCase())}</button>)}
+            </div>
+          </div>
+          {horaFila("Hora de la extubación")}
+          {msg && <div className="notice crit small" role="alert" style={{ margin: "0 12px" }}>{msg}</div>}
+          <div style={{ padding: "10px 12px" }}><button type="button" className="btn primary" style={{ width: "100%" }} onClick={() => void extubarSinPve()}>Registrar extubación fuera de protocolo</button></div>
+        </section>
+      )}
       {bloqueo && !flujo.bloque && !["EN_CURSO", "APTO", "TERMINADA"].includes(flujo.fase) && <div className="notice warn small">{bloqueo}</div>}
 
       {/* 1 · Checklist */}

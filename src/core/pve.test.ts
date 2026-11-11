@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CRITERIOS_PVE, accesoPve, avisoMenos24hVm, horasDeVm, textoVm, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
+import { CRITERIOS_PVE, accesoPve, botonExtubacion, avisoMenos24hVm, horasDeVm, textoVm, motivoSinPve, bloquesPostExtub, contrastarControlesPve, checklistDelTurno, criteriosAptos, estadoFlujoPve, puedeIniciarPve, registrosPve } from "./pve";
 import { turnoDe } from "./turnos";
 import type { EventoClinico, LecturasPve } from "./tipos";
 
@@ -255,5 +255,20 @@ describe("aviso de menos de 24 h de VM (no bloquea)", () => {
     expect(textoVm({ horas: 24, desde: null })).toBe("VM 1 d");
     expect(textoVm({ horas: 77, desde: null })).toBe("VM 3 d");
     expect(textoVm(null)).toBeNull();
+  });
+});
+
+describe("un solo botón de extubación: fuera de protocolo antes de 24 h de VM, PVE después", () => {
+  const ingreso = (horas: number) => ({ viaAereaActual: "TET" as const, diasVM: 0, ingresadoEn: new Date(t(10).getTime() - horas * 3_600_000).toISOString() });
+  it("con menos de 24 h, con cualquier modo, es extubación fuera de protocolo", () => {
+    expect(botonExtubacion(ingreso(5), ctl("ACVC"), [], null, t(10))).toEqual({ tipo: "FUERA_PROTOCOLO" });
+    expect(botonExtubacion(ingreso(23), ctl("CPAP_PS"), [], null, t(10))).toEqual({ tipo: "FUERA_PROTOCOLO" });
+  });
+  it("desde las 24 h es la PVE (con su regla: último control en CPAP+PS)", () => {
+    expect(botonExtubacion(ingreso(30), ctl("CPAP_PS"), [], null, t(10))?.tipo).toBe("PVE");
+    expect(botonExtubacion(ingreso(30), ctl("ACVC"), [], null, t(10))).toBeNull();
+  });
+  it("sin vía aérea artificial no hay botón de extubación", () => {
+    expect(botonExtubacion({ viaAereaActual: "NATURAL", diasVM: 0, ingresadoEn: t(5).toISOString() }, null, [], null, t(10))).toBeNull();
   });
 });

@@ -333,6 +333,33 @@ export function accesoPve(via: ViaAerea, ultimo: UltimoControlPve | null, evento
   return { texto: "Evaluar PVE diaria", destacado: false };
 }
 
+/**
+ * El boton de extubacion de una cama con TET: uno solo, que cambia con las horas de VM.
+ * - Con menos de 24 h de VM (cualquier modo): «Extubación fuera de protocolo».
+ * - Desde las 24 h: la PVE (dentro de protocolo), con su regla (ultimo control en CPAP+PS).
+ * Lo que ya esta en marcha (una PVE en curso o terminada, un control post extubacion que toca)
+ * manda siempre.
+ */
+export type BotonExtubacion = { readonly tipo: "PVE"; readonly acceso: AccesoPve } | { readonly tipo: "FUERA_PROTOCOLO" };
+
+export function botonExtubacion(
+  ep: Pick<Episodio, "viaAereaActual" | "ingresadoEn" | "diasVM">,
+  ultimo: UltimoControlPve | null,
+  eventos: readonly EventoClinico[],
+  primerControlEn: string | null,
+  ahora: Date
+): BotonExtubacion | null {
+  const acceso = accesoPve(ep.viaAereaActual, ultimo, eventos, ahora);
+  const f = estadoFlujoPve(eventos, ahora);
+  const enMarcha = f.fase === "EN_CURSO" || f.fase === "TERMINADA" || (acceso?.destacado === true && acceso.texto.startsWith("Post"));
+  if (acceso && enMarcha) return { tipo: "PVE", acceso };
+  if (ep.viaAereaActual === "TET") {
+    const h = horasDeVm(ep, eventos, primerControlEn, ahora);
+    if (h !== null && h.horas < 24) return { tipo: "FUERA_PROTOCOLO" };
+  }
+  return acceso ? { tipo: "PVE", acceso } : null;
+}
+
 /** Una fila del contraste entre el control de inicio y el de termino de la PVE. */
 export interface FilaContrastePve {
   readonly etiqueta: string;

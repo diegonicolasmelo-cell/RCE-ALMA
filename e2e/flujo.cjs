@@ -554,21 +554,34 @@ async function esperarServidor() {
       await cel.click('[role=tab]:has-text("Control")');
     });
 
-    await prueba("extubacion fuera de protocolo (sin PVE) desde Eventos, con su motivo; la PVE tambien se abre desde ahi", async () => {
+    await prueba("un solo boton de extubacion: fuera de protocolo antes de 24 h de VM, PVE despues; sin PVE posible, se extuba fuera de protocolo desde la PVE", async () => {
+      // UCI-02 se reintubo recien (menos de 24 h): la tarjeta ofrece la extubacion fuera de protocolo.
+      await cel.click('button:has-text("‹ Camas")');
+      const tarjeta = cel.locator('article[aria-label="Cama UCI-02"]');
+      await tarjeta.waitFor();
+      assert.equal(await tarjeta.locator('button:has-text("Extubación fuera de protocolo")').count(), 1);
+      assert.equal(await tarjeta.locator('button:has-text("PVE")').count(), 0, "antes de 24 h no se ofrece PVE");
+      await tarjeta.locator('button:has-text("Extubación fuera de protocolo")').click();
+      await cel.waitForSelector("#evf-mot");
+      assert.equal(await cel.inputValue("#evf-mot"), "MENOS_24H_VM", "el motivo viene marcado");
+      const motivos = await cel.locator("#evf-mot option").allTextContents();
+      assert.ok(motivos.includes("Agitación psicomotora"), motivos.join(" | "));
+      await cel.click('button:text-is("Cancelar")');
+      // UCI-09 (mas de 24 h, en ACVC, ventilacion domiciliaria): la PVE no se puede, pero desde ahi se extuba.
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
-      // En ACVC la PVE no se puede iniciar: el boton dice por que.
+      assert.equal(await cel.locator('.evgrid button:text-is("Extubación fuera de protocolo")').count(), 0, "con mas de 24 h el boton es la PVE");
       const pveBtn = cel.locator('.evgrid button:has-text("PVE")');
-      assert.equal(await pveBtn.isDisabled(), true);
-      assert.match(await pveBtn.textContent(), /último control en CPAP\+PS/);
-      assert.equal(await cel.locator('.evgrid button:text-is("Extubación programada")').count(), 0, "la extubacion tras PVE se registra en el flujo de la PVE");
-      await cel.click('.evgrid button:text-is("Extubación fuera de protocolo")');
-      const motivos = await cel.locator("#evf-mot option").allTextContents();
-      assert.deepEqual(motivos, ["Menos de 24 h de VM", "Adecuación del esfuerzo terapéutico", "Ventilación mecánica domiciliaria", "Otro motivo"]);
-      assert.equal(await cel.inputValue("#evf-mot"), "AET", "con mas de 24 h de VM no se marca «menos de 24 h»");
-      await cel.selectOption("#evf-mot", "VENTILACION_DOMICILIARIA");
-      await cel.selectOption("#evf-disp", "VMNI");
-      await cel.click('button:text-is("Registrar")');
+      assert.match(await pveBtn.textContent(), /último control en CPAP\+PS[\s\S]*fuera de protocolo/);
+      await pveBtn.click();
+      await cel.click('button:has-text("No corresponde PVE: extubar fuera de protocolo")');
+      const opciones = await cel.locator('[aria-label="Por qué sin PVE"] button').allTextContents();
+      assert.deepEqual(opciones, ["Adecuación del esfuerzo terapéutico", "Ventilación mecánica domiciliaria", "Agitación psicomotora", "Otro motivo"]);
+      await cel.click('button:has-text("Registrar extubación fuera de protocolo")');
+      assert.match(await cel.textContent("[role=alert]"), /por qué no corresponde PVE/);
+      await cel.click('[aria-label="Por qué sin PVE"] button:text-is("Ventilación mecánica domiciliaria")');
+      await cel.click('[aria-label="Queda con"] button:text-is("VMNI")');
+      await cel.click('button:has-text("Registrar extubación fuera de protocolo")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 9")');
       assert.match(await cel.textContent(".banda"), /Vía aérea natural/);
       await cel.click('[role=tab]:has-text("Eventos")');

@@ -466,6 +466,7 @@ export const ETIQUETA_MOTIVO_SIN_PVE: Readonly<Record<MotivoExtubacionSinPve, st
   MENOS_24H_VM: "menos de 24 h de VM",
   AET: "adecuación del esfuerzo terapéutico",
   VENTILACION_DOMICILIARIA: "ventilación mecánica domiciliaria",
+  AGITACION_PSICOMOTORA: "agitación psicomotora",
   OTRO: "otro motivo"
 };
 

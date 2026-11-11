@@ -41,6 +41,9 @@ interface EstadoApp {
   setMisCamas: (c: readonly string[] | null) => void;
   /** Abre una cama en la vista indicada (o vuelve a las tarjetas). */
   irA: (vista: VistaCelular, camaId?: string) => void;
+  /** Evento que Eventos debe abrir al mostrarse (p. ej. la extubacion fuera de protocolo desde la tarjeta). */
+  eventoPedido: string | null;
+  pedirEvento: (k: string | null) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
@@ -72,6 +75,8 @@ export const useApp = create<EstadoApp>((set) => ({
   vista: "camas",
   misCamas: null,
   setMisCamas: (misCamas) => set({ misCamas }),
+  eventoPedido: null,
+  pedirEvento: (eventoPedido) => set({ eventoPedido }),
   irA: (vista, camaId) =>
     set((s) => {
       if (!camaId) return { vista, camaId: s.camaId };

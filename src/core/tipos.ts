@@ -377,7 +377,7 @@ export interface EventoBase {
 export type DispositivoPosterior = "CNAF" | "VMNI" | "O2_CONVENCIONAL" | "AIRE_AMBIENTE" | "REINTUBACION_INMEDIATA";
 export type MotivoAjusteTubo = "DESPLAZAMIENTO_SUPERFICIAL" | "CONTROL_RADIOLOGICO";
 /** Por que se extuba sin PVE (fuera de protocolo). */
-export type MotivoExtubacionSinPve = "MENOS_24H_VM" | "AET" | "VENTILACION_DOMICILIARIA" | "OTRO";
+export type MotivoExtubacionSinPve = "MENOS_24H_VM" | "AET" | "VENTILACION_DOMICILIARIA" | "AGITACION_PSICOMOTORA" | "OTRO";
 /** Por que se recambia un tubo o una canula (el paciente sigue ventilado: no es reintubacion). */
 export type MotivoCambioVia = "CUFF_DANADO" | "OBSTRUCCION" | "FUGA" | "CAMBIO_CALIBRE" | "PROGRAMADO" | "OTRO";
 

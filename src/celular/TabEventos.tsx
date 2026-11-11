@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DESTINOS_IMAGEN,
   MUESTRAS_CULTIVO,
@@ -11,8 +11,7 @@ import {
   ETIQUETA_MODALIDAD,
   ETIQUETA_MOTIVO_CAMBIO,
   ETIQUETA_MOTIVO_SIN_PVE,
-  accesoPve,
-  horasDeVm,
+  botonExtubacion,
   motivoSinPve
 } from "@core/index";
 import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
@@ -78,10 +77,8 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   const irA = useApp((s) => s.irA);
   // PVE: el mismo acceso que en la tarjeta de la cama (solo TET con el ultimo control en CPAP+PS).
   const ultimoPve = ctx.ultimo ? { modalidad: ctx.ultimo.ventilacion.modalidad, registradoEn: ctx.ultimo.registradoEn } : null;
-  const pve = accesoPve(ep.viaAereaActual, ultimoPve, eventos, ahora);
-  // Con menos de 24 h de VM la extubacion fuera de protocolo viene con ese motivo marcado.
-  const h = horasDeVm(ep, eventos, ctx.controles[0]?.registradoEn ?? null, ahora);
-  const menos24 = h !== null && h.horas < 24;
+  const boton = botonExtubacion(ep, ultimoPve, eventos, ctx.controles[0]?.registradoEn ?? null, ahora);
+  const pve = boton?.tipo === "PVE" ? boton.acceso : null;
   // Si ya se retiro la via aerea en este episodio, la proxima intubacion es REintubacion.
   const yaRetiradaVia = eventos.some((e) => e.tipo === "EXTUBACION_PROGRAMADA" || e.tipo === "AUTOEXTUBACION" || e.tipo === "DECANULACION");
 
@@ -89,15 +86,18 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     {
       titulo: "Vía aérea",
       items: [
-        { k: "pve", texto: pve ? pve.texto : "PVE", req: "tet", deshabilitado: !pve, ...(pve ? {} : { ayuda: motivoSinPve(ep.viaAereaActual, ultimoPve, eventos) ?? "" }), crear: (_v, b) => b as never },
-        {
-          k: "extub", texto: "Extubación fuera de protocolo", req: "tet",
-          campos: [
-            { id: "mot", etiqueta: "Por qué sin PVE", valor: menos24 ? "MENOS_24H_VM" : "AET", opciones: MOTIVOS_SIN_PVE },
-            { id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }
-          ],
-          crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior, sinPve: (v["mot"] ?? "OTRO") as MotivoExtubacionSinPve })
-        },
+        // Un solo boton de extubacion: fuera de protocolo antes de las 24 h de VM, PVE despues.
+        boton?.tipo === "FUERA_PROTOCOLO"
+          ? {
+              k: "extub", texto: "Extubación fuera de protocolo", req: "tet",
+              campos: [
+                { id: "mot", etiqueta: "Por qué sin PVE", valor: "MENOS_24H_VM", opciones: MOTIVOS_SIN_PVE },
+                { id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }
+              ],
+              crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior, sinPve: (v["mot"] ?? "OTRO") as MotivoExtubacionSinPve })
+            }
+          // Sin PVE posible igual se abre: ahi se ve por que y se puede extubar fuera de protocolo.
+          : { k: "pve", texto: pve ? pve.texto : "PVE", req: "tet", ...(pve ? {} : { ayuda: `${motivoSinPve(ep.viaAereaActual, ultimoPve, eventos) ?? ""} Si no corresponde PVE, ábrela para extubar fuera de protocolo.`.trim() }), crear: (_v, b) => b as never },
         { k: "reint", texto: yaRetiradaVia ? "Reintubación" : "Intubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "" }) },
         { k: "traq", texto: "Traqueostomía", req: "tet", campos: [{ id: "cal", etiqueta: "Calibre", num: true }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
         { k: "ajuste", texto: "Ajustar posición del tubo", req: "tet", campos: [{ id: "cm", etiqueta: "Centímetros en la arcada dental", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: [{ valor: "DESPLAZAMIENTO_SUPERFICIAL", texto: "Desplazamiento superficial" }, { valor: "CONTROL_RADIOLOGICO", texto: "Control radiológico" }] }], crear: (v, b) => ({ ...b, tipo: "AJUSTE_TUBO", fijacionCm: v["cm"] ?? "", motivo: (v["mot"] ?? "DESPLAZAMIENTO_SUPERFICIAL") as MotivoAjusteTubo }) },
@@ -199,6 +199,16 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     avisar(it.peligro ? "Evento registrado. El PC ya muestra la alerta con el informe pre-llenado." : "Evento registrado.");
   };
 
+  // Desde la tarjeta de la cama se puede llegar con un evento ya pedido (p. ej. la extubacion).
+  const eventoPedido = useApp((s) => s.eventoPedido);
+  useEffect(() => {
+    if (!eventoPedido) return;
+    useApp.getState().pedirEvento(null);
+    const it = todos.find((x) => x.k === eventoPedido);
+    if (it && aplica(it)) clic(it);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventoPedido]);
+
   const clic = (it: Item): void => {
     if (it.k === "pve") {
       irA("pve", ep.id);
@@ -283,9 +293,9 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
             {g.items.filter(aplica).map((it) => {
               const off = it.deshabilitado;
               return (
-                <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : it.k === "pve" && !off ? "btn pve-ev" : "btn"} disabled={off} title={it.ayuda} onClick={() => clic(it)}>
+                <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : it.k === "pve" && !it.ayuda ? "btn pve-ev" : "btn"} disabled={off} title={it.ayuda} onClick={() => clic(it)}>
                   {it.texto}
-                  {off && it.ayuda && <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{it.ayuda}</span>}
+                  {it.ayuda && <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{it.ayuda}</span>}
                 </button>
               );
             })}

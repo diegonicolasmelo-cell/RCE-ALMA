@@ -2,7 +2,7 @@ import { ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useState } from "react";
 import {
   CAMAS_UNIDAD,
-  accesoPve,
+  botonExtubacion,
   nombreCama,
   apkVigente,
   esViaAereaArtificial,
@@ -36,6 +36,7 @@ export function ListaCamas() {
   const { repo } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
   const irA = useApp((s) => s.irA);
+  const pedirEvento = useApp((s) => s.pedirEvento);
   const misCamas = useApp((s) => s.misCamas);
   const ahora = useAhora(30_000);
   const [ingresando, setIngresando] = useState<string | null>(null);
@@ -107,7 +108,9 @@ export function ListaCamas() {
         const cambios = esViaAereaArtificial(ep.viaAereaActual) ? filtrosPorCambiar(eventos, ahora) : [];
         const duePost = flujo.bloque?.momentos.find((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H");
         const propia = esMiaCama(cama);
-        const pve = accesoPve(ep.viaAereaActual, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, ahora);
+        // Un solo boton de extubacion: fuera de protocolo antes de las 24 h de VM, PVE despues.
+        const boton = botonExtubacion(ep, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, null, ahora);
+        const pve = boton?.tipo === "PVE" ? boton.acceso : null;
         const h = horasDeVm(ep, eventos, null, ahora);
         return (
           <Fragment key={ep.id}>
@@ -146,6 +149,11 @@ export function ListaCamas() {
             {pve && (
               <button type="button" className={pve.destacado ? "btn primary" : "btn"} onClick={() => irA("pve", ep.id)}>
                 <Timer size={15} aria-hidden /> {pve.texto}
+              </button>
+            )}
+            {boton?.tipo === "FUERA_PROTOCOLO" && (
+              <button type="button" className="btn" onClick={() => { pedirEvento("extub"); irA("eventos", ep.id); }}>
+                <Timer size={15} aria-hidden /> Extubación fuera de protocolo
               </button>
             )}
           </article>

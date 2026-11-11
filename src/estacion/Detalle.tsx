@@ -1,10 +1,10 @@
 import { Copy, ExternalLink, FileText } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   dotacion,
   apkDelTurno,
-  calcularDerivados,
-  calcularPbw,
+
+
   componerInformeRiesgo,
   describirEquipos,
   describirEvento,
@@ -22,11 +22,10 @@ import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
 import { htmlApk, nombreArchivoApk } from "./apkDocumento";
 import { borrarIdentidad } from "./purga";
-import { filasSabana } from "./sabana";
 import { PanelCircuitoYEvaluaciones, PanelPve } from "./PanelPve";
-import { Tendencia } from "./Tendencia";
 import { CompletarIdentidad } from "./CompletarIdentidad";
 import { FechaIngreso } from "./FechaIngreso";
+import { SabanaVista } from "./SabanaVista";
 import { VENTANA_ALERTA_MS, copiarTexto, nombreProfesional } from "./util";
 
 interface Props {
@@ -38,18 +37,13 @@ interface Props {
   ahora: Date;
 }
 
-const MAX_COLUMNAS = 10;
 
 export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Props) {
   const { repo, api, db, config } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [confirmarAlta, setConfirmarAlta] = useState(false);
 
-  const pbw = calcularPbw(ep.tallaCm, ep.sexo);
-  const visibles = controles.slice(-MAX_COLUMNAS);
-  const etiquetas = visibles.map((c) => c.hora);
-  const derivados = visibles.map((c) => calcularDerivados(c, pbw));
-  const filas = useMemo(() => filasSabana(pbw, ep.monitoreo), [pbw, ep.monitoreo]);
+
 
   const riesgos = eventosDeRiesgo(eventos).filter((e) => ahora.getTime() - Date.parse(e.registradoEn) < VENTANA_ALERTA_MS);
   const sinapse = enlaceSinapse(identidad?.rut ?? null, config.sinapseUrl);
@@ -142,57 +136,10 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
         );
       })}
 
+      <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} />
+
       <PanelPve eventos={eventos} ahora={ahora} />
       <PanelCircuitoYEvaluaciones eventos={eventos} ahora={ahora} />
-
-      {visibles.length > 0 ? (
-        <>
-          <section>
-            <h3>Tendencia del turno</h3>
-            <div className="sparks">
-              <Tendencia titulo="PAM" unidad="mmHg" valores={derivados.map((d) => d.pam)} etiquetas={etiquetas} referencia={65} />
-              <Tendencia titulo="FC" unidad="lpm" valores={visibles.map((c) => c.fc)} etiquetas={etiquetas} />
-              <Tendencia titulo="SpO₂" unidad="%" valores={visibles.map((c) => c.spo2)} etiquetas={etiquetas} />
-              <Tendencia titulo="Driving pressure" unidad="cmH₂O" valores={derivados.map((d) => d.drivingPressure)} etiquetas={etiquetas}
-                bloqueados={visibles.map((c, i) => c.ventilacion.asincronico && derivados[i]!.leyendaMecanica !== null)} />
-              {ep.monitoreo.pic && <Tendencia titulo="PPC" unidad="mmHg" valores={derivados.map((d) => d.ppc)} etiquetas={etiquetas} referencia={60} />}
-            </div>
-            <p className="small muted mt">Línea punteada: referencia (PAM 65). En ΔP, “bloq.” marca un control con asincronía en modalidad controlada: no se dibuja un dato falso.</p>
-          </section>
-
-          <section>
-            <h3>Sábana del turno</h3>
-            <div className="scroll-x">
-              <table className="sab">
-                <thead>
-                  <tr>
-                    <th>Parámetro</th>
-                    {visibles.map((c) => <th key={c.id}>{c.hora}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.map((f) => (
-                    <tr key={f.etiqueta}>
-                      <td>{f.etiqueta}</td>
-                      {visibles.map((c) => {
-                        const x = f.celda(c);
-                        return (
-                          <td key={c.id} className="v">
-                            {x.bloqueado ? <span className="lockc" title="Invalidado: asincronía en modalidad controlada">bloq.</span> : x.texto}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="small muted mt">* Volumen minuto editado (leído del ventilador) o Glasgow registrado bajo sedación.</p>
-          </section>
-        </>
-      ) : (
-        <p className="muted">Todavía no hay controles de esta cama.</p>
-      )}
 
       <section>
         <h3>Alta</h3>

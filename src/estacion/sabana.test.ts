@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { filasSabana } from "./sabana";
-import { unControl, unaVentilacion } from "@core/fixtures";
+import { columnasSabana, filasSabana, otrosEventos } from "./sabana";
+import { unControl, unEvento, unaVentilacion } from "@core/fixtures";
 
 const SIN_MONITOREO = { capnografia: false, pic: false, dve: false };
 const fila = (et: string, mon = SIN_MONITOREO) => filasSabana(67.8, mon).find((f) => f.etiqueta === et)!;
@@ -55,12 +55,14 @@ describe("sábana del turno", () => {
     expect(fila("DVE", { capnografia: true, pic: true, dve: true }).celda(c).texto).toBe("12 cmH₂O abierta");
   });
 
-  it("sigue el orden de la hoja de papel: monitorización y luego terapia ventilatoria", () => {
-    const e = filasSabana(67.8, SIN_MONITOREO).map((f) => f.etiqueta);
-    const orden = ["Frec. cardiaca", "P. arterial (PAM)", "Glasgow", "S5Q", "SAS / escalón", "DVA / inotrópicos", "Modo", "P. plateau", "P. distensión (ΔP)", "Compliance", "Auto PEEP", "Relación I:E", "I. Tobin", "Vol. minuto", "FiO₂", "SpO₂", "Firma"];
+  it("sigue el orden de la hoja de papel, por bloques: monitorización, terapia ventilatoria, kinesiología y firma", () => {
+    const f = filasSabana(67.8, SIN_MONITOREO);
+    const e = f.map((x) => x.etiqueta);
+    const orden = ["Frec. cardiaca", "P. arterial (PAM)", "SpO₂", "Glasgow", "SAS / vigilia", "Sedación", "DVA / inotrópicos", "Modo", "P. plateau", "P. distensión (ΔP)", "Compliance", "Vol. minuto", "FiO₂", "Auscultación", "Terapia física", "Firma"];
     expect(orden.map((x) => e.indexOf(x))).toEqual([...orden.map((x) => e.indexOf(x))].sort((a, b) => a - b));
-    expect(e.indexOf("Firma")).toBeGreaterThan(-1);
     expect(Math.min(...orden.map((x) => e.indexOf(x)))).toBeGreaterThan(-1);
+    expect([...new Set(f.map((x) => x.grupo))]).toEqual(["Monitorización", "Terapia ventilatoria", "Kinesiología", "Firma"]);
+    expect(e).not.toContain("S5Q");
   });
 
   it("Auto PEEP solo se muestra en modalidades controladas", () => {
@@ -69,13 +71,36 @@ describe("sábana del turno", () => {
     expect(fila("Auto PEEP").celda(cpap).texto).toBe("—");
   });
 
-  it("el S5Q se lee en el PC: puntaje sobre 5 y contra el corte", () => {
-    expect(fila("S5Q").celda(unControl({ s5q: 4 })).texto).toBe("4/5 (≥3)");
-    expect(fila("S5Q").celda(unControl({ s5q: 2 })).texto).toBe("2/5 (<3)");
-    expect(fila("S5Q").celda(unControl()).texto).toBe("--");
-  });
-
   it("la firma son las iniciales del profesional", () => {
     expect(fila("Firma").celda(unControl()).texto).toBe("DM");
+  });
+});
+
+describe("columnas por control y eventos aparte", () => {
+  const ahora = new Date(2026, 10, 11, 18, 0);
+  const en = (dia: number, h: number): string => new Date(2026, 10, dia, h, 0).toISOString();
+  const ctl = (id: string, dia: number, h: number) => unControl({ id, registradoEn: en(dia, h) });
+  const ev = (e: Record<string, unknown>, dia: number, h: number) => unEvento({ ...e, registradoEn: en(dia, h) } as never);
+  const controles = [ctl("a", 9, 10), ctl("b", 10, 21), ctl("c", 11, 1), ctl("d", 11, 9), ctl("e", 11, 13)];
+  const eventos = [
+    ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF" }, 11, 8),
+    ev({ tipo: "CAMBIO_HMEF" }, 11, 2),
+    ev({ tipo: "TOMA_CULTIVO", muestra: "Aspirado traqueal" }, 10, 22)
+  ];
+  it("24 h por defecto; la estadía muestra todos los controles", () => {
+    expect(columnasSabana(controles, eventos, "24H", ahora).map((c) => c.control.id)).toEqual(["b", "c", "d", "e"]);
+    expect(columnasSabana(controles, eventos, "ESTADIA", ahora).map((c) => c.control.id)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+  it("el evento de vía aérea se marca en la columna del control que generó", () => {
+    const cols = columnasSabana(controles, eventos, "24H", ahora);
+    expect(cols.find((c) => c.control.id === "d")?.hitos).toEqual(["Extubación"]);
+    expect(cols.filter((c) => c.hitos.length > 0)).toHaveLength(1);
+  });
+  it("una línea marca el cambio de día", () => {
+    const cols = columnasSabana(controles, eventos, "24H", ahora);
+    expect(cols.map((c) => c.nuevoDia)).toEqual([false, true, false, false]);
+  });
+  it("filtros, cultivos y demás van en la lista aparte, del más nuevo al más antiguo", () => {
+    expect(otrosEventos(eventos, "24H", ahora).map((e) => e.tipo)).toEqual(["CAMBIO_HMEF", "TOMA_CULTIVO"]);
   });
 });

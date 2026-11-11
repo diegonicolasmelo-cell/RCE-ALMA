@@ -53,6 +53,9 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
         </div>
       )}
 
+      {/* Camas en una columna a la izquierda; la ficha con la sabana, protagonista, a la derecha. */}
+      <div className="tablero-dos">
+      <div className="tablero-camas">
       {datos.episodios.length > 0 && (
         <div className="camas">
           {lista.map((ep) => (
@@ -85,6 +88,8 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
         </section>
       )}
 
+      </div>
+      <div className="tablero-ficha">
       {sel && (
         <Detalle
           key={sel.id}
@@ -96,6 +101,8 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
           ahora={ahora}
         />
       )}
+      </div>
+      </div>
     </>
   );
 }

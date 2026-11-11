@@ -6,16 +6,20 @@ import { useCallback, useEffect, useState } from "react";
  * vez que cambian las tablas que lee, sin pedirle nada al servidor.
  */
 export function useConsulta<T>(consulta: () => Promise<T> | T, deps: readonly unknown[], inicial: T): T {
-  const [valor, setValor] = useState<T>(inicial);
+  // El valor queda asociado a las dependencias con que se consulto: si cambian (otra cama), no
+  // se devuelve el resultado anterior mientras llega el nuevo. Asi una cama nunca se muestra
+  // un instante con los eventos o controles de otra.
+  const clave = JSON.stringify(deps.map((d) => (typeof d === "object" && d !== null ? "obj" : d)));
+  const [estado, setEstado] = useState<{ clave: string; valor: T }>({ clave, valor: inicial });
   useEffect(() => {
     const sub = liveQuery(consulta).subscribe({
-      next: setValor,
+      next: (valor) => setEstado({ clave, valor }),
       error: (e: unknown) => console.error("Error en consulta local", e)
     });
     return () => sub.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
-  return valor;
+  return estado.clave === clave ? estado.valor : inicial;
 }
 
 export function useOnline(): boolean {

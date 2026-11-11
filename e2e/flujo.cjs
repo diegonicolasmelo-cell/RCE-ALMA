@@ -839,7 +839,22 @@ async function esperarServidor() {
 
     await prueba("la sabana bloquea los datos de mecanica invalidados por asincronia", async () => {
       assert.ok((await pc.locator("table.sab .lockc").count()) >= 3);
-      assert.ok((await pc.locator(".spark svg").count()) >= 4);
+      // Plana, en el orden de la hoja: bloques Monitorizacion, Terapia ventilatoria y Kinesiologia, y la firma al final.
+      const grupos = await pc.locator(".sabana-vista tr.sv-grupo td").allTextContents();
+      assert.deepEqual(grupos, ["Monitorización", "Terapia ventilatoria", "Kinesiología"]);
+      assert.equal((await pc.locator(".sabana-vista tbody tr").last().locator("td").first().textContent()).trim(), "Firma");
+      assert.equal(await pc.locator(".spark svg").count(), 0, "sin curvas: la sabana es plana");
+      // 24 h por defecto; toda la estadia muestra al menos lo mismo.
+      const n24 = await pc.locator(".sabana-vista thead tr").nth(1).locator("th").count();
+      await pc.click('.sv-rango button:has-text("Toda la estadía")');
+      const nTodo = await pc.locator(".sabana-vista thead tr").nth(1).locator("th").count();
+      assert.ok(nTodo >= n24, `estadia ${nTodo} >= 24 h ${n24}`);
+      await pc.click('.sv-rango button:has-text("Últimas 24 h")');
+      // Los demas eventos van aparte; las evaluaciones en su pestana.
+      assert.equal(await pc.locator('.sabana-vista [aria-label="Otros eventos"]').count(), 1);
+      await pc.click('.sv-pestanas button:has-text("Evaluaciones")');
+      assert.ok((await pc.locator(".sv-evaluaciones").count()) === 1);
+      await pc.click('.sv-pestanas button:text-is("Sábana")');
     });
 
     await prueba("el enlace a Sinapse dice por que esta desactivado", async () => {

@@ -6,6 +6,8 @@ import { useIdentidadesEnMemoria } from "./identidades";
 
 export interface DatosUnidad {
   readonly episodios: readonly Episodio[];
+  /** Todos los episodios, activos y egresados (ultima version de cada uno): para el REM. */
+  readonly todosEpisodios: readonly Episodio[];
   readonly controles: ReadonlyMap<string, readonly Control[]>;
   readonly eventos: ReadonlyMap<string, readonly EventoClinico[]>;
   readonly apks: ReadonlyMap<string, readonly ValidacionApk[]>;
@@ -14,7 +16,7 @@ export interface DatosUnidad {
   readonly pendientesPurga: readonly Episodio[];
 }
 
-const VACIO: DatosUnidad = { episodios: [], controles: new Map(), eventos: new Map(), apks: new Map(), identidades: new Map(), pendientesPurga: [] };
+const VACIO: DatosUnidad = { episodios: [], todosEpisodios: [], controles: new Map(), eventos: new Map(), apks: new Map(), identidades: new Map(), pendientesPurga: [] };
 
 function agrupar<T extends { episodioId: string; registradoEn?: string }>(filas: readonly T[]): ReadonlyMap<string, readonly T[]> {
   const m = new Map<string, T[]>();
@@ -51,6 +53,7 @@ export function useDatosUnidad(): DatosUnidad {
       ]);
       return {
         episodios,
+        todosEpisodios: ultimaVersion(todos),
         controles: agrupar(controles.map(normalizarControl)),
         eventos: agrupar(eventos),
         apks: agrupar(apks),

@@ -9,7 +9,7 @@
  */
 
 /** Valor fisiologico medido. `null` = no medido (nunca 0 por defecto). */
-import type { CategoriaRem, RangoEdad } from "./catalogos";
+import type { CategoriaRem, MotivoEgreso, RangoEdad } from "./catalogos";
 
 export type Medicion = number | null;
 /** Identificador opaco generado en el cliente. Permite sincronia idempotente. */
@@ -295,6 +295,8 @@ export interface Episodio {
   readonly horaTranscripcion: HoraHHMM | null;
   readonly pendienteEntrega: string;
   readonly activo: boolean;
+  /** Motivo y momento del egreso (REM 28, B.1). Solo en episodios dados de alta desde la estacion. */
+  readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string };
   /**
    * Firma de las APK que el PC de respaldo ya guardo en su carpeta local (ids ordenados).
    * Mientras no coincida con las APK del episodio, la identidad no se borra al alta.

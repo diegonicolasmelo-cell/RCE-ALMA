@@ -18,6 +18,7 @@ export * from "./eventos";
 export * from "./apk";
 export * from "./borrador";
 export * from "./rem28";
+export * from "./rem-mensual";
 export * from "./nota-alma";
 export * from "./riesgo";
 export * from "./sanitizar";

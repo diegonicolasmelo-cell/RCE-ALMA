@@ -249,6 +249,28 @@ const pagina = () =>
       await otro.close();
     });
 
+    await prueba("limpieza de episodios antiguos: el simulacro no escribe y CONFIRMAR deja solo rango y categoria", async () => {
+      const g = crearAppsScriptSimulado();
+      g.llamar("inicializarLibro");
+      const hoja = g.hojas.get("episodios");
+      hoja.appendRow(["e1#1", "e1", "2026-11-01T10:00:00.000Z", JSON.stringify({ id: "e1#1", cama: "UCI-01", edad: 64, diagnostico: "texto", sexo: "M" })]);
+      hoja.appendRow(["e2#1", "e2", "2026-11-01T10:00:00.000Z", JSON.stringify({ id: "e2#1", cama: "UCI-02", rangoEdad: "40\u201344", categoriaRem: "Otros" })]);
+      const antes = hoja.filas[1][3];
+      const sim = g.llamar("limpiarEpisodiosAntiguosSIMULACRO");
+      assert.equal(sim.cambiadas, 1);
+      assert.equal(sim.escrito, false);
+      assert.equal(hoja.filas[1][3], antes, "el simulacro no toca la hoja");
+      const conf = g.llamar("limpiarEpisodiosAntiguosCONFIRMAR");
+      assert.equal(conf.escrito, true);
+      const limpia = JSON.parse(hoja.filas[1][3]);
+      assert.equal(limpia.edad, undefined);
+      assert.equal(limpia.diagnostico, undefined);
+      assert.equal(limpia.rangoEdad, "60\u201364");
+      assert.equal(limpia.categoriaRem, null);
+      assert.equal(JSON.parse(hoja.filas[2][3]).categoriaRem, "Otros", "lo ya limpio no cambia");
+      assert.equal(g.llamar("limpiarEpisodiosAntiguosCONFIRMAR").cambiadas, 0, "correrla de nuevo no hace nada");
+    });
+
     await prueba("sin errores en la consola", async () => {
       assert.deepEqual(errores, []);
     });

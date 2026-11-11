@@ -46,7 +46,10 @@ var HOJAS = {
 var LLAVES_PROHIBIDAS = [
   "nombre", "nombrepaciente", "apellido", "apellidos", "iniciales",
   "rut", "run", "ficha", "nficha", "numeroficha", "fechanacimiento",
-  "fechadenacimiento", "direccion", "telefono", "prevision", "identidad"
+  "fechadenacimiento", "direccion", "telefono", "prevision", "identidad",
+  // Edad exacta y diagnostico escrito viajan cifrados con la identidad: lo clinico lleva
+  // solo rangoEdad y categoriaRem.
+  "edad", "diagnostico"
 ];
 
 /** Identifican al profesional, no al paciente: necesarios para la trazabilidad. */
@@ -638,6 +641,89 @@ function inicializarLibro() {
 }
 
 var COLUMNAS_USUARIOS = ["correo", "sal", "hashPin", "nombre", "turno", "rol"];
+
+// ---------------------------------------------------------------------------
+// Limpieza de episodios antiguos (ejecutar a mano desde el editor, una vez)
+// ---------------------------------------------------------------------------
+
+/** Rangos del REM 28. Espejo de RANGOS_EDAD en src/core/catalogos.ts. */
+var RANGOS_EDAD_REM = [
+  "0\u20134", "5\u20139", "10\u201314", "15\u201319", "20\u201324", "25\u201329", "30\u201334", "35\u201339", "40\u201344",
+  "45\u201349", "50\u201354", "55\u201359", "60\u201364", "65\u201369", "70\u201374", "75\u201379", "80 y m\u00e1s"
+];
+
+function rangoDeEdadRem(edad) {
+  var i = Math.floor(edad / 5);
+  return RANGOS_EDAD_REM[Math.min(RANGOS_EDAD_REM.length - 1, Math.max(0, i))];
+}
+
+/** Cuenta lo que se limpiaria en la hoja episodios, sin escribir nada. */
+function limpiarEpisodiosAntiguosSIMULACRO() {
+  return limpiarEpisodiosAntiguos_(false);
+}
+
+/**
+ * Quita de la hoja episodios la edad exacta y el diagnostico escrito que viajaban en claro
+ * antes de noviembre de 2026: la edad pasa a rango del REM y el diagnostico se borra
+ * (la categoria REM queda pendiente). Excepcion unica a la regla de solo agregar.
+ * El historial de versiones de la planilla conserva lo anterior.
+ */
+function limpiarEpisodiosAntiguosCONFIRMAR() {
+  return limpiarEpisodiosAntiguos_(true);
+}
+
+function limpiarEpisodiosAntiguos_(escribir) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("La hoja esta ocupada: reintenta en un minuto.");
+  try {
+    var hoja = hojaPorNombre(HOJAS.EPISODIOS);
+    var resumen = { filas: 0, conEdad: 0, conDiagnostico: 0, ilegibles: 0, cambiadas: 0, escrito: false };
+    var ultima = hoja.getLastRow();
+    if (ultima < 2) {
+      Logger.log(JSON.stringify(resumen));
+      return resumen;
+    }
+    var rango = hoja.getRange(2, 4, ultima - 1, 1);
+    var valores = rango.getValues();
+    resumen.filas = valores.length;
+    for (var i = 0; i < valores.length; i++) {
+      var r;
+      try {
+        r = JSON.parse(valores[i][0]);
+      } catch (err) {
+        resumen.ilegibles++;
+        continue;
+      }
+      if (!r || typeof r !== "object") continue;
+      var tocada = false;
+      if (Object.prototype.hasOwnProperty.call(r, "edad")) {
+        if (r.rangoEdad === undefined) r.rangoEdad = typeof r.edad === "number" && r.edad > 0 ? rangoDeEdadRem(r.edad) : null;
+        delete r.edad;
+        resumen.conEdad++;
+        tocada = true;
+      }
+      if (Object.prototype.hasOwnProperty.call(r, "diagnostico")) {
+        if (r.categoriaRem === undefined) r.categoriaRem = null;
+        delete r.diagnostico;
+        resumen.conDiagnostico++;
+        tocada = true;
+      }
+      if (tocada) {
+        valores[i][0] = JSON.stringify(r);
+        resumen.cambiadas++;
+      }
+    }
+    if (escribir && resumen.cambiadas > 0) {
+      rango.setValues(valores);
+      resumen.escrito = true;
+      registrarAuditoria("", "limpieza_episodios", String(resumen.cambiadas));
+    }
+    Logger.log((escribir ? "CONFIRMAR: " : "SIMULACRO (no se escribio nada): ") + JSON.stringify(resumen));
+    return resumen;
+  } finally {
+    lock.releaseLock();
+  }
+}
 
 /**
  * Carga la dotacion en la hoja «usuarios» (correo, nombre, turno, rol), sin contrasenas:

@@ -7,7 +7,7 @@
 
 import { aplicarEventoAEpisodio } from "@core/index";
 import { normalizarControl } from "@core/index";
-import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, MotivoEgreso, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
 import { filaDeApk, filaDeControl, filaDeEpisodio, filaDeEvento } from "./nube";
 import type { FilaNube } from "./nube";
@@ -83,11 +83,11 @@ export class Repositorio {
     });
   }
 
-  async darAlta(episodioId: string): Promise<void> {
+  async darAlta(episodioId: string, motivo: MotivoEgreso): Promise<void> {
     await this.db.transaction("rw", this.tablas(), async () => {
       const ep = await this.db.episodios.get(episodioId);
       if (!ep) return;
-      await this.sync.encolar([await this.poner({ ...ep, activo: false })]);
+      await this.sync.encolar([await this.poner({ ...ep, activo: false, egreso: { motivo, en: this.ahora().toISOString() } })]);
     });
   }
 

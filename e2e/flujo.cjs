@@ -143,7 +143,9 @@ async function esperarServidor() {
     await prueba("el control es el registro simple: dos tarjetas, CSV y terapia ventilatoria, una fila por dato", async () => {
       assert.deepEqual(await cel.locator(".hoja-simple > section > h2").evaluateAll((l) => l.map((x) => x.firstChild.textContent.trim())), ["CSV", "Terapia ventilatoria"]);
       const csv = (await cel.locator('section[aria-label="CSV"] > .fila > .et').allTextContents()).map((t) => t.split(/\s{2,}|Se guarda|lpm|mmHg|%|O · V · M|1-7/)[0].trim());
-      assert.deepEqual(csv.slice(0, 7), ["Hora del control", "Frec. cardiaca", "P. arterial", "PAM", "SpO₂", "Glasgow", "SAS"], csv.join(" | "));
+      assert.deepEqual(csv.slice(0, 6), ["Hora del control", "Frec. cardiaca", "P. arterial", "PAM", "SpO₂", "Glasgow"], csv.join(" | "));
+      // SAS (o vigilia) va despues de las infusiones: la sedacion en curso decide cual se mide.
+      assert.equal(csv.at(-1), "SAS", csv.join(" | "));
       assert.match(await cel.textContent('section[aria-label="CSV"]'), /Se guarda: hoy \d\d:\d\d \(\d\d-\d\d\)/);
       assert.equal(await cel.locator('section[aria-label="CSV"] .par #in-pas + span + #in-pad').count(), 1, "PAS / PAD en una fila");
       // Las lecturas nacen en blanco, sin el valor anterior a la vista.
@@ -412,6 +414,7 @@ async function esperarServidor() {
       await m.tap('form[aria-label="Ingreso Cama 18"] button[type=submit]');
       await m.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 18")');
       assert.match(await m.textContent(".banda .l1"), /TET 7,5 · 22 cm/);
+      assert.equal(await m.inputValue("#in-modo"), "ACVC", "el control de ingreso con TET parte en volumen control");
       await movil.close();
     });
 

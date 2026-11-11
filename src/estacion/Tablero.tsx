@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { CAMAS_UNIDAD, nombreCama } from "@core/index";
 import { cx } from "../app/util";
 import type { DatosUnidad } from "./datos";
@@ -15,6 +15,8 @@ interface Props {
   onSeleccionar: (id: string) => void;
 }
 
+const CLAVE_PLEGADO = "kapta.camasPlegadas";
+
 export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
   const [filtro, setFiltro] = useState<string>("todas");
   /** null: sin formulario; "": ingreso sin cama elegida; "UCI-05": ingreso a esa cama. */
@@ -26,6 +28,22 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
   const lista = filtro === "todas" ? datos.episodios : datos.episodios.filter((e) => e.rutTitular === filtro);
   const sel = datos.episodios.find((e) => e.id === seleccionada) ?? lista[0] ?? null;
   const transcritas = datos.episodios.filter((e) => e.transcritoAlma).length;
+  // El panel de camas se pliega con la flecha para darle el ancho a la sabana. Este PC lo recuerda.
+  const [plegado, setPlegado] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(CLAVE_PLEGADO) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const plegar = (v: boolean): void => {
+    setPlegado(v);
+    try {
+      localStorage.setItem(CLAVE_PLEGADO, v ? "1" : "0");
+    } catch {
+      // Sin almacenamiento: igual se pliega, solo que no se recuerda.
+    }
+  };
 
   return (
     <>
@@ -54,8 +72,21 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
       )}
 
       {/* Camas en una columna a la izquierda; la ficha con la sabana, protagonista, a la derecha. */}
-      <div className="tablero-dos">
+      <div className={`tablero-dos${plegado ? " plegado" : ""}`}>
+      {plegado ? (
+        <button type="button" className="camas-plegadas" aria-label="Mostrar las camas" aria-expanded={false} onClick={() => plegar(false)}>
+          <ChevronRight size={20} aria-hidden />
+          <span className="cp-texto">Camas</span>
+          {sel && <span className="cp-cama">{sel.cama.slice(-2)}</span>}
+        </button>
+      ) : (
       <div className="tablero-camas">
+      <div className="camas-cabeza">
+        <b>Camas</b>
+        <button type="button" className="btn sm plegar-camas" aria-label="Ocultar las camas" aria-expanded={true} title="Ocultar las camas para ver la sábana más ancha" onClick={() => plegar(true)}>
+          <ChevronLeft size={16} aria-hidden /> Ocultar
+        </button>
+      </div>
       {datos.episodios.length > 0 && (
         <div className="camas">
           {lista.map((ep) => (
@@ -89,6 +120,7 @@ export function Tablero({ datos, ahora, seleccionada, onSeleccionar }: Props) {
       )}
 
       </div>
+      )}
       <div className="tablero-ficha">
       {sel && (
         <Detalle

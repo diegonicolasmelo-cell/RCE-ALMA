@@ -585,3 +585,11 @@ table.sab-plana td.v{white-space:normal;max-width:10.5em;min-width:4.5em;line-he
 table.sab-plana th{white-space:nowrap}
 .tablero-camas .cama .id{white-space:nowrap}
 table.sab-plana thead tr:nth-child(2) th:first-child{position:static;text-align:center;color:var(--ink);font-weight:600}
+
+/* Panel de camas plegable: abierto por defecto; la flecha lo oculta y deja una franja angosta. */
+.camas-cabeza{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.camas-cabeza .plegar-camas{display:inline-flex;align-items:center;gap:2px}
+.camas-plegadas{position:sticky;top:12px;flex:none;width:44px;min-height:180px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);cursor:pointer}
+.camas-plegadas:hover{border-color:var(--accent);color:var(--accent)}
+.camas-plegadas .cp-texto{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:700;font-size:13px;letter-spacing:.06em}
+.camas-plegadas .cp-cama{font:700 13px var(--font-data);background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:2px 6px}

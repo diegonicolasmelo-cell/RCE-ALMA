@@ -855,6 +855,14 @@ async function esperarServidor() {
       await pc.click('.sv-pestanas button:has-text("Evaluaciones")');
       assert.ok((await pc.locator(".sv-evaluaciones").count()) === 1);
       await pc.click('.sv-pestanas button:text-is("Sábana")');
+      // Las camas se pliegan con la flecha: la sabana gana el ancho; se despliegan igual.
+      const anchoAntes = (await pc.locator(".tablero-ficha").boundingBox()).width;
+      await pc.click('button[aria-label="Ocultar las camas"]');
+      assert.equal(await pc.locator(".tablero-camas").count(), 0);
+      const anchoDespues = (await pc.locator(".tablero-ficha").boundingBox()).width;
+      assert.ok(anchoDespues > anchoAntes + 150, `la sabana se ensancha (${anchoAntes} -> ${anchoDespues})`);
+      await pc.click('button[aria-label="Mostrar las camas"]');
+      assert.equal(await pc.locator(".tablero-camas").count(), 1);
     });
 
     await prueba("el enlace a Sinapse dice por que esta desactivado", async () => {

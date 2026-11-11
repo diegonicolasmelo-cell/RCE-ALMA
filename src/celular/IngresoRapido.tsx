@@ -100,16 +100,13 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
 
   const pi = textoPesoIdeal(t, sexo);
   return (
-    <div className="fondo-flotante">
+    <div className="fondo-flotante centrado">
       <form className="panel-flotante" role="dialog" aria-modal="true" aria-label={`Ingreso ${nombreCama(cama)}`} onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
         <header className="pf-cabeza">
           <b>Ingreso · {nombreCama(cama)}</b>
           <button type="button" className="pf-cerrar" aria-label="Cerrar sin ingresar" onClick={onCancelar}><X size={20} aria-hidden /></button>
         </header>
         <div className="pf-cuerpo">
-          <p className="small muted" style={{ margin: 0 }}>Nombre, RUT y edad se ingresan en el PC de la estación. Aquí se registra la vía aérea con que llega y el sexo y la talla para el peso ideal.</p>
-          <div className="small ink2">Equipos de la sala</div>
-          <p className="small muted" style={{ margin: 0 }}>El ventilador vive en la cama: regístralo siempre, esté en uso o no.{equipos?.length ? " Viene lo que quedó en esta sala." : ""}</p>
           {/* Sin via elegida se ofrece todo; al elegirla, la lista se ajusta sola. */}
           <EditorEquipos idBase="ir-eq" lista={equipos ?? []} via={via ?? "TQT"} onCambio={setEquipos} />
           <div className="small ink2">Sexo</div>

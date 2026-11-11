@@ -36,7 +36,7 @@ export function ParaAlma({ datos, ahora, seleccionada, onSeleccionar }: { datos:
   const campos = control ? camposAlma(control, pbw, ep.equipos) : [];
   const fin = control !== null && paso >= campos.length;
   const actual = campos[paso];
-  const nota = componerNotaAlma({ episodio: ep, controles, eventos, apk: apks, modo, ahora });
+  const nota = componerNotaAlma({ episodio: ep, controles, eventos, apk: apks, modo, ahora, diagnostico: datos.identidades.get(ep.id)?.diagnostico ?? null });
 
   const copiar = async (): Promise<void> => {
     const ok = await copiarTexto(nota);

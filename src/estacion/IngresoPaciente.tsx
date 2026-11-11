@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
-import type { Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
+import { CATEGORIAS_REM, rangoDeEdad } from "@core/index";
+import type { CategoriaRem, Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
@@ -43,30 +44,32 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
   const [talla, setTalla] = useState("");
   const [origen, setOrigen] = useState<OrigenTalla>("ESTIMADA");
   const [dx, setDx] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaRem | "">("");
   const [via, setVia] = useState<ViaAerea>("TET");
   const [titular, setTitular] = useState(dotacion().find((p) => p.rol === "KINE_CLINICO")?.correo ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const guardar = async (): Promise<void> => {
     const camaTxt = cama.trim().toUpperCase();
-    const e = Number(edad);
     const t = Number(talla.replace(",", "."));
+    const e = Number(edad);
     if (camaTxt === "") return setError("Falta la cama.");
     if (camasOcupadas.includes(camaTxt)) return setError(`La cama ${camaTxt} ya tiene un paciente activo.`);
     if (nombre.trim() === "") return setError("Falta el nombre del paciente (queda solo en la estación).");
     if (rut.trim() !== "" && !validarRut(rut)) return setError("El RUT no es válido (revisa el dígito verificador).");
     if (!Number.isFinite(e) || e < 0 || e > 120) return setError("La edad debe estar entre 0 y 120.");
+    if (categoria === "") return setError("Elige la categoría REM del ingreso.");
     if (!Number.isFinite(t) || t < 100 || t > 230) return setError("La talla debe estar entre 100 y 230 cm (se usa para el peso ideal).");
 
     const id = nuevoId();
     const ep: Episodio = {
       id,
       cama: camaTxt,
-      edad: e,
+      rangoEdad: rangoDeEdad(e),
       sexo,
       tallaCm: t,
       tallaOrigen: origen,
-      diagnostico: dx.trim(),
+      categoriaRem: categoria,
       viaAereaActual: via,
       calibreVia: null,
       fijacionCm: null,
@@ -81,7 +84,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       activo: true,
       apkArchivada: null
     };
-    const identidad = { episodioId: id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null };
+    const identidad = { episodioId: id, nombre: nombre.trim(), rut: rut.trim() === "" ? null : (normalizarRut(rut) ?? null), ficha: null, edad: e, diagnostico: dx.trim() || null };
 
     // En produccion la identidad solo sube CIFRADA; sin la clave de la unidad no se ingresa.
     if (!local && !clave) return setError("Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.");
@@ -103,7 +106,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
             {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
           </select>
         </div>
-        <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(e) => setEdad(e.target.value)} /></div>
+        <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(ev) => setEdad(ev.target.value)} /></div>
         <div className="f"><label htmlFor="in-talla">Talla (cm)</label><input id="in-talla" inputMode="numeric" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       </div>
       <div className="row">
@@ -113,7 +116,8 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       </div>
       <div className="f"><label htmlFor="in-nombre">Nombre (solo en la estación)</label><input id="in-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
       <div className="f"><label htmlFor="in-rut">RUT (para abrir Sinapse)</label><input id="in-rut" value={rut} onChange={(e) => setRut(e.target.value)} onBlur={() => normalizarRut(rut) && setRut(formatearRut(rut))} style={{ textAlign: "left" }} /></div>
-      <div className="f"><label htmlFor="in-dx">Diagnóstico</label><input id="in-dx" value={dx} onChange={(e) => setDx(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
+      <div className="f"><label htmlFor="in-cat">Categoría REM</label><select id="in-cat" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaRem | "")}><option value="">— elegir —</option>{CATEGORIAS_REM.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+      <div className="f"><label htmlFor="in-dx">Diagnóstico (cifrado)</label><input id="in-dx" value={dx} onChange={(e) => setDx(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
       <div className="f">
         <label htmlFor="in-titular">Kinesiólogo titular</label>
         <select id="in-titular" value={titular} onChange={(e) => setTitular(e.target.value)}>

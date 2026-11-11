@@ -83,8 +83,8 @@ export function componerInformeRiesgo(e: EntradaInforme): string {
   const previo = controlPrevio(e.controles, evento);
   const autor = buscarProfesional(evento.rutAutor);
   const paciente = identidad
-    ? `${identidad.nombre}${identidad.rut ? ` · RUT ${formatearRut(identidad.rut)}` : ""} · ${textoEdad(episodio.edad)}`
-    : `cama ${episodio.cama} · ${textoEdad(episodio.edad)} (sin identidad disponible en este equipo)`;
+    ? `${identidad.nombre}${identidad.rut ? ` · RUT ${formatearRut(identidad.rut)}` : ""} · ${textoEdad(episodio.rangoEdad)}`
+    : `cama ${episodio.cama} · ${textoEdad(episodio.rangoEdad)} (sin identidad disponible en este equipo)`;
   const queda = evento.tipo === "AUTOEXTUBACION" ? ETIQUETA_DISPOSITIVO[evento.dispositivo] ?? evento.dispositivo : null;
 
   return [

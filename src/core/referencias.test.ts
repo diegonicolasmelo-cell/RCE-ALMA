@@ -4,7 +4,7 @@ import { ID_VERIFICACION, cifrarIdentidad, crearReferenciaVerificacion, descifra
 import { asegurarPayloadSinIdentidad, contieneDatoIdentificable } from "./sanitizar";
 
 const clave = (p: string) => derivarClave(p, 1000);
-const identidad = { episodioId: "ep-1", nombre: "Rojas, Pedro", rut: "12345678-5", ficha: null };
+const identidad = { episodioId: "ep-1", nombre: "Rojas, Pedro", rut: "12345678-5", ficha: null, edad: 64, diagnostico: "Neumonía grave" };
 
 describe("referencias cifradas (identidad en la nube)", () => {
   it("ida y vuelta: con la clave se recupera nombre y RUT", async () => {

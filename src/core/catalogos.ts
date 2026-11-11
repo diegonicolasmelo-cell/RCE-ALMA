@@ -502,9 +502,53 @@ export function nombreCama(cama: string): string {
 }
 
 /**
- * La edad la pone el PC (va junto a la identidad). Un ingreso hecho desde el celular la deja
- * en 0 hasta que la estacion la completa.
+ * Rango etario, no la edad exacta: es lo que se guarda en la nube (minimizacion de datos).
+ * Un ingreso hecho desde el celular lo deja en null hasta que la estacion lo completa.
  */
-export function textoEdad(edad: number): string {
-  return edad > 0 ? `${edad} a` : "edad pendiente";
+/** Rangos quinquenales del REM 28 (seccion B.1 a B.4). */
+export const RANGOS_EDAD = [
+  "0–4", "5–9", "10–14", "15–19", "20–24", "25–29", "30–34", "35–39", "40–44",
+  "45–49", "50–54", "55–59", "60–64", "65–69", "70–74", "75–79", "80 y más"
+] as const;
+export type RangoEdad = (typeof RANGOS_EDAD)[number];
+
+export function rangoDeEdad(edad: number): RangoEdad {
+  return RANGOS_EDAD[Math.min(RANGOS_EDAD.length - 1, Math.max(0, Math.floor(edad / 5)))]!;
+}
+
+/**
+ * Categorias de ingreso del REM 28 (seccion B.1) que se ven en una UCI adulto. Es lo unico del
+ * diagnostico que va visible a la nube; el diagnostico escrito viaja cifrado con la identidad.
+ */
+export const CATEGORIAS_REM = [
+  "Ataque cerebro vascular (ACV)",
+  "Traumatismo encéfalo craneano (TEC)",
+  "Lesión medular",
+  "Neuromusculares agudas",
+  "Neuromusculares crónicas",
+  "Otras neurológicas",
+  "COVID-19",
+  "Enfermedades respiratorias",
+  "Enfermedades cardíacas",
+  "Traumatológicos",
+  "Otros pre y post quirúrgicos",
+  "Oncológicos",
+  "Genitourinarias",
+  "Amputación",
+  "Quemados",
+  "Otros"
+] as const;
+export type CategoriaRem = (typeof CATEGORIAS_REM)[number];
+
+export function textoCategoriaRem(c: CategoriaRem | null): string {
+  return c ?? "categoría REM pendiente";
+}
+
+export function textoEdad(rango: RangoEdad | null): string {
+  return rango ? `${rango} años` : "edad pendiente";
+}
+
+/** En la estacion, con la identidad a la vista, la edad exacta; sin ella, el rango. */
+export function textoEdadPaciente(rango: RangoEdad | null, edadExacta: number | null | undefined): string {
+  return edadExacta ? `${edadExacta} años` : textoEdad(rango);
 }

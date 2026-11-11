@@ -103,6 +103,9 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".app-cel"), /Mis camas \(12\)/);
       assert.match(await cel.textContent(".app-cel"), /Otras camas/);
       assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")').count()) === 1);
+      const tarjeta01 = await cel.textContent('article[aria-label="Cama UCI-01"]');
+      assert.match(tarjeta01, /Enfermedades respiratorias · 60–64 años · M/, "el celular ve la categoria REM y el rango etario");
+      assert.doesNotMatch(tarjeta01, /Shock séptico/, "el diagnostico escrito no llega al celular");
       // Mias 07-12: arriba 07..12, despues 01..06 y 13..18, todas en una columna.
       await cel.click('button:has-text("Cambiar mis camas")');
       await cel.click('.chip:text-is("01–06")');
@@ -891,6 +894,7 @@ async function esperarServidor() {
       await pc.click('button[aria-label="Ingresar paciente en Cama 17"]');
       assert.equal(await pc.inputValue("#in-cama"), "UCI-17", "el ingreso parte con la cama elegida");
       await pc.fill("#in-edad", "58");
+      await pc.selectOption("#in-cat", "Enfermedades respiratorias");
       await pc.fill("#in-talla", "175");
       await pc.fill("#in-nombre", "Paciente Prueba Nueve");
       await pc.fill("#in-rut", "12345678-9");
@@ -938,10 +942,11 @@ async function esperarServidor() {
       await pc.fill("#ci-nombre", "Paciente Prueba Dieciocho");
       await pc.fill("#ci-edad", "50");
       await pc.fill("#ci-dx", "Neumonía grave");
+      await pc.selectOption("#ci-cat", "Enfermedades respiratorias");
       await pc.click('button:has-text("Guardar identidad")');
       await pc.waitForTimeout(600);
       assert.match(await pc.textContent(".detail-head h2"), /Paciente Prueba Dieciocho/);
-      assert.match(await pc.textContent(".detail-head"), /50 a · Neumonía grave/);
+      assert.match(await pc.textContent(".detail-head"), /50 años · Neumonía grave/);
       // El ingreso quedo grabado solo, con la hora del registro (llego ventilado: VM desde ahi).
       assert.match(await pc.textContent(".detail-head"), /Ingreso a la UCI: \d\d-\d\d-\d{4} \d\d:\d\d · VM 0 h/);
       // Se corrige en el PC: 30 horas antes, y la VM pasa a contarse desde ahi.

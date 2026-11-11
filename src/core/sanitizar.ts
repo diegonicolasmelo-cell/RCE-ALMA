@@ -17,6 +17,7 @@
  * justo antes de hacer POST.
  */
 
+import type { CategoriaRem, RangoEdad } from "./catalogos";
 import type {
   Control,
   Episodio,
@@ -56,11 +57,11 @@ const LLAVES_PERMITIDAS_PESE_AL_PATRON: readonly string[] = ["rutautor", "ruttit
 export interface EpisodioNube {
   readonly id: string;
   readonly cama: string;
-  readonly edad: number;
+  readonly rangoEdad: RangoEdad | null;
   readonly sexo: string;
   readonly tallaCm: number;
   readonly tallaOrigen: string;
-  readonly diagnostico: string;
+  readonly categoriaRem: CategoriaRem | null;
   readonly viaAereaActual: string;
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
@@ -86,11 +87,11 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
   return {
     id: e.id,
     cama: e.cama,
-    edad: e.edad,
+    rangoEdad: e.rangoEdad,
     sexo: e.sexo,
     tallaCm: e.tallaCm,
     tallaOrigen: e.tallaOrigen,
-    diagnostico: e.diagnostico,
+    categoriaRem: e.categoriaRem,
     viaAereaActual: e.viaAereaActual,
     calibreVia: e.calibreVia,
     fijacionCm: e.fijacionCm,

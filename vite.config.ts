@@ -4,6 +4,8 @@ import { VitePWA } from "vite-plugin-pwa";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
+  // La plantilla del REM 28 viaja dentro de la app (se importa con ?inline).
+  assetsInclude: ["**/*.xlsx"],
   plugins: [
     react(),
     VitePWA({

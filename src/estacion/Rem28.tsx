@@ -1,8 +1,12 @@
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { CATEGORIAS_REM, ETIQUETA_MOTIVO_EGRESO, MOTIVOS_EGRESO, RANGOS_EDAD, consolidarRemMensual, mesDe, remMensualCsv } from "@core/index";
+import { CATEGORIAS_REM, ETIQUETA_MOTIVO_EGRESO, MOTIVOS_EGRESO, RANGOS_EDAD, consolidarRemMensual, mesDe } from "@core/index";
 import type { FilaRango, FilaSexoRango } from "@core/index";
 import type { DatosUnidad } from "./datos";
+import { nombreArchivoRem, rellenarRem } from "./remExcel";
+import plantillaRem from "./rem28-plantilla.xlsx?inline";
+
+const bytesDe = (dataUrl: string): Uint8Array => Uint8Array.from(atob(dataUrl.slice(dataUrl.indexOf(",") + 1)), (c) => c.charCodeAt(0));
 
 const NOMBRE_MES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const textoMes = (m: string): string => `${NOMBRE_MES[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
@@ -41,12 +45,12 @@ export function Rem28({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
   ];
   const rangosB24 = rangosConDatos(filasB24.map(([, f]) => f));
 
-  const descargar = (): void => {
-    // BOM: para que Excel lea bien las tildes.
-    const url = URL.createObjectURL(new Blob(["﻿" + remMensualCsv(r)], { type: "text/csv;charset=utf-8" }));
+  const descargar = async (): Promise<void> => {
+    const xlsx = await rellenarRem(bytesDe(plantillaRem), r);
+    const url = URL.createObjectURL(new Blob([xlsx], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `REM28_UCI_${mes}.csv`;
+    a.download = nombreArchivoRem(mes);
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -61,10 +65,10 @@ export function Rem28({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
           <select id="rem-mes" value={mes} onChange={(e) => setMes(e.target.value)}>
             {meses.map((m) => <option key={m} value={m}>{textoMes(m)}</option>)}
           </select>
-          <button type="button" className="btn primary sm" onClick={descargar}><Download size={15} aria-hidden /> Descargar CSV</button>
+          <button type="button" className="btn primary sm" onClick={() => void descargar()}><Download size={15} aria-hidden /> Descargar Excel REM 28</button>
         </span>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Calculado de lo registrado en Kapta. Tipo de atención: cerrada, UPC. Solo se muestran los rangos con datos; el CSV trae los 17.</p>
+      <p className="small muted" style={{ margin: 0 }}>Calculado de lo registrado en Kapta. Tipo de atención: cerrada, UPC. Aquí se muestran solo los rangos con datos; el Excel es la planilla REM 28 completa, con sus totales y comprobaciones.</p>
 
       {(r.ingresosSinCategoria > 0 || sinRango > 0 || r.egresosSinMotivo > 0) && (
         <div className="notice warn small" role="status">
@@ -116,7 +120,7 @@ export function Rem28({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
           <tr><td style={{ textAlign: "left" }}>0601171 Asistencia en IOT, VMNI o cambio de cánula de TQT</td><td className="v"><b>{r.bs.asistenciaIotCanula}</b></td></tr>
         </tbody>
       </table>
-      <p className="small muted" style={{ margin: 0 }}>BS cuenta personas (una atención por persona en el mes). Conexiones a VMNI del mes: {r.conexionesVmni}. Queda a mano el desglose MAI/MLE de beneficiarios; la reeducación de la tos (0102501) no aplica.</p>
+      <p className="small muted" style={{ margin: 0 }}>BS cuenta personas (una atención por persona en el mes), todas como beneficiarios MAI y atención cerrada. Conexiones a VMNI del mes: {r.conexionesVmni}. La reeducación de la tos (0102501) no aplica.</p>
     </section>
   );
 }

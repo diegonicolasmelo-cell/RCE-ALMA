@@ -116,23 +116,21 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
 
   return (
     <form className="card stack" style={{ gap: 10 }} onSubmit={(ev) => { ev.preventDefault(); void guardar(); }}>
-      <h2 style={{ margin: 0 }}>Ingresar paciente</h2>
-      <div className="f" style={{ maxWidth: 280 }}>
-        <label htmlFor="in-cama">Cama</label>
-        <select id="in-cama" value={cama} onChange={(e) => setCama(e.target.value)}>
-          <option value="">Elige…</option>
-          {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
-        </select>
+      <div className="row" style={{ gap: 12, flexWrap: "nowrap" }}>
+        <h2 style={{ margin: 0, whiteSpace: "nowrap" }}>Ingresar paciente</h2>
+        <div className="f" style={{ width: 220 }}>
+          <select id="in-cama" aria-label="Cama" value={cama} onChange={(e) => setCama(e.target.value)}>
+            <option value="">Elige la cama…</option>
+            {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
+          </select>
+        </div>
       </div>
-      <div className="f">
-        <span className="small ink2">Equipos de la sala · el ventilador vive en la cama: regístralo siempre, esté en uso o no</span>
-        <EditorEquipos idBase="in-eq" lista={equipos} via={via} onCambio={setEquipos} />
-      </div>
-      <div className="fgrid">
+      <div className="f"><EditorEquipos idBase="in-eq" lista={equipos} via={via} onCambio={setEquipos} /></div>
+      <div className="fgrid" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <div className="f"><label htmlFor="in-edad">Edad</label><input id="in-edad" inputMode="numeric" value={edad} onChange={(ev) => setEdad(ev.target.value)} /></div>
         <div className="f"><label htmlFor="in-talla">Talla (cm)</label><input id="in-talla" inputMode="numeric" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
       </div>
-      <div className="row">
+      <div className="row" style={{ justifyContent: "center" }}>
         <Seg etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
         <Seg etiqueta="Origen de la talla" valor={origen} opciones={[{ valor: "ESTIMADA", texto: "Estimada" }, { valor: "MEDIDA", texto: "Medida" }]} onCambio={setOrigen} />
         <Seg etiqueta="Vía aérea de ingreso" valor={via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }, { valor: "NATURAL", texto: "Natural" }]} onCambio={elegirVia} />

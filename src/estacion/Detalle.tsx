@@ -87,7 +87,10 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
     <div className="card detail">
       <div className="detail-head">
         <div>
-          <h2 style={{ margin: 0 }}>{ep.cama} · {identidad ? identidad.nombre : "Sin identidad en este equipo"}</h2>
+          <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            {ep.cama} · {identidad ? identidad.nombre : "Sin identidad en este equipo"}
+            <TrasladoCama ep={ep} compacto />
+          </h2>
           <div className="small ink2">
             {identidad?.rut ? <>RUT <span className="mono">{formatearRut(identidad.rut)}</span> · </> : null}
             {textoEdad(ep.edad)} · {ep.diagnostico || "diagnóstico pendiente"}
@@ -141,8 +144,6 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
 
       <PanelPve eventos={eventos} ahora={ahora} />
       <PanelCircuitoYEvaluaciones eventos={eventos} ahora={ahora} />
-
-      <TrasladoCama ep={ep} />
 
       <section>
         <h3>Alta</h3>

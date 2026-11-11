@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowLeftRight } from "lucide-react";
 import { CAMAS_UNIDAD, nombreCama } from "@core/index";
 import type { Episodio, EventoClinico } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -10,7 +11,7 @@ import { horaDe, nuevoId } from "../app/util";
  * Cambiar al paciente de cama. Solo a una cama libre: la que deja necesita aseo terminal.
  * Todo lo del episodio (dias de VM, PVE, filtros, identidad cifrada) va con el paciente.
  */
-export function TrasladoCama({ ep }: { ep: Episodio }) {
+export function TrasladoCama({ ep, compacto }: { ep: Episodio; compacto?: boolean }) {
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState(false);
@@ -38,14 +39,43 @@ export function TrasladoCama({ ep }: { ep: Episodio }) {
     avisar(`Paciente trasladado de ${nombreCama(ep.cama)} a ${nombreCama(destino)}. ${nombreCama(ep.cama)} queda libre: recuerda el aseo terminal antes de ocuparla.`);
   };
 
+  const boton = (
+    <button
+      type="button"
+      className={compacto ? "btn-cambiar-cama" : "btn sm"}
+      disabled={libres.length === 0}
+      aria-label={`Cambiar de cama · ${nombreCama(ep.cama)}`}
+      title={libres.length === 0 ? "No hay camas libres" : "Cambiar al paciente de cama"}
+      onClick={() => setAbierto(true)}
+    >
+      {compacto ? <ArrowLeftRight size={18} aria-hidden /> : libres.length === 0 ? "Cambiar de cama · no hay camas libres" : "Cambiar de cama"}
+    </button>
+  );
+
+  if (compacto) {
+    return (
+      <>
+        {!abierto ? boton : (
+          <div className="row" style={{ alignItems: "flex-end", font: "var(--font-ui)", fontSize: 14, fontWeight: 400 }}>
+            <div className="f" style={{ minWidth: 170 }}>
+              <label htmlFor="tc-cama">Cama nueva · solo las libres</label>
+              <select id="tc-cama" value={destino} onChange={(e) => setDestino(e.target.value)}>
+                <option value="">Elige…</option>
+                {libres.map((c) => <option key={c} value={c}>{nombreCama(c)}</option>)}
+              </select>
+            </div>
+            <button type="button" className="btn sm primary" onClick={() => void trasladar()}>Trasladar</button>
+            <button type="button" className="btn sm" onClick={() => { setAbierto(false); setDestino(""); }}>Cancelar</button>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <section>
       <h3>Cama</h3>
-      {!abierto ? (
-        <button type="button" className="btn sm" disabled={libres.length === 0} onClick={() => setAbierto(true)}>
-          {libres.length === 0 ? "Cambiar de cama · no hay camas libres" : "Cambiar de cama"}
-        </button>
-      ) : (
+      {!abierto ? boton : (
         <div className="row" style={{ alignItems: "flex-end" }}>
           <div className="f" style={{ minWidth: 180 }}>
             <label htmlFor="tc-cama">Cama nueva · solo las libres</label>

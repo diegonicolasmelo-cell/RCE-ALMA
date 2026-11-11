@@ -1043,10 +1043,12 @@ async function esperarServidor() {
       await cel.goto(URL + "#celular");
       if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
       await cel.waitForSelector('article[aria-label="Cama UCI-04"]');
-      await cel.click('article[aria-label="Cama UCI-04"] button:has-text("Eventos")');
-      await cel.waitForSelector('[aria-label="Línea de tiempo"]');
+      await cel.click('article[aria-label="Cama UCI-04"] button:has-text("Monitorización")');
+      await cel.waitForSelector(".hoja-simple");
       const antes = await cel.textContent(".banda .l1");
-      await cel.click('.evgrid button:text-is("Cambiar de cama")');
+      // Las flechas de la esquina superior abren el traslado, con el formulario ya listo.
+      await cel.click('button[aria-label="Cambiar de cama · Cama 4"]');
+      await cel.waitForSelector("#evf-cama");
       const opciones = await cel.locator("#evf-cama option").allTextContents();
       assert.ok(opciones.includes("Cama 16"), opciones.join(" | "));
       assert.ok(!opciones.includes("Cama 3"), "una cama ocupada no se ofrece: " + opciones.join(" | "));
@@ -1065,7 +1067,7 @@ async function esperarServidor() {
       await pc.click('.cama:has-text("UCI-16")');
       assert.match(await pc.textContent(".detail-head"), /UCI-16 · Paciente Prueba Cuatro/);
       // Y desde el PC vuelve a su cama.
-      await pc.click('button:has-text("Cambiar de cama")');
+      await pc.click('.detail-head button[aria-label="Cambiar de cama · Cama 16"]');
       await pc.selectOption("#tc-cama", "UCI-04");
       await pc.click('button:text-is("Trasladar")');
       await pc.waitForTimeout(700);

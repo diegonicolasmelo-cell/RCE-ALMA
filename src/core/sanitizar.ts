@@ -17,7 +17,7 @@
  * justo antes de hacer POST.
  */
 
-import type { CategoriaRem, RangoEdad } from "./catalogos";
+import type { CategoriaRem, MotivoEgreso, RangoEdad } from "./catalogos";
 import type {
   Control,
   Episodio,
@@ -45,7 +45,10 @@ export const LLAVES_PROHIBIDAS: readonly string[] = [
   "direccion",
   "telefono",
   "prevision",
-  "identidad"
+  "identidad",
+  // Viajan cifrados con la identidad: lo clinico lleva rangoEdad y categoriaRem.
+  "edad",
+  "diagnostico"
 ];
 
 /**
@@ -75,6 +78,7 @@ export interface EpisodioNube {
   readonly horaTranscripcion: string | null;
   readonly pendienteEntrega: string;
   readonly activo: boolean;
+  readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string };
   readonly apkArchivada: string | null;
 }
 
@@ -105,6 +109,7 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     horaTranscripcion: e.horaTranscripcion,
     pendienteEntrega: e.pendienteEntrega,
     activo: e.activo,
+    ...(e.egreso ? { egreso: { ...e.egreso } } : {}),
     apkArchivada: e.apkArchivada
   };
 }

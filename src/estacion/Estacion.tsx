@@ -10,9 +10,10 @@ import { usePurgasPendientes } from "./purga";
 import { useDatosUnidad } from "./datos";
 import { Estado } from "./Estado";
 import { ParaAlma } from "./ParaAlma";
+import { Rem28 } from "./Rem28";
 import { Tablero } from "./Tablero";
 
-type Vista = "tablero" | "alma" | "estado";
+type Vista = "tablero" | "alma" | "rem" | "estado";
 
 /**
  * Trae las referencias cifradas, las descifra con la clave de este PC y las refresca
@@ -63,7 +64,7 @@ export function Estacion() {
       </div>
 
       <div className="tabs" role="tablist">
-        {([["tablero", "Tablero"], ["alma", "Para ALMA"], ["estado", "Estado"]] as const).map(([k, t]) => (
+        {([["tablero", "Tablero"], ["alma", "Para ALMA"], ["rem", "REM 28"], ["estado", "Estado"]] as const).map(([k, t]) => (
           <button key={k} type="button" role="tab" className="tab" aria-selected={vista === k} onClick={() => setVista(k)}>{t}</button>
         ))}
       </div>
@@ -71,6 +72,7 @@ export function Estacion() {
       <main>
         {vista === "tablero" && <Tablero datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
         {vista === "alma" && <ParaAlma datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
+        {vista === "rem" && <Rem28 datos={datos} ahora={ahora} />}
         {vista === "estado" && <Estado datos={datos} />}
       </main>
     </div>

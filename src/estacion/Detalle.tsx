@@ -12,12 +12,14 @@ import {
   eventosDeRiesgo,
   formatearRut,
   purgaDeIdentidadLista,
+  ETIQUETA_MOTIVO_EGRESO,
+  MOTIVOS_EGRESO,
   textoCategoriaRem,
   textoEdadPaciente,
   turnoAnterior,
   turnoDe
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdentidadPaciente, MotivoEgreso, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
@@ -44,6 +46,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
   const { repo, api, db, config } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [confirmarAlta, setConfirmarAlta] = useState(false);
+  const [motivoEgreso, setMotivoEgreso] = useState<MotivoEgreso | "">("");
 
 
 
@@ -57,7 +60,8 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
   };
 
   const darDeAlta = async (): Promise<void> => {
-    await repo.darAlta(ep.id);
+    if (motivoEgreso === "") return;
+    await repo.darAlta(ep.id, motivoEgreso);
     if (!purgaDeIdentidadLista(ep, apks)) {
       avisar(`${ep.cama} dada de alta. La identidad se borrará cuando el PC de respaldo guarde la hoja APK final (sigue cifrada mientras tanto).`);
       return;
@@ -151,9 +155,18 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
         {!confirmarAlta ? (
           <button type="button" className="btn sm" onClick={() => setConfirmarAlta(true)}>Dar de alta</button>
         ) : (
-          <div className="row">
-            <button type="button" className="btn danger sm" onClick={() => void darDeAlta()}>Confirmar alta y borrar la identidad</button>
-            <button type="button" className="btn sm" onClick={() => setConfirmarAlta(false)}>Cancelar</button>
+          <div className="stack" style={{ gap: 8 }}>
+            <div className="f">
+              <label htmlFor="motivo-egreso">Motivo de egreso (REM 28)</label>
+              <select id="motivo-egreso" value={motivoEgreso} onChange={(e) => setMotivoEgreso(e.target.value as MotivoEgreso | "")}>
+                <option value="">— elegir —</option>
+                {MOTIVOS_EGRESO.map((m) => <option key={m} value={m}>{ETIQUETA_MOTIVO_EGRESO[m]}</option>)}
+              </select>
+            </div>
+            <div className="row">
+              <button type="button" className="btn danger sm" disabled={motivoEgreso === ""} onClick={() => void darDeAlta()}>Confirmar alta y borrar la identidad</button>
+              <button type="button" className="btn sm" onClick={() => { setConfirmarAlta(false); setMotivoEgreso(""); }}>Cancelar</button>
+            </div>
           </div>
         )}
         <p className="small muted mt">Al dar de alta se borra el nombre y el RUT. Lo clínico queda sin identidad para las estadísticas.</p>

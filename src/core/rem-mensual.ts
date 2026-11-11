@@ -1,0 +1,209 @@
+/**
+ * REM 28 del mes, calculado desde el log (no se acumula: se agrega sobre lo registrado).
+ *
+ * Definiciones de la unidad (Diego, 11-nov-2026):
+ *   B.1 ingresos y egresos: personas, por categoria REM, sexo y rango quinquenal.
+ *   B.2 evaluacion inicial: una por ingreso del mes.
+ *   B.3 evaluacion intermedia: cualquier reevaluacion (una escala que ya se habia medido en el episodio).
+ *   B.4 sesiones: solo las motoras (controles con terapia fisica realizada).
+ *   BS: una atencion por persona en el mes.
+ */
+
+import { CATEGORIAS_REM, MOTIVOS_EGRESO, RANGOS_EDAD } from "./catalogos";
+import type { CategoriaRem, MotivoEgreso, RangoEdad } from "./catalogos";
+import type { Control, Episodio, EventoClinico } from "./tipos";
+
+/** "AAAA-MM" en hora local. */
+export function mesDe(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export interface CeldaSexo {
+  readonly hombres: number;
+  readonly mujeres: number;
+}
+
+/** Una fila de B.1: total, por sexo y por rango x sexo. */
+export interface FilaSexoRango {
+  readonly total: number;
+  readonly hombres: number;
+  readonly mujeres: number;
+  readonly porRango: Readonly<Record<RangoEdad, CeldaSexo>>;
+  /** Personas contadas sin rango de edad: no caben en ninguna columna y hay que completarlas. */
+  readonly sinRango: number;
+}
+
+/** Una fila de B.2 a B.4: total y por rango (sin sexo). */
+export interface FilaRango {
+  readonly total: number;
+  readonly porRango: Readonly<Record<RangoEdad, number>>;
+  readonly sinRango: number;
+}
+
+export interface RemMensual {
+  readonly mes: string;
+  readonly ingresos: FilaSexoRango;
+  readonly ingresosPorCategoria: Readonly<Record<CategoriaRem, FilaSexoRango>>;
+  readonly ingresosSinCategoria: number;
+  readonly egresos: FilaSexoRango;
+  readonly egresosPorMotivo: Readonly<Record<MotivoEgreso, FilaSexoRango>>;
+  /** Egresados del mes dados de alta antes de que existiera el motivo. */
+  readonly egresosSinMotivo: number;
+  readonly evaluacionInicial: FilaRango;
+  readonly evaluacionIntermedia: FilaRango;
+  readonly sesionesMotoras: FilaRango;
+  /** B.6 Terapia respiratoria y funcional pulmonar: controles del mes. */
+  readonly terapiaRespiratoria: number;
+  readonly bs: {
+    /** 0601101 Evaluacion kinesiologica integral: ingresos del mes. */
+    readonly evaluacionIntegral: number;
+    /** 0601104 Atencion kinesiologica integral UPC: personas atendidas en el mes. */
+    readonly atencionIntegralUpc: number;
+    /** 0601024 Reeducacion motriz: personas con al menos una sesion motora. */
+    readonly reeducacionMotriz: number;
+    /** 0601171 Asistencia en IOT o cambio de canula de TQT: personas con ese evento en el mes. */
+    readonly asistenciaIotCanula: number;
+  };
+}
+
+function filaSexoRangoVacia(): { total: number; hombres: number; mujeres: number; porRango: Record<RangoEdad, { hombres: number; mujeres: number }>; sinRango: number } {
+  const porRango = Object.fromEntries(RANGOS_EDAD.map((r) => [r, { hombres: 0, mujeres: 0 }])) as Record<RangoEdad, { hombres: number; mujeres: number }>;
+  return { total: 0, hombres: 0, mujeres: 0, porRango, sinRango: 0 };
+}
+
+function filaRangoVacia(): { total: number; porRango: Record<RangoEdad, number>; sinRango: number } {
+  return { total: 0, porRango: Object.fromEntries(RANGOS_EDAD.map((r) => [r, 0])) as Record<RangoEdad, number>, sinRango: 0 };
+}
+
+function sumarPersona(f: ReturnType<typeof filaSexoRangoVacia>, ep: Episodio): void {
+  f.total++;
+  const h = ep.sexo === "M";
+  if (h) f.hombres++;
+  else f.mujeres++;
+  if (!ep.rangoEdad) f.sinRango++;
+  else if (h) f.porRango[ep.rangoEdad].hombres++;
+  else f.porRango[ep.rangoEdad].mujeres++;
+}
+
+function sumarRango(f: ReturnType<typeof filaRangoVacia>, ep: Episodio, n = 1): void {
+  f.total += n;
+  if (ep.rangoEdad) f.porRango[ep.rangoEdad] += n;
+  else f.sinRango += n;
+}
+
+const EVENTOS_ASISTENCIA_IOT: readonly EventoClinico["tipo"][] = ["REINTUBACION", "CAMBIO_TUBO", "CAMBIO_CANULA"];
+
+export function consolidarRemMensual(
+  mes: string,
+  episodios: readonly Episodio[],
+  controles: ReadonlyMap<string, readonly Control[]>,
+  eventos: ReadonlyMap<string, readonly EventoClinico[]>
+): RemMensual {
+  const ingresos = filaSexoRangoVacia();
+  const porCategoria = Object.fromEntries(CATEGORIAS_REM.map((c) => [c, filaSexoRangoVacia()])) as Record<CategoriaRem, ReturnType<typeof filaSexoRangoVacia>>;
+  let ingresosSinCategoria = 0;
+  const egresos = filaSexoRangoVacia();
+  const porMotivo = Object.fromEntries(MOTIVOS_EGRESO.map((m) => [m, filaSexoRangoVacia()])) as Record<MotivoEgreso, ReturnType<typeof filaSexoRangoVacia>>;
+  let egresosSinMotivo = 0;
+  const inicial = filaRangoVacia();
+  const intermedia = filaRangoVacia();
+  const motoras = filaRangoVacia();
+  let terapiaRespiratoria = 0;
+  let atendidas = 0;
+  let conMotora = 0;
+  let conAsistencia = 0;
+
+  for (const ep of episodios) {
+    if (ep.ingresadoEn && mesDe(ep.ingresadoEn) === mes) {
+      sumarPersona(ingresos, ep);
+      if (ep.categoriaRem) sumarPersona(porCategoria[ep.categoriaRem], ep);
+      else ingresosSinCategoria++;
+      sumarRango(inicial, ep);
+    }
+    if (!ep.activo) {
+      if (ep.egreso && mesDe(ep.egreso.en) === mes) {
+        sumarPersona(egresos, ep);
+        sumarPersona(porMotivo[ep.egreso.motivo], ep);
+      } else if (!ep.egreso) {
+        egresosSinMotivo++;
+      }
+    }
+
+    const cs = (controles.get(ep.id) ?? []).filter((c) => mesDe(c.registradoEn) === mes);
+    const nMotoras = cs.filter((c) => c.terapiaFisica.estado === "REALIZADA").length;
+    terapiaRespiratoria += cs.length;
+    if (nMotoras > 0) {
+      sumarRango(motoras, ep, nMotoras);
+      conMotora++;
+    }
+
+    const evs = eventos.get(ep.id) ?? [];
+    const delMes = evs.filter((e) => mesDe(e.registradoEn) === mes);
+    if (cs.length > 0 || delMes.length > 0) atendidas++;
+    if (delMes.some((e) => EVENTOS_ASISTENCIA_IOT.includes(e.tipo))) conAsistencia++;
+
+    // Reevaluacion: una escala que ya se habia medido antes en el mismo episodio.
+    const vistas = new Set<string>();
+    for (const e of [...evs].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn))) {
+      if (e.tipo !== "EVALUACION_PUNTUAL") continue;
+      if (vistas.has(e.escala) && mesDe(e.registradoEn) === mes) sumarRango(intermedia, ep);
+      vistas.add(e.escala);
+    }
+  }
+
+  return {
+    mes,
+    ingresos,
+    ingresosPorCategoria: porCategoria,
+    ingresosSinCategoria,
+    egresos,
+    egresosPorMotivo: porMotivo,
+    egresosSinMotivo,
+    evaluacionInicial: inicial,
+    evaluacionIntermedia: intermedia,
+    sesionesMotoras: motoras,
+    terapiaRespiratoria,
+    bs: { evaluacionIntegral: ingresos.total, atencionIntegralUpc: atendidas, reeducacionMotriz: conMotora, asistenciaIotCanula: conAsistencia }
+  };
+}
+
+const ETIQUETA_EGRESO_REM: Readonly<Record<MotivoEgreso, string>> = {
+  ALTA: "Egresos por alta",
+  FALLECIMIENTO: "Egresos por fallecimiento",
+  OTROS: "Otros"
+};
+
+/** CSV con el orden de filas y columnas de la planilla REM 28 (separador «;», para Excel en español). */
+export function remMensualCsv(r: RemMensual): string {
+  const sexoRango = (f: FilaSexoRango): (string | number)[] => [
+    f.total, f.hombres, f.mujeres, ...RANGOS_EDAD.flatMap((g) => [f.porRango[g].hombres, f.porRango[g].mujeres])
+  ];
+  const soloRango = (f: FilaRango): (string | number)[] => [f.total, ...RANGOS_EDAD.map((g) => f.porRango[g])];
+  const filas: (string | number)[][] = [
+    [`REM-28 · UCI Adulto · ${r.mes}`],
+    [],
+    ["SECCIÓN B.1: INGRESOS Y EGRESOS"],
+    ["", "Ambos sexos", "Hombres", "Mujeres", ...RANGOS_EDAD.flatMap((g) => [`${g} H`, `${g} M`])],
+    ["Total ingresos (Nº de personas)", ...sexoRango(r.ingresos)],
+    ...CATEGORIAS_REM.map((c) => [c, ...sexoRango(r.ingresosPorCategoria[c])]),
+    ["EGRESOS", ...sexoRango(r.egresos)],
+    ...MOTIVOS_EGRESO.map((m) => [ETIQUETA_EGRESO_REM[m], ...sexoRango(r.egresosPorMotivo[m])]),
+    [],
+    ["", "Total", ...RANGOS_EDAD],
+    ["B.2 Evaluación inicial · Kinesiólogo/a", ...soloRango(r.evaluacionInicial)],
+    ["B.3 Evaluación intermedia · Kinesiólogo/a", ...soloRango(r.evaluacionIntermedia)],
+    ["B.4 Sesiones de rehabilitación · Kinesiólogo/a", ...soloRango(r.sesionesMotoras)],
+    [],
+    ["SECCIÓN B.6: PROCEDIMIENTOS Y ACTIVIDADES"],
+    ["Terapia respiratoria y funcional pulmonar", r.terapiaRespiratoria],
+    [],
+    ["REM BS · Atención cerrada (personas)"],
+    ["0601101 Evaluación Kinesiológica Integral", r.bs.evaluacionIntegral],
+    ["0601104 Atención Kinesiológica Integral UPC", r.bs.atencionIntegralUpc],
+    ["0601024 Reeducación motriz", r.bs.reeducacionMotriz],
+    ["0601171 Asistencia en IOT, VMNI, cambio de cánula de TQT", r.bs.asistenciaIotCanula]
+  ];
+  const celda = (v: string | number): string => (typeof v === "number" ? String(v) : /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  return filas.map((f) => f.map(celda).join(";")).join("\r\n");
+}

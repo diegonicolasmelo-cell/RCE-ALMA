@@ -392,6 +392,7 @@ async function esperarServidor() {
       await est.goto(URL + "#estacion");
       await est.click('.cama:has-text("UCI-18")');
       await est.click('button:text-is("Dar de alta")');
+      await est.selectOption("#motivo-egreso", "ALTA");
       await est.click('button:has-text("Confirmar alta y borrar la identidad")');
       await est.waitForTimeout(500);
       await est.close();
@@ -889,6 +890,7 @@ async function esperarServidor() {
       assert.equal(await pc.locator('[aria-label="Camas libres"]').count(), 0, "unidad llena: sin camas libres");
       await pc.click('.cama:has-text("UCI-17")');
       await pc.click('button:text-is("Dar de alta")');
+      await pc.selectOption("#motivo-egreso", "ALTA");
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForSelector('[aria-label="Camas libres"] h3:has-text("Camas libres (1)")');
       await pc.click('button[aria-label="Ingresar paciente en Cama 17"]');
@@ -911,6 +913,7 @@ async function esperarServidor() {
       // El PC libera la cama 18.
       await pc.click('.cama:has-text("UCI-18")');
       await pc.click('button:text-is("Dar de alta")');
+      await pc.selectOption("#motivo-egreso", "ALTA");
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForTimeout(600);
       // El celular la ve libre y la ingresa.
@@ -1043,6 +1046,7 @@ async function esperarServidor() {
       await pc.click('[role=tab]:has-text("Tablero")');
       await pc.click('.cama:has-text("UCI-16")');
       await pc.click('button:text-is("Dar de alta")');
+      await pc.selectOption("#motivo-egreso", "ALTA");
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForTimeout(600);
       await cel.goto(URL + "#celular");

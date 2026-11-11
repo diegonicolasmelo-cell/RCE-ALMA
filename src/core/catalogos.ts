@@ -540,6 +540,15 @@ export const CATEGORIAS_REM = [
 ] as const;
 export type CategoriaRem = (typeof CATEGORIAS_REM)[number];
 
+/** Motivos de egreso del REM 28 (seccion B.1) que aplican en UCI. El traslado a sala es alta. */
+export const MOTIVOS_EGRESO = ["ALTA", "FALLECIMIENTO", "OTROS"] as const;
+export type MotivoEgreso = (typeof MOTIVOS_EGRESO)[number];
+export const ETIQUETA_MOTIVO_EGRESO: Readonly<Record<MotivoEgreso, string>> = {
+  ALTA: "Alta (incluye traslado a sala)",
+  FALLECIMIENTO: "Fallecimiento",
+  OTROS: "Otros (p. ej. traslado a otro hospital)"
+};
+
 export function textoCategoriaRem(c: CategoriaRem | null): string {
   return c ?? "categoría REM pendiente";
 }

@@ -242,18 +242,6 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
             <label><span>M</span><Num id="in-gcs-m" campo="glasgow" etiqueta="Glasgow motor, 1 a 6" teclado={tecladoRango(1, 6)} valor={b.glasgow.motora === null ? "" : String(b.glasgow.motora)} onCambio={setGlasgow("motora", 6)} /></label>
           </div>
         </Fila>
-        {sedada ? (
-          <Fila etiqueta="SAS" unidad="1-7" ayuda={b.sas === null ? undefined : ESCALA_SAS.find((e) => e.val === b.sas)?.label}>
-            <Num id="in-sas" campo="sas" etiqueta="SAS, 1 a 7" teclado={tecladoRango(1, 7)} valor={b.sas === null ? "" : String(b.sas)} onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }} />
-          </Fila>
-        ) : (
-          <Fila etiqueta="Vigilia" ayuda="sin sedoanalgesia en curso">
-            <select id="in-vigilia" data-campo="vigilia" aria-label="Estado de vigilia" value={b.vigilia ?? ""} onChange={(e) => editar((x) => ({ ...x, vigilia: (e.target.value || null) as typeof x.vigilia }))}>
-              <option value="">—</option>
-              {ESTADOS_VIGILIA.map((v) => <option key={v.val} value={v.val}>{v.label}</option>)}
-            </select>
-          </Fila>
-        )}
         {m.capnografia && <Fila etiqueta="EtCO₂" unidad="mmHg"><Num id="in-neuro-etco2" etiqueta="EtCO2" valor={b.neuro.etco2} onCambio={(v) => setNeuro({ etco2: v })} /></Fila>}
         {m.pic && <Fila etiqueta="PIC" unidad="mmHg" ayuda={`PPC ${textoNum(calcularPpc(pam, medicionDe(b.neuro.pic)))}`}><Num id="in-neuro-pic" etiqueta="PIC" valor={b.neuro.pic} onCambio={(v) => setNeuro({ pic: v })} /></Fila>}
         {m.dve && <Fila etiqueta="Altura DVE" unidad="cmH₂O"><Num id="in-neuro-dve" etiqueta="Altura DVE" valor={b.neuro.dveAltura} onCambio={(v) => setNeuro({ dveAltura: v })} /></Fila>}
@@ -287,6 +275,20 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         <div className="acciones">
           <button type="button" className="agregar-inf" aria-haspopup="dialog" onClick={() => setEligiendo(true)}>+ Agregar drogas o infusiones</button>
         </div>
+        {/* Despues de las infusiones: con sedoanalgesia en curso se mide SAS; sin ella, la vigilia. */}
+        <div className="sub-grupo">{sedada ? "Sedación" : "Conciencia"}</div>
+        {sedada ? (
+          <Fila etiqueta="SAS" unidad="1-7" ayuda={b.sas === null ? undefined : ESCALA_SAS.find((e) => e.val === b.sas)?.label}>
+            <Num id="in-sas" campo="sas" etiqueta="SAS, 1 a 7" teclado={tecladoRango(1, 7)} valor={b.sas === null ? "" : String(b.sas)} onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }} />
+          </Fila>
+        ) : (
+          <Fila etiqueta="Vigilia" ayuda="sin sedoanalgesia en curso">
+            <select id="in-vigilia" data-campo="vigilia" aria-label="Estado de vigilia" value={b.vigilia ?? ""} onChange={(e) => editar((x) => ({ ...x, vigilia: (e.target.value || null) as typeof x.vigilia }))}>
+              <option value="">—</option>
+              {ESTADOS_VIGILIA.map((v) => <option key={v.val} value={v.val}>{v.label}</option>)}
+            </select>
+          </Fila>
+        )}
         {eligiendo && (
           // Panel flotante: sube desde abajo sobre la hoja, que no cambia de tamano ni se mueve.
           <div className="fondo-flotante" onClick={cerrarPanel}>

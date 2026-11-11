@@ -129,11 +129,12 @@ describe("herencia deliberada de ajustes e infusiones", () => {
     expect(b.infusiones.dobutamina.activa).toBe(false);
   });
 
-  it("sin control previo, la modalidad depende de la vía aérea y todo nace apagado", () => {
+  it("sin control previo (ingreso), con via artificial parte en volumen control; con natural, en CNAF", () => {
     const nuevo = crearBorradorNuevoControl(unEpisodio({ viaAereaActual: "NATURAL" }), null, "x");
     expect(nuevo.modalidad).toBe("CNAF");
     expect(Object.values(nuevo.infusiones).every((i) => !i.activa)).toBe(true);
-    expect(crearBorradorNuevoControl(episodio, null, "x").modalidad).toBe("CPAP_PS");
+    expect(crearBorradorNuevoControl(episodio, null, "x").modalidad).toBe("ACVC");
+    expect(crearBorradorNuevoControl(unEpisodio({ viaAereaActual: "TQT" }), null, "x").modalidad).toBe("ACVC");
   });
 
   it("marca el control como de apoyo si la cama no es del autor", () => {

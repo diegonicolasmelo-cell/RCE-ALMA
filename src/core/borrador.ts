@@ -179,13 +179,13 @@ export function crearBorradorNuevoControl(
     .sort((a, b) => a.registradoEn.localeCompare(b.registradoEn))
     .at(-1);
   const deRetiro = retiro ? MODALIDAD_POR_DISPOSITIVO[retiro.dispositivo] : null;
-  // Si no, el modo se hereda solo si corresponde a la via aerea de hoy: si no, parte en uno
-  // de los de esa via y se elige.
+  // Si no, el modo se hereda solo si corresponde a la via aerea de hoy. Si no hay control
+  // anterior (ingreso) o recien se intubo, con via artificial parte en volumen control (ACVC).
   const heredada = ultimo?.ventilacion.modalidad ?? null;
   const modalidad: Modalidad =
     deRetiro && modalidadPermitida(deRetiro, episodio.viaAereaActual) ? deRetiro
       : heredada && modalidadPermitida(heredada, episodio.viaAereaActual) ? heredada
-        : artificial ? "CPAP_PS" : "CNAF";
+        : artificial ? "ACVC" : "CNAF";
 
   const vent = Object.fromEntries(CAMPOS_VENT.map((c) => [c, ""])) as Record<CampoVent, string>;
   // Solo el modo y la FiO2 se heredan. El resto de los ajustes nace en blanco: se repite con

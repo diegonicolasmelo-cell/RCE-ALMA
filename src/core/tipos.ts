@@ -9,7 +9,7 @@
  */
 
 /** Valor fisiologico medido. `null` = no medido (nunca 0 por defecto). */
-import type { CategoriaRem, MotivoEgreso, RangoEdad } from "./catalogos";
+import type { CategoriaRem, MotivoCambioEquipo, MotivoEgreso, RangoEdad } from "./catalogos";
 
 export type Medicion = number | null;
 /** Identificador opaco generado en el cliente. Permite sincronia idempotente. */
@@ -518,12 +518,20 @@ export type EventoClinico =
       readonly realizadaEn: string;
     })
   /** Cambio en los equipos de la sala (rastreo de la ubicacion de ventiladores). */
-  | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[] })
+  | (EventoBase & { readonly tipo: "CAMBIO_EQUIPOS"; readonly equipos: readonly EquipoEnSala[]; readonly motivo?: MotivoCambioEquipo })
   /**
    * El paciente cambia de cama. Solo a una cama libre: la que deja necesita aseo terminal.
    * Todo lo demas (dias de VM, PVE, filtros, identidad cifrada) sigue al episodio.
    */
-  | (EventoBase & { readonly tipo: "TRASLADO_CAMA"; readonly desde: string; readonly hasta: string });
+  | (EventoBase & {
+      readonly tipo: "TRASLADO_CAMA";
+      readonly desde: string;
+      readonly hasta: string;
+      /** Lo que queda en la cama que se deja (los equipos viven en la cama). */
+      readonly equiposDejados?: readonly EquipoEnSala[];
+      /** Los equipos de la cama nueva, que pasan a ser los del paciente. */
+      readonly equiposNuevos?: readonly EquipoEnSala[];
+    });
 
 export type TipoEvento = EventoClinico["tipo"];
 

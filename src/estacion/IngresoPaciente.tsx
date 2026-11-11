@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
-import { CATEGORIAS_REM, rangoDeEdad } from "@core/index";
-import type { CategoriaRem, Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
+import { CATEGORIAS_REM, equiposDeLaCama, equiposParaVia, problemaEquipos, rangoDeEdad } from "@core/index";
+import type { CategoriaRem, EquipoEnSala, Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
 import { Seg } from "../celular/componentes";
+import { EditorEquipos } from "../celular/EditorEquipos";
 import { useClaveUnidad } from "./claveUnidad";
 import { useIdentidadesEnMemoria } from "./identidades";
 
@@ -31,7 +32,7 @@ export function useGuardarIdentidad(): (identidad: IdentidadPaciente) => Promise
 }
 
 export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { camasOcupadas: readonly string[]; onListo: () => void; camaInicial?: string }) {
-  const { repo, local } = useServicios();
+  const { repo, local, db } = useServicios();
   const clave = useClaveUnidad();
   const guardarIdentidad = useGuardarIdentidad();
   const avisar = useApp((s) => s.avisar);
@@ -48,6 +49,22 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
   const [via, setVia] = useState<ViaAerea>("TET");
   const [titular, setTitular] = useState(dotacion().find((p) => p.rol === "KINE_CLINICO")?.correo ?? "");
   const [error, setError] = useState<string | null>(null);
+  // Los equipos viven en la cama: al elegirla se parte de lo que dejo su ultimo paciente.
+  const [equipos, setEquipos] = useState<readonly EquipoEnSala[]>([]);
+  useEffect(() => {
+    let vivo = true;
+    if (!cama) { setEquipos([]); return; }
+    void Promise.all([db.episodios.toArray(), db.eventos.toArray()]).then(([eps, evs]) => {
+      if (vivo) setEquipos(equiposParaVia(equiposDeLaCama(cama.trim().toUpperCase(), eps, evs), via));
+    });
+    return () => { vivo = false; };
+    // La via se aplica aparte (elegirVia): aqui solo cambia la cama.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, cama]);
+  const elegirVia = (v: ViaAerea): void => {
+    setVia(v);
+    setEquipos((l) => equiposParaVia(l, v));
+  };
 
   const guardar = async (): Promise<void> => {
     const camaTxt = cama.trim().toUpperCase();
@@ -60,6 +77,8 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
     if (!Number.isFinite(e) || e < 0 || e > 120) return setError("La edad debe estar entre 0 y 120.");
     if (categoria === "") return setError("Elige la categoría REM del ingreso.");
     if (!Number.isFinite(t) || t < 100 || t > 230) return setError("La talla debe estar entre 100 y 230 cm (se usa para el peso ideal).");
+    const problema = problemaEquipos(equipos, via);
+    if (problema) return setError(problema);
 
     const id = nuevoId();
     const ep: Episodio = {
@@ -75,7 +94,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       fijacionCm: null,
       diasVM: 0,
       ingresadoEn: new Date().toISOString(),
-      equipos: [],
+      equipos,
       monitoreo: { capnografia: false, pic: false, dve: false },
       rutTitular: titular,
       transcritoAlma: false,
@@ -112,7 +131,11 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       <div className="row">
         <Seg etiqueta="Sexo" valor={sexo} opciones={[{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }]} onCambio={setSexo} />
         <Seg etiqueta="Origen de la talla" valor={origen} opciones={[{ valor: "ESTIMADA", texto: "Estimada" }, { valor: "MEDIDA", texto: "Medida" }]} onCambio={setOrigen} />
-        <Seg etiqueta="Vía aérea de ingreso" valor={via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }, { valor: "NATURAL", texto: "Natural" }]} onCambio={setVia} />
+        <Seg etiqueta="Vía aérea de ingreso" valor={via} opciones={[{ valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }, { valor: "NATURAL", texto: "Natural" }]} onCambio={elegirVia} />
+      </div>
+      <div className="f">
+        <span className="small ink2">Equipos de la sala · el ventilador vive en la cama: regístralo siempre, esté en uso o no</span>
+        <EditorEquipos idBase="in-eq" lista={equipos} via={via} onCambio={setEquipos} />
       </div>
       <div className="f"><label htmlFor="in-nombre">Nombre (solo en la estación)</label><input id="in-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} /></div>
       <div className="f"><label htmlFor="in-rut">RUT (para abrir Sinapse)</label><input id="in-rut" value={rut} onChange={(e) => setRut(e.target.value)} onBlur={() => normalizarRut(rut) && setRut(formatearRut(rut))} style={{ textAlign: "left" }} /></div>

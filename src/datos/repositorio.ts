@@ -5,7 +5,7 @@
  * modo que nunca queda un dato guardado sin su subida pendiente (ni al reves).
  */
 
-import { aplicarEventoAEpisodio } from "@core/index";
+import { aplicarEventoAEpisodio, equiposDeLaCama, equiposDelTraslado } from "@core/index";
 import { normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, MotivoEgreso, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
@@ -49,8 +49,15 @@ export class Repositorio {
    * Registra un evento y aplica su efecto sobre la via aerea del episodio, todo
    * en una transaccion. Devuelve el episodio resultante.
    */
-  async registrarEvento(ev: EventoClinico): Promise<Episodio | null> {
+  async registrarEvento(evento: EventoClinico): Promise<Episodio | null> {
     return this.db.transaction("rw", this.tablas(), async () => {
+      let ev = evento;
+      // Los equipos viven en la cama: al cambiarse, el paciente toma los de la cama nueva.
+      if (ev.tipo === "TRASLADO_CAMA" && !ev.equiposNuevos) {
+        const actual = await this.db.episodios.get(ev.episodioId);
+        const nueva = equiposDeLaCama(ev.hasta, await this.db.episodios.toArray(), await this.db.eventos.toArray());
+        ev = { ...ev, ...equiposDelTraslado(actual?.equipos ?? [], nueva) };
+      }
       await this.db.eventos.add(ev);
       const filas: FilaNube[] = [filaDeEvento(ev)];
       const ep = await this.db.episodios.get(ev.episodioId);

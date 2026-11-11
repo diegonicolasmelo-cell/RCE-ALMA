@@ -450,6 +450,8 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 @keyframes sube-panel{from{transform:translateY(100%)}to{transform:none}}
 @keyframes aparece-fondo{from{background:rgba(15,26,36,0)}}
 @media (prefers-reduced-motion:no-preference){.panel-flotante{animation:sube-panel .2s ease-out}.fondo-flotante{animation:aparece-fondo .2s ease-out}}
+/* Lo de adentro no se encoge: si no cabe, el cuerpo se desplaza. */
+.pf-cuerpo>*{flex-shrink:0}
 /* En el PC la ventana va centrada, no desde abajo como en el celular. */
 .fondo-flotante.centrado{align-items:center;padding:16px}
 .fondo-flotante.centrado .panel-flotante{max-width:760px;max-height:92vh;border-radius:16px;box-shadow:0 12px 40px rgba(15,26,36,.3)}

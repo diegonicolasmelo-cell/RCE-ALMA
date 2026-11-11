@@ -11,7 +11,8 @@
  */
 
 import { CATALOGO_EQUIPOS, ETIQUETA_TIPO_EQUIPO } from "./catalogos";
-import type { EquipoEnSala, TipoEquipo } from "./tipos";
+import type { DefinicionEquipo } from "./catalogos";
+import type { Episodio, EquipoEnSala, EventoClinico, TipoEquipo, ViaAerea } from "./tipos";
 
 /** Dispositivos que dan soporte respiratorio: solo uno esta "en uso" a la vez. */
 const TIPOS_DE_SOPORTE: readonly TipoEquipo[] = ["VENTILADOR", "VMNI", "ALTO_FLUJO"];
@@ -19,7 +20,9 @@ const TIPOS_DE_SOPORTE: readonly TipoEquipo[] = ["VENTILADOR", "VMNI", "ALTO_FLU
 export const esSoporteRespiratorio = (t: TipoEquipo): boolean => TIPOS_DE_SOPORTE.includes(t);
 
 export function etiquetaEquipo(e: EquipoEnSala): string {
-  return e.numero === null ? e.modelo : `${e.modelo} ${e.numero}`;
+  if (e.numero === null) return e.modelo;
+  // "Airvo 2 3" se lee mal: con un modelo que termina en numero, "Airvo 2 n.º 3".
+  return /\s\d+$/.test(e.modelo) ? `${e.modelo} n.º ${e.numero}` : `${e.modelo} ${e.numero}`;
 }
 
 /** Un modelo numerado exige un numero entero positivo; uno unico, ninguno. */
@@ -80,4 +83,93 @@ export function describirEquipos(lista: readonly EquipoEnSala[]): string {
 
 export function etiquetaTipoEquipo(t: TipoEquipo): string {
   return ETIQUETA_TIPO_EQUIPO[t];
+}
+
+// ---------------------------------------------------------------------------
+// Equipos segun la via aerea (decision de Diego, 11-nov-2026)
+// ---------------------------------------------------------------------------
+//
+// El ventilador vive en la cama: toda cama tiene uno, este en uso o no. Con TET debe estar en
+// uso; con via natural queda en la sala sin uso (la VNI es el V60). CNAF (Airvo 2) y V60 se
+// ofrecen con via natural y con TQT; base calefactora y Aerogen, con cualquier via.
+
+/** Si un tipo de equipo se ofrece con esta via. */
+export function tipoSeOfrece(t: TipoEquipo, via: ViaAerea): boolean {
+  if (t === "ALTO_FLUJO" || t === "VMNI") return via !== "TET";
+  return true;
+}
+
+/** Si un equipo puede dar el soporte con esta via. */
+export function puedeEstarEnUso(t: TipoEquipo, via: ViaAerea): boolean {
+  if (!esSoporteRespiratorio(t)) return true;
+  if (t === "VENTILADOR") return via !== "NATURAL";
+  return via !== "TET";
+}
+
+export function modelosOfrecidos(via: ViaAerea): readonly DefinicionEquipo[] {
+  return CATALOGO_EQUIPOS.filter((d) => tipoSeOfrece(d.tipo, via));
+}
+
+/**
+ * Deja la lista coherente con la via: quita lo que no se ofrece, apaga lo que no puede estar en
+ * uso y, con TET, deja el ventilador en uso si nadie da el soporte.
+ */
+export function equiposParaVia(lista: readonly EquipoEnSala[], via: ViaAerea): readonly EquipoEnSala[] {
+  const filtrada = lista
+    .filter((e) => tipoSeOfrece(e.tipo, via))
+    .map((e) => (e.enUso && esSoporteRespiratorio(e.tipo) && !puedeEstarEnUso(e.tipo, via) ? { ...e, enUso: false } : e));
+  if (via === "TET" && !filtrada.some((e) => esSoporteRespiratorio(e.tipo) && e.enUso)) {
+    const vent = filtrada.find((e) => e.tipo === "VENTILADOR");
+    if (vent) return ponerEnUso(filtrada, vent);
+  }
+  return filtrada;
+}
+
+/** `null` si esta bien; si no, que falta. Toda cama tiene su ventilador; con TET, en uso. */
+export function problemaEquipos(lista: readonly EquipoEnSala[], via: ViaAerea): string | null {
+  const ventiladores = lista.filter((e) => e.tipo === "VENTILADOR");
+  if (ventiladores.length === 0) return "Registra el ventilador de la sala: toda cama tiene uno, esté en uso o no.";
+  if (via === "TET" && !ventiladores.some((e) => e.enUso)) return "Con TET el ventilador de la sala debe quedar en uso.";
+  const malUsado = lista.find((e) => e.enUso && esSoporteRespiratorio(e.tipo) && !puedeEstarEnUso(e.tipo, via));
+  if (malUsado) return `${etiquetaEquipo(malUsado)} no puede estar en uso con ${via === "NATURAL" ? "vía aérea natural" : via}.`;
+  return null;
+}
+
+/** Si se cambio algun ventilador (no solo su uso): ese cambio pide motivo. */
+export function cambioDeVentilador(antes: readonly EquipoEnSala[], despues: readonly EquipoEnSala[]): boolean {
+  const clave = (l: readonly EquipoEnSala[]): string => l.filter((e) => e.tipo === "VENTILADOR").map((e) => `${e.modelo}|${e.numero}`).sort().join(",");
+  return clave(antes) !== "" && clave(antes) !== clave(despues);
+}
+
+/** Con la cama vacia nada da soporte: todo queda en la sala sin uso. */
+const sinUso = (l: readonly EquipoEnSala[]): readonly EquipoEnSala[] => l.map((e) => (esSoporteRespiratorio(e.tipo) ? { ...e, enUso: false } : e));
+
+/**
+ * Los equipos que hay hoy en una cama. Si esta ocupada, los del paciente; si esta libre, los que
+ * dejo el ultimo que estuvo ahi (al egresar o al cambiarse de cama), sin uso.
+ */
+export function equiposDeLaCama(cama: string, episodios: readonly Episodio[], eventos: readonly EventoClinico[]): readonly EquipoEnSala[] {
+  const ocupada = episodios.find((e) => e.activo && e.cama === cama);
+  if (ocupada) return ocupada.equipos;
+  const candidatos: { en: string; equipos: readonly EquipoEnSala[] }[] = [];
+  for (const e of episodios) {
+    if (e.cama === cama && !e.activo) candidatos.push({ en: e.egreso?.en ?? e.ingresadoEn ?? "", equipos: e.equipos });
+  }
+  for (const ev of eventos) {
+    if (ev.tipo === "TRASLADO_CAMA" && ev.desde === cama && ev.equiposDejados) candidatos.push({ en: ev.registradoEn, equipos: ev.equiposDejados });
+  }
+  candidatos.sort((a, b) => a.en.localeCompare(b.en));
+  return sinUso(candidatos.at(-1)?.equipos ?? []);
+}
+
+/**
+ * Al cambiar de cama el paciente toma los equipos de la cama nueva; los suyos quedan en la que
+ * deja. Lo que estaba en uso pasa a un equipo del mismo tipo de la cama nueva. Si de la cama
+ * nueva no se sabe nada, se asume que sus equipos van con el.
+ */
+export function equiposDelTraslado(actuales: readonly EquipoEnSala[], deLaCamaNueva: readonly EquipoEnSala[]): { equiposDejados: readonly EquipoEnSala[]; equiposNuevos: readonly EquipoEnSala[] } {
+  if (deLaCamaNueva.length === 0) return { equiposDejados: [], equiposNuevos: actuales };
+  const enUso = equipoEnUso(actuales);
+  const reemplazo = enUso ? deLaCamaNueva.find((e) => e.tipo === enUso.tipo) : undefined;
+  return { equiposDejados: sinUso(actuales), equiposNuevos: reemplazo ? ponerEnUso(deLaCamaNueva, reemplazo) : deLaCamaNueva };
 }

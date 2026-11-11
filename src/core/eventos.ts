@@ -9,6 +9,7 @@
 
 import type { Episodio, EventoClinico, TipoEvento, ViaAerea } from "./tipos";
 import { EVENTOS_DE_RIESGO } from "./tipos";
+import { equiposParaVia, ponerEnUso } from "./equipos";
 
 /** Duracion de protocolo de una prueba de ventilacion espontanea. */
 export const DURACION_PVE_MIN = 30;
@@ -272,14 +273,24 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
   switch (ev.tipo) {
     case "EXTUBACION_PROGRAMADA":
     case "AUTOEXTUBACION":
-    case "DECANULACION":
-      return { ...ep, viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null };
+    case "DECANULACION": {
+      // El ventilador se queda en la sala sin uso; si la cama ya tiene la CNAF o el V60 con que
+      // quedo, ese pasa a estar en uso.
+      const sinVm = equiposParaVia(ep.equipos, "NATURAL");
+      const tipo = ev.dispositivo === "CNAF" ? "ALTO_FLUJO" : ev.dispositivo === "VMNI" ? "VMNI" : null;
+      const nuevo = tipo ? sinVm.find((e) => e.tipo === tipo) : undefined;
+      return { ...ep, viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, equipos: nuevo ? ponerEnUso(sinVm, nuevo) : sinVm };
+    }
     case "CAMBIO_TUBO":
       return { ...ep, calibreVia: ev.calibre, fijacionCm: ev.fijacionCm };
     case "CAMBIO_CANULA":
       return { ...ep, calibreVia: ev.calibre };
-    case "REINTUBACION":
-      return { ...ep, viaAereaActual: ev.via, calibreVia: ev.calibre, fijacionCm: ev.fijacionCm };
+    case "REINTUBACION": {
+      // Se vuelve a conectar al ventilador de la sala.
+      const equipos = equiposParaVia(ep.equipos, ev.via);
+      const vent = equipos.find((e) => e.tipo === "VENTILADOR");
+      return { ...ep, viaAereaActual: ev.via, calibreVia: ev.calibre, fijacionCm: ev.fijacionCm, equipos: vent ? ponerEnUso(equipos, vent) : equipos };
+    }
     case "TRAQUEOSTOMIA":
       return { ...ep, viaAereaActual: "TQT", calibreVia: ev.calibre, fijacionCm: "Collarín" };
     case "AJUSTE_TUBO":
@@ -287,7 +298,7 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
     case "CAMBIO_EQUIPOS":
       return { ...ep, equipos: ev.equipos };
     case "TRASLADO_CAMA":
-      return { ...ep, cama: ev.hasta };
+      return { ...ep, cama: ev.hasta, ...(ev.equiposNuevos ? { equipos: ev.equiposNuevos } : {}) };
     default:
       return ep;
   }

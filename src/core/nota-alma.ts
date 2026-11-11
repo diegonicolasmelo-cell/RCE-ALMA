@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoCategoriaRem, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, ETIQUETA_MOTIVO_CAMBIO_EQUIPO, textoCategoriaRem, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub, horasDeVm } from "./pve";
@@ -251,7 +251,7 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
     case "CAMBIO_FILTRO":
       return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
     case "CAMBIO_EQUIPOS":
-      return `Cambio de equipos: ${describirEquipos(ev.equipos)}`;
+      return `Cambio de equipos: ${describirEquipos(ev.equipos)}${ev.motivo ? ` (${ETIQUETA_MOTIVO_CAMBIO_EQUIPO[ev.motivo].toLowerCase()})` : ""}`;
     case "TRASLADO_CAMA":
       return `Traslado de cama: ${ev.desde} → ${ev.hasta}`;
     case "PVE_SIN_EXTUBAR":

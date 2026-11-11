@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { OBJETIVOS_VT_ML_KG, calcularPbw, nombreCama, volumenObjetivoMl } from "@core/index";
-import type { Episodio, Sexo, ViaAerea } from "@core/index";
+import { OBJETIVOS_VT_ML_KG, calcularPbw, equiposDeLaCama, equiposParaVia, nombreCama, problemaEquipos, volumenObjetivoMl } from "@core/index";
+import type { EquipoEnSala, Episodio, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
 import { guardarMeta } from "../datos/db";
 import { claveMisCamas } from "./ElegirCamas";
 import { Seg } from "./componentes";
+import { EditorEquipos } from "./EditorEquipos";
 import { casillaNumerica } from "./TecladoPropio";
 
 const numero = (v: string): number | null => {
@@ -39,6 +40,19 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
   const [sexo, setSexo] = useState<Sexo | null>(null);
   const [talla, setTalla] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Los equipos viven en la cama: se parte de lo que dejo el ultimo paciente de esta sala.
+  const [equipos, setEquipos] = useState<readonly EquipoEnSala[] | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void Promise.all([db.episodios.toArray(), db.eventos.toArray()]).then(([eps, evs]) => {
+      if (vivo) setEquipos((actual) => actual ?? equiposDeLaCama(cama, eps, evs));
+    });
+    return () => { vivo = false; };
+  }, [db, cama]);
+  const elegirVia = (v: ViaAerea): void => {
+    setVia(v);
+    setEquipos((l) => equiposParaVia(l ?? [], v));
+  };
   const t = numero(talla);
 
   const guardar = async (): Promise<void> => {
@@ -48,6 +62,8 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
     if (!via) return setError("Elige la vía aérea con que llega.");
     if (via !== "NATURAL" && numero(calibre) === null) return setError("Falta el calibre.");
     if (via === "TET" && numero(cm) === null) return setError("Faltan los cm en la arcada dental.");
+    const problema = problemaEquipos(equipos ?? [], via);
+    if (problema) return setError(problema);
     const ep: Episodio = {
       id: nuevoId(),
       cama,
@@ -62,7 +78,7 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
       fijacionCm: via === "TET" ? cm.trim() : null,
       diasVM: 0,
       ingresadoEn: new Date().toISOString(),
-      equipos: [],
+      equipos: equipos ?? [],
       monitoreo: { capnografia: false, pic: false, dve: false },
       rutTitular: sesion.rut,
       transcritoAlma: false,
@@ -97,7 +113,7 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
           <div className="f"><label htmlFor="ir-talla">Talla (cm)</label><input id="ir-talla" {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={talla} onChange={(e) => setTalla(e.target.value)} /></div>
           <div className="notice acc small" aria-live="polite">{pi ?? "Con sexo y talla se calcula el peso ideal y el volumen corriente por kilo."}</div>
           <div className="small ink2">Vía aérea con que llega</div>
-          <Seg ancho etiqueta="Vía aérea" valor={via} opciones={[{ valor: "NATURAL", texto: "Natural" }, { valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={setVia} />
+          <Seg ancho etiqueta="Vía aérea" valor={via} opciones={[{ valor: "NATURAL", texto: "Natural" }, { valor: "TET", texto: "TET" }, { valor: "TQT", texto: "TQT" }]} onCambio={elegirVia} />
           {via && via !== "NATURAL" && (
             <div className="fgrid2">
               <div className="f"><label htmlFor="ir-cal">Calibre {via === "TET" ? "del tubo" : "de la TQT"}</label><input id="ir-cal" {...casillaNumerica()} enterKeyHint="next" autoComplete="off" value={calibre} onChange={(e) => setCalibre(e.target.value)} /></div>
@@ -105,6 +121,13 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
             </div>
           )}
           {via === "NATURAL" && <p className="small muted" style={{ margin: 0 }}>Con vía aérea natural se ofrecen oxigenoterapia y VNI.</p>}
+          {via && (
+            <>
+              <div className="small ink2">Equipos de la sala</div>
+              <p className="small muted" style={{ margin: 0 }}>El ventilador vive en la cama: regístralo siempre, esté en uso o no.{equipos?.length ? " Viene lo que quedó en esta sala." : ""}</p>
+              <EditorEquipos idBase="ir-eq" lista={equipos ?? []} via={via} onCambio={setEquipos} />
+            </>
+          )}
           {error && <div className="notice crit small" role="alert">{error}</div>}
         </div>
         <div className="pie-inf">

@@ -141,6 +141,17 @@ describe("mecánica y derivados por modalidad", () => {
     expect(calcularDerivados(c, pbw).compliance).toBe(50);
   });
 
+  it("con auto-PEEP se resta la PEEP total: Ppl 20, PEEP 5 + auto-PEEP 1 = 6, ΔP 14", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ vtEspirado: 420, pPlateau: 20, peep: 5, autoPeep: 1 }) });
+    const d = calcularDerivados(c, pbw);
+    expect(d.peepTotal).toBe(6);
+    expect(d.drivingPressure).toBe(14);
+    expect(d.compliance).toBe(30);
+    const sinAuto = calcularDerivados(unControl({ ventilacion: unaVentilacion({ vtEspirado: 420, pPlateau: 20, peep: 5, autoPeep: null }) }), pbw);
+    expect(sinAuto.peepTotal).toBe(5);
+    expect(sinAuto.drivingPressure).toBe(15);
+  });
+
   it("la guía de titulación es el programado en ACVC y el espirado en PCV", () => {
     const acvc = unControl({ ventilacion: unaVentilacion({ vtProgramado: 540, vtEspirado: 500 }) });
     expect(calcularDerivados(acvc, 67.8).mlKgGuia).toBe(8);

@@ -164,7 +164,9 @@ export interface DerivadosControl {
   /** Calculado por defecto (Vt espirado x FR total); si se edita, vale lo leido del ventilador. */
   readonly volumenMinuto: number | null;
   readonly relacionIE: string | null;
-  /** Driving pressure. `null` si el candado de mecanica la invalida. */
+  /** PEEP programada + auto-PEEP (PEEP intrinseca). Es la que se resta para la mecanica. */
+  readonly peepTotal: number | null;
+  /** Driving pressure (plateau - PEEP total). `null` si el candado de mecanica la invalida. */
   readonly drivingPressure: number | null;
   /** Con que presion se calculo: plateau, o pico en PCV si no se mide plateau. */
   readonly origenDriving: OrigenPresion | null;
@@ -197,9 +199,11 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
   let drivingPressure: number | null = null;
   let compliance: number | null = null;
   let origenDriving: OrigenPresion | null = null;
+  // Se anota la PEEP intrinseca (auto-PEEP): PEEP 5 + auto-PEEP 1 = PEEP total 6.
+  const peepTotal = v.peep === null ? null : redondear(v.peep + (v.autoPeep ?? 0), 1);
   const pd = presionParaDriving(v);
-  if (validez.valido && pd !== null && v.peep !== null) {
-    const dp = pd.valor - v.peep;
+  if (validez.valido && pd !== null && peepTotal !== null) {
+    const dp = pd.valor - peepTotal;
     if (dp > 0) {
       drivingPressure = redondear(dp, 1);
       origenDriving = pd.origen;
@@ -231,6 +235,7 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     // Se anota el volumen minuto espirado que muestra el ventilador; no se calcula.
     volumenMinuto: esVMI ? v.volMinuto : null,
     relacionIE: controlada ? relacionIE(v.ti, v.frTotal) : null,
+    peepTotal,
     drivingPressure,
     origenDriving,
     compliance,

@@ -97,10 +97,11 @@ export function Celular() {
 
   const ultimo = controles.at(-1) ?? null;
   const base = useMemo<BorradorControl | null>(
-    () => (ep ? { ...crearBorradorNuevoControl(ep, ultimo, sesion.rut), esControlApoyo: !esMia(ep) } : null),
-    // La base se recalcula solo si cambia la cama o el ultimo control; las ediciones viven en el store.
+    () => (ep ? { ...crearBorradorNuevoControl(ep, ultimo, sesion.rut, eventos), esControlApoyo: !esMia(ep) } : null),
+    // La base se recalcula si cambia la cama, el ultimo control o la via aerea (un evento la cambia);
+    // las ediciones viven en el store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ep?.id, ultimo?.id, sesion.rut, misCamas]
+    [ep?.id, ultimo?.id, ep?.viaAereaActual, eventos.at(-1)?.id, sesion.rut, misCamas]
   );
 
   // --- Segmentos: una pantalla larga por pestana; "Siguiente" lleva al segmento que sigue ---
@@ -321,7 +322,7 @@ export function Celular() {
       <div className="seg-relleno" aria-hidden />
     </>
   );
-  const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); setTab("control"); avisar(t); }} />;
+  const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); useApp.getState().descartar(ep.id); setTab("control"); avisar(t); }} />;
 
 
   if (vista === "elegir") {
@@ -378,6 +379,8 @@ export function Celular() {
   /** Tras un evento que cambia la via aerea: directo al control post evento. */
   const alCambiarVia = (texto: string): void => {
     franja.cerrar();
+    // Lo que se alcanzo a anotar antes del evento era con la via anterior: el control parte de cero.
+    useApp.getState().descartar(ep.id);
     irA("cama", ep.id);
     avisar(texto);
   };

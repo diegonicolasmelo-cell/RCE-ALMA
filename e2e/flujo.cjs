@@ -500,6 +500,11 @@ async function esperarServidor() {
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
       assert.match(await aviso(), /Autoextubación registrada\. Sigue con el control post evento/);
       assert.match(await cel.textContent(".banda"), /Vía aérea natural/);
+      assert.equal(await cel.inputValue("#in-modo"), "CNAF", "el control parte en el dispositivo con que quedo (CNAF)");
+      const modos = await cel.locator("#in-modo option").evaluateAll((os) => os.map((o) => o.value));
+      assert.ok(!modos.includes("ACVC") && !modos.includes("CPAP_PS"), "con via natural no se ofrecen modos de VM: " + modos.join(","));
+      assert.equal(await cel.locator("#in-hora-evento").count(), 0, "extubar no es una desvinculacion");
+      assert.equal(await cel.locator('section[aria-label="Secreciones, tos y deglución"]').count(), 1, "sin tubo se evaluan secreciones, tos y deglucion");
     });
 
     await prueba("intubar desde Eventos pide el tubo, los cm en la arcada, la talla y el sexo, y lleva al control", async () => {
@@ -923,6 +928,8 @@ async function esperarServidor() {
       assert.equal(await cel.locator("article.cama-sin").count(), 1, "una cama libre, en su lugar de la lista");
       assert.match(await cel.textContent('article.cama-sin'), /UCI-18[\s\S]*Sin ingreso/);
       await cel.click('button[aria-label="Ingresar Cama 18"]');
+      assert.equal(await cel.locator('.fondo-flotante form[role=dialog][aria-label="Ingreso Cama 18"]').count(), 1, "el ingreso abre en una ventana flotante");
+      assert.equal(await cel.locator('article.cama-sin form').count(), 0, "el ingreso no se abre dentro de la lista de camas");
       await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
       assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /sexo/);
       await cel.locator('[aria-label="Sexo"] button:text-is("Mujer")').click();

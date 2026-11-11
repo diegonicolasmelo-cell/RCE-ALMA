@@ -21,8 +21,8 @@ import { completarBorrador } from "./borrador";
 import { normalizarControl } from "./sanitizar";
 import type { BorradorControl } from "./borrador";
 import { firmarApk, firmarApkCumple } from "./apk";
-import { unControl, unEpisodio, unaVentilacion } from "./fixtures";
-import type { ValidacionApk } from "./tipos";
+import { unControl, unEpisodio, unEvento, unaVentilacion } from "./fixtures";
+import type { EventoClinico, ValidacionApk } from "./tipos";
 
 const episodio = unEpisodio();
 const AHORA = new Date(2026, 10, 4, 15, 30);
@@ -494,5 +494,32 @@ describe("hora real del control", () => {
   it("si se escribe, debe ser de las últimas 12 horas", () => {
     expect(validarBorrador({ ...completo(), horaControl: "99:99" }, { apkVigente: apkOk() }).map((p) => p.campo)).toContain("horaControl");
     expect(validarBorrador({ ...completo(), horaControl: "" }, { apkVigente: apkOk() }).map((p) => p.campo)).not.toContain("horaControl");
+  });
+});
+
+describe("control despues de extubar o decanular", () => {
+  const natural = unEpisodio({ viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null });
+  const previo = unControl({ registradoEn: "2026-11-04T12:00:00.000Z", ventilacion: unaVentilacion({ modalidad: "ACVC", fio2: 40 }) });
+  const extub = (dispositivo: string, registradoEn = "2026-11-04T13:00:00.000Z"): EventoClinico =>
+    unEvento({ tipo: "AUTOEXTUBACION", dispositivo, registradoEn } as never);
+
+  it("parte en el modo con que quedo el paciente, sin la FiO2 del ventilador", () => {
+    const b = crearBorradorNuevoControl(natural, previo, natural.rutTitular, [extub("CNAF")]);
+    expect(b.modalidad).toBe("CNAF");
+    expect(b.vent.fio2).toBe("");
+    expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular, [extub("VMNI")]).modalidad).toBe("VNI_ST");
+    expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular, [extub("O2_CONVENCIONAL")]).modalidad).toBe("O2_NARICERA");
+  });
+
+  it("nunca deja un modo de ventilacion mecanica con via aerea natural", () => {
+    expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular, [extub("AIRE_AMBIENTE")]).modalidad).toBe("CNAF");
+    expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular).modalidad).toBe("CNAF");
+  });
+
+  it("una extubacion anterior al ultimo control ya no manda: se hereda el modo del control", () => {
+    const enO2 = unControl({ registradoEn: "2026-11-04T15:00:00.000Z", ventilacion: unaVentilacion({ modalidad: "O2_NARICERA", fio2: 28 }) });
+    const b = crearBorradorNuevoControl(natural, enO2, natural.rutTitular, [extub("CNAF")]);
+    expect(b.modalidad).toBe("O2_NARICERA");
+    expect(b.vent.fio2).toBe("28");
   });
 });

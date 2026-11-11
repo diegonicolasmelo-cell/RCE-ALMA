@@ -15,7 +15,7 @@
  * a cero) son clinicamente distintos y no deben colapsar.
  */
 
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, conSoporte, hayAspectoDeSecreciones, modalidadPermitida, transicionSoporte } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, MODALIDAD_POR_DISPOSITIVO, conSoporte, hayAspectoDeSecreciones, modalidadPermitida, pideMusculaturaAccesoria, transicionSoporte } from "./catalogos";
 import { momentoDeEvaluacion } from "./evaluaciones";
 import { esViaAereaArtificial } from "./fisiologia";
 import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
@@ -30,6 +30,7 @@ import type {
   Control,
   EquipoEnSala,
   Episodio,
+  EventoClinico,
   EstadoTerapiaFisica,
   EstadoVigilia,
   IdInfusion,
@@ -165,19 +166,32 @@ export function medicionDe(texto: string): Medicion {
 export function crearBorradorNuevoControl(
   episodio: Episodio,
   ultimo: Control | null,
-  rutAutor: string
+  rutAutor: string,
+  eventos: readonly EventoClinico[] = []
 ): BorradorControl {
   const artificial = esViaAereaArtificial(episodio.viaAereaActual);
-  // El modo se hereda solo si corresponde a la via aerea de hoy (p. ej. tras extubar, un
-  // CPAP+PS ya no se ofrece): si no, parte en uno de los de esa via y se elige.
+  // Tras extubar o decanular, el control parte en el modo con que quedo el paciente (CNAF,
+  // VMNI, O2): ese evento es posterior al ultimo control.
+  const retiro = [...eventos]
+    .filter((e): e is Extract<EventoClinico, { tipo: "EXTUBACION_PROGRAMADA" | "AUTOEXTUBACION" | "DECANULACION" }> =>
+      e.tipo === "EXTUBACION_PROGRAMADA" || e.tipo === "AUTOEXTUBACION" || e.tipo === "DECANULACION")
+    .filter((e) => !ultimo || e.registradoEn > ultimo.registradoEn)
+    .sort((a, b) => a.registradoEn.localeCompare(b.registradoEn))
+    .at(-1);
+  const deRetiro = retiro ? MODALIDAD_POR_DISPOSITIVO[retiro.dispositivo] : null;
+  // Si no, el modo se hereda solo si corresponde a la via aerea de hoy: si no, parte en uno
+  // de los de esa via y se elige.
   const heredada = ultimo?.ventilacion.modalidad ?? null;
   const modalidad: Modalidad =
-    heredada && modalidadPermitida(heredada, episodio.viaAereaActual) ? heredada : artificial ? "CPAP_PS" : "CNAF";
+    deRetiro && modalidadPermitida(deRetiro, episodio.viaAereaActual) ? deRetiro
+      : heredada && modalidadPermitida(heredada, episodio.viaAereaActual) ? heredada
+        : artificial ? "CPAP_PS" : "CNAF";
 
   const vent = Object.fromEntries(CAMPOS_VENT.map((c) => [c, ""])) as Record<CampoVent, string>;
   // Solo el modo y la FiO2 se heredan. El resto de los ajustes nace en blanco: se repite con
   // "Usar lo anterior" (sugerirAnterior) o se escribe, pero nunca queda pre-rellenado.
-  if (ultimo) vent.fio2 = textoDe(ultimo.ventilacion.fio2);
+  // Con un dispositivo nuevo (recien extubado) la FiO2 del ventilador ya no vale.
+  if (ultimo && !retiro) vent.fio2 = textoDe(ultimo.ventilacion.fio2);
 
   const infusiones = Object.fromEntries(
     INFUSIONES.map((def) => {
@@ -391,7 +405,7 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     temperatura: campo("temperatura"),
     fuga: campo("fuga"),
     presionMax: campo("presionMax"),
-    musculaturaAccesoria: b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT" ? b.musculaturaAccesoria : null,
+    musculaturaAccesoria: pideMusculaturaAccesoria(b.modalidad) ? b.musculaturaAccesoria : null,
     volMinuto: campo("volMinuto")
   };
 

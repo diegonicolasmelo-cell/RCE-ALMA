@@ -79,6 +79,7 @@ export function ListaCamas() {
 
   return (
     <div className="cel-cuerpo" style={{ display: "grid", gap: 10 }}>
+      {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
       {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
@@ -97,11 +98,7 @@ export function ListaCamas() {
                   <b className="cama-num">{cama}</b>
                 </header>
                 <div className="small ink2">Sin ingreso</div>
-                {ingresando === cama ? (
-                  <IngresoRapido key={cama} cama={cama} onCancelar={() => setIngresando(null)} />
-                ) : (
-                  <button type="button" className="btn primary" aria-label={`Ingresar ${nombreCama(cama)}`} onClick={() => setIngresando(cama)}>Ingresar</button>
-                )}
+                <button type="button" className="btn primary" aria-label={`Ingresar ${nombreCama(cama)}`} onClick={() => setIngresando(cama)}>Ingresar</button>
               </article>
             </Fragment>
           );

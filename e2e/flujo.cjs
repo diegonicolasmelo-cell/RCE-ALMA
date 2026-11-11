@@ -901,6 +901,13 @@ async function esperarServidor() {
       await pc.click('button[aria-label="Ingresar paciente en Cama 17"]');
       assert.equal(await pc.inputValue("#in-cama"), "UCI-17", "el ingreso parte con la cama elegida");
       await pc.fill("#in-edad", "58");
+      // Los equipos viven en la cama: el ingreso trae el ventilador que dejo el paciente anterior,
+      // en uso porque llega con TET.
+      await pc.waitForSelector('.editor-equipos b:text-is("Savina 18")');
+      assert.equal(await pc.getAttribute('.editor-equipos button[aria-pressed]', "aria-pressed"), "true");
+      await pc.click('[aria-label="Vía aérea de ingreso"] button:text-is("Natural")');
+      assert.match(await pc.textContent(".editor-equipos"), /Savina 18[\s\S]*en la sala, sin uso/, "con via natural el ventilador queda sin uso");
+      await pc.click('[aria-label="Vía aérea de ingreso"] button:text-is("TET")');
       await pc.selectOption("#in-cat", "Enfermedades respiratorias");
       await pc.fill("#in-talla", "175");
       await pc.fill("#in-nombre", "Paciente Prueba Nueve");

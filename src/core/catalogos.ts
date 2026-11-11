@@ -341,10 +341,21 @@ export const CATALOGO_EQUIPOS: readonly DefinicionEquipo[] = [
   { modelo: "Meckis", tipo: "VENTILADOR", numerado: true },
   { modelo: "PB 840", tipo: "VENTILADOR", numerado: true },
   { modelo: "PB 980", tipo: "VENTILADOR", numerado: true },
-  { modelo: "B60", tipo: "VMNI", numerado: true },
+  { modelo: "V60", tipo: "VMNI", numerado: true },
+  { modelo: "Airvo 2", tipo: "ALTO_FLUJO", numerado: true },
   { modelo: "Humidificador MR850", tipo: "HUMIDIFICADOR", numerado: true },
   { modelo: "NBZ Aerogen", tipo: "NEBULIZADOR", numerado: true }
 ];
+
+/** Por que se cambia un equipo de la sala (sobre todo el ventilador). */
+export const MOTIVOS_CAMBIO_EQUIPO = ["FALLA", "MANTENCION", "OTRO_MODO", "OTRO"] as const;
+export type MotivoCambioEquipo = (typeof MOTIVOS_CAMBIO_EQUIPO)[number];
+export const ETIQUETA_MOTIVO_CAMBIO_EQUIPO: Readonly<Record<MotivoCambioEquipo, string>> = {
+  FALLA: "Falla del equipo",
+  MANTENCION: "Mantención",
+  OTRO_MODO: "Necesita otro modo",
+  OTRO: "Otro motivo"
+};
 
 export const ETIQUETA_TIPO_EQUIPO: Readonly<Record<TipoEquipo, string>> = {
   VENTILADOR: "Ventilador",

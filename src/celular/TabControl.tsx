@@ -2,7 +2,6 @@ import { Lock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   CAMPOS_POR_MODALIDAD,
-  CATALOGO_EQUIPOS,
   ETIQUETA_GRUPO_MODALIDAD,
   ETIQUETA_MODALIDAD,
   GRUPO_MODALIDAD,
@@ -10,7 +9,6 @@ import {
   MODALIDADES_POR_VIA,
   OBJETIVOS_VT_ML_KG,
   VALORES_RAPIDOS,
-  agregarEquipo,
   bandaProteccion,
   calcularDerivados,
   calcularPam,
@@ -28,11 +26,11 @@ import {
   medicionDe,
   mlPorKg,
   opcionesVolumenObjetivo,
-  ponerEnUso,
-  quitarEquipo,
   sugerirAnterior
 } from "@core/index";
-import type { CampoVent, CampoVentDef, Modalidad } from "@core/index";
+import { ETIQUETA_MOTIVO_CAMBIO_EQUIPO, MOTIVOS_CAMBIO_EQUIPO, cambioDeVentilador, problemaEquipos } from "@core/index";
+import type { CampoVent, CampoVentDef, Modalidad, MotivoCambioEquipo } from "@core/index";
+import { EditorEquipos } from "./EditorEquipos";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import type { SegmentoId } from "./pasos";
@@ -364,64 +362,53 @@ export function PanelEquipos({ ctx }: { ctx: ContextoCama }) {
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState(false);
   const [lista, setLista] = useState(ep.equipos);
-  const [modelo, setModelo] = useState<string>(CATALOGO_EQUIPOS[0]?.modelo ?? "");
-  const [numero, setNumero] = useState("");
+  const [motivo, setMotivo] = useState<MotivoCambioEquipo | "">("");
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!abierto) setLista(ep.equipos);
   }, [ep.equipos, abierto]);
 
-  const def = CATALOGO_EQUIPOS.find((e) => e.modelo === modelo);
-  const agregar = (): void => {
-    setLista((l) => agregarEquipo(l, modelo, def?.numerado ? medicionDe(numero) : null));
-    setNumero("");
+  const cambiaVentilador = cambioDeVentilador(ep.equipos, lista);
+  const cerrar = (): void => {
+    setAbierto(false);
+    setMotivo("");
+    setError(null);
   };
   const aplicar = async (): Promise<void> => {
     if (!equiposIguales(lista, ep.equipos)) {
-      await repo.registrarEvento({ ...baseEvento(ep, rutAutor, ahora), tipo: "CAMBIO_EQUIPOS", equipos: lista });
+      const problema = problemaEquipos(lista, ep.viaAereaActual);
+      if (problema) return setError(problema);
+      if (cambiaVentilador && motivo === "") return setError("Indica por qué se cambia el ventilador.");
+      await repo.registrarEvento({ ...baseEvento(ep, rutAutor, ahora), tipo: "CAMBIO_EQUIPOS", equipos: lista, ...(cambiaVentilador && motivo ? { motivo } : {}) });
       avisar("Equipos de la sala actualizados.");
     }
-    setAbierto(false);
+    cerrar();
   };
 
   return (
     <div className="mt">
-      <button type="button" className="todo-row small" style={{ width: "100%", textAlign: "left", background: "none", cursor: "pointer", color: "inherit" }} onClick={() => setAbierto((a) => !a)} aria-expanded={abierto}>
+      <button type="button" className="todo-row small" style={{ width: "100%", textAlign: "left", background: "none", cursor: "pointer", color: "inherit" }} onClick={() => (abierto ? cerrar() : setAbierto(true))} aria-expanded={abierto}>
         <b>Equipos de la sala:</b> {describirEquipos(ep.equipos)} <span className="muted">· {abierto ? "cerrar" : "cambiar"}</span>
       </button>
       {abierto && (
         <div className="card stack" style={{ padding: 10, gap: 8, marginTop: 6 }}>
-          {lista.length === 0 && <div className="small muted">Sin equipos registrados.</div>}
-          {lista.map((e) => (
-            <div key={etiquetaEquipo(e)} className="row" style={{ justifyContent: "space-between" }}>
-              <span>
-                <b>{etiquetaEquipo(e)}</b>{" "}
-                {e.enUso && <Pildora tipo="acc">en uso</Pildora>}
-              </span>
-              <span className="row">
-                {!e.enUso && (e.tipo === "VENTILADOR" || e.tipo === "VMNI" || e.tipo === "ALTO_FLUJO") && (
-                  <button type="button" className="btn sm" onClick={() => setLista((l) => ponerEnUso(l, e))}>Poner en uso</button>
-                )}
-                <button type="button" className="btn sm" onClick={() => setLista((l) => quitarEquipo(l, e))}>Quitar</button>
-              </span>
+          <EditorEquipos idBase="ctl-eq" lista={lista} via={ep.viaAereaActual} onCambio={(l) => { setLista(l); setError(null); }} />
+          {cambiaVentilador && (
+            <div className="f">
+              <label htmlFor="motivo-cambio-equipo">¿Por qué se cambia el ventilador?</label>
+              <select id="motivo-cambio-equipo" value={motivo} onChange={(e) => setMotivo(e.target.value as MotivoCambioEquipo | "")}>
+                <option value="">— elegir —</option>
+                {MOTIVOS_CAMBIO_EQUIPO.map((m) => <option key={m} value={m}>{ETIQUETA_MOTIVO_CAMBIO_EQUIPO[m]}</option>)}
+              </select>
             </div>
-          ))}
-          <div className="row">
-            <select value={modelo} onChange={(e) => setModelo(e.target.value)} aria-label="Modelo de equipo">
-              {CATALOGO_EQUIPOS.map((e) => (
-                <option key={e.modelo}>{e.modelo}</option>
-              ))}
-            </select>
-            {def?.numerado && (
-              <input {...casillaNumerica(false)} value={numero} placeholder="n.º" aria-label="Número del equipo" style={{ width: 70 }} onChange={(e) => setNumero(e.target.value)} />
-            )}
-            <button type="button" className="btn sm" onClick={agregar}>Agregar</button>
-          </div>
+          )}
+          {error && <div className="notice crit small" role="alert">{error}</div>}
           <div className="row">
             <button type="button" className="btn primary" onClick={() => void aplicar()}>Aplicar cambios</button>
-            <button type="button" className="btn" onClick={() => setAbierto(false)}>Cancelar</button>
+            <button type="button" className="btn" onClick={cerrar}>Cancelar</button>
           </div>
           <div className="small muted">
-            {equipoEnUso(lista) ? `En uso: ${etiquetaEquipo(equipoEnUso(lista)!)}.` : "Ningún equipo marcado en uso."} El número asocia el nombre a un número de serie.
+            {equipoEnUso(lista) ? `En uso: ${etiquetaEquipo(equipoEnUso(lista)!)}.` : "Ningún equipo en uso."} El ventilador vive en la cama: se cambia, no se quita.
           </div>
         </div>
       )}

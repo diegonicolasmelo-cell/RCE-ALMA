@@ -142,18 +142,23 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
       transcritoAlma: true, horaTranscripcion: "12:40", pendienteEntrega: "Evaluar válvula de fonación mañana." }),
     ep("ep-04", { cama: "UCI-04", rangoEdad: rangoDeEdad(52), sexo: "M", tallaCm: 178, categoriaRem: "Enfermedades respiratorias", calibreVia: "8.5", fijacionCm: "23", diasVM: 3,
       equipos: [{ tipo: "VENTILADOR", modelo: "Meckis", numero: 3, enUso: true }] }),
-    ep("ep-05", { cama: "UCI-05", rangoEdad: rangoDeEdad(58), sexo: "F", tallaCm: 158, categoriaRem: "Enfermedades respiratorias", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0 }),
+    ep("ep-05", { cama: "UCI-05", rangoEdad: rangoDeEdad(58), sexo: "F", tallaCm: 158, categoriaRem: "Enfermedades respiratorias", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0,
+      equipos: [{ tipo: "VENTILADOR", modelo: "Savina", numero: 2, enUso: false }, { tipo: "ALTO_FLUJO", modelo: "Airvo 2", numero: 1, enUso: true }] }),
     ep("ep-06", { cama: "UCI-06", rangoEdad: rangoDeEdad(45), sexo: "M", tallaCm: 175, categoriaRem: "Otros pre y post quirúrgicos", diasVM: 1,
       equipos: [{ tipo: "VENTILADOR", modelo: "PB 980", numero: 2, enUso: true }] }),
-    ep("ep-07", { cama: "UCI-07", rangoEdad: rangoDeEdad(67), sexo: "F", tallaCm: 160, categoriaRem: "Enfermedades cardíacas", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
-    ep("ep-08", { cama: "UCI-08", rangoEdad: rangoDeEdad(77), sexo: "M", tallaCm: 170, categoriaRem: "Genitourinarias", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
+    ep("ep-07", { cama: "UCI-07", rangoEdad: rangoDeEdad(67), sexo: "F", tallaCm: 160, categoriaRem: "Enfermedades cardíacas", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN,
+      equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 3, enUso: false }] }),
+    ep("ep-08", { cama: "UCI-08", rangoEdad: rangoDeEdad(77), sexo: "M", tallaCm: 170, categoriaRem: "Genitourinarias", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN,
+      equipos: [{ tipo: "VENTILADOR", modelo: "Avea", numero: 1, enUso: false }] }),
     ...EXTRAS.map((x, i) => {
       const n = i + 9;
       const natural = x.via === "NATURAL";
       return ep(`ep-${String(n).padStart(2, "0")}`, {
         cama: `UCI-${String(n).padStart(2, "0")}`, rangoEdad: rangoDeEdad(x.edad), sexo: x.sexo, tallaCm: x.talla, categoriaRem: x.cat,
         viaAereaActual: x.via, calibreVia: natural ? null : "8.0", fijacionCm: natural ? null : x.via === "TQT" ? "Collarín" : "22", diasVM: natural ? 0 : x.dias,
-        rutTitular: n <= 12 ? KAREN : EDUARDO
+        rutTitular: n <= 12 ? KAREN : EDUARDO,
+        // Toda cama tiene su ventilador; con via natural queda en la sala sin uso.
+        equipos: [{ tipo: "VENTILADOR", modelo: i % 2 === 0 ? "Savina" : "PB 840", numero: 10 + i, enUso: !natural }]
       });
     })
   ];

@@ -10,9 +10,9 @@
  * hora, de modo que se conserva el historial de movimientos.
  */
 
-import { CATALOGO_EQUIPOS, ETIQUETA_TIPO_EQUIPO } from "./catalogos";
+import { CATALOGO_EQUIPOS, ETIQUETA_TIPO_EQUIPO, GRUPO_MODALIDAD } from "./catalogos";
 import type { DefinicionEquipo } from "./catalogos";
-import type { Episodio, EquipoEnSala, EventoClinico, TipoEquipo, ViaAerea } from "./tipos";
+import type { Episodio, EquipoEnSala, EventoClinico, Modalidad, TipoEquipo, ViaAerea } from "./tipos";
 
 /** Dispositivos que dan soporte respiratorio: solo uno esta "en uso" a la vez. */
 const TIPOS_DE_SOPORTE: readonly TipoEquipo[] = ["VENTILADOR", "VMNI", "ALTO_FLUJO"];
@@ -125,14 +125,43 @@ export function equiposParaVia(lista: readonly EquipoEnSala[], via: ViaAerea): r
   return filtrada;
 }
 
-/** `null` si esta bien; si no, que falta. Toda cama tiene su ventilador; con TET, en uso. */
-export function problemaEquipos(lista: readonly EquipoEnSala[], via: ViaAerea): string | null {
+/**
+ * `null` si esta bien; si no, que falta. Toda cama tiene su ventilador. Con TET o TQT el
+ * paciente conectado necesita un soporte en uso: el ventilador queda sin uso solo si esta
+ * desvinculado (y no se ha reconectado). Al ingreso, con TET se asume conectado.
+ */
+export function problemaEquipos(lista: readonly EquipoEnSala[], via: ViaAerea, conectado = via === "TET"): string | null {
   const ventiladores = lista.filter((e) => e.tipo === "VENTILADOR");
   if (ventiladores.length === 0) return "Registra el ventilador de la sala: toda cama tiene uno, esté en uso o no.";
-  if (via === "TET" && !ventiladores.some((e) => e.enUso)) return "Con TET el ventilador de la sala debe quedar en uso.";
+  if (via !== "NATURAL" && conectado && !lista.some((e) => esSoporteRespiratorio(e.tipo) && e.enUso)) {
+    return `Con ${via} el ventilador de la sala debe quedar en uso: solo queda sin uso si el paciente está desvinculado.`;
+  }
   const malUsado = lista.find((e) => e.enUso && esSoporteRespiratorio(e.tipo) && !puedeEstarEnUso(e.tipo, via));
   if (malUsado) return `${etiquetaEquipo(malUsado)} no puede estar en uso con ${via === "NATURAL" ? "vía aérea natural" : via}.`;
   return null;
+}
+
+/** Sin soporte (cama vacia, tubo T, O2): todo queda en la sala sin uso. */
+const sinUso = (l: readonly EquipoEnSala[]): readonly EquipoEnSala[] => l.map((e) => (esSoporteRespiratorio(e.tipo) ? { ...e, enUso: false } : e));
+
+/** Que equipo da el soporte en cada modo: VM el ventilador, VNI el V60, CNAF el Airvo. */
+export function tipoParaModalidad(m: Modalidad): TipoEquipo | null {
+  const g = GRUPO_MODALIDAD[m];
+  if (g === "VENTILACION_MECANICA") return "VENTILADOR";
+  if (g === "VNI") return "VMNI";
+  if (m === "CNAF" || m === "CNAF_TQT") return "ALTO_FLUJO";
+  return null;
+}
+
+/**
+ * Al desvincular o reconectar, el uso sigue al modo: queda en uso el equipo que lo da; sin
+ * soporte (tubo T, O2), nada en uso. Si la sala no tiene ese equipo, la lista no cambia.
+ */
+export function equiposSegunModalidad(lista: readonly EquipoEnSala[], m: Modalidad): readonly EquipoEnSala[] {
+  const tipo = tipoParaModalidad(m);
+  if (!tipo) return sinUso(lista);
+  const equipo = lista.find((e) => e.tipo === tipo);
+  return equipo ? ponerEnUso(lista, equipo) : lista;
 }
 
 /** Si se cambio algun ventilador (no solo su uso): ese cambio pide motivo. */
@@ -141,8 +170,6 @@ export function cambioDeVentilador(antes: readonly EquipoEnSala[], despues: read
   return clave(antes) !== "" && clave(antes) !== clave(despues);
 }
 
-/** Con la cama vacia nada da soporte: todo queda en la sala sin uso. */
-const sinUso = (l: readonly EquipoEnSala[]): readonly EquipoEnSala[] => l.map((e) => (esSoporteRespiratorio(e.tipo) ? { ...e, enUso: false } : e));
 
 /**
  * Los equipos que hay hoy en una cama. Si esta ocupada, los del paciente; si esta libre, los que

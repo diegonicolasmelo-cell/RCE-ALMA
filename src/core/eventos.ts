@@ -9,7 +9,7 @@
 
 import type { Episodio, EventoClinico, TipoEvento, ViaAerea } from "./tipos";
 import { EVENTOS_DE_RIESGO } from "./tipos";
-import { equiposParaVia, ponerEnUso } from "./equipos";
+import { equiposParaVia, equiposSegunModalidad, ponerEnUso } from "./equipos";
 
 /** Duracion de protocolo de una prueba de ventilacion espontanea. */
 export const DURACION_PVE_MIN = 30;
@@ -299,6 +299,9 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
       return { ...ep, equipos: ev.equipos };
     case "TRASLADO_CAMA":
       return { ...ep, cama: ev.hasta, ...(ev.equiposNuevos ? { equipos: ev.equiposNuevos } : {}) };
+    case "DESVINCULACION":
+    case "RECONEXION":
+      return { ...ep, equipos: equiposSegunModalidad(ep.equipos, ev.hasta) };
     default:
       return ep;
   }

@@ -4,6 +4,7 @@
  */
 
 import { construirRut, firmarApkCumple, rangoDeEdad, turnoAnterior } from "@core/index";
+import type { CategoriaRem } from "@core/index";
 import type {
   Control,
   Episodio,
@@ -89,17 +90,17 @@ function control(d: DatosControl): Control {
 }
 
 /** Camas 09 a 18 del demo: lo justo para ver la portada completa (18 camas, 3 kinesiologos). */
-const EXTRAS: readonly { edad: number; sexo: "M" | "F"; talla: number; dx: string; via: "TET" | "TQT" | "NATURAL"; dias: number }[] = [
-  { edad: 61, sexo: "M", talla: 169, dx: "Postoperatorio cardíaco", via: "TET", dias: 1 },
-  { edad: 49, sexo: "F", talla: 160, dx: "Pancreatitis grave", via: "TET", dias: 5 },
-  { edad: 73, sexo: "M", talla: 172, dx: "Neumonía por aspiración", via: "NATURAL", dias: 0 },
-  { edad: 35, sexo: "M", talla: 180, dx: "Politraumatizado", via: "TET", dias: 2 },
-  { edad: 82, sexo: "F", talla: 155, dx: "EPOC reagudizado, VMNI", via: "NATURAL", dias: 0 },
-  { edad: 56, sexo: "M", talla: 174, dx: "Sepsis abdominal", via: "TET", dias: 3 },
-  { edad: 68, sexo: "F", talla: 158, dx: "Insuficiencia respiratoria hipoxémica", via: "TQT", dias: 14 },
-  { edad: 44, sexo: "M", talla: 177, dx: "Cetoacidosis diabética", via: "NATURAL", dias: 0 },
-  { edad: 59, sexo: "M", talla: 171, dx: "Hemorragia digestiva alta", via: "TET", dias: 2 },
-  { edad: 66, sexo: "F", talla: 162, dx: "Postoperatorio neuroquirúrgico", via: "TET", dias: 1 }
+const EXTRAS: readonly { edad: number; sexo: "M" | "F"; talla: number; dx: string; cat: CategoriaRem; via: "TET" | "TQT" | "NATURAL"; dias: number }[] = [
+  { edad: 61, sexo: "M", talla: 169, dx: "Postoperatorio cardíaco", cat: "Otros pre y post quirúrgicos", via: "TET", dias: 1 },
+  { edad: 49, sexo: "F", talla: 160, dx: "Pancreatitis grave", cat: "Otros", via: "TET", dias: 5 },
+  { edad: 73, sexo: "M", talla: 172, dx: "Neumonía por aspiración", cat: "Enfermedades respiratorias", via: "NATURAL", dias: 0 },
+  { edad: 35, sexo: "M", talla: 180, dx: "Politraumatizado", cat: "Traumatológicos", via: "TET", dias: 2 },
+  { edad: 82, sexo: "F", talla: 155, dx: "EPOC reagudizado, VMNI", cat: "Enfermedades respiratorias", via: "NATURAL", dias: 0 },
+  { edad: 56, sexo: "M", talla: 174, dx: "Sepsis abdominal", cat: "Otros", via: "TET", dias: 3 },
+  { edad: 68, sexo: "F", talla: 158, dx: "Insuficiencia respiratoria hipoxémica", cat: "Enfermedades respiratorias", via: "TQT", dias: 14 },
+  { edad: 44, sexo: "M", talla: 177, dx: "Cetoacidosis diabética", cat: "Otros", via: "NATURAL", dias: 0 },
+  { edad: 59, sexo: "M", talla: 171, dx: "Hemorragia digestiva alta", cat: "Otros", via: "TET", dias: 2 },
+  { edad: 66, sexo: "F", talla: 162, dx: "Postoperatorio neuroquirúrgico", cat: "Otros pre y post quirúrgicos", via: "TET", dias: 1 }
 ];
 
 const FENT = (esc: number, dosis: number): Infusiones => ({ fentanilo: { dosis, escalon: esc } });
@@ -109,7 +110,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
 
   // El ingreso de cada paciente inventado: hace tantos dias como VM trae (y unas horas mas).
   const haceDias = (d: number): string => new Date(ahora.getTime() - (d * 24 + 5) * 3_600_000).toISOString();
-  const ep = (id: string, p: Partial<Episodio> & Pick<Episodio, "cama" | "rangoEdad" | "sexo" | "tallaCm" | "diagnostico">): Episodio => ({
+  const ep = (id: string, p: Partial<Episodio> & Pick<Episodio, "cama" | "rangoEdad" | "sexo" | "tallaCm" | "categoriaRem">): Episodio => ({
     id,
     ingresadoEn: haceDias(p.diasVM ?? 3),
     tallaOrigen: "ESTIMADA",
@@ -129,28 +130,28 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
   });
 
   const episodios: Episodio[] = [
-    ep("ep-01", { cama: "UCI-01", rangoEdad: rangoDeEdad(64), sexo: "M", tallaCm: 172, diagnostico: "Shock séptico foco pulmonar / SDRA en resolución", diasVM: 4,
+    ep("ep-01", { cama: "UCI-01", rangoEdad: rangoDeEdad(64), sexo: "M", tallaCm: 172, categoriaRem: "Enfermedades respiratorias", diasVM: 4,
       equipos: [{ tipo: "VENTILADOR", modelo: "Servo U", numero: null, enUso: true }, { tipo: "HUMIDIFICADOR", modelo: "Humidificador MR850", numero: 1, enUso: true }],
       pendienteEntrega: "Candidato a extubación si mantiene SAS 4 y supera PVE vespertina." }),
-    ep("ep-02", { cama: "UCI-02", rangoEdad: rangoDeEdad(39), sexo: "F", tallaCm: 162, tallaOrigen: "MEDIDA", diagnostico: "TEC grave / neuromonitoreo", calibreVia: "7.5", fijacionCm: "21", diasVM: 6,
+    ep("ep-02", { cama: "UCI-02", rangoEdad: rangoDeEdad(39), sexo: "F", tallaCm: 162, tallaOrigen: "MEDIDA", categoriaRem: "Traumatismo encéfalo craneano (TEC)", calibreVia: "7.5", fijacionCm: "21", diasVM: 6,
       equipos: [{ tipo: "VENTILADOR", modelo: "Savina", numero: 1, enUso: true }],
       monitoreo: { capnografia: true, pic: true, dve: true },
       pendienteEntrega: "Neuroprotección estricta: SAS 1-2, PPC > 70 mmHg y normocapnia." }),
-    ep("ep-03", { cama: "UCI-03", rangoEdad: rangoDeEdad(71), sexo: "M", tallaCm: 168, diagnostico: "EPOC reagudizado / destete prolongado en TQT", viaAereaActual: "TQT", fijacionCm: "Collarín", diasVM: 12,
+    ep("ep-03", { cama: "UCI-03", rangoEdad: rangoDeEdad(71), sexo: "M", tallaCm: 168, categoriaRem: "Enfermedades respiratorias", viaAereaActual: "TQT", fijacionCm: "Collarín", diasVM: 12,
       equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true }],
       transcritoAlma: true, horaTranscripcion: "12:40", pendienteEntrega: "Evaluar válvula de fonación mañana." }),
-    ep("ep-04", { cama: "UCI-04", rangoEdad: rangoDeEdad(52), sexo: "M", tallaCm: 178, diagnostico: "SDRA grave, en prono", calibreVia: "8.5", fijacionCm: "23", diasVM: 3,
+    ep("ep-04", { cama: "UCI-04", rangoEdad: rangoDeEdad(52), sexo: "M", tallaCm: 178, categoriaRem: "Enfermedades respiratorias", calibreVia: "8.5", fijacionCm: "23", diasVM: 3,
       equipos: [{ tipo: "VENTILADOR", modelo: "Meckis", numero: 3, enUso: true }] }),
-    ep("ep-05", { cama: "UCI-05", rangoEdad: rangoDeEdad(58), sexo: "F", tallaCm: 158, diagnostico: "Neumonía grave, posextubación", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0 }),
-    ep("ep-06", { cama: "UCI-06", rangoEdad: rangoDeEdad(45), sexo: "M", tallaCm: 175, diagnostico: "Postoperatorio abdominal", diasVM: 1,
+    ep("ep-05", { cama: "UCI-05", rangoEdad: rangoDeEdad(58), sexo: "F", tallaCm: 158, categoriaRem: "Enfermedades respiratorias", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0 }),
+    ep("ep-06", { cama: "UCI-06", rangoEdad: rangoDeEdad(45), sexo: "M", tallaCm: 175, categoriaRem: "Otros pre y post quirúrgicos", diasVM: 1,
       equipos: [{ tipo: "VENTILADOR", modelo: "PB 980", numero: 2, enUso: true }] }),
-    ep("ep-07", { cama: "UCI-07", rangoEdad: rangoDeEdad(67), sexo: "F", tallaCm: 160, diagnostico: "Insuficiencia cardiaca descompensada", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
-    ep("ep-08", { cama: "UCI-08", rangoEdad: rangoDeEdad(77), sexo: "M", tallaCm: 170, diagnostico: "Sepsis urinaria", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
+    ep("ep-07", { cama: "UCI-07", rangoEdad: rangoDeEdad(67), sexo: "F", tallaCm: 160, categoriaRem: "Enfermedades cardíacas", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
+    ep("ep-08", { cama: "UCI-08", rangoEdad: rangoDeEdad(77), sexo: "M", tallaCm: 170, categoriaRem: "Genitourinarias", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, diasVM: 0, rutTitular: KAREN }),
     ...EXTRAS.map((x, i) => {
       const n = i + 9;
       const natural = x.via === "NATURAL";
       return ep(`ep-${String(n).padStart(2, "0")}`, {
-        cama: `UCI-${String(n).padStart(2, "0")}`, rangoEdad: rangoDeEdad(x.edad), sexo: x.sexo, tallaCm: x.talla, diagnostico: x.dx,
+        cama: `UCI-${String(n).padStart(2, "0")}`, rangoEdad: rangoDeEdad(x.edad), sexo: x.sexo, tallaCm: x.talla, categoriaRem: x.cat,
         viaAereaActual: x.via, calibreVia: natural ? null : "8.0", fijacionCm: natural ? null : x.via === "TQT" ? "Collarín" : "22", diasVM: natural ? 0 : x.dias,
         rutTitular: n <= 12 ? KAREN : EDUARDO
       });
@@ -243,7 +244,18 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
     ["ep-08", "Paciente Prueba Ocho", 16000004],
     ...EXTRAS.map((_, i): [string, string, number] => [`ep-${String(i + 9).padStart(2, "0")}`, `Paciente Prueba ${i + 9}`, 18000000 + i * 1111])
   ];
-  const identidades: IdentidadPaciente[] = nombres.map(([episodioId, nombre, cuerpo]) => ({ episodioId, nombre, rut: construirRut(cuerpo), ficha: null, edad: null }));
+  const dxDemo: Record<string, string> = {
+    "ep-01": "Shock séptico foco pulmonar / SDRA en resolución",
+    "ep-02": "TEC grave / neuromonitoreo",
+    "ep-03": "EPOC reagudizado / destete prolongado en TQT",
+    "ep-04": "SDRA grave, en prono",
+    "ep-05": "Neumonía grave, posextubación",
+    "ep-06": "Postoperatorio abdominal",
+    "ep-07": "Insuficiencia cardiaca descompensada",
+    "ep-08": "Sepsis urinaria",
+    ...Object.fromEntries(EXTRAS.map((x, i) => [`ep-${String(i + 9).padStart(2, "0")}`, x.dx]))
+  };
+  const identidades: IdentidadPaciente[] = nombres.map(([episodioId, nombre, cuerpo]) => ({ episodioId, nombre, rut: construirRut(cuerpo), ficha: null, edad: null, diagnostico: dxDemo[episodioId] ?? null }));
 
   for (const e of episodios) await repo.guardarEpisodio(e);
   for (const k of controles) await repo.guardarControl(k);

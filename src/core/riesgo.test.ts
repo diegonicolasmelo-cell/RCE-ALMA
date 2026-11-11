@@ -52,7 +52,7 @@ describe("componerInformeRiesgo", () => {
   });
 
   it("en la estación incluye la identidad con el RUT formateado", () => {
-    expect(informe()).toContain("Paciente: Paciente Prueba Uno · RUT 12.345.678-5 · 60–69 años");
+    expect(informe()).toContain("Paciente: Paciente Prueba Uno · RUT 12.345.678-5 · 60–64 años");
   });
 
   it("sin identidad (un celular) nombra la cama y no inventa datos", () => {

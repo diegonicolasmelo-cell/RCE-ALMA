@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, textoCategoriaRem, textoEdad } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub, horasDeVm } from "./pve";
@@ -39,6 +39,8 @@ export interface EntradaNota {
   readonly apk: readonly ValidacionApk[];
   readonly modo: ModoNota;
   readonly ahora: Date;
+  /** Diagnostico escrito, descifrado en la estacion. Sin el, se usa la categoria REM. */
+  readonly diagnostico?: string | null;
 }
 
 const fmt = (v: number | null): string => (v === null ? "--" : String(v));
@@ -291,7 +293,7 @@ function diasVmTexto(episodio: Episodio, eventos: readonly EventoClinico[], prim
 }
 
 function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
-  const { episodio, eventos, apk, ahora } = entrada;
+  const { episodio, eventos, apk, ahora, diagnostico } = entrada;
   const lista = ordenados(entrada.controles);
   const primero = lista[0];
   const ultimo = lista.at(-1);
@@ -320,7 +322,7 @@ function notaTurnoCompleto(entrada: EntradaNota, pbw: number): string {
 
   return [
     `[EVOLUCIÓN KINESIOLOGÍA UPC · RESUMEN DE TURNO · ${episodio.cama}]`,
-    `Diagnóstico: ${episodio.diagnostico} | ${textoEdad(episodio.rangoEdad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${diasVmTexto(episodio, eventos, primero.registradoEn, ahora)}`,
+    `Diagnóstico: ${diagnostico || textoCategoriaRem(episodio.categoriaRem)} | ${textoEdad(episodio.rangoEdad)} | talla ${episodio.tallaCm} cm (${episodio.tallaOrigen === "MEDIDA" ? "medida" : "estimada"}) | peso ideal ${pbw} kg | Días de VM: ${diasVmTexto(episodio, eventos, primero.registradoEn, ahora)}`,
     `Equipos: ${describirEquipos(episodio.equipos)}`,
     ``,
     `1. HEMODINAMIA Y PERFUSIÓN`,

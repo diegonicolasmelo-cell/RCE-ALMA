@@ -26,10 +26,11 @@ interface DatosIdentidad {
   readonly rut: string | null;
   readonly ficha: string | null;
   readonly edad?: number | null;
+  readonly diagnostico?: string | null;
 }
 
 export async function cifrarIdentidad(clave: CryptoKey, i: IdentidadPaciente, ahora: Date): Promise<ReferenciaNube> {
-  const datos: DatosIdentidad = { nombre: i.nombre, rut: i.rut, ficha: i.ficha, edad: i.edad ?? null };
+  const datos: DatosIdentidad = { nombre: i.nombre, rut: i.rut, ficha: i.ficha, edad: i.edad ?? null, diagnostico: i.diagnostico ?? null };
   return { episodioId: i.episodioId, registradoEn: ahora.toISOString(), dato: await cifrarJson(clave, datos) };
 }
 
@@ -37,7 +38,7 @@ export async function cifrarIdentidad(clave: CryptoKey, i: IdentidadPaciente, ah
 export async function descifrarIdentidad(clave: CryptoKey, ref: ReferenciaNube): Promise<IdentidadPaciente | null> {
   try {
     const d = await descifrarJson<DatosIdentidad>(clave, ref.dato);
-    return { episodioId: ref.episodioId, nombre: d.nombre, rut: d.rut ?? null, ficha: d.ficha ?? null, edad: d.edad ?? null };
+    return { episodioId: ref.episodioId, nombre: d.nombre, rut: d.rut ?? null, ficha: d.ficha ?? null, edad: d.edad ?? null, diagnostico: d.diagnostico ?? null };
   } catch {
     return null;
   }

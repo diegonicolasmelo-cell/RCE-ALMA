@@ -16,11 +16,11 @@ export function unEpisodio(over: Partial<Episodio> = {}): Episodio {
   return {
     id: "ep-1",
     cama: "UCI-01",
-    rangoEdad: "60–69",
+    rangoEdad: "60–64",
     sexo: "M",
     tallaCm: 172,
     tallaOrigen: "ESTIMADA",
-    diagnostico: "Shock séptico foco pulmonar / SDRA en resolución",
+    categoriaRem: "Enfermedades respiratorias",
     viaAereaActual: "TET",
     calibreVia: "8.0",
     fijacionCm: "22",

@@ -505,15 +505,43 @@ export function nombreCama(cama: string): string {
  * Rango etario, no la edad exacta: es lo que se guarda en la nube (minimizacion de datos).
  * Un ingreso hecho desde el celular lo deja en null hasta que la estacion lo completa.
  */
-export const RANGOS_EDAD = ["18–39", "40–59", "60–69", "70–79", "80 o más"] as const;
+/** Rangos quinquenales del REM 28 (seccion B.1 a B.4). */
+export const RANGOS_EDAD = [
+  "0–4", "5–9", "10–14", "15–19", "20–24", "25–29", "30–34", "35–39", "40–44",
+  "45–49", "50–54", "55–59", "60–64", "65–69", "70–74", "75–79", "80 y más"
+] as const;
 export type RangoEdad = (typeof RANGOS_EDAD)[number];
 
 export function rangoDeEdad(edad: number): RangoEdad {
-  if (edad < 40) return "18–39";
-  if (edad < 60) return "40–59";
-  if (edad < 70) return "60–69";
-  if (edad < 80) return "70–79";
-  return "80 o más";
+  return RANGOS_EDAD[Math.min(RANGOS_EDAD.length - 1, Math.max(0, Math.floor(edad / 5)))]!;
+}
+
+/**
+ * Categorias de ingreso del REM 28 (seccion B.1) que se ven en una UCI adulto. Es lo unico del
+ * diagnostico que va visible a la nube; el diagnostico escrito viaja cifrado con la identidad.
+ */
+export const CATEGORIAS_REM = [
+  "Ataque cerebro vascular (ACV)",
+  "Traumatismo encéfalo craneano (TEC)",
+  "Lesión medular",
+  "Neuromusculares agudas",
+  "Neuromusculares crónicas",
+  "Otras neurológicas",
+  "COVID-19",
+  "Enfermedades respiratorias",
+  "Enfermedades cardíacas",
+  "Traumatológicos",
+  "Otros pre y post quirúrgicos",
+  "Oncológicos",
+  "Genitourinarias",
+  "Amputación",
+  "Quemados",
+  "Otros"
+] as const;
+export type CategoriaRem = (typeof CATEGORIAS_REM)[number];
+
+export function textoCategoriaRem(c: CategoriaRem | null): string {
+  return c ?? "categoría REM pendiente";
 }
 
 export function textoEdad(rango: RangoEdad | null): string {

@@ -9,7 +9,7 @@
  */
 
 /** Valor fisiologico medido. `null` = no medido (nunca 0 por defecto). */
-import type { RangoEdad } from "./catalogos";
+import type { CategoriaRem, RangoEdad } from "./catalogos";
 
 export type Medicion = number | null;
 /** Identificador opaco generado en el cliente. Permite sincronia idempotente. */
@@ -269,7 +269,8 @@ export interface Episodio {
   /** Talla para el peso ideal. Se ingresa al ingreso del paciente. */
   readonly tallaCm: number;
   readonly tallaOrigen: OrigenTalla;
-  readonly diagnostico: string;
+  /** Categoria de ingreso del REM 28. El diagnostico escrito viaja cifrado en IdentidadPaciente. */
+  readonly categoriaRem: CategoriaRem | null;
   /** Via aerea vigente. Solo un EventoClinico la muta; un Control la observa. */
   readonly viaAereaActual: ViaAerea;
   readonly calibreVia: string | null;
@@ -319,6 +320,8 @@ export interface IdentidadPaciente {
   readonly ficha: string | null;
   /** Edad exacta: viaja cifrada, solo para la estacion. La nube solo ve el rango del episodio. */
   readonly edad?: number | null;
+  /** Diagnostico escrito: viaja cifrado, solo para la estacion. */
+  readonly diagnostico?: string | null;
 }
 
 // ---------------------------------------------------------------------------

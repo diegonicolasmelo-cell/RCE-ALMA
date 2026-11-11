@@ -13,10 +13,12 @@ describe("camas de la unidad", () => {
     expect(nombreCama("Box A")).toBe("Box A");
   });
   it("guarda rango etario, no la edad exacta, y la que aun no pone el PC se dice pendiente", () => {
-    expect(rangoDeEdad(64)).toBe("60–69");
-    expect(rangoDeEdad(18)).toBe("18–39");
-    expect(rangoDeEdad(80)).toBe("80 o más");
-    expect(textoEdad("60–69")).toBe("60–69 años");
+    expect(rangoDeEdad(64)).toBe("60–64");
+    expect(rangoDeEdad(65)).toBe("65–69");
+    expect(rangoDeEdad(17)).toBe("15–19");
+    expect(rangoDeEdad(80)).toBe("80 y más");
+    expect(rangoDeEdad(97)).toBe("80 y más");
+    expect(textoEdad("60–64")).toBe("60–64 años");
     expect(textoEdad(null)).toBe("edad pendiente");
   });
 });

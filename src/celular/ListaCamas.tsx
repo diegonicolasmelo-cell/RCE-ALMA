@@ -13,7 +13,9 @@ import {
   bnmVigente,
   ETIQUETA_ELEMENTO,
   ETIQUETA_MODALIDAD,
-  horasDeVm
+  horasDeVm,
+  textoCategoriaRem,
+  textoEdad
 } from "@core/index";
 import type { Control, Episodio, EventoClinico, HorasVm, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -144,6 +146,7 @@ export function ListaCamas() {
               {ep.viaAereaActual === "TET" && h && h.horas >= 48 && <> · <b style={{ color: "var(--crit-ink)" }}>NAVM ≥ 48 h</b></>}
               {!propia && " · de otro colega"}
             </div>
+            <div className="small muted">{textoCategoriaRem(ep.categoriaRem)} · {textoEdad(ep.rangoEdad)} · {ep.sexo}</div>
             <div className="row" style={{ gap: 6 }}>
               <Pildora tipo={apk ? (apk.resultado === "CUMPLE" ? "good" : "crit") : ""}>{apk ? (apk.resultado === "CUMPLE" ? "APK firmada" : "APK no cumple") : "APK pendiente"}</Pildora>
               {flujo.fase === "EN_CURSO" && <Pildora tipo="acc">PVE {flujo.pve.minutosTranscurridos}/{flujo.pve.duracionMin} min</Pildora>}

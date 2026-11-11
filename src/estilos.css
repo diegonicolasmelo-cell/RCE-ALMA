@@ -601,3 +601,8 @@ table.sab-plana thead tr:nth-child(2) th:first-child{position:static;text-align:
 .detail-head .btn-cambiar-cama{width:34px;height:34px;margin-left:0}
 /* En la tarjeta de la cama: junto al numero, mas chico y sin empujar el resto. */
 article .btn-cambiar-cama{width:34px;height:34px;margin-left:0}
+
+/* Camas libres a las que se puede mover al paciente. */
+.camas-destino{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.camas-destino button{-webkit-tap-highlight-color:transparent;min-height:52px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:700 18px var(--font-data);cursor:pointer}
+.camas-destino button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}

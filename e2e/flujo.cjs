@@ -1043,23 +1043,26 @@ async function esperarServidor() {
       await cel.goto(URL + "#celular");
       if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
       await cel.waitForSelector('article[aria-label="Cama UCI-04"]');
-      // Las flechas de la tarjeta abren el traslado, con el formulario ya listo.
+      const antes = await cel.textContent('article[aria-label="Cama UCI-04"]');
+      // Las flechas de la tarjeta abren el panel con las camas libres; se elige y se confirma.
       await cel.click('article[aria-label="Cama UCI-04"] button[aria-label="Cambiar de cama · Cama 4"]');
-      await cel.waitForSelector("#evf-cama");
-      await cel.waitForSelector('[aria-label="Línea de tiempo"]');
-      const antes = await cel.textContent(".banda .l1");
-      const opciones = await cel.locator("#evf-cama option").allTextContents();
-      assert.ok(opciones.includes("Cama 16"), opciones.join(" | "));
-      assert.ok(!opciones.includes("Cama 3"), "una cama ocupada no se ofrece: " + opciones.join(" | "));
-      await cel.selectOption("#evf-cama", "UCI-16");
-      await cel.click('button:text-is("Registrar")');
-      await cel.waitForSelector('.ctl-cabeza h1:text-is("Eventos · Cama 16")');
+      const panel = cel.locator('[role=dialog][aria-label="Cambiar de cama · Cama 4"]');
+      await panel.waitFor();
+      const opciones = await panel.locator(".camas-destino button").allTextContents();
+      assert.deepEqual(opciones, ["16"], "solo las camas libres: " + opciones.join(" | "));
+      assert.match(await panel.locator(".pie-inf .btn.primary").textContent(), /Elige la cama/);
+      await panel.locator('.camas-destino button[data-cama="UCI-16"]').click();
+      assert.match(await panel.locator(".pie-inf .btn.primary").textContent(), /Confirmar: Cama 4 → Cama 16/);
+      await panel.locator(".pie-inf .btn.primary").click();
+      await panel.waitFor({ state: "detached" });
       assert.match(await aviso(), /aseo terminal/);
-      assert.equal(await cel.textContent(".banda .l1"), antes, "la vía, el tubo y los días de VM no cambian");
-      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
-      assert.match(linea[0] ?? "", /Traslado de cama: UCI-04 → UCI-16/, linea.join(" | "));
+      await cel.waitForSelector('article[aria-label="Cama UCI-16"]');
+      assert.equal(
+        (await cel.textContent('article[aria-label="Cama UCI-16"]')).replace("UCI-16", "UCI-04"),
+        antes,
+        "la vía, el tubo, los días de VM y las alertas van con el paciente"
+      );
       // La cama que deja queda libre, y el PC muestra al paciente en la nueva.
-      await cel.click('button:has-text("‹ Camas")');
       await cel.waitForSelector("article.cama-sin");
       assert.equal(await cel.locator('article.cama-sin:has-text("UCI-04")').count(), 1, "la cama que deja queda libre");
       await pc.waitForTimeout(900);

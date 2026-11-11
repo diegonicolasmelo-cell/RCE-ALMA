@@ -21,6 +21,7 @@ import { useAhora, useConsulta } from "../app/hooks";
 import { useApp } from "../app/store";
 import { Pildora } from "./componentes";
 import { IngresoRapido } from "./IngresoRapido";
+import { TrasladoCama } from "./TrasladoCama";
 
 interface Fila {
   readonly ep: Episodio;
@@ -36,10 +37,12 @@ export function ListaCamas() {
   const { repo } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
   const irA = useApp((s) => s.irA);
-  const pedirEvento = useApp((s) => s.pedirEvento);
   const misCamas = useApp((s) => s.misCamas);
   const ahora = useAhora(30_000);
   const [ingresando, setIngresando] = useState<string | null>(null);
+  /** Paciente al que se le esta cambiando la cama (panel flotante con las camas libres). */
+  const [trasladando, setTrasladando] = useState<Episodio | null>(null);
+  const pedirEvento = useApp((s) => s.pedirEvento);
 
   // null mientras carga: asi una cama ocupada nunca se ve un instante como «Sin ingreso».
   const filas = useConsulta<readonly Fila[] | null>(
@@ -70,9 +73,11 @@ export function ListaCamas() {
   const nMias = orden.filter(esMiaCama).length;
 
   if (!filas) return <div className="cel-cuerpo"><p className="muted">Cargando camas…</p></div>;
+  const enCama = trasladando ? porCama.get(trasladando.cama)?.ep ?? trasladando : null;
 
   return (
     <div className="cel-cuerpo" style={{ display: "grid", gap: 10 }}>
+      {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
         <button type="button" className="linkbtn" onClick={() => irA("elegir")}>Cambiar mis camas</button>
@@ -125,7 +130,7 @@ export function ListaCamas() {
                   className="btn-cambiar-cama"
                   aria-label={`Cambiar de cama · ${nombreCama(ep.cama)}`}
                   title="Cambiar al paciente de cama"
-                  onClick={() => { pedirEvento("traslado"); irA("eventos", ep.id); }}
+                  onClick={() => setTrasladando(ep)}
                 >
                   <ArrowLeftRight size={17} aria-hidden />
                 </button>

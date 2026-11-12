@@ -20,7 +20,7 @@ function servidorFalso() {
     eventos: new Map(),
     apk: new Map()
   };
-  const estado = { falla: null as string | null, llamadas: 0, llaves: [] as string[] };
+  const estado = { falla: null as string | null, llamadas: 0, llaves: [] as string[], epoca: "", borrados: [] as string[] };
   const api: ClienteApi = {
     ...crearApiLocal(),
     local: false,
@@ -38,7 +38,9 @@ function servidorFalso() {
         controles: [...guardado.controles.values()],
         eventos: [...guardado.eventos.values()],
         apk: [...guardado.apk.values()],
-        servidorEn: new Date(2026, 10, 4, 12, 0).toISOString()
+        servidorEn: new Date(2026, 10, 4, 12, 0).toISOString(),
+        epoca: estado.epoca,
+        borrados: estado.borrados
       };
       return { ok: true, datos };
     }
@@ -205,6 +207,56 @@ describe("leer lo que subieron los demás", () => {
     const r2 = await syncB.traer({ todo: true });
     expect(r2.controles).toBe(0);
     expect(await dbB.controles.count()).toBe(1);
+  });
+});
+
+describe("limpiezas hechas en el servidor", () => {
+  it("si se limpio todo (cambia la epoca) el equipo vacia su copia y baja de nuevo", async () => {
+    const { api, guardado, estado } = servidorFalso();
+    const db = nuevaDb();
+    const sync = new Sincronizador(db, api, () => 1);
+    const repo = new Repositorio(db, sync);
+    await repo.guardarEpisodio(unEpisodio());
+    await repo.guardarControl(unControl());
+    await sync.empujar();
+    estado.epoca = "2026-11-01T00:00:00.000Z";
+    await sync.traer();
+    expect(await db.controles.count()).toBe(1);
+    // Se limpio la planilla: el servidor ya no tiene nada y la epoca cambia.
+    for (const m of Object.values(guardado)) m.clear();
+    estado.epoca = "2026-11-12T10:00:00.000Z";
+    await sync.traer();
+    expect(await db.episodios.count()).toBe(0);
+    expect(await db.controles.count()).toBe(0);
+    await sync.traer();
+    expect(await db.controles.count()).toBe(0);
+  });
+
+  it("un equipo que ya tenia datos y llega despues de la limpieza tambien se vacia", async () => {
+    const { api, estado } = servidorFalso();
+    const db = nuevaDb();
+    const sync = new Sincronizador(db, api, () => 1);
+    await new Repositorio(db, sync).guardarEpisodio(unEpisodio());
+    await db.cola.clear();
+    estado.epoca = "2026-11-12T10:00:00.000Z";
+    await sync.traer();
+    expect(await db.episodios.count()).toBe(0);
+  });
+
+  it("un paciente borrado en el servidor se quita de la copia local y de la cola", async () => {
+    const { api, estado } = servidorFalso();
+    const db = nuevaDb();
+    const sync = new Sincronizador(db, api, () => 1);
+    const repo = new Repositorio(db, sync);
+    await repo.guardarEpisodio(unEpisodio({ id: "ep-1" }));
+    await repo.guardarEpisodio(unEpisodio({ id: "ep-2", cama: "UCI-02" }));
+    await repo.guardarControl(unControl({ id: "c1", episodioId: "ep-1" }));
+    await repo.guardarControl(unControl({ id: "c2", episodioId: "ep-2" }));
+    estado.borrados = ["ep-1"];
+    await sync.traer();
+    expect((await db.episodios.toArray()).map((e) => e.id)).toEqual(["ep-2"]);
+    expect((await db.controles.toArray()).map((c) => c.id)).toEqual(["c2"]);
+    expect((await db.cola.toArray()).every((e) => e.payload["episodioId"] !== "ep-1")).toBe(true);
   });
 });
 

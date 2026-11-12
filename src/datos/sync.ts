@@ -45,6 +45,8 @@ export interface ResultadoTraer {
 
 const CLAVE_ULTIMA_LECTURA = "ultimaLectura";
 const prefijoVersion = (episodioId: string): string => `verEpisodio:${episodioId}`;
+const CLAVE_EPOCA = "epocaDatos";
+const CLAVE_BORRADOS = "borradosAplicados";
 
 export class Sincronizador {
   constructor(
@@ -140,6 +142,19 @@ export class Sincronizador {
     if (!r.ok) return { ...vacio, error: r.error };
     const d = r.datos;
 
+    // Se limpio todo en el servidor (limpiarTodoCONFIRMAR): se vacia esta copia y se baja de nuevo.
+    const epoca = d.epoca ?? "";
+    const mia = await leerMeta<string>(this.db, CLAVE_EPOCA);
+    if (epoca !== "" && mia !== epoca) {
+      const conDatos = (await this.db.episodios.count()) > 0;
+      await guardarMeta(this.db, CLAVE_EPOCA, epoca);
+      if (mia !== undefined || conDatos) {
+        await this.vaciarCopiaLocal(Date.parse(epoca) || this.ahora());
+        return this.traer({ todo: true });
+      }
+    }
+    if (d.borrados?.length) await this.quitarBorrados(d.borrados);
+
     const controles = d.controles.map(controlDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
     const eventos = d.eventos.map(eventoDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
     const apk = d.apk.map(apkDeNube).filter((x): x is NonNullable<typeof x> => x !== null);
@@ -173,6 +188,36 @@ export class Sincronizador {
 
     if (d.servidorEn) await guardarMeta(this.db, CLAVE_ULTIMA_LECTURA, Date.parse(d.servidorEn) || this.ahora());
     return { controles: nC, eventos: nE, apk: nA, episodios: nEp, error: null };
+  }
+
+  /**
+   * Vacia la copia local tras una limpieza total del servidor. Lo que se registro sin senal
+   * DESPUES de la limpieza sigue en la cola y se sube; lo anterior se descarta.
+   */
+  private async vaciarCopiaLocal(limpiezaMs: number): Promise<void> {
+    await Promise.all([this.db.episodios.clear(), this.db.controles.clear(), this.db.eventos.clear(), this.db.apk.clear(), this.db.identidades.clear()]);
+    const viejas = (await this.db.cola.toArray()).filter((e) => e.creadoEn <= limpiezaMs).map((e) => e.id!);
+    if (viejas.length) await this.db.cola.bulkDelete(viejas);
+    const marcas = (await this.db.meta.toArray()).filter((m) => m.clave.startsWith("verEpisodio:") || m.clave === CLAVE_ULTIMA_LECTURA || m.clave === CLAVE_BORRADOS);
+    await this.db.meta.bulkDelete(marcas.map((m) => m.clave));
+  }
+
+  /** Quita de la copia local los episodios borrados en el servidor (limpiarPacienteCONFIRMAR). */
+  private async quitarBorrados(ids: readonly string[]): Promise<void> {
+    const hechos = new Set((await leerMeta<string[]>(this.db, CLAVE_BORRADOS)) ?? []);
+    const nuevos = ids.filter((id) => !hechos.has(id));
+    if (nuevos.length === 0) return;
+    for (const id of nuevos) {
+      await this.db.episodios.delete(id);
+      await this.db.controles.where("episodioId").equals(id).delete();
+      await this.db.eventos.where("episodioId").equals(id).delete();
+      await this.db.apk.where("episodioId").equals(id).delete();
+      await this.db.identidades.delete(id);
+      await this.db.meta.delete(prefijoVersion(id));
+    }
+    const enCola = (await this.db.cola.toArray()).filter((e) => nuevos.includes(String(e.payload["episodioId"] ?? "")));
+    if (enCola.length) await this.db.cola.bulkDelete(enCola.map((e) => e.id!));
+    await guardarMeta(this.db, CLAVE_BORRADOS, [...hechos, ...nuevos]);
   }
 
   /** Marca local de la version de un episodio (para no pisarla al leer). */

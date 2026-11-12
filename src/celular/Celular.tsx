@@ -21,7 +21,7 @@ import {
   horasDeVm,
   textoVm
 } from "@core/index";
-import type { BorradorControl } from "@core/index";
+import type { BorradorControl, Episodio } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta, useOnline } from "../app/hooks";
 import { leerMeta } from "../datos/db";
@@ -90,7 +90,13 @@ export function Celular() {
       else useApp.setState({ vista: "elegir" });
     });
   }, [db, sesion.rut, misCamas, setMisCamas]);
-  const ep = episodios.find((e) => e.id === camaId) ?? mias[0] ?? episodios[0] ?? null;
+  // El paciente elegido se busca tambien directo en la base: recien ingresado, la lista de
+  // activos todavia no lo trae y no hay que saltar a otra cama mientras tanto.
+  const elegido = useConsulta<Episodio | null | "cargando">(async () => (camaId ? (await db.episodios.get(camaId)) ?? null : null), [db, camaId], "cargando");
+  const buscandoElegido = camaId !== null && elegido === "cargando" && !episodios.some((e) => e.id === camaId);
+  const ep = buscandoElegido
+    ? null
+    : episodios.find((e) => e.id === camaId) ?? (elegido !== "cargando" && elegido?.activo ? elegido : null) ?? mias[0] ?? episodios[0] ?? null;
 
   const controles = useConsulta(() => (ep ? repo.controlesDe(ep.id) : []), [repo, ep?.id], []);
   const eventos = useConsulta(() => (ep ? repo.eventosDe(ep.id) : []), [repo, ep?.id], []);
@@ -221,9 +227,10 @@ export function Celular() {
     return () => window.removeEventListener(EVENTO_FIN_PESTANA, alFin);
   }, [franja]);
 
+  // Solo se cambia la cama elegida si ese paciente ya no esta (p. ej. se dio de alta).
   useEffect(() => {
-    if (ep && camaId !== ep.id) useApp.setState({ camaId: ep.id });
-  }, [ep, camaId]);
+    if (ep && camaId !== ep.id && !buscandoElegido) useApp.setState({ camaId: ep.id });
+  }, [ep, camaId, buscandoElegido]);
 
   const turno = turnoDe(ahora);
   const cabecera = (
@@ -240,6 +247,7 @@ export function Celular() {
 
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
   // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.
+  if (buscandoElegido && vista === "cama") return <div className="app-cel">{cabecera}<p className="muted" style={{ padding: 16 }}>Cargando…</p></div>;
   if (!ep || !base) {
     return (
       <div className="app-cel">

@@ -4,6 +4,8 @@ import { useConsulta, useOnline } from "../app/hooks";
 import { useApp } from "../app/store";
 import { leerMeta } from "../datos/db";
 import { CLAVE_CONEXION, CLAVE_TOKEN_ESTACION } from "../datos/servicios";
+import { CLAVE_ERROR_SYNC, textoErrorSync } from "../datos/sync";
+import type { ErrorSync } from "../datos/sync";
 import { Aviso, Pildora } from "../celular/componentes";
 import type { DatosUnidad } from "./datos";
 import { useIdentidadesEnMemoria } from "./identidades";
@@ -18,6 +20,7 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
   const avisar = useApp((s) => s.avisar);
   const online = useOnline();
   const pendientes = useConsulta(() => sync.pendientes(), [sync], 0);
+  const errorSync = useConsulta(() => leerMeta<ErrorSync>(db, CLAVE_ERROR_SYNC), [db], undefined);
   const bloqueadas = useConsulta(() => sync.bloqueadas(), [sync], []);
   const ultima = useConsulta(() => leerMeta<number>(db, "ultimaSubida"), [db], undefined);
 
@@ -36,8 +39,10 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
   };
 
   const sincronizar = async (): Promise<void> => {
-    const r = await sync.ciclo();
-    avisar(r.empuje.error || r.lectura.error ? `No se pudo sincronizar (${r.empuje.error ?? r.lectura.error}).` : "Sincronizado.");
+    // No espera el reintento programado: sube ya lo pendiente.
+    const r = await sync.ciclo({ forzar: true });
+    const error = r.empuje.error ?? r.lectura.error;
+    avisar(error ? `No se pudo sincronizar. ${textoErrorSync(error)}` : r.empuje.pendientes > 0 ? `Quedan ${r.empuje.pendientes} por subir: se siguen enviando.` : "Sincronizado.");
   };
 
   const olvidar = async (): Promise<void> => {
@@ -58,6 +63,12 @@ export function Estado({ datos }: { datos: DatosUnidad }) {
           <span className="small muted">Última subida: {ultima ? new Date(ultima).toLocaleTimeString("es-CL") : "—"}</span>
         </div>
         <div className="row"><button type="button" className="btn" onClick={() => void sincronizar()}>Sincronizar ahora</button></div>
+        {errorSync && (
+          <Aviso tipo="crit" pequeno>
+            No sube desde las {new Date(errorSync.en).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}. {textoErrorSync(errorSync.error)}
+            {errorSync.error === "TOKEN_INVALIDO" ? " En este PC: abre el enlace para otro PC que se copia desde el PC que creó las llaves." : ""}
+          </Aviso>
+        )}
         {bloqueadas.length > 0 && (
           <Aviso tipo="crit" pequeno>
             El servidor rechazó {bloqueadas.length} registro(s) por contener datos identificables. Es un defecto, no la red: no se reintentan. {bloqueadas[0]?.ultimoError}

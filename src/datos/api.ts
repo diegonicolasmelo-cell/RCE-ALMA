@@ -28,6 +28,10 @@ export interface DatosNube {
   readonly eventos: readonly unknown[];
   readonly apk: readonly unknown[];
   readonly servidorEn: string;
+  /** Cambia cuando se limpio todo en el servidor: hay que vaciar la copia local. */
+  readonly epoca?: string;
+  /** Episodios borrados uno a uno en el servidor: se quitan de la copia local. */
+  readonly borrados?: readonly string[];
 }
 
 export type ResultadoLogin =
@@ -181,7 +185,9 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
           controles: arr("controles"),
           eventos: arr("eventos"),
           apk: arr("apk"),
-          servidorEn: String(r["servidorEn"] ?? "")
+          servidorEn: String(r["servidorEn"] ?? ""),
+          epoca: typeof r["epoca"] === "string" ? r["epoca"] : "",
+          borrados: arr("borrados").map(String)
         }
       };
     },

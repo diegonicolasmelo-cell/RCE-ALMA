@@ -34,6 +34,7 @@ function crearHoja(nombre) {
     getRange: rango,
     getDataRange: () => rango(1, 1, filas.length, ancho()),
     deleteRow: (i) => filas.splice(i - 1, 1),
+    deleteRows: (i, n) => filas.splice(i - 1, n),
     clear: () => filas.splice(0, filas.length),
     setFrozenRows: () => {}
   };

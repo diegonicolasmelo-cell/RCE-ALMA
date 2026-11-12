@@ -575,8 +575,19 @@ function leerHoja(nombre, desde) {
 }
 
 function leer(desde) {
+  var props = PropertiesService.getScriptProperties();
+  var borrados = [];
+  try {
+    borrados = JSON.parse(props.getProperty("EPISODIOS_BORRADOS") || "[]");
+  } catch (err) {
+    borrados = [];
+  }
   return {
     ok: true,
+    // Si cambia la epoca, cada equipo vacia su copia local y vuelve a descargar (limpiarTodo).
+    epoca: props.getProperty("DATOS_EPOCA") || "",
+    // Episodios borrados con limpiarPaciente: cada equipo los quita de su copia.
+    borrados: borrados,
     episodios: leerHoja(HOJAS.EPISODIOS, desde),
     controles: leerHoja(HOJAS.CONTROLES, desde),
     eventos: leerHoja(HOJAS.EVENTOS, desde),
@@ -641,6 +652,170 @@ function inicializarLibro() {
 }
 
 var COLUMNAS_USUARIOS = ["correo", "sal", "hashPin", "nombre", "turno", "rol"];
+
+// ---------------------------------------------------------------------------
+// Empezar de cero (ejecutar a mano desde el editor; SIMULACRO primero, siempre)
+// ---------------------------------------------------------------------------
+
+/** Hojas con registros de pacientes. La hoja usuarios (dotacion) y las llaves no se tocan. */
+var HOJAS_CLINICAS = [HOJAS.EPISODIOS, HOJAS.CONTROLES, HOJAS.EVENTOS, HOJAS.APK, HOJAS.REFERENCIA];
+
+/** La fila que comprueba la contrasena de la unidad en los PC: nunca se borra. */
+var ID_VERIFICACION_REFERENCIA = "_verificacion";
+
+/**
+ * Paciente a borrar con limpiarPacienteSIMULACRO / limpiarPacienteCONFIRMAR. Escribe aqui la
+ * cama ("UCI-17" o "17") o el identificador del episodio que muestra el simulacro, guarda y
+ * ejecuta. Si en esa cama hubo mas de un paciente, el simulacro los lista con su identificador.
+ */
+var PACIENTE_A_LIMPIAR = "";
+
+/** Cuenta lo que borraria limpiarTodoCONFIRMAR, sin borrar nada. */
+function limpiarTodoSIMULACRO() {
+  return limpiarTodo_(false);
+}
+
+/**
+ * Borra TODOS los registros de pacientes (episodios, controles, eventos, APK y nombres cifrados)
+ * para empezar de cero. Deja los encabezados, la dotacion, las llaves y la auditoria. Los
+ * celulares y PC vacian su copia local solos la proxima vez que se sincronizan.
+ */
+function limpiarTodoCONFIRMAR() {
+  return limpiarTodo_(true);
+}
+
+function limpiarTodo_(escribir) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("La hoja esta ocupada: reintenta en un minuto.");
+  try {
+    var resumen = { escrito: false };
+    for (var k = 0; k < HOJAS_CLINICAS.length; k++) {
+      var nombre = HOJAS_CLINICAS[k];
+      var hoja = hojaPorNombre(nombre);
+      var ultima = hoja.getLastRow();
+      var filas = ultima < 2 ? [] : hoja.getRange(2, 1, ultima - 1, 2).getValues();
+      var aBorrar = [];
+      for (var i = 0; i < filas.length; i++) {
+        if (nombre === HOJAS.REFERENCIA && String(filas[i][1]) === ID_VERIFICACION_REFERENCIA) continue;
+        aBorrar.push(i + 2);
+      }
+      resumen[nombre] = aBorrar.length;
+      if (escribir) borrarFilas_(hoja, aBorrar);
+    }
+    if (escribir) {
+      var props = PropertiesService.getScriptProperties();
+      props.setProperty("DATOS_EPOCA", new Date().toISOString());
+      props.setProperty("EPISODIOS_BORRADOS", "[]");
+      registrarAuditoria("", "limpieza_total", JSON.stringify(resumen));
+      resumen.escrito = true;
+    }
+    Logger.log((escribir ? "CONFIRMAR: " : "SIMULACRO (no se borro nada): ") + JSON.stringify(resumen));
+    return resumen;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Muestra que paciente borraria limpiarPacienteCONFIRMAR y cuantas filas tiene, sin borrar. */
+function limpiarPacienteSIMULACRO() {
+  return limpiarPaciente_(PACIENTE_A_LIMPIAR, false);
+}
+
+/** Borra todos los registros de UN paciente (el de PACIENTE_A_LIMPIAR) en todas las hojas. */
+function limpiarPacienteCONFIRMAR() {
+  return limpiarPaciente_(PACIENTE_A_LIMPIAR, true);
+}
+
+/** Los episodios de la hoja, cada uno con su ultima version. */
+function episodiosDeLaHoja_() {
+  var hoja = hojaPorNombre(HOJAS.EPISODIOS);
+  var ultima = hoja.getLastRow();
+  var filas = ultima < 2 ? [] : hoja.getRange(2, 1, ultima - 1, 4).getValues();
+  var porId = {};
+  for (var i = 0; i < filas.length; i++) {
+    var r;
+    try {
+      r = JSON.parse(filas[i][3]);
+    } catch (err) {
+      continue;
+    }
+    var id = String(filas[i][1] || r.episodioId || "");
+    if (!id) continue;
+    var en = String(filas[i][2] || "");
+    if (!porId[id] || en >= porId[id].en) porId[id] = { id: id, en: en, cama: String(r.cama || ""), activo: r.activo !== false, ingresadoEn: String(r.ingresadoEn || "") };
+  }
+  var lista = [];
+  for (var k in porId) if (Object.prototype.hasOwnProperty.call(porId, k)) lista.push(porId[k]);
+  return lista;
+}
+
+function limpiarPaciente_(valor, escribir) {
+  var buscado = String(valor || "").trim();
+  if (!buscado) throw new Error("Escribe en PACIENTE_A_LIMPIAR la cama (p. ej. \"UCI-17\") o el identificador del episodio, guarda y vuelve a ejecutar.");
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error("La hoja esta ocupada: reintenta en un minuto.");
+  try {
+    var episodios = episodiosDeLaHoja_();
+    var elegido = null;
+    for (var i = 0; i < episodios.length; i++) if (episodios[i].id === buscado) elegido = episodios[i];
+    if (!elegido) {
+      var cama = /^\d+$/.test(buscado) ? "UCI-" + (buscado.length < 2 ? "0" + buscado : buscado) : buscado.toUpperCase();
+      var enCama = episodios.filter(function (e) { return e.cama === cama; });
+      var activos = enCama.filter(function (e) { return e.activo; });
+      var candidatos = activos.length === 1 ? activos : enCama;
+      if (candidatos.length === 0) throw new Error("No hay pacientes registrados en " + cama + ".");
+      if (candidatos.length > 1) {
+        var lista = candidatos.map(function (e) { return e.id + " (ingreso " + e.ingresadoEn.slice(0, 16) + (e.activo ? ", en la cama" : ", egresado") + ")"; });
+        Logger.log("En " + cama + " hubo " + candidatos.length + " pacientes. Copia el identificador del que quieres borrar en PACIENTE_A_LIMPIAR:\n" + lista.join("\n"));
+        throw new Error("En " + cama + " hubo mas de un paciente: mira el registro y escribe el identificador en PACIENTE_A_LIMPIAR.");
+      }
+      elegido = candidatos[0];
+    }
+    var resumen = { episodio: elegido.id, cama: elegido.cama, ingreso: elegido.ingresadoEn, enLaCama: elegido.activo, escrito: false };
+    for (var k = 0; k < HOJAS_CLINICAS.length; k++) {
+      var hoja = hojaPorNombre(HOJAS_CLINICAS[k]);
+      var ultima = hoja.getLastRow();
+      var filas = ultima < 2 ? [] : hoja.getRange(2, 1, ultima - 1, 2).getValues();
+      var aBorrar = [];
+      for (var f = 0; f < filas.length; f++) if (String(filas[f][1]) === elegido.id) aBorrar.push(f + 2);
+      resumen[HOJAS_CLINICAS[k]] = aBorrar.length;
+      if (escribir) borrarFilas_(hoja, aBorrar);
+    }
+    if (escribir) {
+      var props = PropertiesService.getScriptProperties();
+      var borrados = [];
+      try {
+        borrados = JSON.parse(props.getProperty("EPISODIOS_BORRADOS") || "[]");
+      } catch (err) {
+        borrados = [];
+      }
+      if (borrados.indexOf(elegido.id) < 0) borrados.push(elegido.id);
+      props.setProperty("EPISODIOS_BORRADOS", JSON.stringify(borrados.slice(-500)));
+      registrarAuditoria("", "limpieza_paciente", JSON.stringify(resumen));
+      resumen.escrito = true;
+    }
+    Logger.log((escribir ? "CONFIRMAR: " : "SIMULACRO (no se borro nada): ") + JSON.stringify(resumen));
+    return resumen;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Borra filas (numeros de fila de la hoja) de abajo hacia arriba, juntando las seguidas. */
+function borrarFilas_(hoja, filas) {
+  var orden = filas.slice().sort(function (a, b) { return b - a; });
+  var i = 0;
+  while (i < orden.length) {
+    var hasta = orden[i];
+    var desde = hasta;
+    while (i + 1 < orden.length && orden[i + 1] === desde - 1) {
+      i++;
+      desde = orden[i];
+    }
+    hoja.deleteRows(desde, hasta - desde + 1);
+    i++;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Limpieza de episodios antiguos (ejecutar a mano desde el editor, una vez)

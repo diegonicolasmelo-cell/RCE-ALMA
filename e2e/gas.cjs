@@ -271,6 +271,39 @@ const pagina = () =>
       assert.equal(g.llamar("limpiarEpisodiosAntiguosCONFIRMAR").cambiadas, 0, "correrla de nuevo no hace nada");
     });
 
+    await prueba("empezar de cero: limpiar un paciente o todo, con simulacro y aviso a los equipos", async () => {
+      const g = crearAppsScriptSimulado();
+      g.llamar("inicializarLibro");
+      g.llamar("cargarDotacion");
+      const ep = (id, cama, activo, en) => [`${id}#1`, id, en, JSON.stringify({ id: `${id}#1`, episodioId: id, cama, activo, ingresadoEn: en })];
+      g.hojas.get("episodios").appendRow(ep("a", "UCI-17", true, "2026-11-10T10:00:00.000Z"));
+      g.hojas.get("episodios").appendRow(ep("b", "UCI-13", true, "2026-11-11T10:00:00.000Z"));
+      for (const [id, e] of [["c1", "a"], ["c2", "b"], ["c3", "a"]]) g.hojas.get("controles").appendRow([id, e, "2026-11-12T10:00:00.000Z", "{}"]);
+      g.hojas.get("referencia").appendRow(["_verificacion", "_verificacion", "", "{}"]);
+      g.hojas.get("referencia").appendRow(["a", "a", "", "{}"]);
+      const usuarios = g.hojas.get("usuarios").filas.length;
+
+      const sim = g.llamar("limpiarPaciente_", "17", false);
+      assert.equal(sim.episodio, "a");
+      assert.equal(sim.controles, 2);
+      assert.equal(g.hojas.get("controles").filas.length, 4, "el simulacro no borra");
+      const conf = g.llamar("limpiarPaciente_", "UCI-17", true);
+      assert.equal(conf.escrito, true);
+      assert.deepEqual(g.hojas.get("controles").filas.slice(1).map((f) => f[0]), ["c2"]);
+      assert.deepEqual(g.hojas.get("referencia").filas.slice(1).map((f) => f[0]), ["_verificacion"]);
+      assert.deepEqual(g.llamar("leer", "").borrados, ["a"], "los equipos se enteran del paciente borrado");
+
+      assert.equal(g.llamar("limpiarTodoSIMULACRO").episodios, 1);
+      assert.equal(g.hojas.get("episodios").filas.length, 2, "el simulacro no borra");
+      g.llamar("limpiarTodoCONFIRMAR");
+      for (const h of ["episodios", "controles", "eventos", "apk"]) assert.equal(g.hojas.get(h).filas.length, 1, `${h} queda solo con el encabezado`);
+      assert.deepEqual(g.hojas.get("referencia").filas.slice(1).map((f) => f[0]), ["_verificacion"], "la verificacion de la contrasena se conserva");
+      assert.equal(g.hojas.get("usuarios").filas.length, usuarios, "la dotacion no se toca");
+      const l = g.llamar("leer", "");
+      assert.ok(l.epoca, "cambia la epoca: los equipos vacian su copia");
+      assert.deepEqual(l.borrados, []);
+    });
+
     await prueba("sin errores en la consola", async () => {
       assert.deepEqual(errores, []);
     });

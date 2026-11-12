@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { BaseLocal } from "./db";
-import { Sincronizador, esperaReintentoMs } from "./sync";
+import { CLAVE_ERROR_SYNC, Sincronizador, esperaReintentoMs, textoErrorSync } from "./sync";
 import { Repositorio } from "./repositorio";
 import type { ClienteApi, DatosNube, LoteSync, RespuestaSync } from "./api";
 import { crearApiLocal } from "./api";
@@ -207,6 +207,38 @@ describe("leer lo que subieron los demás", () => {
     const r2 = await syncB.traer({ todo: true });
     expect(r2.controles).toBe(0);
     expect(await dbB.controles.count()).toBe(1);
+  });
+});
+
+describe("sincronizar ahora y el motivo del error", () => {
+  it("forzar no espera el reintento; el motivo queda guardado hasta que todo sube", async () => {
+    const { api, estado } = servidorFalso();
+    const db = nuevaDb();
+    let reloj = 1_000;
+    const sync = new Sincronizador(db, api, () => reloj);
+    await new Repositorio(db, sync).guardarControl(unControl());
+    estado.falla = "TOKEN_INVALIDO";
+    await sync.ciclo();
+    expect(estado.llamadas).toBe(1);
+    expect((await db.meta.get(CLAVE_ERROR_SYNC))?.valor).toMatchObject({ error: "TOKEN_INVALIDO" });
+    reloj += 500;
+    await sync.ciclo();
+    expect(estado.llamadas).toBe(1);
+    // El error sigue a la vista aunque esta vuelta no intento enviar.
+    expect(await db.meta.get(CLAVE_ERROR_SYNC)).toBeDefined();
+    await sync.ciclo({ forzar: true });
+    expect(estado.llamadas).toBe(2);
+    estado.falla = null;
+    const r = await sync.ciclo({ forzar: true });
+    expect(r.empuje.enviados).toBe(1);
+    expect(await sync.pendientes()).toBe(0);
+    expect(await db.meta.get(CLAVE_ERROR_SYNC)).toBeUndefined();
+  });
+
+  it("el motivo se dice en palabras", () => {
+    expect(textoErrorSync("TOKEN_INVALIDO")).toMatch(/llaves nuevas/);
+    expect(textoErrorSync("SIN_CONEXION")).toMatch(/servidor/);
+    expect(textoErrorSync("RARO")).toBe("Error del servidor (RARO).");
   });
 });
 

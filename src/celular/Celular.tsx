@@ -25,6 +25,9 @@ import type { BorradorControl } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta, useOnline } from "../app/hooks";
 import { leerMeta } from "../datos/db";
+import { CLAVE_ERROR_SYNC, textoErrorSync } from "../datos/sync";
+import type { ErrorSync } from "../datos/sync";
+import { ReconectarCelular } from "../app/ConectarCelular";
 import { useApp } from "../app/store";
 import type { TabCelular } from "../app/store";
 import { horaDe, nuevoId } from "../app/util";
@@ -93,6 +96,14 @@ export function Celular() {
   const eventos = useConsulta(() => (ep ? repo.eventosDe(ep.id) : []), [repo, ep?.id], []);
   const apks = useConsulta(() => (ep ? repo.apkDe(ep.id) : []), [repo, ep?.id], []);
   const pendientes = useConsulta(() => sync.pendientes(), [sync], 0);
+  const errorSync = useConsulta(() => leerMeta<ErrorSync>(db, CLAVE_ERROR_SYNC), [db], undefined);
+  /** «Sincronizar ahora»: no espera el reintento programado y dice que paso. */
+  const sincronizarAhora = async (): Promise<void> => {
+    const r = await sync.ciclo({ forzar: true });
+    const error = r.empuje.error ?? r.lectura.error;
+    avisar(error ? `No se pudo sincronizar. ${textoErrorSync(error)}` : r.empuje.pendientes > 0 ? `Quedan ${r.empuje.pendientes} por subir: se siguen enviando.` : "Sincronizado.");
+  };
+  const avisoLlave = errorSync?.error === "TOKEN_INVALIDO" ? <div style={{ padding: "8px 14px 0" }}><ReconectarCelular /></div> : null;
 
   const ultimo = controles.at(-1) ?? null;
   const base = useMemo<BorradorControl | null>(
@@ -219,8 +230,8 @@ export function Celular() {
       <div className="cel-top">
         <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
         <span className="row" style={{ gap: 8 }}>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => void sync.ciclo()} aria-label="Sincronizar ahora">
-            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}
+          <button type="button" className="linkbtn" style={{ padding: 0, ...(errorSync && pendientes > 0 ? { color: "var(--crit-ink)" } : {}) }} onClick={() => void sincronizarAhora()} aria-label="Sincronizar ahora">
+            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}{errorSync && pendientes > 0 ? " · no sube" : ""}
           </button>
           <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
         </span>
@@ -237,6 +248,7 @@ export function Celular() {
           <ElegirCamas />
         ) : (
           <>
+            {avisoLlave}
             <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Toca una cama libre para ingresar al paciente</span></div>
             <ListaCamas />
           </>
@@ -352,6 +364,7 @@ export function Celular() {
     return (
       <div className="app-cel">
         {cabecera}
+        {avisoLlave}
         <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Monitorización, Evaluaciones, Eventos o PVE</span></div>
         <ListaCamas />
         <TecladoPropio />
@@ -443,8 +456,8 @@ export function Celular() {
       <div className="cel-top">
         <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
         <span className="row" style={{ gap: 8 }}>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => void sync.ciclo()} aria-label="Sincronizar ahora">
-            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}
+          <button type="button" className="linkbtn" style={{ padding: 0, ...(errorSync && pendientes > 0 ? { color: "var(--crit-ink)" } : {}) }} onClick={() => void sincronizarAhora()} aria-label="Sincronizar ahora">
+            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}{errorSync && pendientes > 0 ? " · no sube" : ""}
           </button>
           <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
         </span>

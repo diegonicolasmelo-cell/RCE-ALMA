@@ -9,7 +9,7 @@
  * Por eso se relee una ventana de 24 h y se deduplica por id (la hoja es chica).
  */
 
-import { leerMeta, guardarMeta } from "./db";
+import { borrarMeta, leerMeta, guardarMeta } from "./db";
 import type { BaseLocal, EntradaCola } from "./db";
 import type { ClienteApi, LoteSync } from "./api";
 import {
@@ -27,6 +27,32 @@ export function esperaReintentoMs(intentos: number): number {
 }
 
 export const VENTANA_LECTURA_MS = 24 * 3600 * 1000;
+
+/** Ultimo error de sincronizacion (se borra al sincronizar bien): para mostrar el motivo. */
+export const CLAVE_ERROR_SYNC = "ultimoErrorSync";
+export interface ErrorSync {
+  readonly error: string;
+  readonly en: number;
+}
+
+/** El motivo de un error de sincronizacion, dicho para quien usa la app. */
+export function textoErrorSync(codigo: string): string {
+  switch (codigo) {
+    case "TOKEN_INVALIDO":
+      return "La llave de este equipo ya no vale: se crearon llaves nuevas. Abre o pega el enlace nuevo que entrega coordinación.";
+    case "SIN_CONEXION":
+      return "No se pudo llegar al servidor: sin señal, o cambió la dirección de Apps Script.";
+    case "RESPUESTA_NO_ES_LA_APP":
+    case "RESPUESTA_INVALIDA":
+      return "El servidor no respondió como la app: revisa que la implementación de Apps Script tenga acceso «Cualquier persona».";
+    case "OCUPADO_REINTENTAR":
+      return "El servidor estaba ocupado: se reintenta solo.";
+    case "REGISTRO_CERRADO":
+      return "El registro de llaves está cerrado.";
+    default:
+      return codigo.startsWith("El servidor rechazó") ? codigo : `Error del servidor (${codigo}).`;
+  }
+}
 
 export interface ResultadoEmpuje {
   readonly enviados: number;
@@ -81,10 +107,11 @@ export class Sincronizador {
   }
 
   /** Sube hasta un lote de la cola. Llamar de nuevo para seguir con el resto. */
-  async empujar(): Promise<ResultadoEmpuje> {
+  async empujar(opciones: { forzar?: boolean } = {}): Promise<ResultadoEmpuje> {
     const t = this.ahora();
     const lista = (await this.db.cola.where("estado").equals("pendiente").sortBy("id"))
-      .filter((e) => e.proximoIntento <= t)
+      // «Sincronizar ahora» no espera el reintento programado.
+      .filter((e) => opciones.forzar || e.proximoIntento <= t)
       .slice(0, this.tamLote);
 
     if (lista.length === 0) return this.resumen(0, null);
@@ -226,9 +253,13 @@ export class Sincronizador {
   }
 
   /** Un ciclo completo: subir y luego traer. */
-  async ciclo(): Promise<{ empuje: ResultadoEmpuje; lectura: ResultadoTraer }> {
-    const empuje = await this.empujar();
+  async ciclo(opciones: { forzar?: boolean } = {}): Promise<{ empuje: ResultadoEmpuje; lectura: ResultadoTraer }> {
+    const empuje = await this.empujar(opciones);
     const lectura = await this.traer();
+    const error = empuje.error ?? lectura.error;
+    if (error) await guardarMeta(this.db, CLAVE_ERROR_SYNC, { error, en: this.ahora() } satisfies ErrorSync);
+    // Mientras queden registros esperando su reintento, el motivo sigue a la vista.
+    else if (empuje.enviados > 0 || empuje.pendientes === 0) await borrarMeta(this.db, CLAVE_ERROR_SYNC);
     return { empuje, lectura };
   }
 }

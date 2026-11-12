@@ -127,11 +127,13 @@ async function esperarServidor() {
       await cel.waitForSelector('section[aria-label="Checklist"]');
       assert.match(await cel.textContent(".ctl-cabeza h1"), /PVE · Cama 1/);
       assert.match(await cel.textContent(".app-cel"), /Checklist: 8 criterios del protocolo/);
-      assert.equal(await cel.locator('button:has-text("Guardar control")').count(), 0, "la PVE directa no abre el control");
+      assert.equal(await cel.locator("#btn-guardar-control").count(), 0, "la PVE directa no abre el control");
       await cel.click('button:has-text("‹ Camas")');
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector("#cuerpo");
-      assert.equal((await cel.locator(".cel-camas .chip").count()), 18);
+      assert.equal(await cel.locator(".cel-camas").count(), 0, "sin franja de camas abajo: no se cambia de paciente sin querer");
+      assert.equal(await cel.textContent("#btn-guardar-control"), "Guardar");
+      assert.match(await cel.textContent("#btn-guardar-siguiente"), /Guardar y siguiente · 02/, "sigue con la cama siguiente");
       // Cabecera: «Control · Cama 1» con la fecha al lado, y la banda del paciente en dos lineas a lo ancho.
       assert.match(await cel.textContent(".ctl-cabeza h1"), /^Control · Cama 1$/);
       assert.match(await cel.textContent(".ctl-cabeza .fecha"), /^\S+ \d{1,2} \S+$/, "la fecha va al lado del titulo: " + (await cel.textContent(".ctl-cabeza .fecha")));
@@ -421,13 +423,13 @@ async function esperarServidor() {
     await prueba("guardar incompleto dice que falta y lleva a la pestana correcta", async () => {
       await cel.fill("#in-sas", "3");
       assert.match(await cel.textContent('.fila:has(#in-sas)'), /Sedado/, "al lado del numero aparece la descripcion del SAS");
-      await cel.click('button:has-text("Guardar control")');
+      await cel.click("#btn-guardar-control");
       assert.match(await aviso(), /Falta:.*FC.*SpO₂/);
       await cel.waitForTimeout(500);
       assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Control/, "lleva a la hoja donde falta el dato");
       assert.equal(await cel.evaluate(() => document.activeElement.id), "in-fc", "y deja el cursor en la FC");
       await cel.click('button:has-text("Rellenar signos de ejemplo")');
-      await cel.click('button:has-text("Guardar control")');
+      await cel.click("#btn-guardar-control");
       assert.match(await aviso(), /firmar la APK/);
       assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Kine/);
     });
@@ -461,7 +463,7 @@ async function esperarServidor() {
       await cel.click('[role=tab]:has-text("Kine motora")');
       assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 1);
       await cel.click('[role=tab]:has-text("Kine resp.")');
-      await cel.click('button:has-text("Guardar control")');
+      await cel.click("#btn-guardar-control");
       assert.match(await aviso(), /APK/);
       await cel.waitForTimeout(500);
       assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /APK/, "lleva a la APK: " + (await cel.textContent('.paso-chip[aria-current="step"]')) + " / " + (await aviso()));
@@ -469,7 +471,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("Firmar APK")');
       assert.match(await cel.textContent(".notice.good"), /APK firmada · \d\d\/\d\d\/\d{4} \d\d:\d\d · DM/, "queda con fecha, hora y siglas de quien inicio sesion");
       assert.match(await cel.textContent(".notice.good"), /todos tus controles de este turno/);
-      await cel.click('button:has-text("Guardar control")');
+      await cel.click("#btn-guardar-control");
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Guardado UCI-01/);
       await cel.waitForSelector('article[aria-label^="Cama"]');
@@ -804,7 +806,8 @@ async function esperarServidor() {
     });
 
     await prueba("CNAF: flujo, temperatura, FiO2, FR y musculatura accesoria en el mismo cuadro; la SpO2 en CSV", async () => {
-      await cel.click('.cel-camas button:text-is("05")');
+      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('article[aria-label="Cama UCI-05"] button:has-text("Monitorización")');
       await cel.click('[role=tab]:has-text("Control")');
       await cel.selectOption("#in-modo", "CNAF");
       const etiquetas = await cel.locator('section[aria-label="Terapia ventilatoria"] .fila .et').allTextContents();

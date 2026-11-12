@@ -206,10 +206,8 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .cel-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 14px 8px;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:12px;font-weight:600}
 .cel-cuerpo{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain}
 .cel-pie{border-top:1px solid var(--line);background:var(--panel)}
-.cel-guardar{padding:8px 14px}
+.cel-guardar{padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px))}
 .cel-guardar .btn{width:100%;min-height:48px;font-size:16px}
-.cel-camas{display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));overflow-x:auto;background:var(--panel-2);border-top:1px solid var(--line)}
-.cel-camas .chip{flex:none;padding:7px 10px}
 .franja{position:fixed;left:0;right:0;z-index:30;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 16px rgba(0,0,0,.14);padding:6px 10px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:8px}
 .franja-etiqueta{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;max-width:28%;overflow:hidden;text-overflow:ellipsis}
 .franja-opciones{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none}

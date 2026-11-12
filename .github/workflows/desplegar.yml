@@ -36,6 +36,18 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      # Lo que se pega en el editor de Apps Script (index.html en formato cohete y Codigo.gs).
+      # Queda como descarga privada de este run: Actions -> ultimo "Desplegar" -> Artifacts.
+      - run: npm run gas
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-${{ github.sha }}
+          path: |
+            dist-gas/index.html
+            dist-gas/Codigo.gs
+            dist-gas/LEEME.txt
+          retention-days: 30
+          if-no-files-found: error
 
   desplegar:
     needs: construir

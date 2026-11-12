@@ -17,6 +17,7 @@ import { CLAVE_BORRADORES, persistirBorradores, restaurarBorradores } from "./pe
 import { Resguardo } from "./Resguardo";
 import { useApp } from "./store";
 import { Toast } from "./Toast";
+import { ConectarCelular } from "./ConectarCelular";
 
 type Ruta = "celular" | "estacion";
 
@@ -79,7 +80,7 @@ export function App() {
   useCicloDeSincronia(servicios);
 
   if (error === MENSAJE_SIN_CONFIGURAR && esAppsScript()) return <SinConfigurar mensaje={error} />;
-  if (error === MENSAJE_SIN_CONFIGURAR_PWA) return <div className="login"><div className="notice warn">{error}</div></div>;
+  if (error === MENSAJE_SIN_CONFIGURAR_PWA) return <ConectarCelular mensaje={error} />;
   if (error) return <div className="login"><div className="notice crit">No se pudo iniciar la aplicación: {error}</div></div>;
   if (!servicios || !lista) return <div className="login"><p className="muted">Cargando…</p></div>;
 

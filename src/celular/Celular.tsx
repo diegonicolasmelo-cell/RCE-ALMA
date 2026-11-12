@@ -57,7 +57,6 @@ export function Celular() {
   const { repo, sync, db } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
   const camaId = useApp((s) => s.camaId);
-  const setCama = useApp((s) => s.setCama);
   const vista = useApp((s) => s.vista);
   const misCamas = useApp((s) => s.misCamas);
   const setMisCamas = useApp((s) => s.setMisCamas);
@@ -255,7 +254,7 @@ export function Celular() {
 
   const prono = estadoProno(eventos, ahora);
 
-  const guardar = async (): Promise<void> => {
+  const guardar = async (seguir = false): Promise<void> => {
     const problemas = validarBorrador(b, {
       apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut),
       viaAerea: ep.viaAereaActual,
@@ -290,14 +289,29 @@ export function Celular() {
     useApp.getState().descartar(ep.id);
     franja.cerrar();
     setTab("control");
-    // Guardado el control, de vuelta a las tarjetas de las camas.
-    irA("camas");
+    // Guardado el control: a las tarjetas de las camas, o directo al control del paciente siguiente.
+    if (seguir && siguientePaciente) irA("cama", siguientePaciente.id);
+    else irA("camas");
     const conEvento = tr ? ` ${tr.texto} registrada.` : "";
-    avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}` : `Guardado ${ep.cama} ${control.hora}.${conEvento} Sin señal: se sube cuando vuelva la conexión.`);
+    const sigue = seguir && siguientePaciente ? ` Sigue ${nombreCama(siguientePaciente.cama)}.` : "";
+    avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue}` : `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue} Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
 
   const enTabControl = ORDEN_TABS.includes(tab as TabDeControl);
+  // El paciente siguiente: primero mis camas y despues las demas, en orden de cama.
+  const ordenCamas = [...episodios.filter(esMia), ...episodios.filter((e) => !esMia(e))];
+  const siguientePaciente = ordenCamas[ordenCamas.findIndex((e) => e.id === ep.id) + 1] ?? null;
+  const botonesGuardar = (
+    <>
+      <button type="button" id="btn-guardar-control" data-guardar className={siguientePaciente ? "btn" : "btn primary"} style={{ flex: 1 }} onClick={() => void guardar()}>Guardar</button>
+      {siguientePaciente && (
+        <button type="button" id="btn-guardar-siguiente" className="btn primary" style={{ flex: 2 }} onClick={() => void guardar(true)}>
+          Guardar y siguiente · {siguientePaciente.cama.slice(-2)}
+        </button>
+      )}
+    </>
+  );
   const defsSeg = enTabControl ? SEGMENTOS[tab as TabDeControl] : [];
   const iTab = ORDEN_TABS.indexOf(tab as TabDeControl);
   const ultimoSeg = enTabControl && iTab === ORDEN_TABS.length - 1 && segActual >= defsSeg.length - 1;
@@ -467,25 +481,18 @@ export function Celular() {
             <>
               <button type="button" className="btn" disabled={iTab === 0 && segActual === 0} onClick={atras}>‹ Atrás</button>
               {ultimoSeg ? (
-                <button type="button" id="btn-guardar-control" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+                botonesGuardar
               ) : (
                 <>
                   <button type="button" className="btn primary" style={{ flex: 1 }} onClick={siguiente}>Siguiente ›</button>
-                  <button type="button" className="btn" onClick={() => void guardar()}>Guardar control</button>
+                  <button type="button" id="btn-guardar-control" data-guardar className="btn" onClick={() => void guardar()}>Guardar</button>
                 </>
               )}
             </>
           ) : (
-            <button type="button" id="btn-guardar-control" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void guardar()}>Guardar control</button>
+            botonesGuardar
           )}
         </div>
-        <nav className="cel-camas" aria-label="Camas">
-          {episodios.map((e) => (
-            <button key={e.id} type="button" className={`chip ${esMia(e) ? "" : "apoyo"}`} aria-pressed={e.id === ep.id} title={esMia(e) ? "Cama asignada" : "Cama de apoyo"} onClick={() => { franja.cerrar(); setCama(e.id); }}>
-              {e.cama.slice(-2)}
-            </button>
-          ))}
-        </nav>
       </div>
       <TecladoPropio />
     </div>

@@ -867,6 +867,30 @@ async function esperarServidor() {
       assert.equal(await cel.locator('section[aria-label="Terapia ventilatoria"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
     });
 
+    await prueba("Controles: tocar una tarjeta abre la sabana de ese paciente en el celular, con ese control destacado; el panel se cierra deslizando a la derecha", async () => {
+      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
+      const tarjeta = cel.locator(".tarjeta-control").first();
+      await tarjeta.waitFor();
+      const [cama, hora] = (await tarjeta.locator("header b").textContent()).split(" · ");
+      await tarjeta.click();
+      const hoja = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
+      await hoja.waitFor();
+      assert.equal(await hoja.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");
+      const ancho = await cel.evaluate(() => document.documentElement.scrollWidth);
+      const culpables = await cel.evaluate(() => [...document.querySelectorAll(".sabana-cel *")].filter((e) => e.getBoundingClientRect().right > 392 && !e.closest(".scroll-x")).slice(0, 5).map((e) => e.tagName + "." + e.className + " " + Math.round(e.getBoundingClientRect().right)).join(" | ") + " · padre " + (document.querySelector(".sabana-cel").offsetParent?.className) + " " + Math.round(document.querySelector(".sabana-cel").offsetParent?.getBoundingClientRect().width) + " · body " + document.body.scrollWidth + " app " + Math.round(document.querySelector(".app-cel").getBoundingClientRect().width));
+      assert.ok(ancho <= 391, `la sabana no desborda la pantalla (${ancho}px): ${culpables}`);
+      await hoja.locator('button[aria-label="Volver"]').click();
+      await hoja.waitFor({ state: "detached" });
+      // Panel de la cuenta: se cierra deslizando el dedo hacia la derecha.
+      await cel.click('[aria-label="Mi cuenta"]');
+      const panel = cel.locator('[role=dialog][aria-label="Mi cuenta"]');
+      await panel.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 120, clientY: 400 }] });
+      await panel.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 260, clientY: 404 }] });
+      await panel.waitFor({ state: "detached" });
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
+    });
+
     console.log("Estacion (PC)");
     const pc = await ctx.newPage();
     vigilar(pc);

@@ -855,7 +855,7 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 .o-sep::before,.o-sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .acceso-pie{display:flex;justify-content:center;align-items:center;gap:6px;margin:0;color:var(--ink-2);font-size:12.5px}
 .acceso-pie span{opacity:.5}
-.paisaje{display:block;width:100%;height:120px;margin-top:auto;flex:none}
+.paisaje{display:block;width:100%;height:auto;aspect-ratio:400/130;margin-top:auto;flex:none}
 .paisaje .cerro-lejano{fill:#a9cdf0;opacity:.5}
 .paisaje .silueta{fill:#8dbbe8;opacity:.75}
 .paisaje .cerro{fill:#8dbbe8;opacity:.55}

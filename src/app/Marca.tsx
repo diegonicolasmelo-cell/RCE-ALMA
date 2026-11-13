@@ -40,26 +40,47 @@ export function CabeceraMarca({ mini = false }: { mini?: boolean }) {
   );
 }
 
-/** Siluetas del faro y de la cruz sobre los cerros, en azul muy claro. */
+/**
+ * Siluetas de la region al pie de las pantallas de entrada: el Faro Monumental de La Serena (torre
+ * cuadrada almenada con su linterna, sobre el fuerte con torreones) y la Cruz del Tercer Milenio
+ * de Coquimbo (tres pilares, brazos anchos y patas abiertas, sobre el cerro).
+ */
 export function PaisajeCoquimbo() {
   return (
-    <svg className="paisaje" viewBox="0 0 400 110" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-      <path className="cerro-lejano" d="M0 78 C 60 60, 110 70, 170 62 C 240 52, 300 66, 400 56 L400 110 L0 110 Z" />
-      {/* Faro */}
+    <svg className="paisaje" viewBox="0 0 400 130" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+      <path className="cerro-lejano" d="M0 96 C 50 84, 100 92, 160 86 C 220 80, 260 70, 300 66 C 340 62, 370 70, 400 74 L400 130 L0 130 Z" />
+      {/* Faro Monumental de La Serena */}
       <g className="silueta">
-        <rect x="48" y="40" width="14" height="40" rx="1" />
-        <rect x="45" y="36" width="20" height="5" rx="1" />
-        <rect x="49" y="26" width="12" height="11" rx="1" />
-        <path d="M47 26 L55 18 L63 26 Z" />
-        <rect x="42" y="78" width="26" height="6" rx="1" />
+        {/* fuerte con almenas y torreones */}
+        <path d="M22 112 V98 h4 v-3 h4 v3 h4 v-3 h4 v3 h4 v-3 h4 v3 h28 v-3 h4 v3 h4 v-3 h4 v3 h4 v-3 h4 v3 h4 V112 Z" />
+        <rect x="16" y="94" width="9" height="18" rx="2" />
+        <path d="M16 94 a4.5 4.5 0 0 1 9 0 Z" />
+        <rect x="95" y="94" width="9" height="18" rx="2" />
+        <path d="M95 94 a4.5 4.5 0 0 1 9 0 Z" />
+        {/* torre */}
+        <rect x="52" y="40" width="16" height="58" />
+        <path d="M49 40 V34 h3 v-2 h3 v2 h3 v-2 h4 v2 h3 v-2 h3 v2 h3 V40 Z" />
+        {/* linterna y cupula */}
+        <rect x="55" y="25" width="10" height="8" rx="1" />
+        <path d="M54 25 a6 5 0 0 1 12 0 Z" />
+        <rect x="59.3" y="16" width="1.4" height="5" />
       </g>
-      {/* Cruz */}
+      {/* Cruz del Tercer Milenio */}
       <g className="silueta">
-        <rect x="329" y="18" width="8" height="52" rx="1" />
-        <rect x="316" y="30" width="34" height="7" rx="1" />
-        <path d="M320 70 h26 l6 12 h-38 Z" />
+        {/* pilar central y los dos laterales */}
+        <rect x="328" y="6" width="8" height="84" />
+        <rect x="322" y="18" width="5" height="72" />
+        <rect x="337" y="18" width="5" height="72" />
+        {/* brazos */}
+        <path d="M302 22 h60 v7 h-60 Z" />
+        <path d="M300 20 h5 v11 h-5 Z M359 20 h5 v11 h-5 Z" />
+        {/* patas abiertas y base */}
+        <path d="M322 70 L304 104 h7 L326 78 Z" />
+        <path d="M342 70 L360 104 h-7 L338 78 Z" />
+        <path d="M312 92 h40 v14 h-40 Z" />
+        <path d="M300 104 h64 l6 8 h-76 Z" />
       </g>
-      <path className="cerro" d="M0 92 C 50 76, 90 80, 130 88 C 190 98, 250 78, 300 80 C 340 82, 370 74, 400 78 L400 110 L0 110 Z" />
+      <path className="cerro" d="M0 112 C 40 104, 90 106, 130 110 C 180 116, 230 104, 270 100 C 310 96, 350 100, 400 96 L400 130 L0 130 Z" />
     </svg>
   );
 }

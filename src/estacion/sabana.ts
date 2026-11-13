@@ -36,6 +36,8 @@ export interface FilaSabana {
 
 const n = (v: number | string | null | undefined, vacio = "--"): string => (v === null || v === undefined ? vacio : String(v));
 const t = (texto: string): Celda => ({ texto });
+/** Porcentaje: «96 %»; sin dato, «--». */
+const pct = (v: number | null | undefined): string => (v === null || v === undefined ? "--" : `${v} %`);
 
 /** Sedacion en la sabana: solo el escalon de cada droga («Fentanilo esc. 2»); sin escalera, el numero. */
 export function sedacionCorta(c: Control): string {
@@ -79,7 +81,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
   ];
   if (monitoreo.pic) filas.push({ grupo: M, etiqueta: "PIC / PPC", celda: (c) => t(`${n(c.neuro?.pic)} / ${n(d(c).ppc)}`) });
   filas.push(
-    { grupo: M, etiqueta: "SpO₂", celda: (c) => t(n(c.spo2)) },
+    { grupo: M, etiqueta: "SpO₂", celda: (c) => t(pct(c.spo2)) },
     { grupo: M, etiqueta: "Glasgow", celda: glasgowDe },
     { grupo: M, etiqueta: "SAS / vigilia", celda: (c) => t(sedoanalgesiaActiva(c.infusiones) ? `SAS ${n(c.sas)}` : c.vigilia ? c.vigilia.toLowerCase().replace("_", " ") : "--") },
     { grupo: M, etiqueta: "Sedación", celda: (c) => t(sedacionCorta(c)) },
@@ -107,7 +109,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     { grupo: V, etiqueta: "Relación I:E", celda: (c) => t(n(d(c).relacionIE)) },
     { grupo: V, etiqueta: "I. Tobin", celda: (c) => t(n(d(c).tobin)) },
     { grupo: V, etiqueta: "Vol. minuto", celda: (c) => t(n(d(c).volumenMinuto)) },
-    { grupo: V, etiqueta: "FiO₂", celda: (c) => t(n(c.ventilacion.fio2)) },
+    { grupo: V, etiqueta: "FiO₂", celda: (c) => t(pct(c.ventilacion.fio2)) },
     { grupo: V, etiqueta: "Temperatura (CNAF)", celda: (c) => t(c.ventilacion.modalidad === "CNAF" || c.ventilacion.modalidad === "CNAF_TQT" ? n(c.ventilacion.temperatura) : "—") },
     { grupo: V, etiqueta: "Musc. accesoria", celda: (c) => t(c.ventilacion.musculaturaAccesoria === null ? "--" : c.ventilacion.musculaturaAccesoria ? "Sí" : "No") },
     { grupo: K, etiqueta: "Auscultación", celda: (c) => t(c.kineResp.auscultacion.trim() === "" ? "--" : c.kineResp.auscultacion) },

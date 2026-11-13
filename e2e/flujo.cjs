@@ -190,7 +190,7 @@ async function esperarServidor() {
       await cuenta.locator('[role=radio]:has-text("Nuevo")').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
       await cuenta.locator('button[aria-label="Cerrar"]').click();
-      assert.equal(await cuenta.count(), 0);
+      await cuenta.waitFor({ state: "detached" });
       // Vuelve a donde estaba el recorrido: el control de la cama 1.
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 1")');
@@ -892,9 +892,30 @@ async function esperarServidor() {
       await cel.click('[aria-label="Mi cuenta"]');
       const panel = cel.locator('[role=dialog][aria-label="Mi cuenta"]');
       await panel.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 120, clientY: 400 }] });
+      await panel.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 150, clientY: 402 }] });
+      await panel.dispatchEvent("touchend", { touches: [] });
+      assert.equal(await panel.count(), 1, "un arrastre corto lo devuelve a su lugar");
+      await panel.dispatchEvent("touchstart", { touches: [{ identifier: 1, clientX: 120, clientY: 400 }] });
       await panel.dispatchEvent("touchmove", { touches: [{ identifier: 1, clientX: 260, clientY: 404 }] });
+      await panel.dispatchEvent("touchend", { touches: [] });
       await panel.waitFor({ state: "detached" });
+      // El boton «atras» del telefono retrocede dentro de la app: cierra la sabana, vuelve del
+      // control a Pacientes y, en Pacientes, avisa antes de salir.
+      await tarjeta.click();
+      await hoja.waitFor();
+      await cel.evaluate(() => history.back());
+      await hoja.waitFor({ state: "detached" });
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
+      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Monitorización")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
+      await cel.evaluate(() => history.back());
+      await cel.waitForSelector(".inicio-top");
+      assert.ok(await cel.locator('article[aria-label^="Cama"]').count() > 0, "volvio a Pacientes");
+      await cel.evaluate(() => history.back());
+      await cel.waitForSelector('.toast-app:has-text("Toca atrás otra vez para salir")');
+      assert.ok(await cel.locator(".inicio-top").count() === 1, "el primer atras en Pacientes no sale de la app");
+      await cel.waitForTimeout(2800);
+      assert.equal(await cel.evaluate(() => history.state && history.state.kapta), true, "pasado el aviso, la guardia vuelve");
     });
 
     console.log("Estacion (PC)");

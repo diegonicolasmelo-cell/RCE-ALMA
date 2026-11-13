@@ -2,7 +2,30 @@
  * La marca de Kápta CSV junto al logo del hospital, sobre la franja azul marino de arriba, y el
  * paisaje de Coquimbo (el faro y la cruz) al pie de las pantallas de entrada.
  */
+import { useEffect } from "react";
 import bannerNoche from "./iconos/banner-noche.png?inline";
+
+/** Azul marino de la franja de entrada. */
+export const AZUL_MARINO = "#0b2c5a";
+/** Fondo de la app de dia y de noche (el mismo de --bg). */
+export const FONDO_DIA = "#eef1f4";
+export const FONDO_NOCHE = "#0e1318";
+
+/**
+ * Color de las franjas del telefono (la de la hora y la bateria, y en Android la de los botones):
+ * el de lo que se ve arriba de la pantalla, para que la franja se funda con la app.
+ */
+export function useColorBarras(color: string): void {
+  useEffect(() => {
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    meta.content = color;
+  }, [color]);
+}
 
 /** Franja azul marino con la marca y el logo del hospital; «mini» es la versión baja. */
 export function CabeceraMarca({ mini = false }: { mini?: boolean }) {

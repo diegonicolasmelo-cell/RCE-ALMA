@@ -29,7 +29,7 @@ import { CLAVE_ERROR_SYNC, textoErrorSync } from "../datos/sync";
 import type { ErrorSync } from "../datos/sync";
 import { ReconectarCelular } from "../app/ConectarCelular";
 import { temaEfectivo, useApp } from "../app/store";
-import { AZUL_MARINO, CabeceraMarca, FONDO_DIA, FONDO_NOCHE, useColorBarras } from "../app/Marca";
+import { AZUL_MARINO, CabeceraMarca, PaisajeCoquimbo, FONDO_DIA, FONDO_NOCHE, useColorBarras } from "../app/Marca";
 import { Ayuda, EVENTO_ATRAS, BarraInferior, CabeceraInicio, HojaMas, MisControles, PanelAvisos, PanelCuenta, TituloVista, avisosDe, useBarraOculta } from "./Inicio";
 import type { AccionMas, EstadoSync, ResumenCama } from "./Inicio";
 import type { TabCelular } from "../app/store";
@@ -330,7 +330,7 @@ export function Celular() {
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
   // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.
   if (buscandoElegido && vista === "cama") return <div className="app-cel">{cabecera}<p className="muted" style={{ padding: 16 }}>Cargando…</p></div>;
-  if (vista === "elegir") return <div className="app-cel inicio"><CabeceraMarca mini />{cabeceraInicio}<ElegirCamas />{panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}</div>;
+  if (vista === "elegir") return <div className="app-cel inicio elegir"><CabeceraMarca mini />{cabeceraInicio}<ElegirCamas /><PaisajeCoquimbo />{panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}</div>;
   if (vistaInicio) return marcoInicio(vistaInicio);
   if (!ep || !base || vista === "camas") return marcoInicio(<ListaCamas />, "camas");
 

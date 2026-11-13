@@ -72,8 +72,7 @@ export function PaisajeCoquimbo() {
         <rect x="322" y="18" width="5" height="72" />
         <rect x="337" y="18" width="5" height="72" />
         {/* brazos */}
-        <path d="M302 22 h60 v7 h-60 Z" />
-        <path d="M300 20 h5 v11 h-5 Z M359 20 h5 v11 h-5 Z" />
+        <path d="M300 20 h64 v10 h-64 Z" />
         {/* patas abiertas y base */}
         <path d="M322 70 L304 104 h7 L326 78 Z" />
         <path d="M342 70 L360 104 h-7 L338 78 Z" />

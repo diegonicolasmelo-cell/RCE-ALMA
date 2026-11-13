@@ -31,6 +31,8 @@ import {
 import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { useApp } from "../app/store";
+import bannerDia from "../app/iconos/banner-dia.png?inline";
+import bannerNoche from "../app/iconos/banner-noche.png?inline";
 import type { Tema, VistaCelular } from "../app/store";
 
 export interface ResumenCama {
@@ -282,6 +284,10 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
           <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("ayuda"); }}>
             <CircleHelp size={22} aria-hidden /><span>Ayuda</span><ChevronRight size={18} aria-hidden />
           </button>
+        </div>
+        <div className="pc-banner">
+          <img className="de-dia" src={bannerDia} alt="Kápta CSV · Control de signos vitales · Hospital San Pablo de Coquimbo" />
+          <img className="de-noche" src={bannerNoche} alt="" aria-hidden />
         </div>
         <button type="button" className="pc-salir" onClick={onSalir}>Cerrar sesión</button>
       </aside>

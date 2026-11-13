@@ -95,7 +95,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("Ninguna")');
       await cel.click('.chip:text-is("07–12")');
       await cel.click('.chip:text-is("01–06")');
-      await cel.click('button:has-text("Ver camas")');
+      await cel.click('#btn-ver-camas');
       await cel.waitForSelector('article[aria-label^="Cama"]');
       const camas = await cel.locator('article[aria-label^="Cama"]').evaluateAll((l) => l.map((x) => x.getAttribute("aria-label")));
       assert.equal(camas.length, 18, "todas las tarjetas son visibles");
@@ -109,7 +109,7 @@ async function esperarServidor() {
       // Mias 07-12: arriba 07..12, despues 01..06 y 13..18, todas en una columna.
       await cel.click('button:has-text("Cambiar mis camas")');
       await cel.click('.chip:text-is("01–06")');
-      await cel.click('button:has-text("Ver camas")');
+      await cel.click('#btn-ver-camas');
       await cel.waitForSelector("text=Mis camas (6)");
       const orden = (await cel.locator('article[aria-label^="Cama"]').evaluateAll((l) => l.map((x) => x.getAttribute("aria-label").slice(-2))));
       assert.deepEqual(orden, ["07", "08", "09", "10", "11", "12", "01", "02", "03", "04", "05", "06", "13", "14", "15", "16", "17", "18"]);
@@ -117,7 +117,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("Cambiar mis camas")');
       await cel.click('.chip:text-is("07–12")');
       await cel.click('.chip:text-is("01–06")');
-      await cel.click('button:has-text("Ver camas")');
+      await cel.click('#btn-ver-camas');
       await cel.waitForSelector("text=Mis camas (6)");
       // PVE directa: la cama en CPAP/PS la ofrece en su tarjeta; la que esta en modalidad controlada no.
       assert.equal(await cel.locator('article[aria-label="Cama UCI-02"] button:has-text("PVE")').count(), 0, "ventilado en ACVC: no se ofrece PVE (solo TET con el ultimo control en CPAP+PS)");
@@ -306,7 +306,7 @@ async function esperarServidor() {
       await m.tap("button[type=submit]");
       await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
       await m.tap('.chip:text-is("01–06")');
-      await m.tap('button:has-text("Ver camas")');
+      await m.tap('#btn-ver-camas');
       await m.tap('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
       await m.waitForSelector(".hoja-simple");
       assert.equal(await m.getAttribute("#in-fc", "inputmode"), "none", "no se abre el teclado del sistema");

@@ -6,7 +6,8 @@ import { guardarMeta, leerMeta } from "../datos/db";
 import { refrescarDotacion } from "../datos/servicios";
 import type { EstadoDotacion } from "../datos/servicios";
 import { useServicios } from "../app/contexto";
-import { Logo } from "../app/Logo";
+import { CabeceraMarca, PaisajeCoquimbo } from "../app/Marca";
+import { Lock, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useApp } from "../app/store";
 import { activarHuella, huellaDisponible, leerHuellas, olvidarHuella, verificarHuella } from "./huella";
 import type { HuellaGuardada } from "./huella";
@@ -149,11 +150,10 @@ export function Login() {
 
   if (fase === "huella" && porActivar) {
     return (
-      <div className="login">
-        <div>
-          <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo tam={40} />Kapta</h1>
-          <p className="ink2">Hola, {porActivar.nombre}</p>
-        </div>
+      <div className="acceso">
+        <CabeceraMarca />
+        <div className="acceso-tarjeta">
+        <div className="acceso-titulo"><span className="ico"><UserRound size={28} aria-hidden /></span><div><h1>Hola, {porActivar.nombre}</h1></div></div>
         <div className="notice acc">
           <b>¿Entrar con tu huella en este celular?</b> La próxima vez no tendrás que escribir la contraseña: el teléfono te pedirá la huella (o tu cara o el PIN de pantalla). La huella no sale del teléfono; ni la app ni Google la ven.
         </div>
@@ -161,48 +161,34 @@ export function Login() {
         <button type="button" className="btn primary grande" disabled={cargando} onClick={() => void activar()}>{cargando ? "Esperando la huella…" : "Usar mi huella"}</button>
         <button type="button" className="btn" disabled={cargando} onClick={() => void sinHuella()}>Ahora no</button>
         <p className="small muted" style={{ margin: 0 }}>Solo en este celular y solo para ti. Si cambias de teléfono, entras una vez con la contraseña y la activas de nuevo.</p>
+        </div>
+        <PaisajeCoquimbo />
       </div>
     );
   }
 
   return (
+    <div className="acceso">
+    <CabeceraMarca />
     <form
-      className="login"
+      className="acceso-tarjeta"
       onSubmit={(e) => {
         e.preventDefault();
         void (fase === "ingreso" ? entrar() : definir());
       }}
     >
-      <div>
-        <h1 style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo tam={40} />Kapta</h1>
-        <p className="ink2">Captura a pie de cama · UCI Adulto</p>
-      </div>
-
-      {fase === "ingreso" && huellas.length > 0 && (
-        <div className="stack" aria-label="Entrar con huella">
-          {huellas.map((h) => (
-            <div key={h.correo} className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn primary grande" style={{ flex: 1 }} disabled={cargando} onClick={() => void entrarConHuella(h)}>
-                <HuellaIcono /> Entrar con huella · {buscarProfesional(h.correo)?.nombre ?? h.correo}
-              </button>
-              <button
-                type="button"
-                className="btn sm"
-                aria-label={`Quitar la huella de ${buscarProfesional(h.correo)?.nombre ?? h.correo}`}
-                onClick={() => void olvidarHuella(db, h.correo).then(() => setHuellas((l) => l.filter((x) => x.correo !== h.correo)))}
-              >
-                Quitar
-              </button>
-            </div>
-          ))}
-          <p className="small muted" style={{ margin: 0, textAlign: "center" }}>o con tu correo y contraseña</p>
+      <div className="acceso-titulo">
+        <span className="ico"><UserRound size={28} aria-hidden /></span>
+        <div>
+          <h1>Acceso al sistema</h1>
+          <p>Ingresa con tu correo y contraseña</p>
         </div>
-      )}
+      </div>
 
       {fase === "ingreso" ? (
         <>
           <div className="f">
-            <label htmlFor="rut">Correo</label>
+            <label htmlFor="rut"><Mail size={16} aria-hidden /> Correo</label>
             <input
               id="rut"
               inputMode="email"
@@ -216,7 +202,7 @@ export function Login() {
             />
           </div>
           <div className="f">
-            <label htmlFor="pin">Contraseña</label>
+            <label htmlFor="pin"><Lock size={16} aria-hidden /> Contraseña</label>
             <input id="pin" type="password" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} />
           </div>
         </>
@@ -232,10 +218,34 @@ export function Login() {
 
       {error && <div className="notice crit" role="alert">{error}</div>}
       <button type="submit" className="btn primary grande" disabled={cargando}>
-        {fase === "ingreso" ? "Ingresar" : "Guardar contraseña e ingresar"}
+        {fase === "ingreso" ? "Ingresar →" : "Guardar contraseña e ingresar"}
       </button>
+      {fase === "ingreso" && huellas.length > 0 && (
+        <div className="stack" aria-label="Entrar con huella">
+          <div className="o-sep"><span>o</span></div>
+          {huellas.map((h) => (
+            <div key={h.correo} className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn grande btn-huella" style={{ flex: 1 }} disabled={cargando} onClick={() => void entrarConHuella(h)}>
+                <HuellaIcono /> Entrar con huella · {buscarProfesional(h.correo)?.nombre ?? h.correo}
+              </button>
+              <button
+                type="button"
+                className="btn sm"
+                aria-label={`Quitar la huella de ${buscarProfesional(h.correo)?.nombre ?? h.correo}`}
+                onClick={() => void olvidarHuella(db, h.correo).then(() => setHuellas((l) => l.filter((x) => x.correo !== h.correo)))}
+              >
+                Quitar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="acceso-pie"><ShieldCheck size={16} aria-hidden /> Acceso seguro y confidencial <span aria-hidden>|</span> Kápta CSV</p>
       {local && <div className="notice new small">Modo demostración (sin servidor): correo <b>{CORREO_DEMO}</b> (o cualquier nombre de la dotación) y contraseña <b className="mono">{PIN_DEMO.toLowerCase()}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
     </form>
+    <PaisajeCoquimbo />
+    </div>
   );
 }
 

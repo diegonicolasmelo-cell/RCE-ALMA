@@ -180,7 +180,7 @@ const pagina = () =>
       await p.waitForSelector("text=¿Cuáles son tus camas hoy?", { timeout: 10000 });
       // Unidad sin pacientes: igual se ven las 18 camas, y las libres se ingresan desde aqui.
       assert.equal(await p.locator('[aria-label="Camas"] button').count(), 18);
-      await p.click('button:has-text("Ver camas")');
+      await p.click('#btn-ver-camas');
       await p.waitForSelector("article.cama-sin");
       assert.equal(await p.locator("article.cama-sin").count(), 18, "las 18 camas, libres, en una columna");
       assert.equal(await p.locator("text=No hay camas activas").count(), 0);

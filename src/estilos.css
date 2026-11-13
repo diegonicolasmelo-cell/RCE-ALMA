@@ -825,3 +825,50 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 [data-estilo="nuevo"] .ev-item{border-radius:14px;padding:12px 14px}
 [data-estilo="nuevo"] .ev-chk{border-radius:12px}
 .seg-tema.dos{grid-template-columns:1fr 1fr}
+
+/* ---- Entrada: franja azul marino con la marca, tarjeta de acceso y paisaje de Coquimbo ---- */
+:root{--marino:#0b2c5a;--marino-2:#114b8c;--cielo:#dcebfa;--cielo-2:#eef5fc}
+:root[data-theme="dark"]{--cielo:#132235;--cielo-2:#0f1924}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--cielo:#132235;--cielo-2:#0f1924}}
+.marca-cab{position:relative;background:linear-gradient(160deg,var(--marino) 0%,var(--marino-2) 100%);padding:calc(26px + env(safe-area-inset-top,0px)) 20px 46px;display:flex;justify-content:center}
+.marca-cab img{width:100%;max-width:330px;height:auto;position:relative;z-index:1}
+.marca-cab .ola{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:40px}
+.marca-cab .ola-clara{fill:#5fa8e8;opacity:.55}
+.marca-cab .ola-fondo{fill:var(--cielo-2)}
+.marca-cab.mini{padding:calc(12px + env(safe-area-inset-top,0px)) 20px 30px}
+.marca-cab.mini img{max-width:230px}
+.marca-cab.mini .ola{height:26px}
+.marca-cab.mini .ola-fondo{fill:var(--bg)}
+
+.acceso{min-height:100%;display:flex;flex-direction:column;background:linear-gradient(180deg,var(--cielo-2) 0%,var(--cielo) 100%);position:relative;overflow-x:hidden}
+.acceso-tarjeta{position:relative;z-index:1;width:calc(100% - 32px);max-width:420px;margin:-8px auto 0;background:var(--panel);border-radius:24px;padding:22px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 32px rgba(11,44,90,.12)}
+.acceso-titulo{display:flex;align-items:center;gap:14px}
+.acceso-titulo .ico{width:56px;height:56px;flex:none;border-radius:16px;background:var(--accent-soft);color:var(--marino-2);display:grid;place-items:center}
+.acceso-titulo h1{margin:0;font-size:22px;color:var(--ink);line-height:1.15}
+.acceso-titulo p{margin:2px 0 0;color:var(--ink-2);font-size:14px}
+.acceso-tarjeta .f label{display:flex;align-items:center;gap:6px;font-weight:600}
+.acceso-tarjeta input{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:12px 14px;font-size:17px;min-height:52px}
+.acceso-tarjeta .btn.grande{border-radius:14px;min-height:54px;font-size:17px}
+.acceso-tarjeta button[type=submit]{background:linear-gradient(180deg,var(--marino-2),var(--marino));border-color:var(--marino);color:#fff}
+.acceso-tarjeta .btn-huella{background:var(--accent-soft);border:1.5px solid var(--accent);color:var(--marino-2);font-weight:700}
+.o-sep{display:flex;align-items:center;gap:12px;color:var(--ink-2);font-weight:600}
+.o-sep::before,.o-sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.acceso-pie{display:flex;justify-content:center;align-items:center;gap:6px;margin:0;color:var(--ink-2);font-size:12.5px}
+.acceso-pie span{opacity:.5}
+.paisaje{display:block;width:100%;height:120px;margin-top:auto;flex:none}
+.paisaje .cerro-lejano{fill:#a9cdf0;opacity:.5}
+.paisaje .silueta{fill:#8dbbe8;opacity:.75}
+.paisaje .cerro{fill:#8dbbe8;opacity:.55}
+
+/* Elegir camas: mismos azules que la entrada. */
+.elegir-camas{display:grid;gap:14px;align-content:start}
+.resumen-camas{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:18px;color:#fff;background:linear-gradient(160deg,var(--marino) 0%,var(--marino-2) 100%);font-size:16px;line-height:1.3}
+.resumen-camas b{font-size:20px}
+.elegir-camas h3{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.atajos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grilla-camas{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.elegir-camas .chip{justify-content:center;min-height:48px;border-radius:14px;font:700 16px var(--font-data)}
+.elegir-camas .chip[aria-pressed="true"]{background:var(--marino-2);border-color:var(--marino-2);color:#fff}
+.nota-camas{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 14px;border-radius:14px;background:var(--panel-2);color:var(--ink-2);font-size:13px}
+.nota-camas svg{flex:none;margin-top:1px}
+.elegir-camas #btn-ver-camas{border-radius:14px;min-height:54px;background:linear-gradient(180deg,var(--marino-2),var(--marino));border-color:var(--marino)}

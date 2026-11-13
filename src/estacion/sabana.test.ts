@@ -124,3 +124,15 @@ describe("sedación y DVA en la sábana, cortas", () => {
     expect(dvaCorta(unControl({ infusiones: {} }))).toBe("—");
   });
 });
+
+describe("porcentajes en la sabana", () => {
+  it("la SpO2 y la FiO2 llevan «%»; sin dato, «--»", () => {
+    const filas = filasSabana(60, { capnografia: false, pic: false, dve: false } as never);
+    const spo2 = filas.find((f) => f.etiqueta === "SpO₂")!;
+    const fio2 = filas.find((f) => f.etiqueta === "FiO₂")!;
+    const c = unControl({ spo2: 96 });
+    expect(spo2.celda(c).texto).toBe("96 %");
+    expect(fio2.celda({ ...c, ventilacion: { ...c.ventilacion, fio2: 40 } }).texto).toBe("40 %");
+    expect(spo2.celda({ ...c, spo2: null }).texto).toBe("--");
+  });
+});

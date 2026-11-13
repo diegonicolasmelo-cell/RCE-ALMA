@@ -18,6 +18,7 @@ import {
   Flag,
   History,
   Moon,
+  Palette,
   Plus,
   RefreshCw,
   Sun,
@@ -252,6 +253,8 @@ const TEMAS: readonly (readonly [Tema, string, typeof Sun])[] = [["auto", "Autom
 export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir }: { nombre: string; rol: string; turno: TurnoGuardia; nMias: number; sync: EstadoSync; onCerrar: () => void; onSalir: () => void }) {
   const tema = useApp((s) => s.tema);
   const setTema = useApp((s) => s.setTema);
+  const estilo = useApp((s) => s.estilo);
+  const setEstilo = useApp((s) => s.setEstilo);
   const irA = useApp((s) => s.irA);
   const inicioX = useRef<number | null>(null);
   return (
@@ -285,6 +288,14 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
             {TEMAS.map(([k, t, Icono]) => (
               <button key={k} type="button" role="radio" aria-checked={tema === k} onClick={() => setTema(k)}><Icono size={15} aria-hidden /> {t}</button>
             ))}
+          </div>
+          <div className="pc-fila bloque">
+            <Palette size={22} aria-hidden />
+            <span>Diseño de las pantallas<small>Del paciente: control, eventos, PVE y evaluaciones</small></span>
+          </div>
+          <div className="seg-tema dos" role="radiogroup" aria-label="Diseño de las pantallas">
+            <button type="button" role="radio" aria-checked={estilo === "nuevo"} onClick={() => setEstilo("nuevo")}>Nuevo</button>
+            <button type="button" role="radio" aria-checked={estilo === "clasico"} onClick={() => setEstilo("clasico")}>Clásico</button>
           </div>
           <button type="button" className="pc-fila" onClick={sync.sincronizar}>
             <RefreshCw size={22} aria-hidden />

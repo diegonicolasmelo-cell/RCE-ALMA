@@ -503,7 +503,7 @@ async function esperarServidor() {
       await cel.fill("#evf-txt", "tracciona el TET durante el aseo");
       await cel.click('button:has-text("Registrar")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
-      assert.match(await aviso(), /Autoextubación registrada\. Sigue con el control post evento/);
+      assert.match(await aviso(), /Evento registrado: Autoextubación\. Sigue con su monitorización/);
       assert.match(await cel.textContent(".banda"), /Vía aérea natural/);
       assert.equal(await cel.inputValue("#in-modo"), "CNAF", "el control parte en el dispositivo con que quedo (CNAF)");
       const modos = await cel.locator("#in-modo option").evaluateAll((os) => os.map((o) => o.value));
@@ -522,11 +522,11 @@ async function esperarServidor() {
       assert.equal(await cel.locator('.evgrid button:text-is("Intubación")').count(), 0);
       await cel.click('.evgrid button:text-is("Reintubación")');
       assert.equal(await cel.inputValue("#evf-talla"), "162", "la talla del paciente viene puesta");
-      await cel.click('button:text-is("Registrar")');
+      await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');
       assert.match(await aviso(), /Falta el calibre/);
       await cel.fill("#evf-cal", "7.5");
       await cel.fill("#evf-fij", "22");
-      await cel.click('button:text-is("Registrar")');
+      await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.5 · 22 cm/);
       // La linea de tiempo junta los eventos y los controles, del mas nuevo al mas antiguo, con fecha y hora.
@@ -560,9 +560,11 @@ async function esperarServidor() {
       assert.equal(await cel.inputValue("#evf-cal"), "8.0", "parte con el calibre actual");
       await cel.fill("#evf-cal", "7.0");
       await cel.selectOption("#evf-mot", "FUGA");
-      await cel.click('button:text-is("Registrar")');
-      await cel.waitForTimeout(500);
+      await cel.click('button:has-text("Registrar y monitorizar ›")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
+      assert.match(await cel.textContent(".franja-evento"), /Monitorización del evento: Cambio de tubo/);
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.0 · 23 cm/);
+      await cel.click('[role=tab]:has-text("Eventos")');
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /Cambio de tubo: TET calibre 7\.0, fijación 23 cm \(fuga\)/, linea.join(" | "));
       await cel.click('[role=tab]:has-text("Control")');
@@ -610,13 +612,13 @@ async function esperarServidor() {
       await cel.click('button:has-text("Autoextubación")');
       await cel.fill("#evf-txt", "se retira el TET en agitación");
       await cel.selectOption("#evf-disp", "REINTUBACION_INMEDIATA");
-      await cel.click('button:text-is("Registrar")');
+      await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');
       await cel.waitForSelector("#evf-cal");
       assert.match(await aviso(), /Ahora registra la reintubación/);
       assert.match(await cel.textContent(".card:has(#evf-cal)"), /Reintubación/);
       await cel.fill("#evf-cal", "8");
       await cel.fill("#evf-fij", "23");
-      await cel.click('button:text-is("Registrar")');
+      await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 4")');
       assert.match(await cel.textContent(".banda .l1"), /TET 8 · 23 cm/);
       await cel.click('[role=tab]:has-text("Eventos")');

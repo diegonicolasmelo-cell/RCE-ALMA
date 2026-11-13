@@ -250,3 +250,20 @@ describe("aplicarEventoAEpisodio", () => {
     expect(aplicarEventoAEpisodio(ep, unEvento<Extract<EventoClinico, { tipo: "CAMBIO_HMEF" }>>({ tipo: "CAMBIO_HMEF" }))).toBe(ep);
   });
 });
+
+describe("eventos que se monitorizan con un control", async () => {
+  const { eventosSinMonitorizar } = await import("./eventos");
+  const { unControl, unEvento } = await import("./fixtures");
+  const puncion = unEvento({ tipo: "ASISTENCIA_PROCEDIMIENTO", procedimiento: "Punción lumbar", registradoEn: "2026-11-13T10:40:00.000Z" } as never);
+  const filtro = unEvento({ tipo: "CAMBIO_FILTRO", elemento: "HEPA", registradoEn: "2026-11-13T10:41:00.000Z" } as never);
+  const previo = unControl({ id: "c0", registradoEn: "2026-11-13T08:00:00.000Z" });
+  it("un procedimiento sin control despues queda sin monitorizacion; un cambio de filtro no la pide", () => {
+    expect(eventosSinMonitorizar([puncion, filtro], [previo]).map((e) => e.id)).toEqual([puncion.id]);
+  });
+  it("con su control ligado (o uno posterior) ya no", () => {
+    expect(eventosSinMonitorizar([puncion], [previo, unControl({ id: "c1", registradoEn: "2026-11-13T10:45:00.000Z", eventoId: puncion.id })])).toEqual([]);
+  });
+  it("la extubacion por PVE se sigue con los controles de la PVE, no pide control", () => {
+    expect(eventosSinMonitorizar([unEvento({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", registradoEn: "2026-11-13T11:00:00.000Z" } as never)], [previo])).toEqual([]);
+  });
+});

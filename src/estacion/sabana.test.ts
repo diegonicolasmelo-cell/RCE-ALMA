@@ -93,8 +93,16 @@ describe("columnas por control y eventos aparte", () => {
   });
   it("el evento de vía aérea se marca en la columna del control que generó", () => {
     const cols = columnasSabana(controles, eventos, "24H", ahora);
-    expect(cols.find((c) => c.control.id === "d")?.hitos).toEqual(["Extubación"]);
+    expect(cols.find((c) => c.control.id === "d")?.hitos).toEqual([`Extubación · ${eventos[0]!.hora}`]);
     expect(cols.filter((c) => c.hitos.length > 0)).toHaveLength(1);
+  });
+  it("el evento ligado a un control va en su columna y sale de «Otros eventos»", () => {
+    const cultivo = eventos[2]!;
+    const conVinculo = controles.map((c) => (c.id === "b" ? { ...c, eventoId: cultivo.id } : c));
+    const cols = columnasSabana(conVinculo, eventos, "24H", ahora);
+    expect(cols.find((c) => c.control.id === "b")?.hitos).toEqual([`Cultivo Aspirado traqueal · ${cultivo.hora}`]);
+    expect(otrosEventos(eventos, "24H", ahora, conVinculo).some((e) => e.id === cultivo.id)).toBe(false);
+    expect(otrosEventos(eventos, "24H", ahora, controles).some((e) => e.id === cultivo.id)).toBe(true);
   });
   it("una línea marca el cambio de día", () => {
     const cols = columnasSabana(controles, eventos, "24H", ahora);

@@ -238,6 +238,11 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .paso-chip{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;min-height:34px}
 .paso-chip[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .cel-guardar .btn{white-space:nowrap}
+/* Control que monitoriza un evento: queda ligado a el. */
+.franja-evento{background:var(--crit-soft);color:var(--crit-ink);border-radius:10px;padding:9px 12px;font-weight:700;font-size:14px;margin-bottom:10px}
+/* Guardar destaca en verde; a los lados, guardar y pasar al paciente anterior o siguiente. */
+.cel-guardar .btn.guardar-principal{flex:1.1;background:var(--go);border-color:var(--go);color:#fff;font-weight:800}
+.cel-guardar .btn.guardar-lado{flex:1;white-space:normal;line-height:1.15;font-size:13px;padding:4px 6px}
 .fgrid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:end}
 .desplegable{position:relative}
 .desplegable summary{list-style:none;cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:10px 12px;min-height:44px;font-size:14px}
@@ -572,7 +577,9 @@ table.sab-plana{font-size:13px}
 table.sab-plana th{font-weight:600}
 table.sab-plana .sv-dia{font-family:var(--font-ui);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
 table.sab-plana th.dia,table.sab-plana td.dia{border-left:3px solid var(--ink-2)}
-table.sab-plana .sv-hito{display:block;margin:0 auto 2px;padding:1px 6px;border-radius:4px;background:var(--warn-soft);color:var(--warn-ink);font:700 11px var(--font-ui);white-space:nowrap;width:max-content}
+/* Evento que monitoriza el control: escrito de lado, en rojo, sobre su columna. */
+table.sab-plana .sv-evento{writing-mode:vertical-rl;transform:rotate(180deg);margin:0 auto 6px;color:var(--crit-ink);font:700 12px var(--font-ui);white-space:nowrap;max-height:180px;overflow:hidden;text-overflow:ellipsis}
+table.sab-plana th.con-evento,table.sab-plana td.con-evento{border-left:2px solid var(--crit)}
 table.sab-plana tr.sv-grupo td{background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;text-align:left;position:static}
 table.sab-plana tr.sv-firma td{border-top:2px solid var(--line);font-weight:700}
 .sv-otros{padding:10px 14px;border-top:1px solid var(--line)}

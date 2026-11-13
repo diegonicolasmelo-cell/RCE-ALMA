@@ -146,6 +146,24 @@ export function hitoCorto(ev: EventoClinico, eventos: readonly EventoClinico[]):
       return "Cambio de tubo";
     case "CAMBIO_CANULA":
       return "Cambio de cánula";
+    case "AJUSTE_TUBO":
+      return "Ajuste de tubo";
+    case "INICIO_PRONO":
+      return "Prono";
+    case "SUPINACION":
+      return "Supinación";
+    case "ASISTENCIA_FBC":
+      return "Fibrobroncoscopía";
+    case "ASISTENCIA_PROCEDIMIENTO":
+      return ev.procedimiento || "Procedimiento";
+    case "TOMA_CULTIVO":
+      return `Cultivo${ev.muestra ? ` ${ev.muestra}` : ""}`;
+    case "TRASLADO_IMAGEN":
+      return `Traslado${ev.destino ? ` a ${ev.destino}` : ""}`;
+    case "PCR":
+      return "PCR";
+    case "EVENTO_CENTINELA":
+      return "Evento adverso";
     default:
       return "";
   }
@@ -155,7 +173,10 @@ export type RangoSabana = "24H" | "ESTADIA";
 
 export interface ColumnaSabana {
   readonly control: Control;
-  /** Hitos de via aerea ocurridos desde el control anterior hasta este. */
+  /**
+   * Eventos de esta columna, con su hora: el que este control monitoriza (ligado) y los de via
+   * aerea anteriores al vinculo que ocurrieron desde el control anterior hasta este.
+   */
   readonly hitos: readonly string[];
   /** Primera columna de un dia nuevo (se marca con una linea gruesa). */
   readonly nuevoDia: boolean;
@@ -174,11 +195,14 @@ export function columnasSabana(controles: readonly Control[], eventos: readonly 
   const todos = [...controles].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   const desde = rango === "24H" ? new Date(ahora.getTime() - 24 * 3_600_000).toISOString() : "";
   const via = eventos.filter((e) => TIPOS_VIA.has(e.tipo)).sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
+  const ligados = new Set(controles.map((c) => c.eventoId).filter((x): x is string => Boolean(x)));
   const columnas: ColumnaSabana[] = [];
   todos.forEach((c, i) => {
     if (c.registradoEn < desde) return;
     const anterior = todos[i - 1]?.registradoEn ?? "";
-    const hitos = via.filter((e) => e.registradoEn > anterior && e.registradoEn <= c.registradoEn).map((e) => hitoCorto(e, eventos));
+    const ligado = c.eventoId ? eventos.find((e) => e.id === c.eventoId) : undefined;
+    const porHora = via.filter((e) => !ligados.has(e.id) && e.registradoEn > anterior && e.registradoEn <= c.registradoEn);
+    const hitos = [...(ligado ? [ligado] : []), ...porHora].map((e) => `${hitoCorto(e, eventos)} · ${e.hora}`);
     const dia = diaDe(c.registradoEn);
     columnas.push({ control: c, hitos, dia, nuevoDia: columnas.length > 0 && columnas[columnas.length - 1]!.dia !== dia });
   });
@@ -189,10 +213,12 @@ export function columnasSabana(controles: readonly Control[], eventos: readonly 
  * Los demas eventos del rango (filtros, cultivos, prono, PVE, procedimientos…): no forman
  * parte del control y van en una lista aparte. Las evaluaciones tienen su propia pestana.
  */
-export function otrosEventos(eventos: readonly EventoClinico[], rango: RangoSabana, ahora: Date): readonly EventoClinico[] {
+export function otrosEventos(eventos: readonly EventoClinico[], rango: RangoSabana, ahora: Date, controles: readonly Control[] = []): readonly EventoClinico[] {
   const desde = rango === "24H" ? new Date(ahora.getTime() - 24 * 3_600_000).toISOString() : "";
+  // Los que ya estan en la columna de su control no se repiten aqui.
+  const ligados = new Set(controles.map((c) => c.eventoId).filter(Boolean));
   return eventos
-    .filter((e) => !TIPOS_VIA.has(e.tipo) && e.tipo !== "EVALUACION_PUNTUAL" && e.registradoEn >= desde)
+    .filter((e) => !TIPOS_VIA.has(e.tipo) && !ligados.has(e.id) && e.tipo !== "EVALUACION_PUNTUAL" && e.registradoEn >= desde)
     .sort((a, b) => b.registradoEn.localeCompare(a.registradoEn));
 }
 

@@ -104,6 +104,8 @@ function Fila({ etiqueta, unidad, ayuda, children, clase = "" }: { etiqueta: Rea
 
 export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
   const { ep, ultimo, b, editar, pbw } = ctx;
+  const eventoMonitorizar = useApp((s) => s.eventoMonitorizar);
+  const evento = eventoMonitorizar?.episodioId === ep.id ? eventoMonitorizar : null;
   const { local } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const artificial = esViaAereaArtificial(ep.viaAereaActual);
@@ -211,6 +213,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
 
   return (
     <div className="hoja-simple">
+      {evento && <div className="franja-evento" role="status">⚑ Monitorización del evento: {evento.texto} · {evento.hora}</div>}
       <section aria-label="CSV">
         <h2>CSV</h2>
         <Fila etiqueta="Hora del control" ayuda={cuando(horaControl)}>

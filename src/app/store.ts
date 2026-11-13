@@ -43,6 +43,9 @@ interface EstadoApp {
   irA: (vista: VistaCelular, camaId?: string) => void;
   /** Evento que Eventos debe abrir al mostrarse (p. ej. la extubacion fuera de protocolo desde la tarjeta). */
   eventoPedido: string | null;
+  /** Evento recien registrado que se monitoriza con el control de esa cama (queda ligado a el). */
+  eventoMonitorizar: { readonly episodioId: string; readonly eventoId: string; readonly texto: string; readonly hora: string } | null;
+  monitorizarEvento: (e: { episodioId: string; eventoId: string; texto: string; hora: string } | null) => void;
   pedirEvento: (k: string | null) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
@@ -76,6 +79,8 @@ export const useApp = create<EstadoApp>((set) => ({
   misCamas: null,
   setMisCamas: (misCamas) => set({ misCamas }),
   eventoPedido: null,
+  eventoMonitorizar: null,
+  monitorizarEvento: (eventoMonitorizar) => set({ eventoMonitorizar }),
   pedirEvento: (eventoPedido) => set({ eventoPedido }),
   irA: (vista, camaId) =>
     set((s) => {

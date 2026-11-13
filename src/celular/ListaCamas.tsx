@@ -14,6 +14,7 @@ import {
   ETIQUETA_ELEMENTO,
   ETIQUETA_MODALIDAD,
   horasDeVm,
+  eventosSinMonitorizar,
   textoCategoriaRem,
   textoEdad
 } from "@core/index";
@@ -151,6 +152,7 @@ export function ListaCamas() {
               {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}
               {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
               {cambios.map((c) => <Pildora key={c.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[c.elemento]}</Pildora>)}
+              {eventosSinMonitorizar(eventos, ultimo ? [ultimo] : []).map((e) => <Pildora key={e.id} tipo="crit">Evento sin monitorización · {e.hora}</Pildora>)}
             </div>
             <div className="botones-cama">
               <button type="button" className="btn primary" onClick={() => irA("cama", ep.id)}>

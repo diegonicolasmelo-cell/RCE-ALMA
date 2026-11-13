@@ -131,6 +131,7 @@ export function serializarControlParaNube(c: Control): Record<string, unknown> {
     rutAutor: c.rutAutor,
     esControlApoyo: c.esControlApoyo,
     corrige: c.corrige,
+    ...(c.eventoId ? { eventoId: c.eventoId } : {}),
     fc: c.fc,
     pas: c.pas,
     pad: c.pad,

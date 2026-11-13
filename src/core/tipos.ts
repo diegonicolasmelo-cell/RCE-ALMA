@@ -344,6 +344,8 @@ export interface Control {
   readonly rutAutor: string;
   readonly esControlApoyo: boolean;
   readonly corrige: Uuid | null;
+  /** Evento que este control monitoriza (p. ej. una punción lumbar en que se tituló el VM). */
+  readonly eventoId?: Uuid;
 
   readonly fc: Medicion;
   readonly pas: Medicion;

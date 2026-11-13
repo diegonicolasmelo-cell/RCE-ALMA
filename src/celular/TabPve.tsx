@@ -14,6 +14,7 @@ import { useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
   CRITERIOS_PVE,
+  describirEvento,
   ETIQUETA_DISPOSITIVO,
   ETIQUETA_MOTIVO_SIN_PVE,
   avisoMenos24hVm,
@@ -99,15 +100,16 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   };
 
   /** Un evento con la hora REAL del paso (puede ser unos minutos antes de anotarlo). */
-  const ev = async (e: Record<string, unknown>): Promise<boolean> => {
+  const ev = async (e: Record<string, unknown>): Promise<EventoClinico | null> => {
     const t = new Date();
     const real = momentoDeEvaluacion(hora, t);
     if (!real) {
       setMsg("Revisa la hora: la real, de las últimas 12 horas.");
-      return false;
+      return null;
     }
-    await repo.registrarEvento({ ...baseEvento(ep, rutAutor, momentoPreciso(real, t)), ...e } as EventoClinico);
-    return true;
+    const evento = { ...baseEvento(ep, rutAutor, momentoPreciso(real, t)), ...e } as EventoClinico;
+    await repo.registrarEvento(evento);
+    return evento;
   };
 
   const casilla = (k: string, etiqueta: string, teclado?: string): JSX.Element => (
@@ -198,12 +200,14 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const extubarSinPve = async (): Promise<void> => {
     if (!f["smot"]) return setMsg("Indica por qué no corresponde PVE.");
     if (!f["queda"]) return setMsg("Indica con qué queda: CNAF, VMNI, O₂ convencional o aire ambiente.");
-    if (!(await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior, sinPve: f["smot"] as MotivoExtubacionSinPve }))) return;
+    const extub = await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior, sinPve: f["smot"] as MotivoExtubacionSinPve });
+    if (!extub) return;
     limpiar();
     setSinPve(false);
     useApp.getState().descartar(ep.id);
+    useApp.getState().monitorizarEvento({ episodioId: ep.id, eventoId: extub.id, texto: describirEvento(extub), hora: extub.hora });
     useApp.getState().irA("cama", ep.id);
-    avisar("Extubación fuera de protocolo registrada. Sigue con el control post evento.");
+    avisar("Extubación fuera de protocolo registrada. Sigue con su monitorización.");
   };
   const sinExtubar = async (): Promise<void> => {
     if ((f["motivo"] ?? "").trim() === "") return setMsg("Escribe por qué no se extuba.");

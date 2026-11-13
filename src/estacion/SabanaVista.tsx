@@ -23,7 +23,7 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const filas = useMemo(() => filasSabana(pbw, ep.monitoreo), [pbw, ep.monitoreo]);
   const columnas = columnasSabana(controles, eventos, rango, ahora);
-  const otros = otrosEventos(eventos, rango, ahora);
+  const otros = otrosEventos(eventos, rango, ahora, controles);
   const evaluaciones = evaluacionesDe(eventos);
   // Los dias del rango, con cuantas columnas ocupa cada uno (encabezado agrupado).
   const dias = columnas.reduce<{ dia: string; n: number }[]>((acc, c) => {
@@ -33,6 +33,8 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
     return acc;
   }, []);
   const borde = (nuevoDia: boolean): string => (nuevoDia ? "dia" : "");
+  // La columna de un control que monitoriza un evento lleva una linea roja a la izquierda.
+  const clase = (c: { nuevoDia: boolean; hitos: readonly string[] }): string => `${borde(c.nuevoDia)}${c.hitos.length ? " con-evento" : ""}`;
 
   return (
     <section className="sabana-vista" aria-label="Sábana">
@@ -63,8 +65,8 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
                   </tr>
                   <tr>
                     {columnas.map((c) => (
-                      <th key={c.control.id} className={borde(c.nuevoDia)}>
-                        {c.hitos.map((h) => <span key={h} className="sv-hito">{h}</span>)}
+                      <th key={c.control.id} className={clase(c)}>
+                        {c.hitos.length > 0 && <div className="sv-evento" title={c.hitos.join(" · ")}>{c.hitos.join(" · ")}</div>}
                         {c.control.hora}
                       </th>
                     ))}
@@ -81,7 +83,7 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
                         {columnas.map((c) => {
                           const x = f.celda(c.control);
                           return (
-                            <td key={c.control.id} className={`v ${borde(c.nuevoDia)}`}>
+                            <td key={c.control.id} className={`v ${clase(c)}`}>
                               {x.bloqueado ? <span className="lockc" title="Invalidado: asincronía en modalidad controlada">bloq.</span> : x.texto}
                             </td>
                           );

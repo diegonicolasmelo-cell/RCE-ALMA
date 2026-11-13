@@ -274,7 +274,7 @@ export function Celular() {
 
   const prono = estadoProno(eventos, ahora);
 
-  const guardar = async (seguir = false): Promise<void> => {
+  const guardar = async (ir: "camas" | "siguiente" | "anterior" = "camas"): Promise<void> => {
     const problemas = validarBorrador(b, {
       apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut),
       viaAerea: ep.viaAereaActual,
@@ -298,7 +298,10 @@ export function Celular() {
     // La hora que vale es la REAL del control (puede ser unos minutos antes de guardarlo).
     const horaReal = momentoDeEvaluacion(b.horaControl || horaDe(t), t);
     const realControl = horaReal ? momentoPreciso(horaReal, t) : t;
-    const control = materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: realControl, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo });
+    // Si se llego aqui desde un evento, este control lo monitoriza y queda ligado a el.
+    const pendiente = useApp.getState().eventoMonitorizar;
+    const ligado = pendiente?.episodioId === ep.id ? pendiente : null;
+    const control = { ...materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: realControl, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo }), ...(ligado ? { eventoId: ligado.eventoId } : {}) };
     await repo.guardarControl(control);
     // Cambio de soporte (p. ej. CPAP+PS a tubo T / HME): desvinculacion o reconexion, con su hora real.
     const tr = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
@@ -309,11 +312,13 @@ export function Celular() {
     useApp.getState().descartar(ep.id);
     franja.cerrar();
     setTab("control");
-    // Guardado el control: a las tarjetas de las camas, o directo al control del paciente siguiente.
-    if (seguir && siguientePaciente) irA("cama", siguientePaciente.id);
+    if (ligado) useApp.getState().monitorizarEvento(null);
+    // Guardado el control: a las tarjetas de las camas, o directo al control del paciente siguiente o anterior.
+    const destino = ir === "siguiente" ? siguientePaciente : ir === "anterior" ? anteriorPaciente : null;
+    if (destino) irA("cama", destino.id);
     else irA("camas");
-    const conEvento = tr ? ` ${tr.texto} registrada.` : "";
-    const sigue = seguir && siguientePaciente ? ` Sigue ${nombreCama(siguientePaciente.cama)}.` : "";
+    const conEvento = tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "";
+    const sigue = destino ? ` Sigue ${nombreCama(destino.cama)}.` : "";
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue}` : `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue} Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
@@ -321,13 +326,20 @@ export function Celular() {
   const enTabControl = ORDEN_TABS.includes(tab as TabDeControl);
   // El paciente siguiente: primero mis camas y despues las demas, en orden de cama.
   const ordenCamas = [...episodios.filter(esMia), ...episodios.filter((e) => !esMia(e))];
-  const siguientePaciente = ordenCamas[ordenCamas.findIndex((e) => e.id === ep.id) + 1] ?? null;
+  const iCama = ordenCamas.findIndex((e) => e.id === ep.id);
+  const siguientePaciente = ordenCamas[iCama + 1] ?? null;
+  const anteriorPaciente = iCama > 0 ? ordenCamas[iCama - 1] ?? null : null;
   const botonesGuardar = (
     <>
-      <button type="button" id="btn-guardar-control" data-guardar className={siguientePaciente ? "btn" : "btn primary"} style={{ flex: 1 }} onClick={() => void guardar()}>Guardar</button>
+      {anteriorPaciente && (
+        <button type="button" id="btn-guardar-anterior" className="btn guardar-lado" onClick={() => void guardar("anterior")}>
+          ‹ Guardar y anterior · {anteriorPaciente.cama.slice(-2)}
+        </button>
+      )}
+      <button type="button" id="btn-guardar-control" data-guardar className="btn guardar-principal" onClick={() => void guardar()}>Guardar</button>
       {siguientePaciente && (
-        <button type="button" id="btn-guardar-siguiente" className="btn primary" style={{ flex: 2 }} onClick={() => void guardar(true)}>
-          Guardar y siguiente · {siguientePaciente.cama.slice(-2)}
+        <button type="button" id="btn-guardar-siguiente" className="btn primary guardar-lado" onClick={() => void guardar("siguiente")}>
+          Guardar y siguiente · {siguientePaciente.cama.slice(-2)} ›
         </button>
       )}
     </>
@@ -356,7 +368,7 @@ export function Celular() {
       <div className="seg-relleno" aria-hidden />
     </>
   );
-  const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t) => { franja.cerrar(); useApp.getState().descartar(ep.id); setTab("control"); avisar(t); }} />;
+  const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t, cambiaVia) => { franja.cerrar(); if (cambiaVia) useApp.getState().descartar(ep.id); setTab("control"); avisar(t); }} />;
 
 
   if (vista === "elegir") {
@@ -412,10 +424,10 @@ export function Celular() {
   );
 
   /** Tras un evento que cambia la via aerea: directo al control post evento. */
-  const alCambiarVia = (texto: string): void => {
+  const alCambiarVia = (texto: string, cambiaVia = true): void => {
     franja.cerrar();
-    // Lo que se alcanzo a anotar antes del evento era con la via anterior: el control parte de cero.
-    useApp.getState().descartar(ep.id);
+    // Si cambio la via, lo anotado antes era con la via anterior: el control parte de cero.
+    if (cambiaVia) useApp.getState().descartar(ep.id);
     irA("cama", ep.id);
     avisar(texto);
   };

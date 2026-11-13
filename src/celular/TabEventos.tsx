@@ -4,6 +4,7 @@ import {
   MUESTRAS_CULTIVO,
   PROCEDIMIENTOS_MEDICOS,
   describirEvento,
+  pideControl,
   esViaAereaArtificial,
   estadoProno,
   ETIQUETA_MODALIDAD,
@@ -52,6 +53,8 @@ const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ val
 
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
 const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "decan"];
+/** Eventos que se registran y siguen con su control (todos menos filtros, TrachCare, cama y PVE). */
+const CON_CONTROL = ["extub", "reint", "traq", "autoext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent"];
 
 const MOTIVOS_SIN_PVE: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => ({
   valor: k,
@@ -67,7 +70,7 @@ const MOTIVOS_CAMBIO: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_CAMBIO) a
  * `onCambioVia`: que hacer tras un evento que cambia la via aerea (intubacion, extubacion,
  * TQT). El evento lleva al control post evento: el registro sigue al hecho.
  */
-export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVia?: (texto: string) => void }) {
+export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVia?: (texto: string, cambiaVia: boolean) => void }) {
   const { ep, eventos, ahora, rutAutor } = ctx;
   const { repo } = useServicios();
   const avisar = useApp((s) => s.avisar);
@@ -217,8 +220,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       avisar(`Paciente trasladado a ${nombreCama(v["cama"] ?? "")}. ${nombreCama(ep.cama)} queda libre: recuerda el aseo terminal antes de ocuparla.`);
       return;
     }
-    if (CAMBIAN_VIA.includes(it.k) && onCambioVia) {
-      onCambioVia(`${it.texto} registrada. Sigue con el control post evento.`);
+    // El evento queda guardado y se sigue con su control, que queda ligado a el.
+    if (pideControl(ev) && onCambioVia) {
+      useApp.getState().monitorizarEvento({ episodioId: ep.id, eventoId: ev.id, texto: describirEvento(ev, [...eventos, ev]), hora: ev.hora });
+      onCambioVia(`Evento registrado: ${it.texto}. Sigue con su monitorización.`, CAMBIAN_VIA.includes(it.k));
       return;
     }
     avisar(it.peligro ? "Evento registrado. El PC ya muestra la alerta con el informe pre-llenado." : "Evento registrado.");
@@ -286,7 +291,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
             </div>
           ))}
           <div className="row">
-            <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar</button>
+            <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>{CON_CONTROL.includes(item.k) ? "Registrar y monitorizar ›" : "Registrar"}</button>
             <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
           </div>
           {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}

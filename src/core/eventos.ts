@@ -7,7 +7,7 @@
  * hace imposible que el contador de prono quede desincronizado de los hechos.
  */
 
-import type { Episodio, EventoClinico, TipoEvento, ViaAerea } from "./tipos";
+import type { Control, Episodio, EventoClinico, TipoEvento, ViaAerea } from "./tipos";
 import { EVENTOS_DE_RIESGO } from "./tipos";
 import { equiposParaVia, equiposSegunModalidad, ponerEnUso } from "./equipos";
 
@@ -305,4 +305,31 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
     default:
       return ep;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Eventos que se monitorizan con un control
+// ---------------------------------------------------------------------------
+
+/**
+ * Casi todo evento se acompana de un control (p. ej. en una puncion lumbar se titula el VM; la
+ * aspiracion de un cultivo puede descompensar). Quedan fuera los cambios de filtro y TrachCare,
+ * el cambio de cama, la correccion de la via sin evento, las evaluaciones y lo propio de la PVE.
+ */
+export const TIPOS_CON_CONTROL: ReadonlySet<TipoEvento> = new Set<TipoEvento>([
+  "REINTUBACION", "EXTUBACION_PROGRAMADA", "AUTOEXTUBACION", "DECANULACION", "TRAQUEOSTOMIA",
+  "CAMBIO_TUBO", "CAMBIO_CANULA", "AJUSTE_TUBO", "INICIO_PRONO", "SUPINACION", "ASISTENCIA_FBC",
+  "ASISTENCIA_PROCEDIMIENTO", "TOMA_CULTIVO", "TRASLADO_IMAGEN", "PCR", "EVENTO_CENTINELA"
+]);
+
+export const pideControl = (ev: EventoClinico): boolean =>
+  TIPOS_CON_CONTROL.has(ev.tipo) &&
+  // La extubacion por PVE se sigue con los controles de 30, 60 y 120 minutos de la PVE.
+  !(ev.tipo === "EXTUBACION_PROGRAMADA" && !ev.sinPve);
+
+/** Eventos que piden control y aun no tienen ninguno despues (ni uno ligado a ellos). */
+export function eventosSinMonitorizar(eventos: readonly EventoClinico[], controles: readonly Control[]): readonly EventoClinico[] {
+  const ligados = new Set(controles.map((c) => c.eventoId).filter(Boolean));
+  const ultimo = controles.reduce((m, c) => (c.registradoEn > m ? c.registradoEn : m), "");
+  return eventos.filter((e) => pideControl(e) && !ligados.has(e.id) && e.registradoEn > ultimo);
 }

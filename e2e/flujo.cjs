@@ -781,7 +781,8 @@ async function esperarServidor() {
       assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
       await cel.click('button:has-text("Cambio de filtro HME")');
       await cel.waitForTimeout(400);
-      assert.match(await cel.textContent(".app-cel"), /Filtro HME.*vence/);
+      assert.match(await cel.textContent(".app-cel"), /Línea de tiempo[\s\S]*Cambio de filtro HME/, "el cambio queda en la linea de tiempo");
+      assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0, "Eventos muestra solo los eventos");
     });
 
     await prueba("un control nuevo hereda solo el modo y la FiO2; los demas ajustes nacen en blanco y se repiten con 'Usar lo anterior'", async () => {

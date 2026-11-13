@@ -6,8 +6,6 @@ import {
   describirEvento,
   esViaAereaArtificial,
   estadoProno,
-  vigenciaFiltros,
-  ETIQUETA_ELEMENTO,
   ETIQUETA_MODALIDAD,
   ETIQUETA_MOTIVO_CAMBIO,
   ETIQUETA_MOTIVO_SIN_PVE,
@@ -174,7 +172,6 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     (it.req === "tet" && ep.viaAereaActual === "TET") ||
     (it.req === "tqt" && ep.viaAereaActual === "TQT");
   const item = abierto ? todos.find((i) => i.k === abierto) : undefined;
-  const artificial = esViaAereaArtificial(ep.viaAereaActual);
 
   const registrar = async (it: Item, v: Record<string, string>): Promise<void> => {
     const numOk = (x: string | undefined, min: number, max: number): boolean => {
@@ -296,21 +293,6 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </div>
       )}
 
-      {/* Filtros y circuito: solo con via aerea artificial (con via natural no hay HME, HEPA ni TrachCare). */}
-      {artificial && (
-        <section>
-          <h3>Filtros y circuito</h3>
-          <ul className="small ink2" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 3 }}>
-            {vigenciaFiltros(eventos, ahora).map((v) => (
-              <li key={v.elemento}>
-                <b>{ETIQUETA_ELEMENTO[v.elemento]}</b>:{" "}
-                {v.estado === "SIN_REGISTRO" ? "sin cambio registrado" : v.estado === "VENCIDO" ? `vencido desde el ${v.venceFecha}` : v.estado === "VENCE_HOY" ? `cambiado el ${v.cambiadoEn}, vence hoy` : `cambiado el ${v.cambiadoEn}, vence el ${v.venceFecha}`}
-              </li>
-            ))}
-          </ul>
-          <p className="small muted mt">Se anota la fecha solo cuando se cambia; el sistema cuenta el plazo (TrachCare y HEPA 3 días, HME 2).</p>
-        </section>
-      )}
 
       {grupos.filter((g) => g.items.some(aplica)).map((g) => (
         <section key={g.titulo}>

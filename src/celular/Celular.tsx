@@ -29,8 +29,8 @@ import { CLAVE_ERROR_SYNC, textoErrorSync } from "../datos/sync";
 import type { ErrorSync } from "../datos/sync";
 import { ReconectarCelular } from "../app/ConectarCelular";
 import { temaEfectivo, useApp } from "../app/store";
-import { CabeceraMarca } from "../app/Marca";
-import { Ayuda, BarraInferior, CabeceraInicio, HojaMas, MisControles, PanelAvisos, PanelCuenta, TituloVista, avisosDe, useBarraOculta } from "./Inicio";
+import { AZUL_MARINO, CabeceraMarca, FONDO_DIA, FONDO_NOCHE, useColorBarras } from "../app/Marca";
+import { Ayuda, EVENTO_ATRAS, BarraInferior, CabeceraInicio, HojaMas, MisControles, PanelAvisos, PanelCuenta, TituloVista, avisosDe, useBarraOculta } from "./Inicio";
 import type { AccionMas, EstadoSync, ResumenCama } from "./Inicio";
 import type { TabCelular } from "../app/store";
 import { horaDe, nuevoId } from "../app/util";
@@ -129,6 +129,7 @@ export function Celular() {
     return () => { delete document.documentElement.dataset["estilo"]; };
   }, [estilo]);
   const tipoTurno = turnoDe(ahora).tipo;
+  useColorBarras(vista === "elegir" ? AZUL_MARINO : temaEfectivo(tema, tipoTurno) === "dark" ? FONDO_NOCHE : FONDO_DIA);
   useEffect(() => {
     document.documentElement.dataset["theme"] = temaEfectivo(tema, tipoTurno);
     return () => { delete document.documentElement.dataset["theme"]; };
@@ -136,6 +137,36 @@ export function Celular() {
   const [hojaMas, setHojaMas] = useState<"menu" | AccionMas | null>(null);
   const [panel, setPanel] = useState<"cuenta" | "avisos" | null>(null);
   const barraOculta = useBarraOculta();
+
+  // --- Boton «atras» del telefono: retrocede dentro de la app en vez de cerrarla ---
+  // Se deja una entrada de historial «de guardia»: al tocar atras se consume, la app retrocede un
+  // paso y la repone. En Pacientes, el primer atras avisa; el segundo (antes de 2,5 s) sale.
+  const estadoAtras = useRef({ panel, hojaMas, vista, misCamas: misCamas !== null });
+  estadoAtras.current = { panel, hojaMas, vista, misCamas: misCamas !== null };
+  useEffect(() => {
+    const guardia = (): void => window.history.pushState({ kapta: true }, "", window.location.href);
+    if (!(window.history.state as { kapta?: boolean } | null)?.kapta) guardia();
+    let salirHasta = 0;
+    let reponer: ReturnType<typeof setTimeout> | undefined;
+    const alAtras = (): void => {
+      const st = estadoAtras.current;
+      const ev = new Event(EVENTO_ATRAS, { cancelable: true });
+      const teclado = document.activeElement as HTMLElement | null;
+      if (document.body.classList.contains("teclado-propio") && teclado?.blur) { teclado.blur(); franja.cerrar(); return guardia(); }
+      if (st.panel) { setPanel(null); return guardia(); }
+      if (st.hojaMas) { setHojaMas(null); return guardia(); }
+      if (!window.dispatchEvent(ev)) return guardia();
+      if (st.vista !== "camas" && !(st.vista === "elegir" && !st.misCamas)) { franja.cerrar(); irA("camas"); return guardia(); }
+      // En Pacientes: el primer atras avisa; si se repite pronto, se deja salir.
+      if (Date.now() < salirHasta) return;
+      salirHasta = Date.now() + 2500;
+      avisar("Toca atrás otra vez para salir.");
+      clearTimeout(reponer);
+      reponer = setTimeout(() => { if ((window.history.state as { kapta?: boolean } | null)?.kapta !== true) guardia(); }, 2500);
+    };
+    window.addEventListener("popstate", alAtras);
+    return () => { window.removeEventListener("popstate", alAtras); clearTimeout(reponer); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   /** Deslizar desde el borde derecho abre el panel de la cuenta. */
   const toque = useRef<number | null>(null);
 

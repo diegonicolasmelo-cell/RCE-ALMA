@@ -17,8 +17,8 @@ export default defineConfig({
         short_name: "Kapta CSV",
         description: "Monitorización kinésica a pie de cama · UCI Adulto",
         lang: "es",
-        theme_color: "#0f8c86",
-        background_color: "#eef1f4",
+        theme_color: "#0b2c5a",
+        background_color: "#0b2c5a",
         display: "standalone",
         orientation: "portrait",
         // Relativos: funciona igual en la raiz de un dominio o en un subdirectorio (GitHub Pages).

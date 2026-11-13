@@ -6,7 +6,7 @@ import { guardarMeta, leerMeta } from "../datos/db";
 import { refrescarDotacion } from "../datos/servicios";
 import type { EstadoDotacion } from "../datos/servicios";
 import { useServicios } from "../app/contexto";
-import { CabeceraMarca, PaisajeCoquimbo } from "../app/Marca";
+import { AZUL_MARINO, CabeceraMarca, PaisajeCoquimbo, useColorBarras } from "../app/Marca";
 import { Lock, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useApp } from "../app/store";
 import { activarHuella, huellaDisponible, leerHuellas, olvidarHuella, verificarHuella } from "./huella";
@@ -29,6 +29,7 @@ export function sesionVigente(s: SesionGuardada | undefined, ahora = Date.now())
 }
 
 export function Login() {
+  useColorBarras(AZUL_MARINO);
   const { api, db, local } = useServicios();
   const setSesion = useApp((s) => s.setSesion);
   const [rut, setRut] = useState("");

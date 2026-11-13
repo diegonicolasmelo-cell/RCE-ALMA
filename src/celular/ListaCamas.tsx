@@ -12,7 +12,6 @@ import {
   bnmEnCurso,
   bnmVigente,
   ETIQUETA_ELEMENTO,
-  ETIQUETA_MODALIDAD,
   horasDeVm,
   eventosSinMonitorizar,
   textoCategoriaRem,
@@ -25,6 +24,7 @@ import { useApp } from "../app/store";
 import { Pildora } from "./componentes";
 import { IngresoRapido } from "./IngresoRapido";
 import { TrasladoCama } from "./TrasladoCama";
+import { useAtras } from "./Inicio";
 
 interface Fila {
   readonly ep: Episodio;
@@ -46,6 +46,7 @@ export function ListaCamas() {
   /** Paciente al que se le esta cambiando la cama (panel flotante con las camas libres). */
   const [trasladando, setTrasladando] = useState<Episodio | null>(null);
   const pedirEvento = useApp((s) => s.pedirEvento);
+  useAtras(ingresando !== null || trasladando !== null, () => { setIngresando(null); setTrasladando(null); });
   // Pedidos del «+» de la barra: ingresar en una cama libre o cambiar a un paciente de cama.
   const ingresoPedido = useApp((s) => s.ingresoPedido);
   const trasladoPedido = useApp((s) => s.trasladoPedido);
@@ -168,11 +169,10 @@ export function ListaCamas() {
             </div>
             <div className="ultimo-control">
               <span className="small muted">Último control</span>
+              {/* Solo la hora: el detalle (modo, FC, SpO2) esta en Controles y en la sabana. */}
               {ultimo ? (
                 <b>
-                  {ultimo.hora} · {ETIQUETA_MODALIDAD[ultimo.ventilacion.modalidad] ?? "sin modo"}
-                  {ultimo.fc !== null && <> · FC {ultimo.fc}</>}
-                  {ultimo.spo2 !== null && <> · SpO₂ {ultimo.spo2} %</>}
+                  {ultimo.hora}
                   {minutos !== null && minutos >= 60 && <span className="hace"> · hace {haceTexto(minutos)}</span>}
                 </b>
               ) : <b className="muted">sin controles</b>}

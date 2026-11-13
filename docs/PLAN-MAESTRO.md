@@ -528,3 +528,13 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
 3. Informe de gestión de riesgo pre-llenado en **< 5 min** en vez de 40.
 4. REM 28 mensual sin recuento manual.
 5. Tendencias de 24 h legibles de un vistazo en la estación.
+
+## 15. Ideas guardadas (propuestas que Diego dejó para después)
+
+- **Tocar «Último control» en la tarjeta del paciente abre su sábana** (propuesta del 13-nov-2026).
+  Hoy la tarjeta muestra solo la hora del último control; el detalle (modo, FC, SpO₂) se ve en
+  «Controles» y en la sábana. La idea era que tocar esa línea abriera directo la sábana de ese
+  paciente, como al tocar una tarjeta en «Controles» (`MisControles` en `src/celular/Inicio.tsx`
+  ya trae la sábana ajustada al celular con el control destacado). Diego la dejó fuera por
+  ahora: teme que los toques accidentales saquen de la pantalla y prefiere un inicio más
+  ordenado y controlado. Retomarla si en el uso se pide.

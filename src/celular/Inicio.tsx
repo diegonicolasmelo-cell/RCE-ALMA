@@ -37,6 +37,28 @@ import bannerDia from "../app/iconos/banner-dia.png?inline";
 import bannerNoche from "../app/iconos/banner-noche.png?inline";
 import type { Tema, VistaCelular } from "../app/store";
 
+/**
+ * El boton «atras» del telefono: antes de salir de la pantalla, cada ventana abierta (sabana, ingreso,
+ * cambio de cama) tiene la oportunidad de cerrarse. Quien la cierra llama a preventDefault().
+ */
+export const EVENTO_ATRAS = "kapta:atras";
+
+/** Cierra lo que este componente tenga abierto cuando se toca «atras». */
+export function useAtras(abierto: boolean, cerrar: () => void): void {
+  const fn = useRef(cerrar);
+  fn.current = cerrar;
+  useEffect(() => {
+    if (!abierto) return;
+    const alAtras = (e: Event): void => {
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      fn.current();
+    };
+    window.addEventListener(EVENTO_ATRAS, alAtras);
+    return () => window.removeEventListener(EVENTO_ATRAS, alAtras);
+  }, [abierto]);
+}
+
 export interface ResumenCama {
   readonly ep: Episodio;
   readonly controles: readonly Control[];
@@ -256,19 +278,38 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
   const estilo = useApp((s) => s.estilo);
   const setEstilo = useApp((s) => s.setEstilo);
   const irA = useApp((s) => s.irA);
+  // El panel sigue al dedo hacia la derecha; al soltar se va si recorrio mas de un tercio, o vuelve.
   const inicioX = useRef<number | null>(null);
+  const caja = useRef<HTMLElement>(null);
+  const [dx, setDx] = useState(0);
+  const [arrastrando, setArrastrando] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
+  const salir = (): void => {
+    if (saliendo) return;
+    setSaliendo(true);
+    setTimeout(onCerrar, 220);
+  };
+  const ancho = caja.current?.offsetWidth ?? 320;
+  const avance = saliendo ? 1 : Math.min(1, dx / ancho);
   return (
-    <div className="velo-inicio" onClick={onCerrar}>
+    <div className="velo-inicio" style={{ backgroundColor: `rgba(15,26,36,${(0.45 * (1 - avance)).toFixed(3)})` }} onClick={salir}>
       <aside
+        ref={caja}
         className="panel-cuenta"
         role="dialog"
         aria-label="Mi cuenta"
+        style={{ transform: saliendo ? "translateX(105%)" : dx > 0 ? `translateX(${dx}px)` : undefined, transition: arrastrando ? "none" : "transform .22s ease" }}
         onClick={(e) => e.stopPropagation()}
-        // Deslizar el dedo hacia la derecha lo esconde.
-        onTouchStart={(e) => { inicioX.current = e.touches[0]?.clientX ?? null; }}
-        onTouchMove={(e) => { if (inicioX.current !== null && (e.touches[0]?.clientX ?? 0) - inicioX.current > 60) { inicioX.current = null; onCerrar(); } }}
+        onTouchStart={(e) => { inicioX.current = e.touches[0]?.clientX ?? null; setArrastrando(true); }}
+        onTouchMove={(e) => { if (inicioX.current !== null) setDx(Math.max(0, (e.touches[0]?.clientX ?? 0) - inicioX.current)); }}
+        onTouchEnd={() => {
+          inicioX.current = null;
+          setArrastrando(false);
+          if (dx > ancho / 3) salir();
+          else setDx(0);
+        }}
       >
-        <button type="button" className="bt-plano cerrar" aria-label="Cerrar" onClick={onCerrar}><X size={20} aria-hidden /></button>
+        <button type="button" className="bt-plano cerrar" aria-label="Cerrar" onClick={salir}><X size={20} aria-hidden /></button>
         <div className="pc-cabeza">
           <span className="avatar grande" aria-hidden>{inicial(nombre)}</span>
           <b>{nombreSinTitulo(nombre)}</b>
@@ -346,6 +387,7 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
   /** Control tocado: abre la sabana de ese paciente con ese control destacado. */
   const [abierto, setAbierto] = useState<{ episodioId: string; controlId: string } | null>(null);
   const sab = abierto ? resumen.find((r) => r.ep.id === abierto.episodioId) : undefined;
+  useAtras(abierto !== null, () => setAbierto(null));
   const desde = ahora.getTime() - 24 * 3600_000;
   const mios = resumen
     .flatMap((r) => r.controles.filter((c) => c.rutAutor === rut && Date.parse(c.registradoEn) >= desde).map((c) => ({ c, r })))

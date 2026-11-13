@@ -646,7 +646,7 @@ article .btn-cambiar-cama{width:34px;height:34px;margin-left:0}
 
 .tarjeta-cama .cama-num{font:800 24px var(--font-ui);letter-spacing:-.01em}
 .cama-sin .cama-num{font:800 20px var(--font-ui)}
-.ultimo-control{display:grid;gap:1px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.ultimo-control{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
 .ultimo-control b{font:700 13px var(--font-data);font-variant-numeric:tabular-nums}
 .ultimo-control .hace{color:var(--ink-2);font-weight:600}
 

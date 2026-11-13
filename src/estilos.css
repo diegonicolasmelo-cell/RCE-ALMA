@@ -714,3 +714,8 @@ body.teclado-propio .barra-inf{display:none}
 @keyframes sube{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
 @keyframes entra{from{transform:translateX(40px);opacity:.6}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.hoja-mas,.panel-cuenta{animation:none}}
+.pc-banner{padding:8px 18px 12px;display:flex;justify-content:center}
+.pc-banner img{width:100%;max-width:300px;height:auto}
+.pc-banner .de-noche{display:none}
+:root[data-theme="dark"] .pc-banner .de-dia{display:none}
+:root[data-theme="dark"] .pc-banner .de-noche{display:block}

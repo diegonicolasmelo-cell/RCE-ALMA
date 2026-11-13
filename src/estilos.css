@@ -690,7 +690,7 @@ body.teclado-propio .barra-inf{display:none}
 .pc-cabeza .rol{color:var(--accent);font-weight:700;font-size:13px}
 .pc-cabeza .caja{border:1px solid var(--line);border-radius:12px;padding:5px 14px;font-size:13px;margin-top:4px}
 .pc-turno{text-align:center;padding:10px;border-bottom:1px solid var(--line);font-weight:600;font-size:13.5px}
-.pc-lista{flex:1;overflow-y:auto;padding:6px 16px;display:flex;flex-direction:column}
+.pc-lista{flex:0 1 auto;overflow-y:auto;padding:6px 16px;display:flex;flex-direction:column}
 .pc-fila{display:flex;align-items:center;gap:12px;border:0;background:none;color:var(--ink);padding:13px 0;font-size:15px;text-align:left;cursor:pointer}
 .pc-fila.bloque{cursor:default;padding-bottom:6px}
 .pc-fila>span{flex:1}
@@ -714,8 +714,8 @@ body.teclado-propio .barra-inf{display:none}
 @keyframes sube{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
 @keyframes entra{from{transform:translateX(40px);opacity:.6}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.hoja-mas,.panel-cuenta{animation:none}}
-.pc-banner{padding:8px 18px 12px;display:flex;justify-content:center}
-.pc-banner img{width:100%;max-width:300px;height:auto}
+.pc-banner{margin-block:auto;padding:16px 18px;display:flex;justify-content:center}
+.pc-banner img{width:100%;max-width:250px;height:auto}
 .pc-banner .de-noche{display:none}
 :root[data-theme="dark"] .pc-banner .de-dia{display:none}
 :root[data-theme="dark"] .pc-banner .de-noche{display:block}

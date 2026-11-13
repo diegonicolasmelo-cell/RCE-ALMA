@@ -60,6 +60,10 @@ export function App() {
   const setSesion = useApp((s) => s.setSesion);
   const ruta = useRuta();
   useFavicon(ruta === "estacion" ? "estacion" : "csv");
+  // El celular es una app de pantalla fija (igual en iPhone y Android); la estacion es una pagina normal.
+  useEffect(() => {
+    document.documentElement.classList.toggle("celular", ruta === "celular");
+  }, [ruta]);
 
   useEffect(() => {
     iniciarServicios().then(setServicios).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));

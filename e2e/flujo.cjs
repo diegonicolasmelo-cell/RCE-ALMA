@@ -128,7 +128,7 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".ctl-cabeza h1"), /PVE · Cama 1/);
       assert.match(await cel.textContent(".app-cel"), /Checklist: 8 criterios del protocolo/);
       assert.equal(await cel.locator("#btn-guardar-control").count(), 0, "la PVE directa no abre el control");
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector("#cuerpo");
       assert.equal(await cel.locator(".cel-camas").count(), 0, "sin franja de camas abajo: no se cambia de paciente sin querer");
@@ -143,7 +143,7 @@ async function esperarServidor() {
     });
 
     await prueba("inicio: saludo, barra con «+», controles, ayuda, panel de la cuenta y dia / noche", async () => {
-      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.waitForSelector(".inicio-top");
       assert.match(await cel.textContent(".cel-top"), /Hola, Diego Melo/);
       // El «+» abre la hoja con iconos; elegir «Control» pide la cama y abre su control.
@@ -154,7 +154,7 @@ async function esperarServidor() {
       await cel.click('[role=dialog][aria-label="¿De qué paciente es el control?"] .fila-cama:has-text("Cama 3")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
       assert.equal(await cel.locator('nav[aria-label="Navegación"]').count(), 0, "dentro del control no hay barra: manda el teclado y guardar");
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       // «Evaluaciones» pide el paciente; tocar fuera cierra la hoja.
       await cel.click('nav[aria-label="Navegación"] button:has-text("Evaluaciones")');
       await cel.waitForSelector('[role=dialog][aria-label="¿A qué paciente evalúas?"]');
@@ -418,7 +418,7 @@ async function esperarServidor() {
       if (await m.locator(".kb").isVisible()) await m.tap('.kb [data-kb="ocultar"]');
       await m.waitForTimeout(200);
       // Evaluaciones: el MRC-ss con su teclado (solo 0 a 5 y NE); cada toque deja el valor y avanza.
-      await m.tap('button:has-text("‹ Camas")');
+      await m.tap('button:has-text("‹ Pacientes")');
       await m.tap('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
       await m.tap('.pestanas-ev button:text-is("Fuerza y función")');
       await m.tap('[data-escala="MRC_SS"]');
@@ -433,7 +433,7 @@ async function esperarServidor() {
       assert.equal(await m.inputValue("#ev-m1i"), "NE");
       await m.tap('.kb [data-kb="ocultar"]');
       // Eventos: las casillas numericas de los formularios usan el mismo teclado.
-      await m.tap('button:has-text("‹ Camas")');
+      await m.tap('button:has-text("‹ Pacientes")');
       await m.tap('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       await m.tap('button:has-text("Ajustar posición del tubo")');
       assert.equal(await m.getAttribute("#evf-cm", "inputmode"), "none");
@@ -454,7 +454,7 @@ async function esperarServidor() {
       await est.click('button:has-text("Confirmar alta y borrar la identidad")');
       await est.waitForTimeout(500);
       await est.close();
-      await m.tap('button:has-text("‹ Camas")');
+      await m.tap('button:has-text("‹ Pacientes")');
       await m.tap('button[aria-label="Ingresar Cama 18"]');
       await m.locator('[aria-label="Sexo"] button:text-is("Hombre")').tap();
       await m.locator('[aria-label="Vía aérea"] button:text-is("TET")').tap();
@@ -548,7 +548,7 @@ async function esperarServidor() {
     });
 
     await prueba("Eventos desde la tarjeta: una autoextubacion cambia la via aerea y lleva al control post evento", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Eventos · Cama 2")');
       await cel.click('button:has-text("Autoextubación")');
@@ -567,7 +567,7 @@ async function esperarServidor() {
     });
 
     await prueba("intubar desde Eventos pide el tubo, los cm en la arcada, la talla y el sexo, y lleva al control", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Eventos")');
       // Con via aerea natural no hay cambios de HME, HEPA ni TrachCare, ni el cuadro de filtros.
       for (const t of ["Cambio de filtro HME", "Cambio de TrachCare", "Cambio de filtro HEPA", "Extubación fuera de protocolo", "Traqueostomía", "Ajustar posición del tubo", "Autoextubación", "Iniciar prono"]) assert.equal(await cel.locator(`button:has-text("${t}")`).count(), 0, t);
@@ -626,7 +626,7 @@ async function esperarServidor() {
 
     await prueba("un solo boton de extubacion: fuera de protocolo antes de 24 h de VM, PVE despues; sin PVE posible, se extuba fuera de protocolo desde la PVE", async () => {
       // UCI-02 se reintubo recien (menos de 24 h): la tarjeta ofrece la extubacion fuera de protocolo.
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       const tarjeta = cel.locator('article[aria-label="Cama UCI-02"]');
       await tarjeta.waitFor();
       assert.equal(await tarjeta.locator('button:has-text("Extubación fuera de protocolo")').count(), 1);
@@ -638,7 +638,7 @@ async function esperarServidor() {
       assert.ok(motivos.includes("Agitación psicomotora"), motivos.join(" | "));
       await cel.click('button:text-is("Cancelar")');
       // UCI-09 (mas de 24 h, en ACVC, ventilacion domiciliaria): la PVE no se puede, pero desde ahi se extuba.
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
       assert.equal(await cel.locator('.evgrid button:text-is("Extubación fuera de protocolo")').count(), 0, "con mas de 24 h el boton es la PVE");
       const pveBtn = cel.locator('.evgrid button:has-text("PVE")');
@@ -661,7 +661,7 @@ async function esperarServidor() {
     });
 
     await prueba("autoextubacion con reintubacion inmediata: sigue por el mismo camino de la intubacion y lleva al control", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-04"] button:has-text("Eventos")');
       await cel.click('button:has-text("Autoextubación")');
       await cel.fill("#evf-txt", "se retira el TET en agitación");
@@ -683,7 +683,7 @@ async function esperarServidor() {
 
     await prueba("PVE como el registro simple: checklist, inicio, termino contrastado, extubacion, post extubacion y falla con reintubacion", async () => {
       assert.equal(await cel.locator('[role=tab]:has-text("PVE")').count(), 0, "sin pestaña PVE en el control");
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("PVE")');
       await cel.waitForSelector('section[aria-label="Checklist"]');
       const todos = ["Resolución del cuadro", "Signos de infección", "DVA", "PaFi", "Volumen minuto", "GCS / SAS", "Estab. metab. o vías de corrección", "Hb ≥ 7"];
@@ -736,13 +736,13 @@ async function esperarServidor() {
       await cel.click('button:has-text("Registrar falla y reintubación")');
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /la vía aérea vuelve a TET/);
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       assert.match(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET 7\.5 · 21 cm · TOT 0 d/);
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
     });
 
     await prueba("pasar de CPAP+PS a tubo T / HME es una desvinculacion, con su propia hora real", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
       await cel.waitForSelector(".hoja-simple");
       await cel.selectOption("#in-modo", "TUBO_T");
@@ -760,7 +760,7 @@ async function esperarServidor() {
     });
 
     await prueba("evaluaciones en cuatro pestañas: cada bloque cabe en la pantalla, con hora real, botones y correccion del dato previo", async () => {
-      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.waitForSelector('article[aria-label="Cama UCI-03"]');
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
@@ -827,7 +827,7 @@ async function esperarServidor() {
     });
 
     await prueba("el cambio de HME queda registrado y el bloqueo neuromuscular vive en las infusiones en curso", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
       await cel.click('[role=tab]:has-text("Control")');
       await cel.click(".agregar-inf");
@@ -842,7 +842,7 @@ async function esperarServidor() {
     });
 
     await prueba("un control nuevo hereda solo el modo y la FiO2; los demas ajustes nacen en blanco y se repiten con 'Usar lo anterior'", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector(".hoja-simple");
       assert.equal(await cel.inputValue("#in-vent-fio2"), "35", "la FiO2 se hereda");
@@ -863,7 +863,7 @@ async function esperarServidor() {
     });
 
     await prueba("CNAF: flujo, temperatura, FiO2, FR y musculatura accesoria en el mismo cuadro; la SpO2 en CSV", async () => {
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-05"] button:has-text("Monitorización")');
       await cel.click('[role=tab]:has-text("Control")');
       await cel.selectOption("#in-modo", "CNAF");
@@ -874,7 +874,7 @@ async function esperarServidor() {
     });
 
     await prueba("Controles: tocar una tarjeta abre la sabana de ese paciente en el celular, con ese control destacado; el panel se cierra deslizando a la derecha", async () => {
-      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
       const tarjeta = cel.locator(".tarjeta-control").first();
       await tarjeta.waitFor();
@@ -919,7 +919,7 @@ async function esperarServidor() {
     });
 
     await prueba("codigo PCR: parte sin cama desde el +, guarda cada toque, sobrevive a cerrar la app y al final se elige la cama", async () => {
-      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('nav[aria-label="Navegación"] button[aria-label="Registrar"]');
       await cel.click('.tile:has-text("Código PCR")');
       await cel.waitForSelector('.cod-cab:has-text("CÓDIGO PCR EN CURSO")');
@@ -957,7 +957,16 @@ async function esperarServidor() {
       await cel.waitForSelector('[aria-label="Línea de tiempo"] li:has-text("Paro cardiorrespiratorio")');
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.ok(linea.some((x) => /Paro cardiorrespiratorio, reanimación \d+ min, sin ROSC, 1 choque/.test(x)), linea.join(" | "));
-      await cel.click('button:has-text("‹ Camas")');
+      await cel.click('button:has-text("‹ Pacientes")');
+    });
+
+    await prueba("abrir Monitorización de una cama con un evento sin control liga ese control al evento (sin pasar por Eventos)", async () => {
+      // La cama 3 quedo con el PCR sin monitorizar: su control se abre desde la tarjeta.
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
+      assert.match(await cel.textContent(".franja-evento"), /Monitorización del evento: Paro cardiorrespiratorio/);
+      await cel.click('button:has-text("‹ Pacientes")');
     });
 
     console.log("Estacion (PC)");
@@ -1080,7 +1089,7 @@ async function esperarServidor() {
       await pc.waitForTimeout(600);
       // El celular la ve libre y la ingresa.
       await cel.reload();
-      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.waitForSelector("article.cama-sin");
       assert.equal(await cel.locator("article.cama-sin").count(), 1, "una cama libre, en su lugar de la lista");
       assert.match(await cel.textContent('article.cama-sin'), /Cama 18[\s\S]*Sin ingreso/);
@@ -1217,7 +1226,7 @@ async function esperarServidor() {
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForTimeout(600);
       await cel.goto(URL + "#celular");
-      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.waitForSelector('article[aria-label="Cama UCI-04"]');
       const antes = await cel.textContent('article[aria-label="Cama UCI-04"]');
       // Las flechas de la tarjeta abren el panel con las camas libres; se elige y se confirma.

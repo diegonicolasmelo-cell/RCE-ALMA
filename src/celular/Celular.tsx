@@ -425,7 +425,6 @@ export function Celular() {
       <div className="app-cel">
         {cabecera}
         {titulo("Eventos")}
-        {banda}
         <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
           <TabEventos ctx={ctx} onCambioVia={alCambiarVia} />
         </div>

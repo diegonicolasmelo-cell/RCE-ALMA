@@ -142,6 +142,54 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".banda .l2"), /PI \d+(,\d)? kg · Vt 6-8 ml\/kg: \d+-\d+ ml · talla 172 cm/);
     });
 
+    await prueba("inicio: saludo, barra con «+», controles, ayuda, panel de la cuenta y dia / noche", async () => {
+      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      await cel.waitForSelector(".inicio-top");
+      assert.match(await cel.textContent(".cel-top"), /Hola, Diego Melo/);
+      // El «+» abre la hoja con iconos; elegir «Control» pide la cama y abre su control.
+      await cel.click('nav[aria-label="Navegación"] button[aria-label="Registrar"]');
+      const hoja = cel.locator('[role=dialog][aria-label="¿Qué quieres registrar?"]');
+      assert.deepEqual(await hoja.locator(".tile").allTextContents(), ["Ingresar", "Control", "Cambio de cama", "Evento", "PVE", "Evaluación"]);
+      await hoja.locator('.tile:has-text("Control")').click();
+      await cel.click('[role=dialog][aria-label="¿De qué paciente es el control?"] .fila-cama:has-text("Cama 3")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
+      assert.equal(await cel.locator('nav[aria-label="Navegación"]').count(), 0, "dentro del control no hay barra: manda el teclado y guardar");
+      await cel.click('button:has-text("‹ Camas")');
+      // «Evaluaciones» pide el paciente; tocar fuera cierra la hoja.
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Evaluaciones")');
+      await cel.waitForSelector('[role=dialog][aria-label="¿A qué paciente evalúas?"]');
+      await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
+      assert.equal(await cel.locator(".hoja-mas").count(), 0);
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Controles")');
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Ayuda")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Ayuda")');
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
+      await cel.waitForSelector('article[aria-label^="Cama"]');
+      // La barra se esconde al deslizar hacia abajo y vuelve al tocar la pantalla.
+      await cel.evaluate(() => { document.querySelector(".cel-cuerpo").scrollTop = 500; });
+      await cel.waitForSelector("nav.barra-inf.oculta");
+      await cel.click(".cel-top .hola");
+      await cel.waitForSelector("nav.barra-inf:not(.oculta)");
+      await cel.evaluate(() => { document.querySelector(".cel-cuerpo").scrollTop = 0; });
+      // Panel de la cuenta: dia, noche o automatico (noche en el turno noche).
+      await cel.click('[aria-label="Mi cuenta"]');
+      const cuenta = cel.locator('[role=dialog][aria-label="Mi cuenta"]');
+      assert.match(await cuenta.textContent(), /Diego Melo[\s\S]*6 camas a tu cargo/);
+      await cuenta.locator('[role=radio]:has-text("Noche")').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), "dark");
+      await cuenta.locator('[role=radio]:has-text("Día")').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), "light");
+      await cuenta.locator('[role=radio]:has-text("Automático")').click();
+      const hora = await cel.evaluate(() => new Date().getHours());
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), hora >= 8 && hora < 20 ? "light" : "dark");
+      await cuenta.locator('button[aria-label="Cerrar"]').click();
+      assert.equal(await cuenta.count(), 0);
+      // Vuelve a donde estaba el recorrido: el control de la cama 1.
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 1")');
+    });
+
     await prueba("el control es el registro simple: dos tarjetas, CSV y terapia ventilatoria, una fila por dato", async () => {
       assert.deepEqual(await cel.locator(".hoja-simple > section > h2").evaluateAll((l) => l.map((x) => x.firstChild.textContent.trim())), ["CSV", "Terapia ventilatoria"]);
       const csv = (await cel.locator('section[aria-label="CSV"] > .fila > .et').allTextContents()).map((t) => t.split(/\s{2,}|Se guarda|lpm|mmHg|%|O · V · M|1-7/)[0].trim());
@@ -942,7 +990,7 @@ async function esperarServidor() {
       if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
       await cel.waitForSelector("article.cama-sin");
       assert.equal(await cel.locator("article.cama-sin").count(), 1, "una cama libre, en su lugar de la lista");
-      assert.match(await cel.textContent('article.cama-sin'), /UCI-18[\s\S]*Sin ingreso/);
+      assert.match(await cel.textContent('article.cama-sin'), /Cama 18[\s\S]*Sin ingreso/);
       await cel.click('button[aria-label="Ingresar Cama 18"]');
       assert.equal(await cel.locator('.fondo-flotante form[role=dialog][aria-label="Ingreso Cama 18"]').count(), 1, "el ingreso abre en una ventana flotante");
       assert.equal(await cel.locator('article.cama-sin form').count(), 0, "el ingreso no se abre dentro de la lista de camas");
@@ -1000,7 +1048,7 @@ async function esperarServidor() {
       await cel.reload();
       await cel.waitForSelector('article[aria-label^="Cama"]', { timeout: 8000 });
       assert.match(await cel.textContent(".cel-top"), /Sin señal/);
-      assert.match(await cel.textContent('article[aria-label="Cama UCI-01"] header'), /UCI-01/);
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-01"] header'), /Cama 1/);
       await ctx.setOffline(false);
     });
 
@@ -1036,13 +1084,15 @@ async function esperarServidor() {
       assert.equal(credentials.length, 1, "el telefono guardo una llave de acceso");
       // Sale y vuelve a entrar: solo con la huella.
       await m.reload();
-      await m.click('text=Salir');
+      await m.click('[aria-label="Mi cuenta"]');
+      await m.click('button:has-text("Cerrar sesión")');
       await m.waitForSelector('button:has-text("Entrar con huella · Diego Melo")');
       await m.click('button:has-text("Entrar con huella")');
       await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
       // Si el telefono no verifica a la persona (solo un toque), no abre.
       await m.reload();
-      await m.click('text=Salir');
+      await m.click('[aria-label="Mi cuenta"]');
+      await m.click('button:has-text("Cerrar sesión")');
       await cdp.send("WebAuthn.setUserVerified", { authenticatorId, isUserVerified: false });
       await m.click('button:has-text("Entrar con huella")');
       await m.waitForSelector("[role=alert]");
@@ -1056,7 +1106,8 @@ async function esperarServidor() {
       await m.click('button:has-text("Ahora no")');
       await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
       await m.reload();
-      await m.click('text=Salir');
+      await m.click('[aria-label="Mi cuenta"]');
+      await m.click('button:has-text("Cerrar sesión")');
       await m.fill("#rut", "karen.gonzalez@demo.upc");
       await m.fill("#pin", "kine");
       await m.click("button[type=submit]");
@@ -1090,13 +1141,13 @@ async function esperarServidor() {
       assert.match(await aviso(), /aseo terminal/);
       await cel.waitForSelector('article[aria-label="Cama UCI-16"]');
       assert.equal(
-        (await cel.textContent('article[aria-label="Cama UCI-16"]')).replace("UCI-16", "UCI-04"),
+        (await cel.textContent('article[aria-label="Cama UCI-16"]')).replace("Cama 16", "Cama 4"),
         antes,
         "la vía, el tubo, los días de VM y las alertas van con el paciente"
       );
       // La cama que deja queda libre, y el PC muestra al paciente en la nueva.
       await cel.waitForSelector("article.cama-sin");
-      assert.equal(await cel.locator('article.cama-sin:has-text("UCI-04")').count(), 1, "la cama que deja queda libre");
+      assert.equal(await cel.locator('article.cama-sin:has-text("Cama 4")').count(), 1, "la cama que deja queda libre");
       await pc.waitForTimeout(900);
       await pc.click('.cama:has-text("UCI-16")');
       assert.match(await pc.textContent(".detail-head"), /UCI-16 · Paciente Prueba Cuatro/);

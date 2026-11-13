@@ -872,3 +872,6 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 .nota-camas{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 14px;border-radius:14px;background:var(--panel-2);color:var(--ink-2);font-size:13px}
 .nota-camas svg{flex:none;margin-top:1px}
 .elegir-camas #btn-ver-camas{border-radius:14px;min-height:54px;background:linear-gradient(180deg,var(--marino-2),var(--marino));border-color:var(--marino)}
+/* Elegir camas: el paisaje queda fijo al pie de la pantalla, detrás de lo que se desplaza. */
+.app-cel.elegir .paisaje{position:absolute;left:0;right:0;bottom:0;z-index:0;pointer-events:none}
+.app-cel.elegir .cel-cuerpo{position:relative;z-index:1;background:transparent;padding-bottom:calc(8px + 33vw)}

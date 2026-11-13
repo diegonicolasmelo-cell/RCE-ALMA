@@ -11,6 +11,7 @@ import { useApp } from "../app/store";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { opcionesNumericas, useFranja } from "./franja";
+import { casillaNumerica } from "./TecladoPropio";
 
 const GRUPOS: readonly (readonly [GrupoInfusion, string])[] = [
   ["SEDANTE", "Sedoanalgesia y agitación"],
@@ -69,7 +70,7 @@ function Fila({ ctx, def }: { ctx: ContextoCama; def: DefinicionInfusion }) {
         <input
           id={id}
           data-stop={clave}
-          inputMode="decimal"
+          {...casillaNumerica()}
           autoComplete="off"
           value={x.dosis}
           placeholder="dosis"

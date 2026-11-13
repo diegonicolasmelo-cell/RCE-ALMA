@@ -24,8 +24,11 @@ const SELECTOR_SUELTAS = "input[data-teclado]:not([disabled])";
  * Lo que lleva una casilla numerica fuera de la hoja para usar este teclado: en un celular no
  * abre el teclado del sistema; en un PC se escribe con el teclado fisico.
  */
-export const casillaNumerica = (decimal = true): { inputMode: "none" | "decimal" | "numeric"; "data-teclado": "num" } => ({
+// inputMode «none» no basta: algunos celulares (iPhone, ciertos Android) lo ignoran y abren su
+// teclado. De solo lectura, ningun sistema lo abre y el teclado propio sigue escribiendo.
+export const casillaNumerica = (decimal = true): { inputMode: "none" | "decimal" | "numeric"; readOnly: boolean; "data-teclado": "num" } => ({
   inputMode: TECLADO_PROPIO ? "none" : decimal ? "decimal" : "numeric",
+  readOnly: TECLADO_PROPIO,
   "data-teclado": "num"
 });
 

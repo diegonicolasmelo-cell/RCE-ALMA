@@ -12,6 +12,7 @@ import type { BorradorInfusion, Control, DefinicionInfusion } from "@core/index"
 import { cx } from "../app/util";
 import { Pildora } from "./componentes";
 import { opcionesNumericas, useFranja } from "./franja";
+import { casillaNumerica } from "./TecladoPropio";
 
 interface Props {
   def: DefinicionInfusion;
@@ -96,7 +97,7 @@ export function TarjetaInfusion({ def, x, ultimo, onCambio, onIniciar, onSuspend
               <input
                 id={id}
                 data-stop={clave}
-                inputMode="decimal"
+                {...casillaNumerica()}
                 autoComplete="off"
                 value={x.dosis}
                 placeholder="dosis"

@@ -538,3 +538,12 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
   ya trae la sábana ajustada al celular con el control destacado). Diego la dejó fuera por
   ahora: teme que los toques accidentales saquen de la pantalla y prefiere un inicio más
   ordenado y controlado. Retomarla si en el uso se pide.
+
+- **Proyecto asociado: registro de la reanimación (PCR) con metrónomo** (13-nov-2026).
+  Diego tiene en Claude Design una app para el paro cardiorrespiratorio: un metrónomo de
+  compresiones que puede sincronizarse con música precargada (o usar solo el metrónomo) y que deja
+  registro de lo que se hace durante la reanimación. La idea es enlazarla con Kapta: en Eventos,
+  «Paro cardiorrespiratorio» (hoy evento adverso con alerta al PC, y que además abre su control de
+  monitorización) abriría el modal de registro de la reanimación. Queda como proyecto asociado, para
+  cuando la app de Kapta esté más terminada. Para retomarlo hace falta que Diego comparta ese
+  proyecto (enlace o exportación en HTML): desde aquí no se ven los proyectos de Claude Design.

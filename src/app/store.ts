@@ -10,7 +10,7 @@ import type { SegmentoId } from "../celular/pasos";
 /** La PVE no es una pestana del control: se abre desde la tarjeta de la cama (vista "pve"). */
 export type TabCelular = "control" | "kine" | "motora" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. "pve": la PVE directa, sin pasar por el control. "eventos": registrar un evento directo desde la tarjeta. */
-export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve" | "eventos" | "controles" | "ayuda";
+export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve" | "eventos" | "controles" | "ayuda" | "pcr";
 /** Apariencia: "auto" sigue al turno (claro de dia, oscuro en turno noche). */
 export type Tema = "auto" | "dia" | "noche";
 /** Aspecto de las pantallas del paciente: "nuevo" (el diseño de Sleek) o "clasico" (el de antes). */

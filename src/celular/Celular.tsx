@@ -49,6 +49,7 @@ import { TabEventos } from "./TabEventos";
 import { ElegirCamas, claveMisCamas } from "./ElegirCamas";
 import { Evaluaciones } from "./Evaluaciones";
 import { ListaCamas } from "./ListaCamas";
+import { CLAVE_CODIGO_PCR, CodigoPcr } from "./CodigoPcr";
 import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 
@@ -84,6 +85,11 @@ export function Celular() {
   const episodios = useConsulta(() => repo.episodiosActivos(), [repo], []);
   const esMia = (e: { cama: string; rutTitular: string }): boolean => (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
   const mias = episodios.filter(esMia);
+
+  // Un codigo PCR en curso manda: al abrir la app se vuelve a el.
+  useEffect(() => {
+    void leerMeta(db, CLAVE_CODIGO_PCR).then((g) => { if (g) useApp.setState({ vista: "pcr" }); });
+  }, [db]);
 
   // Sesion restaurada: recuperar las camas de hoy; si nunca las eligio, preguntarlas.
   useEffect(() => {
@@ -129,7 +135,7 @@ export function Celular() {
     return () => { delete document.documentElement.dataset["estilo"]; };
   }, [estilo]);
   const tipoTurno = turnoDe(ahora).tipo;
-  useColorBarras(vista === "elegir" ? AZUL_MARINO : temaEfectivo(tema, tipoTurno) === "dark" ? FONDO_NOCHE : FONDO_DIA);
+  useColorBarras(vista === "pcr" ? "#d03b3b" : vista === "elegir" ? AZUL_MARINO : temaEfectivo(tema, tipoTurno) === "dark" ? FONDO_NOCHE : FONDO_DIA);
   useEffect(() => {
     document.documentElement.dataset["theme"] = temaEfectivo(tema, tipoTurno);
     return () => { delete document.documentElement.dataset["theme"]; };
@@ -153,6 +159,7 @@ export function Celular() {
       const ev = new Event(EVENTO_ATRAS, { cancelable: true });
       const teclado = document.activeElement as HTMLElement | null;
       if (document.body.classList.contains("teclado-propio") && teclado?.blur) { teclado.blur(); franja.cerrar(); return guardia(); }
+      if (st.vista === "pcr") { window.dispatchEvent(new Event(EVENTO_ATRAS, { cancelable: true })); return guardia(); }
       if (st.panel) { setPanel(null); return guardia(); }
       if (st.hojaMas) { setHojaMas(null); return guardia(); }
       if (!window.dispatchEvent(ev)) return guardia();
@@ -330,6 +337,7 @@ export function Celular() {
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
   // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.
   if (buscandoElegido && vista === "cama") return <div className="app-cel">{cabecera}<p className="muted" style={{ padding: 16 }}>Cargando…</p></div>;
+  if (vista === "pcr") return <div className="app-cel"><CodigoPcr /><TecladoPropio /></div>;
   if (vista === "elegir") return <div className="app-cel inicio elegir"><CabeceraMarca mini />{cabeceraInicio}<ElegirCamas /><PaisajeCoquimbo />{panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}</div>;
   if (vistaInicio) return marcoInicio(vistaInicio);
   if (!ep || !base || vista === "camas") return marcoInicio(<ListaCamas />, "camas");

@@ -26,6 +26,7 @@ import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
 import { casillaNumerica } from "./TecladoPropio";
 import { CorregirVia } from "./CorregirVia";
+import { iniciarCodigoPcr } from "./CodigoPcr";
 
 type Base = ReturnType<typeof baseEvento>;
 interface Opcion { valor: string; texto: string }
@@ -74,7 +75,7 @@ const MOTIVOS_CAMBIO: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_CAMBIO) a
  */
 export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVia?: (texto: string, cambiaVia: boolean) => void }) {
   const { ep, eventos, ahora, rutAutor } = ctx;
-  const { repo } = useServicios();
+  const { repo, db } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [valores, setValores] = useState<Record<string, string>>({});
@@ -242,6 +243,11 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   }, [eventoPedido]);
 
   const clic = (it: Item): void => {
+    // El paro abre el codigo PCR en vivo, con esta cama ya elegida.
+    if (it.k === "pcr") {
+      void iniciarCodigoPcr(db, ep.id);
+      return;
+    }
     if (it.k === "pve") {
       irA("pve", ep.id);
       return;

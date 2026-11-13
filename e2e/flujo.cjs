@@ -149,7 +149,7 @@ async function esperarServidor() {
       // El «+» abre la hoja con iconos; elegir «Control» pide la cama y abre su control.
       await cel.click('nav[aria-label="Navegación"] button[aria-label="Registrar"]');
       const hoja = cel.locator('[role=dialog][aria-label="¿Qué quieres registrar?"]');
-      assert.deepEqual(await hoja.locator(".tile").allTextContents(), ["Ingresar", "Control", "Cambio de cama", "Evento", "PVE", "Evaluación"]);
+      assert.deepEqual(await hoja.locator(".tile").allTextContents(), ["Código PCR", "Ingresar", "Control", "Cambio de cama", "Evento", "PVE", "Evaluación"]);
       await hoja.locator('.tile:has-text("Control")').click();
       await cel.click('[role=dialog][aria-label="¿De qué paciente es el control?"] .fila-cama:has-text("Cama 3")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
@@ -916,6 +916,48 @@ async function esperarServidor() {
       assert.ok(await cel.locator(".inicio-top").count() === 1, "el primer atras en Pacientes no sale de la app");
       await cel.waitForTimeout(2800);
       assert.equal(await cel.evaluate(() => history.state && history.state.kapta), true, "pasado el aviso, la guardia vuelve");
+    });
+
+    await prueba("codigo PCR: parte sin cama desde el +, guarda cada toque, sobrevive a cerrar la app y al final se elige la cama", async () => {
+      if (await cel.locator('button:has-text("‹ Camas")').count()) await cel.click('button:has-text("‹ Camas")');
+      await cel.click('nav[aria-label="Navegación"] button[aria-label="Registrar"]');
+      await cel.click('.tile:has-text("Código PCR")');
+      await cel.waitForSelector('.cod-cab:has-text("CÓDIGO PCR EN CURSO")');
+      assert.match(await cel.textContent(".cod-cab"), /cama al final/);
+      await cel.click('.cod-bt.choque');
+      await cel.click('.cod-bt.epi');
+      await cel.click('[aria-label="Ritmo actual"] button:text-is("AESP")');
+      const bit = cel.locator('[aria-label="Bitácora"]');
+      assert.match(await bit.textContent(), /Choque #1 · 200 J · FV/);
+      assert.match(await bit.textContent(), /Epinefrina 1 mg/);
+      assert.match(await cel.textContent(".cod-bt.epi"), /próxima en/);
+      // Se cierra la app a la mitad: al abrirla vuelve al codigo, con lo registrado.
+      await cel.reload();
+      await cel.waitForSelector('.cod-cab:has-text("CÓDIGO PCR EN CURSO")');
+      assert.match(await cel.textContent('[aria-label="Bitácora"]'), /Ritmo: AESP[\s\S]*Choque #1/);
+      // El boton atras del telefono no saca del codigo.
+      await cel.evaluate(() => history.back());
+      await cel.waitForTimeout(300);
+      assert.equal(await cel.locator(".cod-cab").count(), 1);
+      // Terminar sin ROSC pide confirmacion.
+      await cel.click('.cod-pie .fin');
+      await cel.click('[role=dialog][aria-label="Terminar sin ROSC"] button:has-text("Seguir con el código")');
+      assert.match(await cel.textContent(".cod-cab"), /EN CURSO/);
+      await cel.click('.cod-pie .fin');
+      await cel.click('[role=dialog][aria-label="Terminar sin ROSC"] button:has-text("Sí, terminar")');
+      await cel.waitForSelector('.cod-cab:has-text("Término sin ROSC")');
+      await cel.click("#btn-guardar-pcr");
+      assert.match(await aviso(), /Elige la cama/);
+      await cel.click('[aria-label="Cama del paciente"] button:text-is("03")');
+      await cel.click("#btn-guardar-pcr");
+      await cel.waitForSelector(".inicio-top");
+      assert.match(await aviso(), /Código PCR guardado en Cama 3/);
+      assert.match(await cel.textContent('article[aria-label="Cama UCI-03"]'), /Evento sin monitorización/);
+      await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Eventos")');
+      await cel.waitForSelector('[aria-label="Línea de tiempo"] li:has-text("Paro cardiorrespiratorio")');
+      const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
+      assert.ok(linea.some((x) => /Paro cardiorrespiratorio, reanimación \d+ min, sin ROSC, 1 choque/.test(x)), linea.join(" | "));
+      await cel.click('button:has-text("‹ Camas")');
     });
 
     console.log("Estacion (PC)");

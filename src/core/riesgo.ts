@@ -98,6 +98,9 @@ export function componerInformeRiesgo(e: EntradaInforme): string {
     `Equipos de la sala: ${describirEquipos(episodio.equipos)}`,
     `Contexto de las horas previas (último control ${previo ? previo.hora : "--"}):`,
     `  ${previo ? resumenContexto(previo) : "sin controles previos en el turno"}`,
+    ...(evento.tipo === "PCR" && evento.bitacora?.length
+      ? ["Bitácora de la reanimación:", ...evento.bitacora.map((b) => `  ${b.hora}  +${b.transcurrido}  ${b.texto}`)]
+      : []),
     "Pendiente: notificar a coordinación y completar el análisis de seguridad."
   ].join("\n");
 }

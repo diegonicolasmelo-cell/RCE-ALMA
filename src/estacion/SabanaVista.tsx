@@ -111,7 +111,14 @@ export function SabanaVista({ ep, controles, eventos, ahora, resaltar }: { ep: E
             ) : (
               <ul>
                 {otros.map((e) => (
-                  <li key={e.id}><span className="mono">{fechaHora(e.registradoEn)}</span> {describirEvento(e, eventos)}{e.comentario ? `. ${e.comentario}` : ""} <span className="muted">· {nombreProfesional(e.rutAutor)}</span></li>
+                  <li key={e.id}>
+                    <span className="mono">{fechaHora(e.registradoEn)}</span> {describirEvento(e, eventos)}{e.comentario ? `. ${e.comentario}` : ""} <span className="muted">· {nombreProfesional(e.rutAutor)}</span>
+                    {e.tipo === "PCR" && e.bitacora && e.bitacora.length > 0 && (
+                      <ol className="sv-bitacora" aria-label="Bitácora de la reanimación">
+                        {e.bitacora.map((b, i) => <li key={i}><span className="mono">{b.hora} +{b.transcurrido}</span> {b.texto}</li>)}
+                      </ol>
+                    )}
+                  </li>
                 ))}
               </ul>
             )}

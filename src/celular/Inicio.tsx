@@ -16,6 +16,7 @@ import {
   CircleHelp,
   ClipboardList,
   Flag,
+  HeartPulse,
   History,
   Moon,
   Palette,
@@ -33,6 +34,8 @@ import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { useApp } from "../app/store";
 import { SabanaVista } from "../estacion/SabanaVista";
+import { useServicios } from "../app/contexto";
+import { iniciarCodigoPcr } from "./CodigoPcr";
 import bannerDia from "../app/iconos/banner-dia.png?inline";
 import bannerNoche from "../app/iconos/banner-noche.png?inline";
 import type { Tema, VistaCelular } from "../app/store";
@@ -178,9 +181,10 @@ export function BarraInferior({ vista, oculta, onIr, onMas, onEvaluar }: { vista
   );
 }
 
-export type AccionMas = "ingresar" | "control" | "traslado" | "evento" | "pve" | "evaluacion";
+export type AccionMas = "ingresar" | "control" | "traslado" | "evento" | "pve" | "evaluacion" | "pcr";
 
 const ACCIONES: readonly { grupo: string; items: readonly (readonly [AccionMas, string, typeof BedDouble])[] }[] = [
+  { grupo: "Urgente", items: [["pcr", "Código PCR", HeartPulse]] },
   { grupo: "Pacientes", items: [["ingresar", "Ingresar", UserPlus], ["control", "Control", Activity], ["traslado", "Cambio de cama", ArrowLeftRight]] },
   { grupo: "Eventos y evaluaciones", items: [["evento", "Evento", Flag], ["pve", "PVE", Timer], ["evaluacion", "Evaluación", ClipboardList]] }
 ];
@@ -190,12 +194,14 @@ const TITULO_ACCION: Record<AccionMas, string> = {
   traslado: "¿A qué paciente le cambias la cama?",
   evento: "¿De qué paciente es el evento?",
   pve: "¿A qué paciente le haces la PVE?",
-  evaluacion: "¿A qué paciente evalúas?"
+  evaluacion: "¿A qué paciente evalúas?",
+  pcr: ""
 };
 
 /** Hoja del «+»: qué registrar y, después, en qué cama. Se cierra tocando fuera. */
 export function HojaMas({ accionInicial, episodios, esMia, onCerrar }: { accionInicial: AccionMas | null; episodios: readonly Episodio[]; esMia: (e: Episodio) => boolean; onCerrar: () => void }) {
   const [accion, setAccion] = useState<AccionMas | null>(accionInicial);
+  const { db } = useServicios();
   const irA = useApp((s) => s.irA);
   const ocupadas = new Set(episodios.map((e) => e.cama));
   const libres = CAMAS_UNIDAD.filter((c) => !ocupadas.has(c));
@@ -232,7 +238,7 @@ export function HojaMas({ accionInicial, episodios, esMia, onCerrar }: { accionI
                 <h3>{g.grupo}</h3>
                 <div className="tiles">
                   {g.items.map(([k, t, Icono]) => (
-                    <button key={k} type="button" className="tile" onClick={() => setAccion(k)}>
+                    <button key={k} type="button" className={`tile${k === "pcr" ? " urgente" : ""}`} onClick={() => { if (k === "pcr") { onCerrar(); void iniciarCodigoPcr(db, null); } else setAccion(k); }}>
                       <i><Icono size={28} strokeWidth={1.6} aria-hidden /></i>
                       {t}
                     </button>

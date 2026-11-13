@@ -30,3 +30,4 @@ export * from "./evaluaciones";
 export * from "./cifrado";
 export * from "./referencias";
 export * from "./respaldo";
+export * from "./codigo-pcr";

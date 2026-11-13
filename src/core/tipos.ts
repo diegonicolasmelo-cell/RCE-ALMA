@@ -376,6 +376,13 @@ export interface Control {
 // Eventos clinicos (union discriminada)
 // ---------------------------------------------------------------------------
 
+/** Una linea de la bitacora del codigo PCR: hora del reloj, tiempo desde el inicio y que se hizo. */
+export interface EntradaBitacoraPcr {
+  readonly hora: string;
+  readonly transcurrido: string;
+  readonly texto: string;
+}
+
 export interface EventoBase {
   readonly id: Uuid;
   readonly episodioId: Uuid;
@@ -486,7 +493,15 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "SUPINACION" })
   | (EventoBase & { readonly tipo: "INICIO_BNM"; readonly farmaco: string })
   | (EventoBase & { readonly tipo: "FIN_BNM" })
-  | (EventoBase & { readonly tipo: "PCR"; readonly duracionReanimacionMin: number })
+  | (EventoBase & {
+      readonly tipo: "PCR";
+      readonly duracionReanimacionMin: number;
+      /** Registro del codigo en vivo: inicio real, si hubo ROSC, choques y la bitacora con hora. */
+      readonly realizadaEn?: string;
+      readonly rosc?: boolean;
+      readonly choques?: number;
+      readonly bitacora?: readonly EntradaBitacoraPcr[];
+    })
   | (EventoBase & { readonly tipo: "EVENTO_CENTINELA"; readonly descripcion: string })
   | (EventoBase & { readonly tipo: "ASISTENCIA_FBC" })
   | (EventoBase & { readonly tipo: "ASISTENCIA_PROCEDIMIENTO"; readonly procedimiento: string })

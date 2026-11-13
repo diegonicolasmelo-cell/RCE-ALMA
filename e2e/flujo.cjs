@@ -183,6 +183,12 @@ async function esperarServidor() {
       await cuenta.locator('[role=radio]:has-text("Automático")').click();
       const hora = await cel.evaluate(() => new Date().getHours());
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), hora >= 8 && hora < 20 ? "light" : "dark");
+      // Diseño de las pantallas del paciente: nuevo por defecto, y el clásico sigue disponible.
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
+      await cuenta.locator('[role=radio]:has-text("Clásico")').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "clasico");
+      await cuenta.locator('[role=radio]:has-text("Nuevo")').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
       await cuenta.locator('button[aria-label="Cerrar"]').click();
       assert.equal(await cuenta.count(), 0);
       // Vuelve a donde estaba el recorrido: el control de la cama 1.

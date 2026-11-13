@@ -1,3 +1,5 @@
+import { ArrowLeftRight, CircleAlert, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   DESTINOS_IMAGEN,
@@ -309,6 +311,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
               const off = it.deshabilitado;
               return (
                 <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : it.k === "pve" && !it.ayuda ? "btn pve-ev" : "btn"} disabled={off} title={it.ayuda} onClick={() => clic(it)}>
+                  {(() => { const Icono = ICONO_EVENTO[it.k]; return Icono ? <Icono className="ev-ico" size={20} strokeWidth={1.7} aria-hidden /> : null; })()}
                   {it.texto}
                   {it.ayuda && <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{it.ayuda}</span>}
                 </button>
@@ -332,3 +335,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     </>
   );
 }
+
+/** Icono de cada evento (en el diseño nuevo va sobre el nombre; en el clásico no se muestra). */
+const ICONO_EVENTO: Record<string, LucideIcon> = {
+  extub: CircleAlert, pve: Timer, reint: RotateCw, traq: Scissors, ajuste: Ruler, cambioTubo: Repeat, cambioCanula: Repeat,
+  decan: CircleMinus, autoext: TriangleAlert, traslado: ArrowLeftRight, supinar: RotateCcw, prono: RotateCw, fbc: Eye,
+  cult: TestTube, img: ScanLine, asist: HandHelping, hme: Filter, trach: Filter, hepa: Filter, pcr: HeartPulse, cent: ShieldAlert
+};

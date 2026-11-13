@@ -13,6 +13,8 @@ export type TabCelular = "control" | "kine" | "motora" | "eventos";
 export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve" | "eventos" | "controles" | "ayuda";
 /** Apariencia: "auto" sigue al turno (claro de dia, oscuro en turno noche). */
 export type Tema = "auto" | "dia" | "noche";
+/** Aspecto de las pantallas del paciente: "nuevo" (el diseño de Sleek) o "clasico" (el de antes). */
+export type Estilo = "nuevo" | "clasico";
 
 export interface Sesion {
   readonly rut: string;
@@ -56,6 +58,8 @@ interface EstadoApp {
   pedirTraslado: (episodioId: string | null) => void;
   tema: Tema;
   setTema: (t: Tema) => void;
+  estilo: Estilo;
+  setEstilo: (e: Estilo) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
@@ -81,6 +85,14 @@ function leerTema(): Tema {
     return t === "dia" || t === "noche" ? t : "auto";
   } catch {
     return "auto";
+  }
+}
+const CLAVE_ESTILO = "kapta:estilo";
+function leerEstilo(): Estilo {
+  try {
+    return globalThis.localStorage?.getItem(CLAVE_ESTILO) === "clasico" ? "clasico" : "nuevo";
+  } catch {
+    return "nuevo";
   }
 }
 function guardarTema(t: Tema): void {
@@ -119,6 +131,11 @@ export const useApp = create<EstadoApp>((set) => ({
   setTema: (tema) => {
     guardarTema(tema);
     set({ tema });
+  },
+  estilo: leerEstilo(),
+  setEstilo: (estilo) => {
+    try { globalThis.localStorage?.setItem(CLAVE_ESTILO, estilo); } catch { /* vale solo para esta sesion */ }
+    set({ estilo });
   },
   irA: (vista, camaId) =>
     set((s) => {

@@ -122,6 +122,11 @@ export function Celular() {
     []
   );
   const tema = useApp((s) => s.tema);
+  const estilo = useApp((s) => s.estilo);
+  useEffect(() => {
+    document.documentElement.dataset["estilo"] = estilo;
+    return () => { delete document.documentElement.dataset["estilo"]; };
+  }, [estilo]);
   const tipoTurno = turnoDe(ahora).tipo;
   useEffect(() => {
     document.documentElement.dataset["theme"] = temaEfectivo(tema, tipoTurno);

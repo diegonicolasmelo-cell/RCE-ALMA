@@ -1,5 +1,5 @@
 import { ArrowLeftRight, ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   CAMAS_UNIDAD,
   botonExtubacion,
@@ -46,6 +46,9 @@ export function ListaCamas() {
   /** Paciente al que se le esta cambiando la cama (panel flotante con las camas libres). */
   const [trasladando, setTrasladando] = useState<Episodio | null>(null);
   const pedirEvento = useApp((s) => s.pedirEvento);
+  // Pedidos del «+» de la barra: ingresar en una cama libre o cambiar a un paciente de cama.
+  const ingresoPedido = useApp((s) => s.ingresoPedido);
+  const trasladoPedido = useApp((s) => s.trasladoPedido);
 
   // null mientras carga: asi una cama ocupada nunca se ve un instante como «Sin ingreso».
   const filas = useConsulta<readonly Fila[] | null>(
@@ -64,6 +67,18 @@ export function ListaCamas() {
     null
   );
 
+  useEffect(() => {
+    if (!ingresoPedido) return;
+    setIngresando(ingresoPedido);
+    useApp.getState().pedirIngreso(null);
+  }, [ingresoPedido]);
+  useEffect(() => {
+    const ep = trasladoPedido ? filas?.find((f) => f.ep.id === trasladoPedido)?.ep : null;
+    if (!ep) return;
+    setTrasladando(ep);
+    useApp.getState().pedirTraslado(null);
+  }, [trasladoPedido, filas]);
+
   const porCama = new Map((filas ?? []).map((f) => [f.ep.cama, f] as const));
   const esMiaCama = (c: string): boolean => {
     if (misCamas) return misCamas.includes(c);
@@ -79,7 +94,7 @@ export function ListaCamas() {
   const enCama = trasladando ? porCama.get(trasladando.cama)?.ep ?? trasladando : null;
 
   return (
-    <div className="cel-cuerpo" style={{ display: "grid", gap: 10 }}>
+    <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
       {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
       {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
       <div className="row" style={{ justifyContent: "space-between" }}>
@@ -96,7 +111,7 @@ export function ListaCamas() {
               {encabezadoOtras}
               <article className="card stack cama-sin" style={{ padding: 12, gap: 8 }} aria-label={`Cama ${cama}`}>
                 <header className="row" style={{ justifyContent: "space-between" }}>
-                  <b className="cama-num">{cama}</b>
+                  <b className="cama-num">{nombreCama(cama)}</b>
                 </header>
                 <div className="small ink2">Sin ingreso</div>
                 <button type="button" className="btn primary" aria-label={`Ingresar ${nombreCama(cama)}`} onClick={() => setIngresando(cama)}>Ingresar</button>
@@ -120,10 +135,10 @@ export function ListaCamas() {
         return (
           <Fragment key={ep.id}>
           {encabezadoOtras}
-          <article className="card stack" style={{ padding: 12, gap: 8 }} aria-label={`Cama ${ep.cama}`}>
+          <article className="card stack tarjeta-cama" style={{ padding: 14, gap: 8 }} aria-label={`Cama ${ep.cama}`}>
             <header className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <span className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
-                <b className="cama-num">{ep.cama}</b>
+                <b className="cama-num">{nombreCama(ep.cama)}</b>
                 {/* Las flechas cambian al paciente de cama (solo a camas libres). */}
                 <button
                   type="button"
@@ -135,14 +150,11 @@ export function ListaCamas() {
                   <ArrowLeftRight size={17} aria-hidden />
                 </button>
               </span>
-              <span className="small muted" style={{ textAlign: "right" }}>
-                {ultimo ? `último ${ultimo.hora} · ${ETIQUETA_MODALIDAD[ultimo.ventilacion.modalidad] ?? "sin modo"}${minutos !== null && minutos >= 60 ? ` · hace ${haceTexto(minutos)}` : ""}` : "sin controles"}
-              </span>
+              <span className="small muted" style={{ textAlign: "right" }}>{!propia && "de otro colega"}</span>
             </header>
             <div className="small ink2">
               {textoViaCama(ep, h)}
               {ep.viaAereaActual === "TET" && h && h.horas >= 48 && <> · <b style={{ color: "var(--crit-ink)" }}>NAVM ≥ 48 h</b></>}
-              {!propia && " · de otro colega"}
             </div>
             <div className="small muted">{textoCategoriaRem(ep.categoriaRem)} · {textoEdad(ep.rangoEdad)} · {ep.sexo}</div>
             <div className="row" style={{ gap: 6 }}>
@@ -153,6 +165,17 @@ export function ListaCamas() {
               {(bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones)) && <Pildora tipo="crit">BNM</Pildora>}
               {cambios.map((c) => <Pildora key={c.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[c.elemento]}</Pildora>)}
               {eventosSinMonitorizar(eventos, ultimo ? [ultimo] : []).map((e) => <Pildora key={e.id} tipo="crit">Evento sin monitorización · {e.hora}</Pildora>)}
+            </div>
+            <div className="ultimo-control">
+              <span className="small muted">Último control</span>
+              {ultimo ? (
+                <b>
+                  {ultimo.hora} · {ETIQUETA_MODALIDAD[ultimo.ventilacion.modalidad] ?? "sin modo"}
+                  {ultimo.fc !== null && <> · FC {ultimo.fc}</>}
+                  {ultimo.spo2 !== null && <> · SpO₂ {ultimo.spo2} %</>}
+                  {minutos !== null && minutos >= 60 && <span className="hace"> · hace {haceTexto(minutos)}</span>}
+                </b>
+              ) : <b className="muted">sin controles</b>}
             </div>
             <div className="botones-cama">
               <button type="button" className="btn primary" onClick={() => irA("cama", ep.id)}>

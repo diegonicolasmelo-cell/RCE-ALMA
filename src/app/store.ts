@@ -10,7 +10,9 @@ import type { SegmentoId } from "../celular/pasos";
 /** La PVE no es una pestana del control: se abre desde la tarjeta de la cama (vista "pve"). */
 export type TabCelular = "control" | "kine" | "motora" | "eventos";
 /** "camas": tarjetas de las camas. "cama": el control de una cama. "evaluacion": evaluaciones puntuales. "pve": la PVE directa, sin pasar por el control. "eventos": registrar un evento directo desde la tarjeta. */
-export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve" | "eventos";
+export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve" | "eventos" | "controles" | "ayuda";
+/** Apariencia: "auto" sigue al turno (claro de dia, oscuro en turno noche). */
+export type Tema = "auto" | "dia" | "noche";
 
 export interface Sesion {
   readonly rut: string;
@@ -47,6 +49,13 @@ interface EstadoApp {
   eventoMonitorizar: { readonly episodioId: string; readonly eventoId: string; readonly texto: string; readonly hora: string } | null;
   monitorizarEvento: (e: { episodioId: string; eventoId: string; texto: string; hora: string } | null) => void;
   pedirEvento: (k: string | null) => void;
+  /** Pedidos del menu «+» a la lista de camas: ingresar en una cama libre o cambiar a un paciente de cama. */
+  ingresoPedido: string | null;
+  trasladoPedido: string | null;
+  pedirIngreso: (cama: string | null) => void;
+  pedirTraslado: (episodioId: string | null) => void;
+  tema: Tema;
+  setTema: (t: Tema) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
@@ -65,6 +74,26 @@ export const RETOMAR_BORRADOR_MS = 20 * 60 * 1000;
 
 let contadorAvisos = 0;
 
+const CLAVE_TEMA = "kapta:tema";
+function leerTema(): Tema {
+  try {
+    const t = globalThis.localStorage?.getItem(CLAVE_TEMA);
+    return t === "dia" || t === "noche" ? t : "auto";
+  } catch {
+    return "auto";
+  }
+}
+function guardarTema(t: Tema): void {
+  try {
+    globalThis.localStorage?.setItem(CLAVE_TEMA, t);
+  } catch {
+    /* sin almacenamiento: vale solo para esta sesion */
+  }
+}
+/** El tema que se ve: en "auto", oscuro durante el turno noche y claro en el de dia. */
+export const temaEfectivo = (tema: Tema, turno: "DIA" | "NOCHE"): "light" | "dark" =>
+  tema === "noche" || (tema === "auto" && turno === "NOCHE") ? "dark" : "light";
+
 export const useApp = create<EstadoApp>((set) => ({
   sesion: null,
   setSesion: (sesion) => set({ sesion, vista: "camas" }),
@@ -82,6 +111,15 @@ export const useApp = create<EstadoApp>((set) => ({
   eventoMonitorizar: null,
   monitorizarEvento: (eventoMonitorizar) => set({ eventoMonitorizar }),
   pedirEvento: (eventoPedido) => set({ eventoPedido }),
+  ingresoPedido: null,
+  trasladoPedido: null,
+  pedirIngreso: (ingresoPedido) => set({ ingresoPedido }),
+  pedirTraslado: (trasladoPedido) => set({ trasladoPedido }),
+  tema: leerTema(),
+  setTema: (tema) => {
+    guardarTema(tema);
+    set({ tema });
+  },
   irA: (vista, camaId) =>
     set((s) => {
       if (!camaId) return { vista, camaId: s.camaId };

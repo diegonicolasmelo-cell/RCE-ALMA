@@ -28,7 +28,9 @@ import { leerMeta } from "../datos/db";
 import { CLAVE_ERROR_SYNC, textoErrorSync } from "../datos/sync";
 import type { ErrorSync } from "../datos/sync";
 import { ReconectarCelular } from "../app/ConectarCelular";
-import { useApp } from "../app/store";
+import { temaEfectivo, useApp } from "../app/store";
+import { Ayuda, BarraInferior, CabeceraInicio, HojaMas, MisControles, PanelAvisos, PanelCuenta, TituloVista, avisosDe, useBarraOculta } from "./Inicio";
+import type { AccionMas, EstadoSync, ResumenCama } from "./Inicio";
 import type { TabCelular } from "../app/store";
 import { horaDe, nuevoId } from "../app/util";
 import { baseEvento } from "./eventos-ui";
@@ -110,6 +112,26 @@ export function Celular() {
     avisar(error ? `No se pudo sincronizar. ${textoErrorSync(error)}` : r.empuje.pendientes > 0 ? `Quedan ${r.empuje.pendientes} por subir: se siguen enviando.` : "Sincronizado.");
   };
   const avisoLlave = errorSync?.error === "TOKEN_INVALIDO" ? <div style={{ padding: "8px 14px 0" }}><ReconectarCelular /></div> : null;
+
+  // --- Inicio: resumen de las camas (avisos y «Controles»), apariencia y paneles ---
+  // Solo se calcula en las vistas del inicio: dentro de un paciente no se muestra y no debe competir con su registro.
+  const enInicio = vista === "camas" || vista === "controles" || vista === "ayuda";
+  const resumen = useConsulta<readonly ResumenCama[]>(
+    async () => (enInicio ? Promise.all((await repo.episodiosActivos()).map(async (e) => ({ ep: e, controles: await repo.controlesDe(e.id), eventos: await repo.eventosDe(e.id) }))) : []),
+    [repo, enInicio],
+    []
+  );
+  const tema = useApp((s) => s.tema);
+  const tipoTurno = turnoDe(ahora).tipo;
+  useEffect(() => {
+    document.documentElement.dataset["theme"] = temaEfectivo(tema, tipoTurno);
+    return () => { delete document.documentElement.dataset["theme"]; };
+  }, [tema, tipoTurno]);
+  const [hojaMas, setHojaMas] = useState<"menu" | AccionMas | null>(null);
+  const [panel, setPanel] = useState<"cuenta" | "avisos" | null>(null);
+  const barraOculta = useBarraOculta();
+  /** Deslizar desde el borde derecho abre el panel de la cuenta. */
+  const toque = useRef<number | null>(null);
 
   const ultimo = controles.at(-1) ?? null;
   const base = useMemo<BorradorControl | null>(
@@ -233,38 +255,47 @@ export function Celular() {
   }, [ep, camaId, buscandoElegido]);
 
   const turno = turnoDe(ahora);
+  const estadoSync: EstadoSync = { online, pendientes, noSube: Boolean(errorSync) && pendientes > 0, sincronizar: () => void sincronizarAhora() };
+  const avisos = avisosDe(resumen, estadoSync);
+  /** Franja fina de las vistas de un paciente: quien registra, el turno y la conexion. */
   const cabecera = (
       <div className="cel-top">
         <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
-        <span className="row" style={{ gap: 8 }}>
-          <button type="button" className="linkbtn" style={{ padding: 0, ...(errorSync && pendientes > 0 ? { color: "var(--crit-ink)" } : {}) }} onClick={() => void sincronizarAhora()} aria-label="Sincronizar ahora">
-            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}{errorSync && pendientes > 0 ? " · no sube" : ""}
-          </button>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
-        </span>
+        <button type="button" className="linkbtn" style={{ padding: 0, ...(estadoSync.noSube ? { color: "var(--crit-ink)" } : {}) }} onClick={() => void sincronizarAhora()} aria-label="Sincronizar ahora">
+          {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}{estadoSync.noSube ? " · no sube" : ""}
+        </button>
       </div>
   );
+  const cabeceraInicio = <CabeceraInicio nombre={sesion.nombre} sync={estadoSync} nAvisos={avisos.length} onAvisos={() => setPanel("avisos")} onCuenta={() => setPanel("cuenta")} />;
+  /** Las vistas del inicio: saludo arriba, barra abajo, y encima la hoja del «+» y los paneles. */
+  const marcoInicio = (contenido: JSX.Element, v: typeof vista = vista): JSX.Element => (
+    <div
+      className="app-cel inicio"
+      onTouchStart={(e) => { const x = e.touches[0]?.clientX ?? 0; toque.current = x > window.innerWidth - 28 ? x : null; }}
+      onTouchMove={(e) => { if (toque.current !== null && toque.current - (e.touches[0]?.clientX ?? 0) > 44) { toque.current = null; setPanel("cuenta"); } }}
+    >
+      {cabeceraInicio}
+      {avisoLlave}
+      {contenido}
+      <BarraInferior vista={v} oculta={barraOculta} onIr={(x) => irA(x)} onMas={() => setHojaMas("menu")} onEvaluar={() => setHojaMas("evaluacion")} />
+      {hojaMas && <HojaMas key={hojaMas} accionInicial={hojaMas === "menu" ? null : hojaMas} episodios={episodios} esMia={esMia} onCerrar={() => setHojaMas(null)} />}
+      {panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}
+      {panel === "avisos" && <PanelAvisos avisos={avisos} onCerrar={() => setPanel(null)} />}
+      <TecladoPropio />
+    </div>
+  );
+  const vistaInicio = vista === "controles"
+    ? <><TituloVista>Controles</TituloVista><MisControles resumen={resumen} rut={sesion.rut} ahora={ahora} /></>
+    : vista === "ayuda"
+      ? <><TituloVista>Ayuda</TituloVista><Ayuda sync={estadoSync} /></>
+      : null;
 
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
   // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.
   if (buscandoElegido && vista === "cama") return <div className="app-cel">{cabecera}<p className="muted" style={{ padding: 16 }}>Cargando…</p></div>;
-  if (!ep || !base) {
-    return (
-      <div className="app-cel">
-        {cabecera}
-        {vista === "elegir" ? (
-          <ElegirCamas />
-        ) : (
-          <>
-            {avisoLlave}
-            <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Toca una cama libre para ingresar al paciente</span></div>
-            <ListaCamas />
-          </>
-        )}
-        <TecladoPropio />
-      </div>
-    );
-  }
+  if (vista === "elegir") return <div className="app-cel inicio">{cabeceraInicio}<ElegirCamas />{panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}</div>;
+  if (vistaInicio) return marcoInicio(vistaInicio);
+  if (!ep || !base || vista === "camas") return marcoInicio(<ListaCamas />, "camas");
 
   // Un borrador de una version anterior de la app se completa con los campos nuevos.
   const b = completarBorrador(borradores[ep.id], base);
@@ -371,27 +402,6 @@ export function Celular() {
   const cuerpo = tab === "control" ? <ControlSimple ctx={ctx} /> : enTabControl ? cuerpoSegmentos : tab === "motora" ? <TabKine ctx={ctx} paso="tf" /> : <TabEventos ctx={ctx} onCambioVia={(t, cambiaVia) => { franja.cerrar(); if (cambiaVia) useApp.getState().descartar(ep.id); setTab("control"); avisar(t); }} />;
 
 
-  if (vista === "elegir") {
-    return (
-      <div className="app-cel">
-        {cabecera}
-        <ElegirCamas />
-      </div>
-    );
-  }
-
-  if (vista === "camas") {
-    return (
-      <div className="app-cel">
-        {cabecera}
-        {avisoLlave}
-        <div style={{ padding: "8px 14px 0" }}><b>Camas</b> <span className="small muted">· Monitorización, Evaluaciones, Eventos o PVE</span></div>
-        <ListaCamas />
-        <TecladoPropio />
-      </div>
-    );
-  }
-
   const volver = (
     <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => { franja.cerrar(); irA("camas"); }}>‹ Camas</button>
   );
@@ -472,15 +482,7 @@ export function Celular() {
 
   return (
     <div className={`app-cel${franja.activa ? " teclado" : ""}`}>
-      <div className="cel-top">
-        <span>{sesion.nombre} · {etiquetaTurno(turno)}</span>
-        <span className="row" style={{ gap: 8 }}>
-          <button type="button" className="linkbtn" style={{ padding: 0, ...(errorSync && pendientes > 0 ? { color: "var(--crit-ink)" } : {}) }} onClick={() => void sincronizarAhora()} aria-label="Sincronizar ahora">
-            {online ? <Wifi size={14} aria-hidden /> : <WifiOff size={14} aria-hidden />} {online ? "En línea" : "Sin señal"}{pendientes > 0 ? ` · ${pendientes} por subir` : ""}{errorSync && pendientes > 0 ? " · no sube" : ""}
-          </button>
-          <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => setSesion(null)}>Salir</button>
-        </span>
-      </div>
+      {cabecera}
 
       {titulo("Control")}
       {banda}

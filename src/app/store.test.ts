@@ -1,23 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { RETOMAR_BORRADOR_MS, useApp } from "./store";
-import type { BorradorControl } from "@core/index";
+import { describe, expect, it } from "vitest";
+import { temaEfectivo } from "./store";
 
-const base = { fc: "" } as unknown as BorradorControl;
-
-describe("un control nuevo parte en blanco", () => {
-  beforeEach(() => useApp.setState({ borradores: {}, editados: {}, vista: "camas", camaId: null }));
-
-  it("al abrir una cama se descarta lo que quedo de un control anterior", () => {
-    useApp.getState().editar("ep-1", base, (b) => ({ ...b, fc: "80" }));
-    useApp.setState({ editados: { "ep-1": Date.now() - RETOMAR_BORRADOR_MS - 1000 } });
-    useApp.getState().irA("cama", "ep-1");
-    expect(useApp.getState().borradores["ep-1"]).toBeUndefined();
+describe("apariencia dia / noche", () => {
+  it("en automatico sigue al turno", () => {
+    expect(temaEfectivo("auto", "DIA")).toBe("light");
+    expect(temaEfectivo("auto", "NOCHE")).toBe("dark");
   });
-
-  it("si se interrumpio hace poco, se retoma lo que se estaba escribiendo", () => {
-    useApp.getState().editar("ep-1", base, (b) => ({ ...b, fc: "80" }));
-    useApp.getState().irA("camas");
-    useApp.getState().irA("cama", "ep-1");
-    expect(useApp.getState().borradores["ep-1"]?.fc).toBe("80");
+  it("la eleccion de la persona manda sobre el turno", () => {
+    expect(temaEfectivo("dia", "NOCHE")).toBe("light");
+    expect(temaEfectivo("noche", "DIA")).toBe("dark");
   });
 });

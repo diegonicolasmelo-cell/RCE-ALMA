@@ -3,6 +3,8 @@ import { Lock, Wifi, WifiOff } from "lucide-react";
 import {
   apkVigente,
   completarBorrador,
+  describirEvento,
+  eventosSinMonitorizar,
   crearBorradorNuevoControl,
   calcularPbw,
   esViaAereaArtificial,
@@ -293,6 +295,16 @@ export function Celular() {
     return () => window.removeEventListener(EVENTO_FIN_PESTANA, alFin);
   }, [franja]);
 
+  // Abrir la monitorizacion de un paciente con un evento sin su control (desde la tarjeta, la
+  // campana o el «+») liga ese control al evento: no depende de haber llegado desde Eventos.
+  const sinControl = ep ? eventosSinMonitorizar(eventos, ultimo ? [ultimo] : [])[0] : undefined;
+  useEffect(() => {
+    if (vista !== "cama" || !ep || !sinControl || sinControl.episodioId !== ep.id) return;
+    const st = useApp.getState();
+    if (st.eventoMonitorizar?.episodioId === ep.id) return;
+    st.monitorizarEvento({ episodioId: ep.id, eventoId: sinControl.id, texto: describirEvento(sinControl, eventos), hora: sinControl.hora });
+  }, [vista, ep?.id, sinControl?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Solo se cambia la cama elegida si ese paciente ya no esta (p. ej. se dio de alta).
   useEffect(() => {
     if (ep && camaId !== ep.id && !buscandoElegido) useApp.setState({ camaId: ep.id });
@@ -448,7 +460,7 @@ export function Celular() {
 
 
   const volver = (
-    <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => { franja.cerrar(); irA("camas"); }}>‹ Camas</button>
+    <button type="button" className="linkbtn" style={{ padding: 0 }} onClick={() => { franja.cerrar(); irA("camas"); }}>‹ Pacientes</button>
   );
   // "lun 9 nov": la fecha va al lado del titulo, en la misma linea.
   const fecha = ahora.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" }).replace(/[,.]/g, "");

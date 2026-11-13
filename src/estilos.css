@@ -942,3 +942,30 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 @media (prefers-reduced-motion:reduce){.anillo .avance{transition:none}}
 .sv-bitacora{list-style:none;margin:4px 0 6px 12px;padding:6px 10px;border-left:2px solid var(--crit);font-size:12.5px;color:var(--ink-2)}
 .sv-bitacora li{padding:1px 0}
+
+/* ---- Celular: pantalla fija, igual en iPhone y Android ----
+   La pagina no se arrastra hacia los lados ni rebota, no se agranda con dos dedos ni con doble
+   toque, y iOS no hace zoom al enfocar una casilla (lo hace si la letra mide menos de 16 px). */
+html.celular,html.celular body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html.celular{touch-action:pan-x pan-y;-webkit-tap-highlight-color:transparent}
+html.celular #raiz{height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+html.celular .app-cel,html.celular .codigo-pcr{overflow:hidden}
+html.celular .cel-cuerpo,html.celular .cod-cuerpo,html.celular .pf-cuerpo,html.celular .hoja-mas,html.celular .pc-lista,html.celular .sabana-cel-cuerpo{overflow-x:hidden;-webkit-overflow-scrolling:touch}
+@supports (-webkit-touch-callout:none){
+  html.celular input,html.celular select,html.celular textarea{font-size:max(16px,1em)}
+}
+
+/* Revisión de calidad: pantallas bajas o angostas (iPhone SE, iPhone con la barra del navegador). */
+.pc-lista{flex:1 1 auto;min-height:0}
+.pc-lista>*{flex-shrink:0}
+.pc-banner{margin-block:0;flex:none}
+.pc-cabeza{flex:none}
+@media (max-height:700px){.pc-cabeza{padding:14px 16px 10px}.avatar.grande{width:52px;height:52px;font-size:24px}.pc-banner img{max-width:200px}.pc-banner{padding:8px 18px}}
+.elegir-camas .chip{min-width:0;padding:7px 2px}
+.atajos .chip{font-size:15px}
+/* El aviso no tapa las teclas: con el teclado propio abierto sube por encima de él. */
+body:has(.kb:not([hidden])) .toast-app{bottom:calc(262px + env(safe-area-inset-bottom,0px))}
+/* La hora del control cabe completa también con reloj de 12 horas (a. m. / p. m.). */
+[data-estilo="nuevo"] .hoja-simple .fila:has(input[type=time]){grid-template-columns:minmax(0,1fr) 10em}
+@media (max-width:350px){.botones-cama .btn svg{display:none}.botones-cama .btn{font-size:12.5px}}
+@media (max-height:700px){.app-cel.elegir .paisaje{display:none}.app-cel.elegir .cel-cuerpo{padding-bottom:16px}}

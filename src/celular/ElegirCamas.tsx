@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BedDouble, Info } from "lucide-react";
 import { CAMAS_UNIDAD } from "@core/index";
 import type { Episodio } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -44,15 +45,19 @@ export function ElegirCamas() {
   };
 
   return (
-    <div className="cel-cuerpo" style={{ display: "grid", gap: 14 }}>
+    <div className="cel-cuerpo elegir-camas">
       <div>
         <h2 style={{ margin: 0 }}>¿Cuáles son tus camas hoy?</h2>
-        <p className="small ink2">{sesion.nombre}. Con ellas parte la portada; las demás igual se pueden abrir para ayudar a un colega. Las camas claras están libres.</p>
+        <p className="small ink2" style={{ margin: "4px 0 0" }}>Selecciona las camas que estarán a tu cargo. Las demás igual se pueden abrir para ayudar a un colega.</p>
+      </div>
+      <div className="resumen-camas">
+        <BedDouble size={30} strokeWidth={1.6} aria-hidden />
+        <span>{actual.size === 0 ? "Aún no eliges camas" : <>Tienes <b>{actual.size}</b> {actual.size === 1 ? "cama" : "camas"} a tu cargo en este turno</>}</span>
       </div>
 
       <section>
         <h3>Atajos</h3>
-        <div className="row" style={{ flexWrap: "wrap" }}>
+        <div className="atajos">
           {grupos.map((g) => (
             <button key={g.join()} type="button" className="chip" aria-pressed={completo(g)} onClick={() => alternarGrupo(g)}>
               {g[0]?.slice(-2)}–{g.at(-1)?.slice(-2)}
@@ -64,7 +69,7 @@ export function ElegirCamas() {
 
       <section>
         <h3>Camas</h3>
-        <div className="row" style={{ flexWrap: "wrap", gap: 8 }} role="group" aria-label="Camas">
+        <div className="grilla-camas" role="group" aria-label="Camas">
           {camas.map((c) => (
             <button key={c} type="button" className="chip" aria-pressed={actual.has(c)} title={ocupadas.has(c) ? "Con paciente" : "Libre"} style={ocupadas.has(c) ? undefined : { opacity: 0.6 }} onClick={() => alternar(c)}>
               {c.slice(-2)}
@@ -73,8 +78,9 @@ export function ElegirCamas() {
         </div>
       </section>
 
-      <button type="button" className="btn primary grande" onClick={() => void continuar()}>
-        Ver camas{actual.size > 0 ? ` (${actual.size} mías)` : ""}
+      <p className="nota-camas"><Info size={18} aria-hidden /> Las camas claras están libres. Puedes cambiar tus camas después desde tu cuenta.</p>
+      <button type="button" id="btn-ver-camas" className="btn primary grande" onClick={() => void continuar()}>
+        {actual.size > 0 ? `Continuar con ${actual.size} ${actual.size === 1 ? "cama" : "camas"}` : "Continuar sin camas"}
       </button>
     </div>
   );

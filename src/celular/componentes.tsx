@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cx } from "../app/util";
 import { useFranja } from "./franja";
 import type { DescriptorFranja } from "./franja";
+import { casillaNumerica } from "./TecladoPropio";
 
 export function Seg<T extends string | boolean | number>(props: {
   valor: T | null;
@@ -88,7 +89,7 @@ export function CampoNum(props: {
         id={id}
         className="casilla"
         data-stop={props.clave}
-        inputMode="decimal"
+        {...casillaNumerica()}
         autoComplete="off"
         value={props.valor}
         placeholder={props.placeholder ?? ""}
@@ -115,7 +116,7 @@ export function CampoNum(props: {
       <input
         id={id}
         data-stop={props.clave}
-        inputMode="decimal"
+        {...casillaNumerica()}
         autoComplete="off"
         value={props.valor}
         placeholder={props.placeholder ?? ""}

@@ -77,6 +77,7 @@ function Num(props: { id: string; campo?: string; valor: string; etiqueta: strin
       data-teclado={props.teclado}
       data-campo={props.campo}
       inputMode={TECLADO_PROPIO ? "none" : "decimal"}
+      readOnly={TECLADO_PROPIO}
       enterKeyHint="next"
       autoComplete="off"
       aria-label={props.etiqueta}

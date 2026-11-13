@@ -111,7 +111,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   };
 
   const casilla = (k: string, etiqueta: string, teclado?: string): JSX.Element => (
-    <input id={`pve-${k}`} className="num" data-teclado={teclado} inputMode={TECLADO_PROPIO ? "none" : "decimal"} enterKeyHint="next" autoComplete="off" aria-label={etiqueta} value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
+    <input id={`pve-${k}`} className="num" data-teclado={teclado} inputMode={TECLADO_PROPIO ? "none" : "decimal"} readOnly={TECLADO_PROPIO} enterKeyHint="next" autoComplete="off" aria-label={etiqueta} value={f[k] ?? ""} onChange={(e) => set(k, e.target.value)} />
   );
   const ops = (k: string, etiqueta: string, opciones: readonly string[], extra?: string): JSX.Element => (
     <div className="fila bar">

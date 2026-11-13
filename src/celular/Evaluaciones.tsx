@@ -222,6 +222,7 @@ export function Evaluaciones({ ctx }: { ctx: ContextoCama }) {
       className="num"
       data-teclado={c.tipo === "num" ? "num" : teclado}
       inputMode={TECLADO_PROPIO ? "none" : c.tipo === "num" ? "decimal" : "text"}
+      readOnly={TECLADO_PROPIO}
       enterKeyHint="next"
       autoComplete="off"
       aria-label={etiqueta}

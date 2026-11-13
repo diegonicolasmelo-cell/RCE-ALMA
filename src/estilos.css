@@ -659,7 +659,7 @@ article .btn-cambiar-cama{width:34px;height:34px;margin-left:0}
 body.teclado-propio .barra-inf{display:none}
 @media (prefers-reduced-motion:reduce){.barra-inf{transition:none}}
 
-.velo-inicio{position:absolute;inset:0;z-index:40;background:rgba(15,26,36,.45);display:flex;align-items:flex-end;justify-content:flex-end}
+.velo-inicio{position:absolute;inset:0;z-index:40;overflow:hidden;background:rgba(15,26,36,.45);display:flex;align-items:flex-end;justify-content:flex-end}
 .hoja-mas{width:100%;max-height:82%;overflow-y:auto;background:var(--panel);border-radius:22px 22px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;animation:sube .2s ease}
 .hoja-mas .asa{width:44px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 4px;flex:none}
 .hoja-mas h2{margin:0;font-size:19px;text-align:center}
@@ -719,3 +719,28 @@ body.teclado-propio .barra-inf{display:none}
 .pc-banner .de-noche{display:none}
 :root[data-theme="dark"] .pc-banner .de-dia{display:none}
 :root[data-theme="dark"] .pc-banner .de-noche{display:block}
+/* Panel lateral: el gesto de deslizar no debe mover la pagina. */
+.panel-cuenta{touch-action:pan-y}
+/* «Controles»: la tarjeta abre la sabana del paciente ajustada al celular. */
+.tarjeta-control{cursor:pointer}
+.tarjeta-control:active{background:var(--panel-2)}
+.tarjeta-control .ver-sabana{justify-self:end;display:inline-flex;align-items:center;gap:2px;color:var(--accent);font-weight:700;font-size:12.5px}
+.sabana-cel{position:absolute;inset:0;z-index:45;background:var(--panel);display:flex;flex-direction:column;animation:aparece .18s ease}
+@keyframes aparece{from{opacity:.4}to{opacity:1}}
+.sabana-cel-cab{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 8px;border-bottom:1px solid var(--line)}
+.sabana-cel-cab h2{margin:0;font-size:18px}
+.sabana-cel-cuerpo{flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.sabana-cel .sv-barra{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px}
+.sabana-cel .sv-pestanas,.sabana-cel .sv-rango{display:flex}
+.sabana-cel .sv-pestanas button,.sabana-cel .sv-rango button{flex:1;min-width:0;padding:0 6px}
+.sabana-cel table.sab-plana{font-size:12px}
+.sabana-cel table.sab-plana tbody td:first-child,.sabana-cel table.sab-plana thead tr:first-child th:first-child{width:auto;min-width:96px;max-width:118px;white-space:normal;line-height:1.2;font-size:11.5px;padding:5px 6px}
+.sabana-cel table.sab th,.sabana-cel table.sab td{padding:5px 7px}
+.sabana-cel table.sab-plana td.v{min-width:3.6em;max-width:7.5em}
+.sabana-cel table.sab-plana tr.sv-grupo td span{position:sticky;left:8px}
+.sabana-cel .sabana-vista{border:0;border-radius:0;box-shadow:none;margin-top:0}
+.sabana-cel table.sab-plana td.v{min-width:7.4em;max-width:9em;white-space:normal}
+table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
+.sabana-cel{overflow:hidden}
+.sabana-cel-cuerpo,.sabana-cel .sabana-vista,.sabana-cel .scroll-x{min-width:0;max-width:100%}
+.sabana-cel .sv-otros{overflow-wrap:anywhere}

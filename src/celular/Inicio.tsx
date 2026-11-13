@@ -31,6 +31,7 @@ import {
 import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { useApp } from "../app/store";
+import { SabanaVista } from "../estacion/SabanaVista";
 import bannerDia from "../app/iconos/banner-dia.png?inline";
 import bannerNoche from "../app/iconos/banner-noche.png?inline";
 import type { Tema, VistaCelular } from "../app/store";
@@ -252,9 +253,18 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
   const tema = useApp((s) => s.tema);
   const setTema = useApp((s) => s.setTema);
   const irA = useApp((s) => s.irA);
+  const inicioX = useRef<number | null>(null);
   return (
     <div className="velo-inicio" onClick={onCerrar}>
-      <aside className="panel-cuenta" role="dialog" aria-label="Mi cuenta" onClick={(e) => e.stopPropagation()}>
+      <aside
+        className="panel-cuenta"
+        role="dialog"
+        aria-label="Mi cuenta"
+        onClick={(e) => e.stopPropagation()}
+        // Deslizar el dedo hacia la derecha lo esconde.
+        onTouchStart={(e) => { inicioX.current = e.touches[0]?.clientX ?? null; }}
+        onTouchMove={(e) => { if (inicioX.current !== null && (e.touches[0]?.clientX ?? 0) - inicioX.current > 60) { inicioX.current = null; onCerrar(); } }}
+      >
         <button type="button" className="bt-plano cerrar" aria-label="Cerrar" onClick={onCerrar}><X size={20} aria-hidden /></button>
         <div className="pc-cabeza">
           <span className="avatar grande" aria-hidden>{inicial(nombre)}</span>
@@ -322,6 +332,9 @@ const n = (v: number | null, unidad = ""): string => (v === null ? "--" : `${v}$
 
 /** «Controles»: lo que registré en las últimas 24 horas, uno por tarjeta, del más nuevo al más antiguo. */
 export function MisControles({ resumen, rut, ahora }: { resumen: readonly ResumenCama[]; rut: string; ahora: Date }) {
+  /** Control tocado: abre la sabana de ese paciente con ese control destacado. */
+  const [abierto, setAbierto] = useState<{ episodioId: string; controlId: string } | null>(null);
+  const sab = abierto ? resumen.find((r) => r.ep.id === abierto.episodioId) : undefined;
   const desde = ahora.getTime() - 24 * 3600_000;
   const mios = resumen
     .flatMap((r) => r.controles.filter((c) => c.rutAutor === rut && Date.parse(c.registradoEn) >= desde).map((c) => ({ c, r })))
@@ -333,7 +346,15 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
       {mios.map(({ c, r }) => {
         const evento = c.eventoId ? r.eventos.find((e) => e.id === c.eventoId) : undefined;
         return (
-          <article key={c.id} className="card tarjeta-control">
+          <article
+            key={c.id}
+            className="card tarjeta-control"
+            role="button"
+            tabIndex={0}
+            aria-label={`Ver la sábana · ${nombreCama(r.ep.cama)} · ${c.hora}`}
+            onClick={() => setAbierto({ episodioId: r.ep.id, controlId: c.id })}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAbierto({ episodioId: r.ep.id, controlId: c.id }); } }}
+          >
             <header>
               <b>{nombreCama(r.ep.cama)} · {c.hora}</b>
               <span className="small muted">{ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? ""}</span>
@@ -345,9 +366,21 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
               <span><b>{n(c.spo2, " %")}</b>SpO₂</span>
               <span><b>{n(c.ventilacion.fio2, " %")}</b>FiO₂</span>
             </div>
+            <span className="ver-sabana">Ver sábana <ChevronRight size={15} aria-hidden /></span>
           </article>
         );
       })}
+      {sab && abierto && (
+        <div className="sabana-cel" role="dialog" aria-label={`Sábana · ${nombreCama(sab.ep.cama)}`}>
+          <div className="sabana-cel-cab">
+            <button type="button" className="bt-plano" aria-label="Volver" onClick={() => setAbierto(null)}><ChevronLeft size={22} aria-hidden /></button>
+            <h2>Sábana · {nombreCama(sab.ep.cama)}</h2>
+          </div>
+          <div className="sabana-cel-cuerpo">
+            <SabanaVista ep={sab.ep} controles={sab.controles} eventos={sab.eventos} ahora={ahora} resaltar={abierto.controlId} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

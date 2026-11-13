@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ESCALAS, calcularEscala, calcularPbw, describirEvento } from "@core/index";
 import type { Control, Episodio, EventoClinico } from "@core/index";
 import { columnasSabana, evaluacionesDe, filasSabana, otrosEventos } from "./sabana";
@@ -17,7 +17,7 @@ const fechaHora = (iso: string): string => {
  * los hitos de via aerea que generaron ese control. Los demas eventos van en una lista aparte
  * y las evaluaciones en su propia pestana.
  */
-export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; controles: readonly Control[]; eventos: readonly EventoClinico[]; ahora: Date }) {
+export function SabanaVista({ ep, controles, eventos, ahora, resaltar }: { ep: Episodio; controles: readonly Control[]; eventos: readonly EventoClinico[]; ahora: Date; /** Control a destacar y mostrar (p. ej. el que se toco en el celular). */ resaltar?: string }) {
   const [pestana, setPestana] = useState<"sabana" | "evaluaciones">("sabana");
   const [rango, setRango] = useState<RangoSabana>("24H");
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
@@ -34,7 +34,14 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
   }, []);
   const borde = (nuevoDia: boolean): string => (nuevoDia ? "dia" : "");
   // La columna de un control que monitoriza un evento lleva una linea roja a la izquierda.
-  const clase = (c: { nuevoDia: boolean; hitos: readonly string[] }): string => `${borde(c.nuevoDia)}${c.hitos.length ? " con-evento" : ""}`;
+  const clase = (c: { nuevoDia: boolean; hitos: readonly string[]; control: Control }): string => `${borde(c.nuevoDia)}${c.hitos.length ? " con-evento" : ""}${c.control.id === resaltar ? " sel" : ""}`;
+  // El control destacado queda a la vista (en el celular la tabla se desplaza de lado).
+  const tabla = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const th = tabla.current?.querySelector<HTMLElement>("thead th.sel");
+    const caja = tabla.current;
+    if (th && caja) caja.scrollLeft = Math.max(0, th.offsetLeft - caja.clientWidth / 2 + th.offsetWidth / 2);
+  }, [resaltar, rango, pestana, columnas.length]);
 
   return (
     <section className="sabana-vista" aria-label="Sábana">
@@ -56,7 +63,7 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
           {columnas.length === 0 ? (
             <p className="muted" style={{ padding: "10px 14px", margin: 0 }}>{rango === "24H" ? "Sin controles en las últimas 24 h." : "Todavía no hay controles de esta cama."}</p>
           ) : (
-            <div className="scroll-x">
+            <div className="scroll-x" ref={tabla}>
               <table className="sab sab-plana">
                 <thead>
                   <tr>
@@ -76,7 +83,7 @@ export function SabanaVista({ ep, controles, eventos, ahora }: { ep: Episodio; c
                   {filas.map((f, i) => (
                     <Fragment key={f.etiqueta}>
                       {f.grupo !== filas[i - 1]?.grupo && f.grupo !== "Firma" && (
-                        <tr className="sv-grupo"><td colSpan={columnas.length + 1}>{f.grupo}</td></tr>
+                        <tr className="sv-grupo"><td colSpan={columnas.length + 1}><span>{f.grupo}</span></td></tr>
                       )}
                       <tr className={f.grupo === "Firma" ? "sv-firma" : undefined}>
                         <td>{f.etiqueta}</td>

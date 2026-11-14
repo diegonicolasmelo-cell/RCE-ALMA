@@ -1,4 +1,4 @@
-import { ChevronLeft, Copy, Table2, X } from "lucide-react";
+import { Copy, Table2, X } from "lucide-react";
 import { useState } from "react";
 import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, camposAlma, claseModoAlma, componerNotaAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
 import type { Control, Episodio, EventoClinico } from "@core/index";
@@ -37,7 +37,7 @@ export function FichaAlma({ ep, controles, eventos, inicial, desde, ahora, onCer
   const lista = controles.filter((x) => Date.parse(x.registradoEn) >= desde || x.id === inicial).sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   const [idx, setIdx] = useState(() => Math.max(0, lista.findIndex((c) => c.id === inicial)));
   const [hechos, setHechos] = useState<ReadonlySet<number>>(new Set());
-  const [sabana, setSabana] = useState(false);
+  const [vista, setVista] = useState<"control" | "sabana" | "evaluaciones">("control");
   const c = lista[idx];
   if (!c) return null;
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
@@ -58,15 +58,25 @@ export function FichaAlma({ ep, controles, eventos, inicial, desde, ahora, onCer
     avisar(ok ? "Evolución copiada. Pégala en ALMA." : "El teléfono no dejó copiar. Inténtalo de nuevo.");
   };
 
-  if (sabana) {
+  const pestanas = (
+    <div className="fa-pestanas" role="tablist" aria-label="Qué ver">
+      <button type="button" role="tab" aria-selected={vista === "control"} onClick={() => setVista("control")}>Último control</button>
+      <button type="button" role="tab" aria-selected={vista === "sabana"} onClick={() => setVista("sabana")}>Sábana</button>
+      <button type="button" role="tab" aria-selected={vista === "evaluaciones"} onClick={() => setVista("evaluaciones")}>Evaluaciones</button>
+    </div>
+  );
+
+  if (vista !== "control") {
+    const titulo = vista === "sabana" ? "Sábana" : "Evaluaciones";
     return (
-      <div className="sabana-cel" role="dialog" aria-label={`Sábana · ${nombreCama(ep.cama)}`}>
+      <div className="sabana-cel" role="dialog" aria-label={`${titulo} · ${nombreCama(ep.cama)}`}>
         <div className="sabana-cel-cab">
-          <button type="button" className="bt-plano" aria-label="Volver al control" onClick={() => setSabana(false)}><ChevronLeft size={22} aria-hidden /></button>
-          <h2>Sábana · {nombreCama(ep.cama)}</h2>
+          <button type="button" className="fa-flecha fa-cerrar" aria-label="Volver" onClick={onCerrar}><X size={18} aria-hidden /></button>
+          <h2>{titulo} · {nombreCama(ep.cama)}</h2>
         </div>
+        {pestanas}
         <div className="sabana-cel-cuerpo">
-          <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} resaltar={c.id} />
+          <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} resaltar={c.id} fija={vista} />
         </div>
       </div>
     );
@@ -84,6 +94,7 @@ export function FichaAlma({ ep, controles, eventos, inicial, desde, ahora, onCer
         </div>
         <button type="button" className="fa-flecha" aria-label="Control siguiente" disabled={idx === lista.length - 1} onClick={() => ir(1)}>›</button>
       </div>
+      {pestanas}
       {evento && <div className="fa-evento">⚑ {describirEvento(evento, eventos)} · {evento.hora}</div>}
       <div className="fa-signos" aria-label="Signos vitales">
         {signosAlma(c, pbw).map((s) => (
@@ -105,7 +116,7 @@ export function FichaAlma({ ep, controles, eventos, inicial, desde, ahora, onCer
         ))}
       </ul>
       <div className="fa-pie">
-        <button type="button" className="btn sm" onClick={() => setSabana(true)}><Table2 size={14} aria-hidden /> Sábana completa</button>
+        <button type="button" className="btn sm" onClick={() => setVista("sabana")}><Table2 size={14} aria-hidden /> Sábana completa</button>
         <button type="button" className="btn sm primary" onClick={() => void copiar()}><Copy size={14} aria-hidden /> Copiar evolución</button>
       </div>
     </div>

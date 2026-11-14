@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ChevronRight, ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import {
   CAMAS_UNIDAD,
@@ -24,13 +24,11 @@ import { useApp } from "../app/store";
 import { Pildora } from "./componentes";
 import { IngresoRapido } from "./IngresoRapido";
 import { TrasladoCama } from "./TrasladoCama";
-import { FichaAlma } from "./FichaAlma";
 import { useAtras } from "./Inicio";
 
 interface Fila {
   readonly ep: Episodio;
   readonly ultimo: Control | null;
-  readonly controles: readonly Control[];
   readonly eventos: readonly EventoClinico[];
   readonly apks: readonly ValidacionApk[];
 }
@@ -48,9 +46,7 @@ export function ListaCamas() {
   /** Paciente al que se le esta cambiando la cama (panel flotante con las camas libres). */
   const [trasladando, setTrasladando] = useState<Episodio | null>(null);
   const pedirEvento = useApp((s) => s.pedirEvento);
-  /** Paciente cuyo ultimo control (con sabana y evaluaciones) se esta viendo. */
-  const [viendo, setViendo] = useState<string | null>(null);
-  useAtras(ingresando !== null || trasladando !== null || viendo !== null, () => { setIngresando(null); setTrasladando(null); setViendo(null); });
+  useAtras(ingresando !== null || trasladando !== null, () => { setIngresando(null); setTrasladando(null); });
   // Pedidos del «+» de la barra: ingresar en una cama libre o cambiar a un paciente de cama.
   const ingresoPedido = useApp((s) => s.ingresoPedido);
   const trasladoPedido = useApp((s) => s.trasladoPedido);
@@ -60,16 +56,12 @@ export function ListaCamas() {
     async () => {
       const episodios = await repo.episodiosActivos();
       return Promise.all(
-        episodios.map(async (ep) => {
-          const controles = await repo.controlesDe(ep.id);
-          return {
+        episodios.map(async (ep) => ({
           ep,
-          controles,
-          ultimo: controles.at(-1) ?? null,
+          ultimo: (await repo.controlesDe(ep.id)).at(-1) ?? null,
           eventos: await repo.eventosDe(ep.id),
           apks: await repo.apkDe(ep.id)
-          };
-        })
+        }))
       );
     },
     [repo],
@@ -106,10 +98,6 @@ export function ListaCamas() {
     <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
       {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
       {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
-      {(() => {
-        const v = viendo ? filas?.find((f) => f.ep.id === viendo) : undefined;
-        return v && v.ultimo ? <FichaAlma ep={v.ep} controles={v.controles} eventos={v.eventos} inicial={v.ultimo.id} desde={ahora.getTime() - 24 * 3600_000} ahora={ahora} onCerrar={() => setViendo(null)} /> : null;
-      })()}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
         <button type="button" className="linkbtn" onClick={() => irA("elegir")}>Cambiar mis camas</button>
@@ -179,22 +167,16 @@ export function ListaCamas() {
               {cambios.map((c) => <Pildora key={c.elemento} tipo="warn">Cambiar {ETIQUETA_ELEMENTO[c.elemento]}</Pildora>)}
               {eventosSinMonitorizar(eventos, ultimo ? [ultimo] : []).map((e) => <Pildora key={e.id} tipo="crit">Evento sin monitorización · {e.hora}</Pildora>)}
             </div>
-            {/* Solo la hora; al tocarla se abre el ultimo control en grande, con la sabana y las evaluaciones. */}
-            {ultimo ? (
-              <button type="button" className="ultimo-control ver" aria-label={`Ver último control · ${nombreCama(ep.cama)}`} onClick={() => setViendo(ep.id)}>
-                <span className="small muted">Último control</span>
+            <div className="ultimo-control">
+              <span className="small muted">Último control</span>
+              {/* Solo la hora: el detalle (modo, FC, SpO2) esta en Controles y en la sabana. */}
+              {ultimo ? (
                 <b>
                   {ultimo.hora}
                   {minutos !== null && minutos >= 60 && <span className="hace"> · hace {haceTexto(minutos)}</span>}
-                  <ChevronRight size={15} aria-hidden style={{ verticalAlign: "-3px", marginLeft: 4 }} />
                 </b>
-              </button>
-            ) : (
-              <div className="ultimo-control">
-                <span className="small muted">Último control</span>
-                <b className="muted">sin controles</b>
-              </div>
-            )}
+              ) : <b className="muted">sin controles</b>}
+            </div>
             <div className="botones-cama">
               <button type="button" className="btn primary" onClick={() => irA("cama", ep.id)}>
                 <Stethoscope size={15} aria-hidden /> Monitorización

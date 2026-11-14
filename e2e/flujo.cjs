@@ -918,21 +918,10 @@ async function esperarServidor() {
       const ancho = await cel.evaluate(() => document.documentElement.scrollWidth);
       const culpables = await cel.evaluate(() => [...document.querySelectorAll(".sabana-cel *")].filter((e) => e.getBoundingClientRect().right > 392 && !e.closest(".scroll-x")).slice(0, 5).map((e) => e.tagName + "." + e.className + " " + Math.round(e.getBoundingClientRect().right)).join(" | ") + " · padre " + (document.querySelector(".sabana-cel").offsetParent?.className) + " " + Math.round(document.querySelector(".sabana-cel").offsetParent?.getBoundingClientRect().width) + " · body " + document.body.scrollWidth + " app " + Math.round(document.querySelector(".app-cel").getBoundingClientRect().width));
       assert.ok(ancho <= 391, `la sabana no desborda la pantalla (${ancho}px): ${culpables}`);
-      await sab.locator('[role=tab]:has-text("Evaluaciones")').click();
-      await cel.locator(`[role=dialog][aria-label="Evaluaciones · ${cama}"]`).waitFor();
-      await cel.locator('[role=dialog] [role=tab]:has-text("Último control")').click();
+      await sab.locator('button[aria-label="Volver al control"]').click();
       await hoja.waitFor();
       await hoja.locator('button[aria-label="Volver"]').click();
       await hoja.waitFor({ state: "detached" });
-      // Desde la tarjeta de la cama, la hora del ultimo control abre la misma ficha.
-      await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
-      await cel.click('button[aria-label="Ver último control · Cama 1"]');
-      await hoja.waitFor();
-      assert.match(await hoja.locator(".fa-tit b").textContent(), /^Cama 1 · /);
-      assert.equal(await hoja.locator('[role=tab][aria-selected="true"]').textContent(), "Último control");
-      await hoja.locator('button[aria-label="Volver"]').click();
-      await hoja.waitFor({ state: "detached" });
-      await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
       // Panel de la cuenta: se cierra deslizando el dedo hacia la derecha.
       await cel.click('[aria-label="Mi cuenta"]');
       const panel = cel.locator('[role=dialog][aria-label="Mi cuenta"]');

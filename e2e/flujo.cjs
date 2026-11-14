@@ -899,12 +899,27 @@ async function esperarServidor() {
       await tarjeta.waitFor();
       const [cama, hora] = (await tarjeta.locator("header b").textContent()).split(" · ");
       await tarjeta.click();
-      const hoja = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
+      // Se abre el control en una sola pantalla, para pasarlo a ALMA: signos arriba, VM abajo.
+      const hoja = cel.locator(`[role=dialog].ficha-alma`);
       await hoja.waitFor();
-      assert.equal(await hoja.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");
+      assert.match(await hoja.locator(".fa-tit b").textContent(), new RegExp(`${cama} · ${hora}`));
+      const signos = await hoja.locator(".fa-signos .fa-dato span").allTextContents();
+      for (const e of ["FC", "PA", "Glasgow", "SpO₂", "FiO₂"]) assert.ok(signos.some((t) => t.startsWith(e)), "falta " + e + ": " + signos.join("|"));
+      const desborde = await hoja.evaluate((d) => [d.scrollHeight - d.clientHeight, d.querySelector(".fa-campos").scrollHeight - d.querySelector(".fa-campos").clientHeight]);
+      assert.ok(desborde[0] <= 1 && desborde[1] <= 1, "sin scroll: " + desborde.join(","));
+      if (process.env.FOTO_FICHA) await cel.waitForTimeout(500), await cel.screenshot({ path: process.env.FOTO_FICHA });
+      const campo = hoja.locator(".fa-campos button").first();
+      await campo.click();
+      assert.equal(await campo.getAttribute("aria-pressed"), "true", "tocar un campo lo tacha");
+      await hoja.locator('button:has-text("Sábana completa")').click();
+      const sab = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
+      await sab.waitFor();
+      assert.equal(await sab.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");
       const ancho = await cel.evaluate(() => document.documentElement.scrollWidth);
       const culpables = await cel.evaluate(() => [...document.querySelectorAll(".sabana-cel *")].filter((e) => e.getBoundingClientRect().right > 392 && !e.closest(".scroll-x")).slice(0, 5).map((e) => e.tagName + "." + e.className + " " + Math.round(e.getBoundingClientRect().right)).join(" | ") + " · padre " + (document.querySelector(".sabana-cel").offsetParent?.className) + " " + Math.round(document.querySelector(".sabana-cel").offsetParent?.getBoundingClientRect().width) + " · body " + document.body.scrollWidth + " app " + Math.round(document.querySelector(".app-cel").getBoundingClientRect().width));
       assert.ok(ancho <= 391, `la sabana no desborda la pantalla (${ancho}px): ${culpables}`);
+      await sab.locator('button[aria-label="Volver al control"]').click();
+      await hoja.waitFor();
       await hoja.locator('button[aria-label="Volver"]').click();
       await hoja.waitFor({ state: "detached" });
       // Panel de la cuenta: se cierra deslizando el dedo hacia la derecha.

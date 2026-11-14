@@ -272,3 +272,14 @@ describe("un solo botón de extubación: fuera de protocolo antes de 24 h de VM,
     expect(botonExtubacion({ viaAereaActual: "NATURAL", diasVM: 0, ingresadoEn: t(5).toISOString() }, null, [], null, t(10))).toBeNull();
   });
 });
+
+describe("control inmediato post extubacion", () => {
+  it("toca al extubar y deja de tocar al registrarlo", () => {
+    const t = new Date("2026-11-13T14:00:00");
+    const ex: EventoClinico = { ...base(t, "ex1"), tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", sinPve: "MENOS_24H_VM" } as EventoClinico;
+    const ahora = new Date(t.getTime() + 2 * 60_000);
+    expect(accesoPve("NATURAL" as never, null, [ex], ahora)?.texto).toBe("Post extubación: registrar");
+    const re = { ...base(new Date(t.getTime() + 60_000), "re1"), tipo: "REEVAL_POST_EXTUB", momento: "EXTUB", fc: 90, pam: null, gcs: null, fr: 20, fio2: null, spo2: 95, trabajoResp: "", manejoSecreciones: "" } as unknown as EventoClinico;
+    expect(accesoPve("NATURAL" as never, null, [ex, re], ahora)).toBeNull();
+  });
+});

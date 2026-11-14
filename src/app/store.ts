@@ -54,6 +54,9 @@ interface EstadoApp {
   eventoMonitorizar: { readonly episodioId: string; readonly eventoId: string; readonly texto: string; readonly hora: string } | null;
   monitorizarEvento: (e: { episodioId: string; eventoId: string; texto: string; hora: string } | null) => void;
   pedirEvento: (k: string | null) => void;
+  /** Episodio cuya PVE debe abrirse con el control inmediato post extubacion a la vista. */
+  postExtubPedido: string | null;
+  pedirPostExtub: (episodioId: string | null) => void;
   /** Pedidos del menu «+» a la lista de camas: ingresar en una cama libre o cambiar a un paciente de cama. */
   ingresoPedido: string | null;
   trasladoPedido: string | null;
@@ -148,6 +151,8 @@ export const useApp = create<EstadoApp>((set) => ({
   eventoMonitorizar: null,
   monitorizarEvento: (eventoMonitorizar) => set({ eventoMonitorizar }),
   pedirEvento: (eventoPedido) => set({ eventoPedido }),
+  postExtubPedido: null,
+  pedirPostExtub: (postExtubPedido) => set({ postExtubPedido }),
   ingresoPedido: null,
   trasladoPedido: null,
   pedirIngreso: (ingresoPedido) => set({ ingresoPedido }),

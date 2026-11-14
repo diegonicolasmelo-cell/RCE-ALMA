@@ -324,8 +324,9 @@ export const TIPOS_CON_CONTROL: ReadonlySet<TipoEvento> = new Set<TipoEvento>([
 
 export const pideControl = (ev: EventoClinico): boolean =>
   TIPOS_CON_CONTROL.has(ev.tipo) &&
-  // La extubacion por PVE se sigue con los controles de 30, 60 y 120 minutos de la PVE.
-  !(ev.tipo === "EXTUBACION_PROGRAMADA" && !ev.sinPve);
+  // Toda extubacion (por PVE o fuera de protocolo) se sigue con sus controles post extubacion
+  // (inmediato, 30, 60 y 120 min y 48 h), no con un control general.
+  ev.tipo !== "EXTUBACION_PROGRAMADA";
 
 /** Eventos que piden control y aun no tienen ninguno despues (ni uno ligado a ellos). */
 export function eventosSinMonitorizar(eventos: readonly EventoClinico[], controles: readonly Control[]): readonly EventoClinico[] {

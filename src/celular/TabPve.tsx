@@ -10,7 +10,7 @@
  * y la hora REAL de cada paso (se sugiere la de ahora y se corrige). Todo queda como eventos.
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
   CRITERIOS_PVE,
@@ -92,7 +92,11 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const [hora, setHora] = useState(horaDe(new Date()));
   /** Si nadie corrigio la hora, vale la de AHORA: la sugerida puede quedar un minuto atras. */
   const horaTocada = useRef(false);
-  const [reeval, setReeval] = useState<MomentoPostExtub | null>(null);
+  // Recien extubado (desde Eventos o aqui): se abre el control inmediato post extubacion.
+  const [reeval, setReeval] = useState<MomentoPostExtub | null>(() => (useApp.getState().postExtubPedido === ep.id ? "EXTUB" : null));
+  useEffect(() => {
+    if (useApp.getState().postExtubPedido === ep.id) useApp.getState().pedirPostExtub(null);
+  }, [ep.id]);
   const [msg, setMsg] = useState<string | null>(null);
   const set = (k: string, v: string): void => setF((x) => ({ ...x, [k]: v }));
   const limpiar = (): void => {
@@ -196,8 +200,9 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     if (!f["queda"]) return setMsg("Indica con qué queda: CNAF, VMNI, O₂ convencional o aire ambiente.");
     if (!(await ev({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: f["queda"] as DispositivoPosterior }))) return;
     useApp.getState().descartar(ep.id);
-    avisar(`Extubación registrada a las ${hora}: parten los controles de 30, 60 y 120 min y 48 h.`);
     limpiar();
+    setReeval("EXTUB");
+    avisar(`Extubación registrada a las ${hora}. Registra el control inmediato; después tocan 30, 60 y 120 min y 48 h.`);
   };
   /** No corresponde PVE (AET, ventilacion domiciliaria, agitacion…): extubacion fuera de protocolo. */
   const extubarSinPve = async (): Promise<void> => {
@@ -208,9 +213,8 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     limpiar();
     setSinPve(false);
     useApp.getState().descartar(ep.id);
-    useApp.getState().monitorizarEvento({ episodioId: ep.id, eventoId: extub.id, texto: describirEvento(extub), hora: extub.hora });
-    useApp.getState().irA("cama", ep.id);
-    avisar("Extubación fuera de protocolo registrada. Sigue con su monitorización.");
+    setReeval("EXTUB");
+    avisar("Extubación fuera de protocolo registrada. Registra el control inmediato post extubación.");
   };
   const sinExtubar = async (): Promise<void> => {
     if ((f["motivo"] ?? "").trim() === "") return setMsg("Escribe por qué no se extuba.");
@@ -218,16 +222,32 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     avisar("Registrado: PVE superada sin extubar.");
     limpiar();
   };
-  const guardarReeval = async (): Promise<void> => {
+  const guardarReeval = async (conFalla = false): Promise<void> => {
     if (!reeval) return;
+    const sinDatos = ["fc", "fr", "spo2", "pam", "fio2", "gcsO", "gcsV", "gcsM"].every((k) => (f[k] ?? "") === "") && !f["trab"] && !f["man"];
+    // Falla inmediata (p. ej. se reintuba al tiro): sin signos anotados se va directo a la reintubacion.
+    if (conFalla && sinDatos) {
+      setReeval(null);
+      limpiar();
+      irAFalla();
+      return;
+    }
     if (["fc", "fr", "spo2"].some((k) => num(f[k]) === null)) return setMsg("Falta: FC, FR y SpO₂.");
     if (!(await ev({
       tipo: "REEVAL_POST_EXTUB", momento: reeval, fc: num(f["fc"]), pam: num(f["pam"]), gcs: null, glasgow: gcsTexto(f["gcsO"], f["gcsV"], f["gcsM"], false) || undefined,
       fr: num(f["fr"]), fio2: num(f["fio2"]), spo2: num(f["spo2"]), trabajoResp: f["trab"] ?? "", manejoSecreciones: f["man"] ?? ""
     }))) return;
     setReeval(null);
-    avisar("Control post extubación registrado.");
     limpiar();
+    if (conFalla) {
+      irAFalla();
+      avisar("Control post extubación registrado. Ahora la falla y la reintubación.");
+    } else avisar("Control post extubación registrado.");
+  };
+  /** Abre el cierre con «falla: Sí» y lleva la pantalla ahi. */
+  const irAFalla = (): void => {
+    setF({ falla: "Sí" });
+    setTimeout(() => document.querySelector('section[aria-label="Cierre"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   };
   const cerrar = async (): Promise<void> => {
     if (!f["falla"]) return setMsg("Indica si hubo falla post extubación: Sí o No.");
@@ -240,9 +260,14 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     if (num(f["rcal"]) === null) return setMsg("Falta el calibre.");
     if (f["rvia"] === "TET" && num(f["rcm"]) === null) return setMsg("Faltan los cm en la arcada.");
     if (!(await ev({ tipo: "FALLA_POST_EXTUB", falla: true, hipotesis: (f["hip"] ?? "").trim(), observaciones: (f["obs"] ?? "").trim() }))) return;
-    await ev({ tipo: "REINTUBACION", via: f["rvia"], calibre: f["rcal"]!.trim(), fijacionCm: f["rvia"] === "TET" ? f["rcm"]!.trim() : "" });
-    avisar(`Falla post extubación y reintubación registradas: la vía aérea vuelve a ${f["rvia"]} y los días de TOT parten de nuevo.`);
+    const reint = await ev({ tipo: "REINTUBACION", via: f["rvia"], calibre: f["rcal"]!.trim(), fijacionCm: f["rvia"] === "TET" ? f["rcm"]!.trim() : "" });
     limpiar();
+    // Reintubado: el control que sigue es el del ventilador, ligado a la reintubacion.
+    if (reint) {
+      useApp.getState().monitorizarEvento({ episodioId: ep.id, eventoId: reint.id, texto: describirEvento(reint), hora: reint.hora });
+      useApp.getState().irA("cama", ep.id);
+    }
+    avisar(`Falla post extubación y reintubación registradas: la vía aérea vuelve a ${f["rvia"]} y los días de TOT parten de nuevo. Sigue con el control del ventilador.`);
   };
   const elegirCrit = (e: MouseEvent<HTMLElement>, i: number, v: boolean): void => {
     setCrit((c) => c.map((x, j) => (j === i ? v : x)));
@@ -411,15 +436,15 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
           <div className="crono">Extubado a las <b>{flujo.bloque.horaExtubacion}</b></div>
           <section aria-label="Controles post extubación">
             <h2>Controles post extubación</h2>
-            {flujo.bloque.momentos.filter((m) => m.id !== "EXTUB").map((m) => (
-              <Fila key={m.id} etiqueta={m.etiqueta} ayuda={m.registrado ? "registrado" : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
+            {flujo.bloque.momentos.map((m) => (
+              <Fila key={m.id} etiqueta={m.id === "EXTUB" ? "Inmediato" : m.etiqueta} ayuda={m.registrado ? "registrado" : m.id === "EXTUB" ? "al extubar" : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
                 {m.registrado ? <span className="pill good">Hecho</span> : <button type="button" className={m.minutosFaltantes <= 0 ? "btn primary sm" : "btn sm"} onClick={() => { limpiar(); setReeval(m.id); }}>Registrar</button>}
               </Fila>
             ))}
           </section>
           {reeval && (
             <section aria-label="Control post extubación">
-              <h2>Control post extubación · {flujo.bloque.momentos.find((m) => m.id === reeval)?.etiqueta}</h2>
+              <h2>Control post extubación · {reeval === "EXTUB" ? "Inmediato" : flujo.bloque.momentos.find((m) => m.id === reeval)?.etiqueta}</h2>
               {([["fc", "FC", "lpm"], ["pam", "PAM", "mmHg"], ["fr", "FR", "rpm"], ["fio2", "FiO₂", "%"], ["spo2", "SpO₂", "%"]] as const).map(([k, l, u]) => <Fila key={k} etiqueta={l} unidad={u}>{casilla(k, l)}</Fila>)}
               <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs">
                 <div className="tres">
@@ -433,8 +458,13 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
               {horaFila("Hora del control")}
               <div className="row" style={{ gap: 8, padding: "10px 12px" }}>
                 <button type="button" data-guardar className="btn primary" style={{ flex: 1 }} onClick={() => void guardarReeval()}>Registrar</button>
-                <button type="button" className="btn" onClick={() => setReeval(null)}>Cancelar</button>
+                <button type="button" className="btn" onClick={() => { setReeval(null); limpiar(); }}>Ahora no</button>
               </div>
+              {!flujo.bloque.falla && (
+                <div style={{ padding: "0 12px 12px" }}>
+                  <button type="button" className="btn danger" style={{ width: "100%" }} onClick={() => void guardarReeval(true)}>Hubo falla: se reintuba</button>
+                </div>
+              )}
             </section>
           )}
           {!flujo.bloque.falla && !reeval && (

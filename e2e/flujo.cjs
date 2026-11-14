@@ -628,7 +628,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("Registrar y monitorizar ›")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
       assert.match(await cel.textContent(".franja-evento"), /Monitorización del evento: Cambio de tubo/);
-      assert.match(await cel.textContent(".banda .l1"), /TET 7\.0 · 23 cm/);
+      await cel.waitForSelector('.banda .l1:has-text("TET 7.0 · 23 cm")');
       await cel.click('[role=tab]:has-text("Eventos")');
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /Cambio de tubo: TET calibre 7\.0, fijación 23 cm \(fuga\)/, linea.join(" | "));
@@ -663,12 +663,18 @@ async function esperarServidor() {
       await cel.click('[aria-label="Por qué sin PVE"] button:text-is("Ventilación mecánica domiciliaria")');
       await cel.click('[aria-label="Queda con"] button:text-is("VMNI")');
       await cel.click('button:has-text("Registrar extubación fuera de protocolo")');
-      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 9")');
+      // Sigue en la PVE con el control INMEDIATO post extubacion abierto (no el control general).
+      await cel.waitForSelector('section[aria-label="Control post extubación"] h2:has-text("Inmediato")');
       assert.match(await cel.textContent(".banda"), /Vía aérea natural/);
-      await cel.click('[role=tab]:has-text("Eventos")');
+      await cel.fill("#pve-fc", "96");
+      await cel.fill("#pve-fr", "22");
+      await cel.fill("#pve-spo2", "95");
+      await cel.click('section[aria-label="Control post extubación"] button:text-is("Registrar")');
+      await cel.waitForSelector('section[aria-label="Controles post extubación"] .fila:has-text("Inmediato") .pill:has-text("Hecho")');
+      await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
-      assert.match(linea[0] ?? "", /Extubación fuera de protocolo \(sin PVE: ventilación mecánica domiciliaria\), queda en/, linea.join(" | "));
-      await cel.click('[role=tab]:has-text("Control")');
+      assert.ok(linea.some((l) => /Extubación fuera de protocolo \(sin PVE: ventilación mecánica domiciliaria\), queda en/.test(l)), linea.join(" | "));
     });
 
     await prueba("autoextubacion con reintubacion inmediata: sigue por el mismo camino de la intubacion y lleva al control", async () => {
@@ -735,9 +741,11 @@ async function esperarServidor() {
       await cel.click('button:has-text("Registrar extubación programada")');
       await cel.waitForSelector('section[aria-label="Controles post extubación"]');
       const lista = await cel.textContent('section[aria-label="Controles post extubación"]');
-      for (const m of ["30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
-      // Falla post extubacion: pasa directo a la reintubacion.
-      await cel.locator('[aria-label="Falla post extubación"] button:text-is("Sí")').click();
+      for (const m of ["Inmediato", "30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
+      // Se abre el control inmediato; con falla al tiro se pasa directo a la reintubacion.
+      await cel.waitForSelector('section[aria-label="Control post extubación"] h2:has-text("Inmediato")');
+      await cel.click('button:has-text("Hubo falla: se reintuba")');
+      assert.equal(await cel.getAttribute('[aria-label="Falla post extubación"] button:text-is("Sí")', "aria-pressed"), "true");
       await cel.fill("#pve-hip", "Estridor laríngeo");
       await cel.locator('[aria-label="Vía"] button:text-is("TET")').click();
       await cel.click('button:has-text("Registrar falla y reintubación")');

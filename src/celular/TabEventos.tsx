@@ -15,7 +15,8 @@ import {
   CAMAS_UNIDAD,
   nombreCama,
   botonExtubacion,
-  motivoSinPve
+  motivoSinPve,
+  estadoFlujoPve
 } from "@core/index";
 import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
@@ -202,6 +203,11 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     }
     const ahoraReal = new Date();
     const comentario = it.comentarioDe ? (v[it.comentarioDe] ?? "") : "";
+    // Reintubar dentro de la vigilancia post extubacion es una falla post extubacion: queda registrada.
+    const post = it.k === "reint" ? estadoFlujoPve(eventos, ahoraReal).bloque : null;
+    if (post && !post.falla) {
+      await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date(ahoraReal.getTime() - 1)), tipo: "FALLA_POST_EXTUB", falla: true, hipotesis: "", observaciones: "" } as EventoClinico);
+    }
     const ev = it.crear(v, baseEvento(ep, rutAutor, ahoraReal, comentario));
     await repo.registrarEvento(ev);
     setAbierto(null);
@@ -214,6 +220,14 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         setValores(Object.fromEntries(reint.campos.map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
       }
       avisar("Autoextubación registrada. Ahora registra la reintubación: el tubo, los cm y la hora.");
+      return;
+    }
+    // Extubacion fuera de protocolo: sigue en la PVE con el control inmediato post extubacion.
+    if (ev.tipo === "EXTUBACION_PROGRAMADA") {
+      useApp.getState().descartar(ep.id);
+      useApp.getState().pedirPostExtub(ep.id);
+      useApp.getState().irA("pve", ep.id);
+      avisar("Extubación fuera de protocolo registrada. Registra el control inmediato post extubación.");
       return;
     }
     if (it.k === "traslado") {

@@ -128,8 +128,8 @@ export function TabControl({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId 
           previo={ultimo && ultimo.ventilacion.modalidad === b.modalidad ? ultimo.ventilacion[def.campo] : null}
           onCambio={(v) => setVent(def.campo, v)}
           franja={franjaVent(def)}
-          placeholder={def.campo === "pPlateau" && bloqueado ? "bloqueado" : ""}
-          deshabilitado={def.campo === "pPlateau" && bloqueado}
+          placeholder={(def.campo === "pPlateau" || def.campo === "compliance") && bloqueado ? "bloqueado" : ""}
+          deshabilitado={(def.campo === "pPlateau" || def.campo === "compliance") && bloqueado}
         />
       ));
 
@@ -303,7 +303,7 @@ function Resultantes({ ctx, d, bloqueado }: { ctx: ContextoCama; d: ReturnType<t
         {esModalidadControlada(b.modalidad) ? (
           <>
             <Celda valor={d.drivingPressure} etiqueta={d.origenDriving === "PICO" ? "ΔP (con pico)" : "ΔP"} bloqueado={bloqueado} />
-            <Celda valor={d.compliance} etiqueta={d.origenDriving === "PICO" ? "Cest (con pico)" : "Cest"} bloqueado={bloqueado} />
+            <Celda valor={d.compliance} etiqueta="Cest" bloqueado={bloqueado} />
             <Celda valor={d.relacionIE} etiqueta="I:E" />
           </>
         ) : (

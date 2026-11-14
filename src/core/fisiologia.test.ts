@@ -128,7 +128,7 @@ describe("ROX: solo CNAF", () => {
 describe("mecánica y derivados por modalidad", () => {
   const pbw = 67.8;
 
-  it("ACVC sincrónico: ΔP, compliance con el volumen ESPIRADO, ml/kg", () => {
+  it("ACVC sincrónico: ΔP, la compliance anotada, ml/kg", () => {
     const d = calcularDerivados(unControl(), pbw);
     expect(d.drivingPressure).toBe(10);
     expect(d.compliance).toBe(43);
@@ -136,9 +136,18 @@ describe("mecánica y derivados por modalidad", () => {
     expect(d.relacionIE).toBe("1:2");
   });
 
-  it("la compliance usa el espirado, no el programado", () => {
-    const c = unControl({ ventilacion: unaVentilacion({ vtProgramado: 600, vtEspirado: 500, pPlateau: 20, peep: 10 }) });
-    expect(calcularDerivados(c, pbw).compliance).toBe(50);
+  it("la compliance estática NO se calcula con Vt / ΔP: vale solo la anotada", () => {
+    const sinAnotar = unControl({ ventilacion: unaVentilacion({ vtProgramado: 600, vtEspirado: 500, pPlateau: 20, peep: 10, compliance: null }) });
+    expect(calcularDerivados(sinAnotar, pbw).drivingPressure).toBe(10);
+    expect(calcularDerivados(sinAnotar, pbw).compliance).toBeNull();
+    const anotada = unControl({ ventilacion: unaVentilacion({ vtEspirado: 500, pPlateau: 20, peep: 10, compliance: 47 }) });
+    expect(calcularDerivados(anotada, pbw).compliance).toBe(47);
+  });
+
+  it("la compliance anotada no necesita plateau, pero la asincronía en modo controlado la bloquea", () => {
+    expect(calcularDerivados(unControl({ ventilacion: unaVentilacion({ pPlateau: null, compliance: 38 }) }), pbw).compliance).toBe(38);
+    expect(calcularDerivados(unControl({ ventilacion: unaVentilacion({ asincronico: true, compliance: 38 }) }), pbw).compliance).toBeNull();
+    expect(calcularDerivados(unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", compliance: 38 }) }), pbw).compliance).toBeNull();
   });
 
   it("con auto-PEEP se resta la PEEP total: Ppl 20, PEEP 5 + auto-PEEP 1 = 6, ΔP 14", () => {
@@ -146,7 +155,6 @@ describe("mecánica y derivados por modalidad", () => {
     const d = calcularDerivados(c, pbw);
     expect(d.peepTotal).toBe(6);
     expect(d.drivingPressure).toBe(14);
-    expect(d.compliance).toBe(30);
     const sinAuto = calcularDerivados(unControl({ ventilacion: unaVentilacion({ vtEspirado: 420, pPlateau: 20, peep: 5, autoPeep: null }) }), pbw);
     expect(sinAuto.peepTotal).toBe(5);
     expect(sinAuto.drivingPressure).toBe(15);
@@ -166,11 +174,11 @@ describe("mecánica y derivados por modalidad", () => {
     expect(calcularDerivados(ok, pbw).posibleFuga).toBe(false);
   });
 
-  it("sin plateau no hay mecánica estática", () => {
+  it("sin plateau no hay ΔP (la compliance, si se anotó, sigue)", () => {
     const c = unControl({ ventilacion: unaVentilacion({ pPlateau: null }) });
     const d = calcularDerivados(c, pbw);
     expect(d.drivingPressure).toBeNull();
-    expect(d.compliance).toBeNull();
+    expect(d.compliance).toBe(43);
   });
 
   it("CPAP+PS no calcula ΔP ni compliance", () => {
@@ -219,7 +227,7 @@ describe("PCV: ΔP con presión pico si el ventilador no permite medir plateau",
     const d = calcularDerivados(pcv({ pPlateau: null, pPico: 24 }), pbw);
     expect(d.drivingPressure).toBe(16);
     expect(d.origenDriving).toBe("PICO");
-    expect(d.compliance).toBe(28.1);
+    expect(d.compliance).toBe(43); // la anotada, no Vt / ΔP con pico
   });
 
   it("sin plateau ni pico no hay ΔP", () => {

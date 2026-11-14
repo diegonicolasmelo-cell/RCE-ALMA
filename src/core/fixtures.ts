@@ -60,6 +60,8 @@ export function unaVentilacion(over: Partial<Ventilacion> = {}): Ventilacion {
     fuga: null,
     presionMax: null,
     ie: null,
+    // La compliance estatica se anota (la del ventilador); 43 = 430 ml / ΔP 10.
+    compliance: 43,
     musculaturaAccesoria: null,
     ...over
   };

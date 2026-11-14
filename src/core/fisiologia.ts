@@ -207,8 +207,12 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     if (dp > 0) {
       drivingPressure = redondear(dp, 1);
       origenDriving = pd.origen;
-      if (v.vtEspirado !== null && v.vtEspirado > 0) compliance = redondear(v.vtEspirado / dp, 1);
     }
+  }
+  // La compliance estatica se ANOTA (la que muestra el ventilador): no se calcula con Vt / ΔP, para no
+  // confundirla con la medida. Con asincronia en modalidad controlada queda bloqueada, como el plateau.
+  if (controlada && !v.asincronico && v.compliance !== undefined && v.compliance !== null && v.compliance > 0) {
+    compliance = v.compliance;
   }
 
   const vtProgramadoPorKg = mlPorKg(v.vtProgramado, pbw);

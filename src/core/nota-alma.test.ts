@@ -237,7 +237,8 @@ describe("novedades: PCV con presión pico, Glasgow, neuromonitoreo y equipos", 
   it("PCV sin plateau reporta la ΔP y la compliance declarando que usan la presión pico", () => {
     const n = nota({ controles: [pcvSinPlateau] });
     expect(n).toContain("driving pressure 16 (con P. pico)");
-    expect(n).toContain("compliance 28.1 (con P. pico)");
+    expect(n).toContain("compliance estática 43");
+    expect(n).not.toContain("compliance 28");
     expect(n).not.toContain("P.plateau");
     expect(n).toContain("P. control 15");
   });

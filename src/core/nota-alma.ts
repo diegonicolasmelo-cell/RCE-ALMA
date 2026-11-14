@@ -175,11 +175,10 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
     // En PCV, si el ventilador no permite medir plateau, la ΔP se calcula con la presion pico.
     const conPico = d.origenDriving === "PICO";
     if (!conPico) p.push(`P.plateau ${fmt(v.pPlateau)}`);
-    p.push(
-      `driving pressure ${d.drivingPressure}${conPico ? " (con P. pico)" : ""}`,
-      `compliance ${conPico ? "" : "estática "}${fmt(d.compliance)}${conPico ? " (con P. pico)" : ""}`
-    );
-  } else if (mecanicaBloqueadaPorAsincronia(v)) {
+    p.push(`driving pressure ${d.drivingPressure}${conPico ? " (con P. pico)" : ""}`);
+  }
+  if (d.compliance !== null) p.push(`compliance estática ${d.compliance}`);
+  if (d.drivingPressure === null && d.compliance === null && mecanicaBloqueadaPorAsincronia(v)) {
     // No se reporta un dato contaminado por esfuerzo muscular activo.
     p.push("mecánica estática no valorable (asincronía paciente-ventilador en modalidad controlada)");
   }

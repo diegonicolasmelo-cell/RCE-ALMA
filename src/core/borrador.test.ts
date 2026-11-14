@@ -63,7 +63,7 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   });
 
   it("cubre exactamente lo observado", () => {
-    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "frTotal", "fuga", "ie", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
+    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "compliance", "frTotal", "fuga", "ie", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
   });
 
   it("el S5Q nace en blanco", () => {

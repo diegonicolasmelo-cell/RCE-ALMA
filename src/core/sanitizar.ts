@@ -226,6 +226,7 @@ export function normalizarControl(c: Control): Control {
       fuga: v.fuga ?? null,
       presionMax: v.presionMax ?? null,
       ie: v.ie ?? null,
+      compliance: v.compliance ?? null,
       musculaturaAccesoria: v.musculaturaAccesoria ?? null
     },
     kineResp: {

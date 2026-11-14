@@ -241,6 +241,8 @@ async function esperarServidor() {
       assert.ok(et.some((t) => t.startsWith("I:E")), "en ACPC se anota la I:E: " + et.join(" | "));
       await cel.selectOption("#in-modo", "ACVC");
       assert.equal(await cel.locator("#in-vent-ie").count(), 1, "en ACVC se anota la I:E");
+      assert.equal(await cel.locator("#in-vent-compliance").count(), 1, "la compliance estática se anota en su casilla");
+      assert.equal(await cel.locator('.fila:has(.calc):has-text("Compliance")').count(), 0, "ya no se calcula");
     });
 
     await prueba("el Vt dice cuanto es por kilo de peso ideal, y la talla se corrige ahi mismo", async () => {
@@ -259,6 +261,7 @@ async function esperarServidor() {
     await prueba("asincronia en modalidad controlada bloquea el plateau", async () => {
       await cel.locator('[aria-label="Asincronía"] button:text-is("Sí")').click();
       assert.equal(await cel.locator("#in-vent-pPlateau").isDisabled(), true);
+      assert.equal(await cel.locator("#in-vent-compliance").isDisabled(), true, "la compliance anotada también se bloquea");
       assert.match(await cel.textContent(".notice.crit"), /invalidados/);
       await cel.locator('[aria-label="Asincronía"] button:text-is("No")').click();
     });

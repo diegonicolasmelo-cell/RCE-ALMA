@@ -387,7 +387,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           <div key={g}>
             <div className="sub-grupo">{g === "PROGRAMADO" ? "Programado" : "Lo que hace el paciente"}</div>
             {campos.filter((c) => c.grupo === g).map((c) => {
-              const bloq = bloqueado && c.campo === "pPlateau";
+              const bloq = bloqueado && (c.campo === "pPlateau" || c.campo === "compliance");
               const esVt = c.campo === "vtProgramado" || c.campo === "vtEspirado";
               return (
                 <Fila key={c.campo} etiqueta={c.etiqueta} unidad={c.unidad} clase={bloq ? "bloq" : ""} ayuda={esVt ? <span className="esc">{mlKg(b.vent[c.campo])}</span> : undefined} {...vz(c.campo)}>
@@ -408,7 +408,6 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         {(controlada || b.modalidad === "CPAP_PS" || d.rox !== null || d.vtEspiradoPorKg !== null) && <div className="sub-grupo">Calculado</div>}
         {controlada && (medicionDe(b.vent.autoPeep) ?? 0) > 0 && <Fila etiqueta="PEEP total" unidad="cmH₂O" ayuda="PEEP + auto-PEEP"><div className="calc">{textoNum(d.peepTotal)}</div></Fila>}
         {controlada && <Fila etiqueta="P. distensión" unidad="cmH₂O"><div className="calc">{textoNum(d.drivingPressure)}</div></Fila>}
-        {controlada && <Fila etiqueta="Compliance" unidad="ml/cmH₂O"><div className="calc">{textoNum(d.compliance)}</div></Fila>}
         {b.modalidad === "CPAP_PS" && <Fila etiqueta="Índice de Tobin"><div className="calc">{textoNum(d.tobin)}</div></Fila>}
         {d.rox !== null && <Fila etiqueta="Índice ROX"><div className="calc">{textoNum(d.rox)}</div></Fila>}
         {d.vtEspiradoPorKg !== null && (

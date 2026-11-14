@@ -78,7 +78,9 @@ export type CampoVent =
   /** IPAP maxima (AVAPS). La minima va en `presion`. */
   | "presionMax"
   /** Relacion I:E leida del ventilador, como el numero despues de «1:» (p. ej. 2,5 = 1:2,5). */
-  | "ie";
+  | "ie"
+  /** Compliance estatica leida del ventilador (ml/cmH2O). Se anota; no se calcula. */
+  | "compliance";
 
 export const CAMPOS_VENT: readonly CampoVent[] = [
   "frProgramada",
@@ -98,7 +100,8 @@ export const CAMPOS_VENT: readonly CampoVent[] = [
   "temperatura",
   "fuga",
   "presionMax",
-  "ie"
+  "ie",
+  "compliance"
 ];
 
 /**

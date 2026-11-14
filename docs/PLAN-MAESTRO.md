@@ -550,8 +550,7 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
 
 ## 16. Dictado por voz en el control (en prueba, 14-nov-2026)
 
-Primera etapa de la especificación de Diego (dictado continuo con revisión). Guiado campo por
-campo y Glasgow/SAS quedan para una etapa siguiente.
+Dictado continuo con revisión. El dictado guiado campo por campo queda para una etapa siguiente.
 
 - **Apagado por defecto.** Cada persona lo activa en su cuenta («Dictado por voz · en prueba»),
   en su celular, después de leer el aviso: el audio lo procesa el servicio de voz del teléfono
@@ -559,11 +558,12 @@ campo y Glasgow/SAS quedan para una etapa siguiente.
   No usar con pacientes reales hasta que la unidad e informática lo autoricen.
 - **Dónde funciona:** donde el navegador ofrece reconocimiento de voz y fuera de Apps Script (en
   el `/exec` el micrófono está bloqueado y el botón no aparece). El teclado no cambia.
-- **Qué hace:** signos vitales (FC, PA, SpO₂) y ventilación (modo y las casillas del modo). El
-  intérprete (`src/core/dictado.ts`) es determinista: «PIP» siempre pregunta si es PEEP o presión
-  pico; «frecuencia» a secas pregunta cuál si el modo tiene dos; dos valores distintos para el
-  mismo dato o un valor fuera de rango piden decisión; lo que no existe en el modo no se aplica.
-  Las infusiones se reconocen y se muestran, pero no se aplican.
+- **Qué hace:** signos vitales (FC, PA, SpO₂), Glasgow, infusiones (dosis, «escalón N» o
+  «suspendida»), SAS (solo con sedación en curso) y ventilación (modo y las casillas del modo).
+  Reglas de la unidad (Diego, 14-nov): «PIP» es PEEP; «frecuencia» a secas es la FR total; los
+  valores imposibles o fuera de rango no se aplican (quedan en «No se aplican»); «igual», «sin
+  cambios» o «se mantiene» repiten el valor del control anterior. Solo se pregunta cuando un
+  mismo dato se dijo con valores distintos. Nada de lo dictado es obligatorio.
 - **Guía visual:** mientras se habla, una franja baja muestra el texto y las píldoras de los datos
   del modo (verde lo ya dicho, ámbar lo dudoso); el formulario queda a la vista, cada dato oído
   aparece en gris junto a su casilla sin escribirla, y la pantalla baja sola hasta él salvo que la

@@ -178,7 +178,9 @@ export function TecladoPropio() {
     if (k === "ocultar") return el.blur();
     if (el.dataset["teclado"] && el.dataset["teclado"] !== "num") {
       escribir(el, k === "borrar" ? "" : k);
-      if (k !== "borrar") siguienteCasilla(el);
+      // En el control (Glasgow, SAS) se avanza con «Sig.», como en el resto de las casillas: que
+      // unas avancen solas y otras no confunde. En las evaluaciones sigue el avance solo.
+      if (k !== "borrar" && !el.closest(".hoja-simple .fila.gcs, .hoja-simple [data-voz=\"sas\"]") && !["glasgow", "sas"].includes(el.dataset["campo"] ?? "")) siguienteCasilla(el);
       return;
     }
     let v = el.value;

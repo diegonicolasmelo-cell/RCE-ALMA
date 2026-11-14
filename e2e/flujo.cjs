@@ -324,7 +324,8 @@ async function esperarServidor() {
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false);
       assert.ok(await m.locator(".cel-top").isVisible(), "al ocultar el teclado vuelve la cabecera");
-      // Glasgow: teclado con solo los valores validos (O 1-4, M 1-6); un toque deja el valor y avanza.
+      // Glasgow: teclado con solo los valores validos (O 1-4, M 1-6); un toque deja el valor y «Sig.» avanza
+      // (como en el resto del control: no avanza solo).
       await m.tap("#in-gcs-o");
       await m.waitForSelector(".kb.rango:not([hidden])");
       assert.deepEqual(await m.locator(".kb-vals button").allTextContents(), ["1", "2", "3", "4"], "ocular: 1 a 4");
@@ -334,10 +335,13 @@ async function esperarServidor() {
       assert.ok(kbCaja.height <= 844 * 0.4, `el teclado no tapa mas del 40 % de la pantalla (${kbCaja.height} px)`);
       await m.tap('.kb-vals button:text-is("3")');
       assert.equal(await m.inputValue("#in-gcs-o"), "3");
-      assert.equal(await m.evaluate(() => document.activeElement.id), "in-gcs-m", "con TQT el verbal es T: pasa directo al motor");
+      assert.equal(await m.evaluate(() => document.activeElement.id), "in-gcs-o", "no avanza solo");
+      await m.tap(".kb:not([hidden]) .sig");
+      assert.equal(await m.evaluate(() => document.activeElement.id), "in-gcs-m", "con TQT el verbal es T: «Sig.» pasa directo al motor");
       assert.deepEqual(await m.locator(".kb-vals button").allTextContents(), ["1", "2", "3", "4", "5", "6"], "motor: 1 a 6");
       await m.tap('.kb-vals button:text-is("6")');
       assert.equal(await m.inputValue("#in-gcs-m"), "6");
+      await m.tap(".kb:not([hidden]) .sig");
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false, "tras el motor sigue un desplegable: el teclado de escala se oculta del todo");
       // Agregar una droga deja el teclado en su dosis; ▲ ▼ titulan sin cerrar el teclado ni mover la hoja.
@@ -1012,22 +1016,21 @@ async function esperarServidor() {
       assert.match(await cel.textContent('[data-voz="pa"] .voz-fantasma'), /94\/53/);
       assert.equal(await cel.inputValue("#in-fc"), fcAntes, "lo oído no se escribe todavía");
       assert.equal(await cel.locator(".barra-dictado.velo-inicio, .barra-dictado [role=dialog]").count(), 0, "la escucha no tapa el formulario con una ventana");
-      // Revisión: «PIP» no se decide solo.
+      // Revisión: «PIP» es PEEP; dicha con dos valores distintos, hay que elegir.
       await cel.click("#btn-voz-revisar");
       const rev = cel.locator('[role=dialog][aria-label="Revisa lo dictado"]');
       await rev.waitFor();
       assert.match(await cel.textContent("#btn-voz-aplicar"), /Falta resolver 1/);
       assert.equal(await cel.isDisabled("#btn-voz-aplicar"), true);
-      assert.match(await rev.textContent(), /Noradrenalina 0,01/);
-      await rev.locator('[role=group][aria-label*="PIP 24"] button:text-is("P. pico")').click();
+      await rev.locator('[role=group][aria-label*="PEEP con valores distintos"] button:text-is("24")').click();
       await cel.click("#btn-voz-aplicar");
       await rev.waitFor({ state: "detached" });
       assert.equal(await cel.inputValue("#in-fc"), "93");
       assert.equal(await cel.inputValue("#in-pas"), "94");
       assert.equal(await cel.inputValue("#in-pad"), "53");
       assert.equal(await cel.inputValue("#in-spo2"), "94");
-      assert.equal(await cel.inputValue("#in-vent-peep"), "8");
-      assert.equal(await cel.inputValue("#in-vent-pPico"), "24");
+      assert.equal(await cel.inputValue("#in-vent-peep"), "24");
+      assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0,01", "la infusión dictada queda en curso con su dosis");
       assert.match(await cel.textContent(".voz-aviso"), /5 datos dictados/);
       // Deshacer deja todo como estaba; nada se guardó.
       await cel.click('.voz-aviso button:has-text("Deshacer")');

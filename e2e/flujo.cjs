@@ -1043,9 +1043,14 @@ async function esperarServidor() {
       await cel.click('.voz-aviso button:has-text("Deshacer")');
       assert.equal(await cel.inputValue("#in-fc"), fcAntes);
       assert.equal(await cel.locator(".voz-aviso").count(), 0);
-      // Se apaga para el resto del recorrido.
+      // Se apaga y se vuelve a encender desde el menú sin repetir el aviso; queda apagado para el resto.
       await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('[aria-label="Mi cuenta"]');
+      await cel.click('[role=switch][aria-label="Dictado por voz"]');
+      assert.equal(await cel.getAttribute('[role=switch][aria-label="Dictado por voz"]', "aria-checked"), "false");
+      await cel.click('[role=switch][aria-label="Dictado por voz"]');
+      assert.equal(await cel.locator('[role=dialog][aria-label="Antes de activar el dictado"]').count(), 0, "el aviso se lee una sola vez");
+      assert.equal(await cel.getAttribute('[role=switch][aria-label="Dictado por voz"]', "aria-checked"), "true");
       await cel.click('[role=switch][aria-label="Dictado por voz"]');
       await cel.click('[role=dialog][aria-label="Mi cuenta"] button[aria-label="Cerrar"]');
       await cel.waitForSelector('[role=dialog][aria-label="Mi cuenta"]', { state: "detached" });

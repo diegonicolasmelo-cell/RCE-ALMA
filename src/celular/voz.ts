@@ -38,6 +38,22 @@ function constructorReconocedor(): ConstructorReconocedor | null {
 /** Hay microfono util: el navegador reconoce voz y no estamos dentro de Apps Script (que lo bloquea). */
 export const vozDisponible = (): boolean => constructorReconocedor() !== null && !esAppsScript();
 
+/** Por que no hay micrófono aqui, en palabras de la persona. */
+export function motivoSinVoz(): string {
+  if (constructorReconocedor() === null) return "Este navegador no reconoce voz: usa Chrome (Android) o Safari (iPhone)";
+  if (esAppsScript()) return "No funciona en el enlace de Apps Script: úsalo desde la app instalada";
+  return "No disponible aquí";
+}
+
+const CLAVE_AVISO = "kapta:dictado-aviso";
+/** El aviso de privacidad se lee una vez por celular; después el interruptor activa al tiro. */
+export function avisoVozLeido(): boolean {
+  try { return globalThis.localStorage?.getItem(CLAVE_AVISO) === "1"; } catch { return false; }
+}
+export function marcarAvisoVozLeido(): void {
+  try { globalThis.localStorage?.setItem(CLAVE_AVISO, "1"); } catch { /* vale solo para esta sesion */ }
+}
+
 export type ErrorVoz = "permiso" | "sin-red" | "sin-microfono" | "otro";
 
 const MENSAJE_ERROR: Record<ErrorVoz, string> = {

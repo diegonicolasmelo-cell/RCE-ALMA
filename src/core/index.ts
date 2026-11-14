@@ -31,3 +31,4 @@ export * from "./cifrado";
 export * from "./referencias";
 export * from "./respaldo";
 export * from "./codigo-pcr";
+export * from "./dictado";

@@ -137,13 +137,18 @@ export function CodigoPcr() {
   }, [db]);
 
   /** Cada cambio queda guardado al instante. */
+  // El ultimo estado vive tambien en una referencia: cada toque parte de el y se escribe en la
+  // base en el mismo momento (no dentro del ciclo de React), en orden.
+  const actual = useRef<CodigoPcr | null>(null);
+  actual.current = c ?? null;
+  const cola = useRef<Promise<void>>(Promise.resolve());
   const cambiar = (fn: (x: CodigoPcr) => CodigoPcr): void => {
-    setC((x) => {
-      if (!x) return x;
-      const n = fn(x);
-      void guardarMeta(db, CLAVE_CODIGO_PCR, n);
-      return n;
-    });
+    const x = actual.current;
+    if (!x) return;
+    const n = fn(x);
+    actual.current = n;
+    setC(n);
+    cola.current = cola.current.then(() => guardarMeta(db, CLAVE_CODIGO_PCR, n)).catch(() => undefined);
   };
 
   usePantallaEncendida();

@@ -969,3 +969,60 @@ body:has(.kb:not([hidden])) .toast-app{bottom:calc(262px + env(safe-area-inset-b
 [data-estilo="nuevo"] .hoja-simple .fila:has(input[type=time]){grid-template-columns:minmax(0,1fr) 10em}
 @media (max-width:350px){.botones-cama .btn svg{display:none}.botones-cama .btn{font-size:12.5px}}
 @media (max-height:700px){.app-cel.elegir .paisaje{display:none}.app-cel.elegir .cel-cuerpo{padding-bottom:16px}}
+
+/* ---- Dictado por voz ---- */
+.mic-dictar{position:fixed;z-index:25;left:max(14px,calc((100vw - 520px) / 2 + 14px),env(safe-area-inset-left,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;border:0;background:var(--marino-2);color:#fff;display:grid;place-items:center;box-shadow:0 8px 18px rgba(17,75,140,.4);cursor:pointer}
+.mic-dictar:active{transform:scale(.95)}
+body.teclado-propio .mic-dictar{display:none}
+.barra-dictado{position:fixed;z-index:26;left:50%;transform:translateX(-50%);width:min(100%,520px);bottom:0;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;box-shadow:0 -8px 22px rgba(15,26,36,.16);padding:10px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:8px}
+body.dictando #cuerpo{padding-bottom:300px!important}
+body.dictando .cel-pie{visibility:hidden}
+.voz-cab{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.voz-cab h2{margin:0;font-size:18px}
+.voz-escucha{display:inline-flex;align-items:center;gap:3px;font-weight:800;font-size:15px;color:var(--marino-2)}
+.voz-escucha i{width:4px;height:12px;border-radius:2px;background:var(--crit);animation:latir .9s ease-in-out infinite}
+.voz-escucha i:nth-child(2){animation-delay:.15s}.voz-escucha i:nth-child(3){animation-delay:.3s;margin-right:6px}
+@keyframes latir{0%,100%{transform:scaleY(.6)}50%{transform:scaleY(1.5)}}
+.voz-cama{display:inline-flex;align-items:center;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;color:var(--ink-2)}
+.voz-linea{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.35;max-height:3.9em;overflow:hidden}
+.voz-linea .en-curso{color:var(--muted);font-style:italic}
+.voz-guia{display:flex;flex-wrap:wrap;gap:4px}
+.voz-guia span{border-radius:999px;padding:1px 7px;font-size:11px;font-weight:700;background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+.voz-guia .ok{background:var(--good-soft);color:var(--good-ink);border-color:transparent}
+.voz-guia .duda{background:var(--warn-soft);color:var(--warn-ink);border-color:transparent}
+.voz-botones{display:grid;grid-template-columns:1fr 1.6fr;gap:8px}
+.voz-botones .btn{min-height:48px;border-radius:13px}
+.hoja-simple .fila.voz-oida{background:var(--accent-soft)}
+.voz-fantasma{font-style:normal;font:700 12px var(--font-data);color:var(--accent);background:var(--panel);border:1px dashed var(--accent);border-radius:6px;padding:0 5px;margin-left:6px;white-space:nowrap}
+.hoja-simple .fila.voz-marcada input,.hoja-simple .fila.voz-marcada select{border-color:var(--accent);background:var(--accent-soft)}
+.voz-aviso{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:9px 12px;font-size:13.5px;font-weight:600}
+.voz-aviso .linkbtn{margin-left:auto;padding:0;font-size:13.5px}
+.velo-inicio.fijo{position:fixed;z-index:50}
+.voz-revision{max-height:90%}
+.voz-grupo{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);flex:none}
+.voz-grupo .tit{display:flex;justify-content:space-between;padding:7px 12px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;background:var(--panel-2);color:var(--ink-2)}
+.voz-grupo.duda{border-color:var(--warn)}
+.voz-grupo.duda .tit{background:var(--warn-soft);color:var(--warn-ink)}
+.voz-duda{display:flex;flex-direction:column;gap:7px;padding:9px 12px;border-top:1px solid var(--line);font-size:14px}
+.voz-duda .ops{display:flex;gap:6px;flex-wrap:wrap}
+.voz-duda .ops button{flex:1;min-height:42px;min-width:5em;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:700 13.5px var(--font-ui);cursor:pointer}
+.voz-duda .ops button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.voz-dato{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
+.voz-dato input{width:18px;height:18px;accent-color:var(--accent)}
+.voz-dato small{display:block;color:var(--ink-2);font-size:11.5px}
+.voz-dato b{font-size:14.5px;white-space:nowrap}
+.voz-dato s{color:var(--muted);font-weight:500;margin-right:5px}
+.voz-dato.fuera{opacity:.45}
+.voz-no{margin:0;padding:8px 12px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.voz-texto summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:13.5px}
+.voz-texto textarea{width:100%;margin-top:6px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;font:inherit;background:var(--panel);color:var(--ink)}
+.voz-error{display:flex;gap:10px;align-items:flex-start;background:var(--crit-soft);color:var(--crit-ink);border-radius:12px;padding:10px 12px;font-size:13.5px}
+.sw-voz{width:44px;height:26px;border-radius:13px;border:0;background:var(--line);position:relative;flex:none;cursor:pointer}
+.sw-voz::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s}
+.sw-voz[aria-checked="true"]{background:var(--go)}
+.sw-voz[aria-checked="true"]::after{left:21px}
+.sw-voz:disabled{opacity:.4;cursor:default}
+.aviso-voz{background:var(--warn-soft);color:var(--warn-ink);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px;margin:0 0 8px}
+.aviso-voz p,.aviso-voz ul{margin:0}
+.aviso-voz ul{padding-left:18px}
+@media (prefers-reduced-motion:reduce){.voz-escucha i{animation:none}}

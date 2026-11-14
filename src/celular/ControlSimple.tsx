@@ -4,7 +4,7 @@
  * teclado numerico propio (TecladoPropio). Nada mas que lo que se anota en la cama.
  */
 
-import { X } from "lucide-react";
+import { Mic, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChangeEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import {
@@ -43,13 +43,15 @@ import {
   transicionSoporte,
   volumenObjetivoMl
 } from "@core/index";
-import type { CampoVent, GrupoInfusion, IdInfusion, Modalidad, ValorSas } from "@core/index";
+import type { BorradorControl, CampoVent, GrupoInfusion, IdInfusion, Modalidad, ValorSas } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { horaDe, textoNum } from "../app/util";
 import type { ContextoCama } from "./contextoCama";
 import { PanelEquipos, PesoIdeal } from "./TabControl";
 import { TECLADO_PROPIO, tecladoRango } from "./TecladoPropio";
+import { DictadoVoz } from "./DictadoVoz";
+import { vozDisponible } from "./voz";
 
 const GRUPOS_INF: readonly (readonly [GrupoInfusion, string])[] = [
   ["SEDANTE", "Sedoanalgesia y agitación"],
@@ -89,12 +91,13 @@ function Num(props: { id: string; campo?: string; valor: string; etiqueta: strin
   );
 }
 
-function Fila({ etiqueta, unidad, ayuda, children, clase = "" }: { etiqueta: ReactNode; unidad?: string; ayuda?: ReactNode; children: ReactNode; clase?: string }) {
+function Fila({ etiqueta, unidad, ayuda, children, clase = "", dv, fantasma, marcada }: { etiqueta: ReactNode; unidad?: string; ayuda?: ReactNode; children: ReactNode; clase?: string; /** Clave de la casilla para el dictado por voz. */ dv?: string; /** Lo oído por voz, aún sin escribir. */ fantasma?: string | undefined; /** Escrita por dictado y aún sin guardar. */ marcada?: boolean }) {
   return (
-    <div className={`fila ${clase}`}>
+    <div className={`fila ${clase}${fantasma !== undefined ? " voz-oida" : ""}${marcada ? " voz-marcada" : ""}`} data-voz={dv}>
       <span className="et">
         {etiqueta}
         {unidad && <span className="u"> {unidad}</span>}
+        {fantasma !== undefined && <em className="voz-fantasma">{fantasma}</em>}
         {ayuda && <span className="ayuda">{ayuda}</span>}
       </span>
       {children}
@@ -127,6 +130,14 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
       return { ...x, glasgow: artificial ? { ...g, verbal: 1 } : g } as typeof x;
     });
   };
+
+  // --- Dictado por voz (en prueba: cada persona lo activa) ---
+  const dictado = useApp((s) => s.dictado) && vozDisponible();
+  const [oidos, setOidos] = useState<ReadonlyMap<string, string>>(new Map());
+  const [dictadas, setDictadas] = useState<ReadonlySet<string>>(new Set());
+  const [anterior, setAnterior] = useState<BorradorControl | null>(null);
+  useEffect(() => { setOidos(new Map()); setDictadas(new Set()); setAnterior(null); }, [ep.id]);
+  const vz = (clave: string) => ({ dv: clave, fantasma: oidos.get(clave), marcada: dictadas.has(clave) });
 
   const horaControl = b.horaControl || horaDe(new Date());
   const pam = calcularPam(medicionDe(b.pas), medicionDe(b.pad));
@@ -214,15 +225,22 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
   return (
     <div className="hoja-simple">
       {evento && <div className="franja-evento" role="status">⚑ Monitorización del evento: {evento.texto} · {evento.hora}</div>}
+      {dictadas.size > 0 && (
+        <div className="voz-aviso" role="status">
+          <Mic size={16} aria-hidden /> {dictadas.size} {dictadas.size === 1 ? "dato dictado" : "datos dictados"}. Revisa y guarda.
+          {anterior && <button type="button" className="linkbtn" onClick={() => { const a = anterior; editar(() => a); setDictadas(new Set()); setAnterior(null); }}>Deshacer</button>}
+        </div>
+      )}
+      {dictado && <DictadoVoz key={ep.id} ctx={ctx} alOir={setOidos} alAplicar={(c, a) => { setDictadas(c); setAnterior(a); }} />}
       <section aria-label="CSV">
         <h2>CSV</h2>
         <Fila etiqueta="Hora del control" ayuda={cuando(horaControl)}>
           <input id="in-hora-control" data-campo="horaControl" type="time" value={horaControl} onChange={(e) => editar((x) => ({ ...x, horaControl: e.target.value }))} />
         </Fila>
-        <Fila etiqueta="Frec. cardiaca" unidad="lpm">
+        <Fila etiqueta="Frec. cardiaca" unidad="lpm" {...vz("fc")}>
           <Num id="in-fc" campo="fc" etiqueta="Frecuencia cardiaca" valor={b.fc} onCambio={set("fc")} />
         </Fila>
-        <Fila etiqueta="P. arterial" unidad="mmHg">
+        <Fila etiqueta="P. arterial" unidad="mmHg" {...vz("pa")}>
           <div className="par">
             <Num id="in-pas" campo="pas" etiqueta="Presión sistólica" valor={b.pas} onCambio={set("pas")} />
             <span>/</span>
@@ -232,7 +250,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         <Fila etiqueta="PAM" unidad="mmHg">
           <div className="calc" aria-live="polite">{textoNum(pam)}</div>
         </Fila>
-        <Fila etiqueta="SpO₂" unidad="%">
+        <Fila etiqueta="SpO₂" unidad="%" {...vz("spo2")}>
           <Num id="in-spo2" campo="spo2" etiqueta="Saturación" valor={b.spo2} onCambio={set("spo2")} />
         </Fila>
         <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs">
@@ -334,7 +352,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           Terapia ventilatoria
           {sugeribles.length > 0 && <button type="button" className="peq" onClick={() => editar((x) => sugerirAnterior(x, ultimo))}>Usar lo anterior</button>}
         </h2>
-        <Fila etiqueta="Modo">
+        <Fila etiqueta="Modo" {...vz("modalidad")}>
           <select id="in-modo" data-campo="modalidad" aria-label="Modo ventilatorio" value={b.modalidad} onChange={(e) => editar((x) => cambiarModalidad(x, e.target.value as Modalidad))}>
             {!permitidos.includes(b.modalidad) && <option value={b.modalidad}>{ETIQUETA_MODALIDAD[b.modalidad]} (no corresponde)</option>}
             {grupos.map((g) => (
@@ -371,7 +389,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
               const bloq = bloqueado && c.campo === "pPlateau";
               const esVt = c.campo === "vtProgramado" || c.campo === "vtEspirado";
               return (
-                <Fila key={c.campo} etiqueta={c.etiqueta} unidad={c.unidad} clase={bloq ? "bloq" : ""} ayuda={esVt ? <span className="esc">{mlKg(b.vent[c.campo])}</span> : undefined}>
+                <Fila key={c.campo} etiqueta={c.etiqueta} unidad={c.unidad} clase={bloq ? "bloq" : ""} ayuda={esVt ? <span className="esc">{mlKg(b.vent[c.campo])}</span> : undefined} {...vz(c.campo)}>
                   <Num id={`in-vent-${c.campo}`} campo={c.campo} etiqueta={c.etiqueta} valor={bloq ? "" : b.vent[c.campo]} deshabilitado={bloq} placeholder={bloq ? "bloqueado" : ""} onCambio={(v) => setVent(c.campo, v)} />
                 </Fila>
               );

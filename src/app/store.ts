@@ -60,6 +60,9 @@ interface EstadoApp {
   setTema: (t: Tema) => void;
   estilo: Estilo;
   setEstilo: (e: Estilo) => void;
+  /** Dictado por voz en el control: en prueba, cada persona lo activa en su celular. */
+  dictado: boolean;
+  setDictado: (activo: boolean) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
@@ -88,6 +91,14 @@ function leerTema(): Tema {
   }
 }
 const CLAVE_ESTILO = "kapta:estilo";
+const CLAVE_DICTADO = "kapta:dictado";
+function leerBandera(clave: string): boolean {
+  try {
+    return globalThis.localStorage?.getItem(clave) === "1";
+  } catch {
+    return false;
+  }
+}
 function leerEstilo(): Estilo {
   try {
     return globalThis.localStorage?.getItem(CLAVE_ESTILO) === "clasico" ? "clasico" : "nuevo";
@@ -131,6 +142,11 @@ export const useApp = create<EstadoApp>((set) => ({
   setTema: (tema) => {
     guardarTema(tema);
     set({ tema });
+  },
+  dictado: leerBandera(CLAVE_DICTADO),
+  setDictado: (dictado) => {
+    try { globalThis.localStorage?.setItem(CLAVE_DICTADO, dictado ? "1" : "0"); } catch { /* vale solo para esta sesion */ }
+    set({ dictado });
   },
   estilo: leerEstilo(),
   setEstilo: (estilo) => {

@@ -932,6 +932,7 @@ async function esperarServidor() {
       assert.match(await bit.textContent(), /Epinefrina 1 mg/);
       assert.match(await cel.textContent(".cod-bt.epi"), /próxima en/);
       // Se cierra la app a la mitad: al abrirla vuelve al codigo, con lo registrado.
+      await cel.waitForTimeout(300);
       await cel.reload();
       await cel.waitForSelector('.cod-cab:has-text("CÓDIGO PCR EN CURSO")');
       assert.match(await cel.textContent('[aria-label="Bitácora"]'), /Ritmo: AESP[\s\S]*Choque #1/);
@@ -967,6 +968,77 @@ async function esperarServidor() {
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
       assert.match(await cel.textContent(".franja-evento"), /Monitorización del evento: Paro cardiorrespiratorio/);
       await cel.click('button:has-text("‹ Pacientes")');
+    });
+
+    await prueba("dictado por voz: apagado por defecto, se activa con aviso, la franja deja ver el formulario, lo dudoso se resuelve y solo se aplica lo revisado", async () => {
+      // Micrófono simulado: la prueba «dice» el texto que entregaría el reconocedor del teléfono.
+      await cel.addInitScript(() => {
+        window.SpeechRecognition = class {
+          constructor() { window.__reco = this; }
+          start() { window.__recoActivo = true; }
+          stop() { window.__recoActivo = false; this.onend && this.onend(); }
+          abort() { window.__recoActivo = false; }
+        };
+        window.__decir = (t) => {
+          const res = [{ transcript: t }];
+          res.isFinal = true;
+          window.__reco.onresult({ resultIndex: 0, results: [res] });
+        };
+      });
+      await cel.reload();
+      await cel.waitForSelector(".inicio-top");
+      // Apagado: en el control no hay micrófono.
+      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Monitorización")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
+      assert.equal(await cel.locator('button[aria-label="Dictar por voz"]').count(), 0, "nace apagado");
+      await cel.click('button:has-text("‹ Pacientes")');
+      // Se activa en la cuenta, después de leer el aviso.
+      await cel.click('[aria-label="Mi cuenta"]');
+      await cel.click('[role=switch][aria-label="Dictado por voz"]');
+      assert.match(await cel.textContent('[role=dialog][aria-label="Antes de activar el dictado"]'), /sale del celular/);
+      await cel.click('button:has-text("Activar en este celular")');
+      assert.equal(await cel.getAttribute('[role=switch][aria-label="Dictado por voz"]', "aria-checked"), "true");
+      await cel.click('[role=dialog][aria-label="Mi cuenta"] button[aria-label="Cerrar"]');
+      await cel.waitForSelector('[role=dialog][aria-label="Mi cuenta"]', { state: "detached" });
+      await cel.click('article[aria-label="Cama UCI-02"] button:has-text("Monitorización")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
+      const fcAntes = await cel.inputValue("#in-fc");
+      await cel.click('button[aria-label="Dictar por voz"]');
+      await cel.waitForSelector('.barra-dictado');
+      await cel.evaluate(() => window.__decir("frecuencia cardíaca 93, presión arterial 94 sobre 53, noradrenalina cero coma cero uno, PEEP ocho, PIP 24, saturación 94"));
+      // Mientras se escucha: guía y valores en gris junto a cada casilla, sin escribirlas.
+      await cel.waitForSelector('.voz-guia .ok:has-text("FC 93")');
+      assert.match(await cel.textContent('[data-voz="fc"] .voz-fantasma'), /93/);
+      assert.match(await cel.textContent('[data-voz="pa"] .voz-fantasma'), /94\/53/);
+      assert.equal(await cel.inputValue("#in-fc"), fcAntes, "lo oído no se escribe todavía");
+      assert.equal(await cel.locator(".barra-dictado.velo-inicio, .barra-dictado [role=dialog]").count(), 0, "la escucha no tapa el formulario con una ventana");
+      // Revisión: «PIP» no se decide solo.
+      await cel.click("#btn-voz-revisar");
+      const rev = cel.locator('[role=dialog][aria-label="Revisa lo dictado"]');
+      await rev.waitFor();
+      assert.match(await cel.textContent("#btn-voz-aplicar"), /Falta resolver 1/);
+      assert.equal(await cel.isDisabled("#btn-voz-aplicar"), true);
+      assert.match(await rev.textContent(), /Noradrenalina 0,01/);
+      await rev.locator('[role=group][aria-label*="PIP 24"] button:text-is("P. pico")').click();
+      await cel.click("#btn-voz-aplicar");
+      await rev.waitFor({ state: "detached" });
+      assert.equal(await cel.inputValue("#in-fc"), "93");
+      assert.equal(await cel.inputValue("#in-pas"), "94");
+      assert.equal(await cel.inputValue("#in-pad"), "53");
+      assert.equal(await cel.inputValue("#in-spo2"), "94");
+      assert.equal(await cel.inputValue("#in-vent-peep"), "8");
+      assert.equal(await cel.inputValue("#in-vent-pPico"), "24");
+      assert.match(await cel.textContent(".voz-aviso"), /5 datos dictados/);
+      // Deshacer deja todo como estaba; nada se guardó.
+      await cel.click('.voz-aviso button:has-text("Deshacer")');
+      assert.equal(await cel.inputValue("#in-fc"), fcAntes);
+      assert.equal(await cel.locator(".voz-aviso").count(), 0);
+      // Se apaga para el resto del recorrido.
+      await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('[aria-label="Mi cuenta"]');
+      await cel.click('[role=switch][aria-label="Dictado por voz"]');
+      await cel.click('[role=dialog][aria-label="Mi cuenta"] button[aria-label="Cerrar"]');
+      await cel.waitForSelector('[role=dialog][aria-label="Mi cuenta"]', { state: "detached" });
     });
 
     console.log("Estacion (PC)");

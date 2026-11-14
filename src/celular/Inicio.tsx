@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Flag,
   HeartPulse,
+  Mic,
   History,
   Moon,
   Palette,
@@ -36,6 +37,7 @@ import { useApp } from "../app/store";
 import { SabanaVista } from "../estacion/SabanaVista";
 import { useServicios } from "../app/contexto";
 import { iniciarCodigoPcr } from "./CodigoPcr";
+import { vozDisponible } from "./voz";
 import bannerDia from "../app/iconos/banner-dia.png?inline";
 import bannerNoche from "../app/iconos/banner-noche.png?inline";
 import type { Tema, VistaCelular } from "../app/store";
@@ -283,6 +285,10 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
   const setTema = useApp((s) => s.setTema);
   const estilo = useApp((s) => s.estilo);
   const setEstilo = useApp((s) => s.setEstilo);
+  const dictado = useApp((s) => s.dictado);
+  const setDictado = useApp((s) => s.setDictado);
+  const vozOk = vozDisponible();
+  const [avisoVoz, setAvisoVoz] = useState(false);
   const irA = useApp((s) => s.irA);
   // El panel sigue al dedo hacia la derecha; al soltar se va si recorrio mas de un tercio, o vuelve.
   const inicioX = useRef<number | null>(null);
@@ -344,6 +350,26 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
             <button type="button" role="radio" aria-checked={estilo === "nuevo"} onClick={() => setEstilo("nuevo")}>Nuevo</button>
             <button type="button" role="radio" aria-checked={estilo === "clasico"} onClick={() => setEstilo("clasico")}>Clásico</button>
           </div>
+          <div className="pc-fila bloque">
+            <Mic size={22} aria-hidden />
+            <span>Dictado por voz<small>{!vozOk ? "No disponible en este navegador" : dictado ? "Activado en este celular · en prueba" : "En prueba · solo con datos ficticios"}</small></span>
+            <button type="button" role="switch" className="sw-voz" aria-label="Dictado por voz" aria-checked={dictado} disabled={!vozOk} onClick={() => (dictado ? setDictado(false) : setAvisoVoz(true))} />
+          </div>
+          {avisoVoz && (
+            <div className="aviso-voz" role="dialog" aria-label="Antes de activar el dictado">
+              <b>Antes de activar el dictado</b>
+              <p>El audio lo procesa el servicio de voz del teléfono (Google en Android, Apple en iPhone): <b>sale del celular</b>. Kapta no graba ni guarda el audio ni el texto dictado.</p>
+              <ul>
+                <li>No dictes nombres, RUT ni diagnósticos.</li>
+                <li>Úsalo solo en pruebas hasta que la unidad lo autorice.</li>
+                <li>Nada se guarda sin que lo revises.</li>
+              </ul>
+              <div className="voz-botones">
+                <button type="button" className="btn" onClick={() => setAvisoVoz(false)}>Ahora no</button>
+                <button type="button" className="btn primary" onClick={() => { setDictado(true); setAvisoVoz(false); }}>Activar en este celular</button>
+              </div>
+            </div>
+          )}
           <button type="button" className="pc-fila" onClick={sync.sincronizar}>
             <RefreshCw size={22} aria-hidden />
             <span>Sincronizar ahora<small>{sync.online ? "En línea" : "Sin señal"}{sync.pendientes > 0 ? ` · ${sync.pendientes} por subir` : " · todo subido"}</small></span>

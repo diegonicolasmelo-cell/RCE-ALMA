@@ -253,7 +253,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         <Fila etiqueta="SpO₂" unidad="%" {...vz("spo2")}>
           <Num id="in-spo2" campo="spo2" etiqueta="Saturación" valor={b.spo2} onCambio={set("spo2")} />
         </Fila>
-        <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs">
+        <Fila etiqueta="Glasgow" unidad="O · V · M" clase="gcs" {...vz("gcs")}>
           <div className="tres">
             <label><span>O</span><Num id="in-gcs-o" campo="glasgow" etiqueta="Glasgow ocular, 1 a 4" teclado={tecladoRango(1, 4)} valor={b.glasgow.ocular === null ? "" : String(b.glasgow.ocular)} onCambio={setGlasgow("ocular", 4)} /></label>
             {artificial ? (
@@ -277,9 +277,10 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           const sem = def.semaforo && dosis !== null ? semaforoCatecolamina(dosis) : "SIN_DVA";
           const titular = (s: 1 | -1): string => (def.escalones ? titularPorEscalon(def.id, x.dosis, s) : titularDosis(x.dosis, def.paso ?? 0.01, s));
           return (
-            <div className={`fila inf${recientes.includes(def.id) ? " reciente" : ""}`} key={def.id} aria-label={def.nombre}>
+            <div className={`fila inf${recientes.includes(def.id) ? " reciente" : ""}${oidos.has(`inf:${def.id}`) ? " voz-oida" : ""}${dictadas.has(`inf:${def.id}`) ? " voz-marcada" : ""}`} key={def.id} aria-label={def.nombre} data-voz={`inf:${def.id}`}>
               <span className="et">
                 {def.nombre} <span className="u">{def.unidad}</span>
+                {oidos.has(`inf:${def.id}`) && <em className="voz-fantasma">{oidos.get(`inf:${def.id}`)}</em>}
                 <button type="button" className="quitar" aria-label={`Suspender ${def.nombre}`} {...sinRobarFoco} onClick={() => suspender(def.id, def.nombre)}><X size={15} aria-hidden /></button>
                 <span className="ayuda">{previa ? `antes ${previa.dosis}` : "nueva"}</span>
                 {esc && <span className="ayuda esc">{esc}</span>}
@@ -300,7 +301,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         {/* Despues de las infusiones: con sedoanalgesia en curso se mide SAS; sin ella, la vigilia. */}
         <div className="sub-grupo">{sedada ? "Sedación" : "Conciencia"}</div>
         {sedada ? (
-          <Fila etiqueta="SAS" unidad="1-7" ayuda={b.sas === null ? undefined : ESCALA_SAS.find((e) => e.val === b.sas)?.label}>
+          <Fila etiqueta="SAS" unidad="1-7" ayuda={b.sas === null ? undefined : ESCALA_SAS.find((e) => e.val === b.sas)?.label} {...vz("sas")}>
             <Num id="in-sas" campo="sas" etiqueta="SAS, 1 a 7" teclado={tecladoRango(1, 7)} valor={b.sas === null ? "" : String(b.sas)} onCambio={(v) => { const n = digito(v, 1, 7); if (n !== undefined) editar((x) => ({ ...x, sas: n as ValorSas | null })); }} />
           </Fila>
         ) : (

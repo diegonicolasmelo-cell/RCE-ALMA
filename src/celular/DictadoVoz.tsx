@@ -14,6 +14,7 @@ import { Lock, Mic, MicOff } from "lucide-react";
 import {
   ETIQUETA_MODALIDAD,
   aplicarDictado,
+  casillaDe,
   etiquetaDictado,
   guiaDictado,
   interpretarDictado,
@@ -29,15 +30,15 @@ import type { ErrorVoz, SesionVoz } from "./voz";
 
 type Fase = "inactivo" | "escuchando" | "revision" | "error";
 
-/** Lo oído, por casilla del formulario («pa» junta sistólica y diastólica). */
-export function oidosPorCasilla(r: ResultadoDictado | null): ReadonlyMap<string, string> {
+/** Lo oído, por casilla del formulario («pa» junta sistólica y diastólica; «gcs» el Glasgow). */
+export function oidosPorCasilla(r: ResultadoDictado | null, artificial: boolean): ReadonlyMap<string, string> {
   const m = new Map<string, string>();
   if (!r) return m;
-  const pas = r.datos.find((d) => d.campo === "pas")?.valor;
-  const pad = r.datos.find((d) => d.campo === "pad")?.valor;
-  if (pas || pad) m.set("pa", `${pas ?? "?"}/${pad ?? "?"}`);
-  for (const d of r.datos) if (d.campo !== "pas" && d.campo !== "pad") m.set(d.campo, textoDato(d));
-  for (const d of r.dudas) for (const o of d.opciones) if (o.campo && !m.has(o.campo === "pas" || o.campo === "pad" ? "pa" : o.campo)) m.set(o.campo === "pas" || o.campo === "pad" ? "pa" : o.campo, "¿?");
+  const v = (c: string): string | undefined => r.datos.find((d) => d.campo === c)?.valor;
+  if (v("pas") || v("pad")) m.set("pa", `${v("pas") ?? "?"}/${v("pad") ?? "?"}`);
+  if (v("gcsO") || v("gcsV") || v("gcsM")) m.set("gcs", `${v("gcsO") ?? "·"}-${artificial ? "T" : v("gcsV") ?? "·"}-${v("gcsM") ?? "·"}`);
+  for (const d of r.datos) if (casillaDe(d.campo) === d.campo) m.set(d.campo, textoDato(d));
+  for (const d of r.dudas) for (const o of d.opciones) if (o.campo && !m.has(casillaDe(o.campo))) m.set(casillaDe(o.campo), "¿?");
   return m;
 }
 
@@ -61,7 +62,9 @@ export function DictadoVoz({ ctx, alOir, alAplicar }: {
   const ultimoVisto = useRef<string | null>(null);
 
   const texto = `${confirmado} ${enCurso}`.trim();
-  const r = useMemo(() => (texto ? interpretarDictado(texto, b.modalidad, ep.viaAereaActual) : null), [texto, b.modalidad, ep.viaAereaActual]);
+  const artificial = ep.viaAereaActual !== "NATURAL";
+  // Se interpreta contra el control tal como estaba al empezar a dictar (no contra lo ya aplicado).
+  const r = useMemo(() => (texto ? interpretarDictado(texto, b.modalidad, ep.viaAereaActual, { b, anterior: ctx.ultimo }) : null), [texto, b, ep.viaAereaActual, ctx.ultimo]);
 
   // Al salir (otra cama, otra pestaña): se corta el micrófono y se borran las marcas grises.
   useEffect(() => () => {
@@ -73,7 +76,7 @@ export function DictadoVoz({ ctx, alOir, alAplicar }: {
   // Mientras se escucha: lo oído junto a cada casilla y la pantalla sigue al último dato.
   useEffect(() => {
     if (fase !== "escuchando") return;
-    const oidos = oidosPorCasilla(r);
+    const oidos = oidosPorCasilla(r, artificial);
     alOir(oidos);
     const ultimo = [...oidos.keys()].at(-1) ?? null;
     if (ultimo && ultimo !== ultimoVisto.current && Date.now() > tocandoHasta.current) {
@@ -140,7 +143,7 @@ export function DictadoVoz({ ctx, alOir, alAplicar }: {
     if (!r || pendientes > 0 || datosFinales.length === 0) return;
     const anterior = b;
     editar((x) => aplicarDictado(x, datosFinales));
-    const casillas = new Set(datosFinales.map((d) => (d.campo === "pas" || d.campo === "pad" ? "pa" : d.campo)));
+    const casillas = new Set(datosFinales.map((d) => casillaDe(d.campo)));
     alAplicar(casillas, anterior);
     setConfirmado("");
     setFase("inactivo");
@@ -174,8 +177,10 @@ export function DictadoVoz({ ctx, alOir, alAplicar }: {
   const candado = <span className="voz-cama"><Lock size={13} aria-hidden /> {nombreCama(ep.cama)}</span>;
 
   if (fase === "escuchando") {
-    const guia = guiaDictado(r?.modalidad ?? b.modalidad);
-    const oidos = oidosPorCasilla(r);
+    const guia = guiaDictado(r?.modalidad ?? b.modalidad, b);
+    const oidos = oidosPorCasilla(r, artificial);
+    // Infusiones dictadas que aun no estan en curso: tambien se ven en la guia.
+    const nuevas = (r?.datos ?? []).filter((d) => d.campo.startsWith("inf:") && !guia.some((g) => g.campo === d.campo));
     return (
       <div className="barra-dictado" aria-label="Dictado por voz" role="region">
         <div className="voz-cab">
@@ -188,7 +193,7 @@ export function DictadoVoz({ ctx, alOir, alAplicar }: {
             const v = oidos.get(g.campo);
             return <span key={g.campo} className={v === "¿?" ? "duda" : v ? "ok" : ""}>{g.etiqueta}{v && v !== "¿?" ? ` ${v}` : ""}</span>;
           })}
-          {r && r.infusiones.length > 0 && <span className="duda">Infusiones: a mano</span>}
+          {nuevas.map((d) => <span key={d.campo} className="ok">{etiquetaDictado(d.campo, r?.modalidad ?? b.modalidad)} {textoDato(d)}</span>)}
         </div>
         <div className="voz-botones">
           <button type="button" className="btn" onClick={cancelar}>Cancelar</button>
@@ -229,20 +234,22 @@ export function DictadoVoz({ ctx, alOir, alAplicar }: {
               const antes = d.campo === "modalidad" ? ETIQUETA_MODALIDAD[b.modalidad] : valorActual(b, d.campo);
               const nuevo = textoDato(d);
               const activo = !fuera.has(d.campo);
+              // «2.4» y «2,4» son el mismo número: no cuenta como cambio.
+              const num = (t: string): number => Number(t.replace(",", "."));
+              const cambia = Boolean(antes) && nuevo !== "suspender" && antes !== nuevo && !(Number.isFinite(num(antes)) && num(antes) === num(nuevo));
               return (
                 <label key={d.campo} className={`voz-dato${activo ? "" : " fuera"}`}>
                   <input type="checkbox" checked={activo} onChange={() => setFuera((s) => { const n = new Set(s); if (n.has(d.campo)) n.delete(d.campo); else n.add(d.campo); return n; })} />
-                  <span>{etiquetaDictado(d.campo, r.modalidad)}{d.veces > 1 && <small>dicho {d.veces} veces, coincide</small>}{antes && antes !== nuevo && <small>cambia lo que había</small>}</span>
-                  <b className="mono">{antes && antes !== nuevo && <s>{antes}</s>}{nuevo}{d.campo === "spo2" || d.campo === "fio2" ? " %" : ""}</b>
+                  <span>{etiquetaDictado(d.campo, r.modalidad)}{d.igual && <small>igual al control anterior</small>}{d.veces > 1 && <small>dicho {d.veces} veces, coincide</small>}{cambia && <small>cambia lo que había</small>}</span>
+                  <b className="mono">{cambia && <s>{antes}</s>}{nuevo === "suspender" ? "Suspender" : nuevo}{d.campo === "spo2" || d.campo === "fio2" ? " %" : ""}</b>
                 </label>
               );
             })}
           </div>
         )}
-        {r && (r.infusiones.length > 0 || r.noAplica.length > 0) && (
+        {r && r.noAplica.length > 0 && (
           <div className="voz-grupo">
-            <div className="tit"><span>No se aplican</span><span>{r.infusiones.length + r.noAplica.length}</span></div>
-            {r.infusiones.length > 0 && <p className="voz-no">Infusiones (se registran a mano): {r.infusiones.map((i) => `${i.nombre} ${i.valor}`).join(" · ")}</p>}
+            <div className="tit"><span>No se aplican</span><span>{r.noAplica.length}</span></div>
             {r.noAplica.map((t) => <p key={t} className="voz-no">{t}</p>)}
           </div>
         )}

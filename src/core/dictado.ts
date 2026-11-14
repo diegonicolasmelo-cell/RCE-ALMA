@@ -1,26 +1,30 @@
 /**
  * Dictado por voz del control: interpreta el texto que entrega el reconocedor del telefono y lo
- * convierte en datos candidatos para las casillas. Es determinista y no adivina: lo dudoso
- * («PIP», «frecuencia» a secas, dos valores distintos para el mismo dato, valores imposibles)
- * queda como duda que la persona resuelve antes de aplicar. Nunca guarda nada.
- *
- * Primera etapa: signos vitales y ventilacion. Las infusiones se reconocen para mostrarlas,
- * pero no se aplican (se registran a mano por escalon o dosis).
+ * convierte en datos para las casillas. Es determinista. Reglas de la unidad (Diego, 14-nov-2026):
+ *  - «PIP» es PEEP (el reconocedor oye «pip» cuando se dice «peep»).
+ *  - «Frecuencia» a secas es la FR total (la del paciente).
+ *  - Los valores imposibles o fuera de rango no se aplican: quedan en «No se aplican».
+ *  - Infusiones, SAS (solo con sedacion en curso) y Glasgow tambien se dictan.
+ *  - «igual», «sin cambios», «se mantiene» repiten el valor del control anterior.
+ * Lo unico que se pregunta es un mismo dato dicho con valores distintos. Nunca guarda nada.
  */
 
 import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, MODALIDADES_POR_VIA } from "./catalogos";
-import { cambiarModalidad } from "./borrador";
+import { cambiarModalidad, iniciarInfusion, sedoanalgesiaActivaEnBorrador, suspenderInfusion } from "./borrador";
 import type { BorradorControl } from "./borrador";
-import type { CampoVent, Modalidad, ViaAerea } from "./tipos";
+import { dosisDeEscalon } from "./infusiones";
+import type { CampoVent, Control, IdInfusion, Modalidad, ViaAerea } from "./tipos";
 
-export type CampoDictado = "fc" | "pas" | "pad" | "spo2" | "modalidad" | CampoVent;
+export type CampoDictado = "fc" | "pas" | "pad" | "spo2" | "modalidad" | "sas" | "gcsO" | "gcsV" | "gcsM" | CampoVent | `inf:${IdInfusion}`;
 
 export interface DatoDictado {
   readonly campo: CampoDictado;
-  /** Como lo escribe el teclado: decimales con coma. Para el modo, la clave de la modalidad. */
+  /** Como lo escribe el teclado: decimales con coma. Modo: la clave. Infusion: dosis o «suspender». */
   readonly valor: string;
   /** Cuantas veces se dijo el mismo valor. */
   readonly veces: number;
+  /** Se dijo «igual» o «sin cambios»: es el valor del control anterior. */
+  readonly igual?: boolean;
 }
 
 export interface OpcionDuda {
@@ -32,7 +36,7 @@ export interface OpcionDuda {
 
 export interface DudaDictado {
   readonly id: string;
-  readonly tipo: "PIP" | "FR" | "CONFLICTO" | "RANGO";
+  readonly tipo: "CONFLICTO";
   readonly texto: string;
   readonly opciones: readonly OpcionDuda[];
 }
@@ -42,11 +46,20 @@ export interface ResultadoDictado {
   readonly modalidad: Modalidad;
   readonly datos: readonly DatoDictado[];
   readonly dudas: readonly DudaDictado[];
-  /** Infusiones oidas: se muestran, no se aplican. */
-  readonly infusiones: readonly { readonly nombre: string; readonly valor: string }[];
-  /** Datos oidos que no tienen casilla en este modo o via. */
+  /** Lo oido que no se aplica, con el motivo. */
   readonly noAplica: readonly string[];
 }
+
+export interface ContextoDictado {
+  /** El control en curso: para saber que infusiones hay y si hay sedacion (SAS). */
+  readonly b?: BorradorControl;
+  /** El control anterior: para «igual» o «sin cambios». */
+  readonly anterior?: Control | null;
+}
+
+const esInfusion = (c: CampoDictado): c is `inf:${IdInfusion}` => c.startsWith("inf:");
+const idInfusion = (c: `inf:${IdInfusion}`): IdInfusion => c.slice(4) as IdInfusion;
+const esVent = (c: CampoDictado): c is CampoVent => !["fc", "pas", "pad", "spo2", "modalidad", "sas", "gcsO", "gcsV", "gcsM"].includes(c) && !esInfusion(c);
 
 // ---------------------------------------------------------------------------
 // Texto -> palabras
@@ -61,6 +74,7 @@ function palabras(texto: string): string[] {
   t = t.replace(/(\d)\s*%/g, "$1");
   t = t.replace(/\b(fio|spo|sat o|s p o|f i o)\s*(2|dos)\b/g, (_m, a: string) => (a.startsWith("f") ? "fio2" : "spo2"));
   t = t.replace(/\b(fio2|spo2|etco2)\b/g, " $1 ");
+  t = t.replace(/(\d)\s*t\s*(\d)/g, "$1 t $2"); // «4t6» -> 4 t 6 (Glasgow con tubo)
   t = t.replace(/[^a-z0-9./ ]+/g, " ");
   t = t.replace(/\.(?!\d)/g, " ").replace(/(?<!\d)\./g, " ");
   return t.split(/\s+/).filter(Boolean);
@@ -158,52 +172,68 @@ function leerNumero(ws: readonly string[], i: number): { valor: string; fin: num
 // Vocabulario
 // ---------------------------------------------------------------------------
 
-type Clave = CampoDictado | "pa" | "pip" | "fr" | "presionControl" | "volumenControl";
+type Clave = Exclude<CampoDictado, `inf:${IdInfusion}`> | "pa" | "gcs" | "presionControl" | "volumenControl";
 
-/** Frases de cada dato, de la mas larga a la mas corta (se busca la mas larga primero). */
-const FRASES: readonly (readonly [string, Clave])[] = ([
+const porLargo = <T,>(l: readonly (readonly [string, T])[]): (readonly [string, T])[] =>
+  [...l].sort((x, y) => y[0].split(" ").length - x[0].split(" ").length);
+
+/** Frases de cada dato. La mas larga gana: «frecuencia cardiaca» antes que «frecuencia». */
+const FRASES = porLargo<Clave>([
   ["frecuencia cardiaca", "fc"], ["frec cardiaca", "fc"], ["pulso", "fc"], ["fc", "fc"],
-  ["presion arterial", "pa"], ["presion sistolica", "pas"], ["presion diastolica", "pad"], ["sistolica", "pas"], ["diastolica", "pad"], ["pa", "pa"],
+  ["presion arterial", "pa"], ["presion sistolica", "pas"], ["presion diastolica", "pad"], ["sistolica", "pas"], ["diastolica", "pad"], ["pa", "pa"], ["presion", "pa"],
   ["saturacion de oxigeno", "spo2"], ["saturacion", "spo2"], ["spo2", "spo2"], ["sat", "spo2"],
-  ["frecuencia respiratoria del paciente", "frTotal"], ["frecuencia respiratoria total", "frTotal"], ["frecuencia del paciente", "frTotal"],
-  ["fr del paciente", "frTotal"], ["frecuencia total", "frTotal"], ["fr total", "frTotal"],
   ["frecuencia respiratoria programada", "frProgramada"], ["frecuencia programada", "frProgramada"], ["fr programada", "frProgramada"],
   ["frecuencia seteada", "frProgramada"], ["fr seteada", "frProgramada"], ["frecuencia de respaldo", "frProgramada"],
-  ["frecuencia respiratoria", "fr"], ["frecuencia", "fr"], ["fr", "fr"],
+  // «Frecuencia» a secas es la del paciente.
+  ["frecuencia respiratoria del paciente", "frTotal"], ["frecuencia respiratoria total", "frTotal"], ["frecuencia del paciente", "frTotal"],
+  ["fr del paciente", "frTotal"], ["frecuencia total", "frTotal"], ["fr total", "frTotal"],
+  ["frecuencia respiratoria", "frTotal"], ["frecuencia", "frTotal"], ["fr", "frTotal"],
   ["volumen corriente espirado", "vtEspirado"], ["volumen espirado", "vtEspirado"], ["vt espirado", "vtEspirado"],
   ["volumen corriente programado", "vtProgramado"], ["volumen corriente", "vtProgramado"], ["volumen tidal", "vtProgramado"],
   ["volumen programado", "vtProgramado"], ["vt programado", "vtProgramado"], ["vt", "vtProgramado"],
   ["volumen minuto", "volMinuto"],
-  ["auto peep", "autoPeep"], ["autopeep", "autoPeep"], ["peep intrinseca", "autoPeep"], ["peep", "peep"], ["epap", "peep"],
-  ["presion pico", "pPico"], ["presion peak", "pPico"], ["presion maxima", "pPico"], ["ppeak", "pPico"], ["peak", "pPico"], ["pip", "pip"],
+  // «PIP» es PEEP: el reconocedor oye «pip» cuando se dice «peep».
+  ["auto peep", "autoPeep"], ["autopeep", "autoPeep"], ["peep intrinseca", "autoPeep"], ["peep", "peep"], ["pip", "peep"], ["pep", "peep"], ["epap", "peep"],
+  ["presion pico", "pPico"], ["presion peak", "pPico"], ["presion maxima", "pPico"], ["ppeak", "pPico"], ["peak", "pPico"],
   ["presion plateau", "pPlateau"], ["presion meseta", "pPlateau"], ["plateau", "pPlateau"], ["meseta", "pPlateau"],
   ["presion media", "pMedia"],
   ["presion de soporte", "presion"], ["presion soporte", "presion"], ["soporte", "presion"], ["ipap", "presion"],
   ["tiempo inspiratorio", "ti"], ["ti", "ti"],
   ["fraccion inspirada de oxigeno", "fio2"], ["fraccion inspirada", "fio2"], ["fio2", "fio2"], ["fio", "fio2"],
   ["temperatura", "temperatura"], ["fuga", "fuga"], ["flujo", "flujo"],
-  ["presion control", "presionControl"], ["volumen control", "volumenControl"], ["presion", "pa"]
-] as const)
-  .map(([f, c]) => [f, c] as const)
-  // La frase mas larga gana: «frecuencia cardiaca» antes que «frecuencia».
-  .sort((x, y) => y[0].split(" ").length - x[0].split(" ").length);
+  ["presion control", "presionControl"], ["volumen control", "volumenControl"],
+  ["escala sas", "sas"], ["s a s", "sas"], ["sas", "sas"], ["riker", "sas"],
+  ["escala de glasgow", "gcs"], ["glasgow", "gcs"], ["gcs", "gcs"],
+  ["apertura ocular", "gcsO"], ["ocular", "gcsO"], ["respuesta verbal", "gcsV"], ["verbal", "gcsV"],
+  ["respuesta motora", "gcsM"], ["motora", "gcsM"], ["motor", "gcsM"]
+]);
 
 /** Frases de modo (sin numero detras). «presion control 18» ademas es la P. control. */
-const MODOS: readonly (readonly [string, Modalidad])[] = ([
+const MODOS = porLargo<Modalidad>([
   ["cpap con presion de soporte", "CPAP_PS"], ["cpap mas presion de soporte", "CPAP_PS"], ["cpap mas soporte", "CPAP_PS"], ["cpap ps", "CPAP_PS"],
   ["cpap con soporte", "CPAP_PS"], ["modo cpap", "CPAP_PS"],
   ["canula nasal de alto flujo", "CNAF"], ["alto flujo", "CNAF"], ["cnaf", "CNAF"],
   ["tubo t", "TUBO_T"], ["tubo en t", "TUBO_T"], ["naricera", "O2_NARICERA"], ["venturi", "O2_VENTURI"],
   ["mascarilla con reservorio", "O2_RESERVORIO"], ["mascarilla de reservorio", "O2_RESERVORIO"], ["mascarilla simple", "O2_MASCARILLA"],
   ["bipap", "VNI_ST"], ["avaps", "AVAPS"]
-] as (readonly [string, Modalidad])[]).sort((x, y) => y[0].split(" ").length - x[0].split(" ").length);
+]);
+
+/** Nombres de las infusiones como se dicen. */
+const NOMBRES_INFUSION = porLargo<IdInfusion>([
+  ...INFUSIONES.map((d) => [sinTildes(d.nombre.toLowerCase()), d.id] as const),
+  ...INFUSIONES.map((d) => [sinTildes(d.id.toLowerCase()), d.id] as const),
+  ["dexmedetomidina", "dexmedetomidina"], ["dexmede", "dexmedetomidina"], ["fentanil", "fentanilo"], ["nora", "noradrenalina"],
+  ["vaso", "vasopresina"], ["dobuta", "dobutamina"], ["mida", "midazolam"]
+]);
 
 const SEPARADORES_PA = new Set(["sobre", "con", "/", "partido", "slash"]);
-/** Palabras de relleno que pueden ir entre el nombre del dato y su valor. */
-const RELLENO = new Set(["de", "en", "es", "a", "el", "la", "del", "con", "esta", "estan", "queda", "quedo", "por", "ciento", "porciento", "x", "y", "igual", "son", "un", "una"]);
+/** Palabras de relleno entre el nombre del dato y su valor. */
+const RELLENO = new Set(["de", "en", "es", "a", "el", "la", "del", "con", "esta", "estan", "queda", "quedo", "por", "ciento", "porciento", "x", "y", "son", "un", "una", "dosis", "a la", "se"]);
+const SUSPENDER = new Set(["suspendida", "suspendido", "suspender", "suspende", "suspendo", "apagada", "apagado", "off", "retirada", "retirado"]);
 
-const ETIQUETA: Record<CampoDictado, string> = {
-  fc: "Frec. cardiaca", pas: "P. sistólica", pad: "P. diastólica", spo2: "SpO₂", modalidad: "Modo",
+const ETIQUETA: Record<Exclude<CampoDictado, `inf:${IdInfusion}`>, string> = {
+  fc: "Frec. cardiaca", pas: "P. sistólica", pad: "P. diastólica", spo2: "SpO₂", modalidad: "Modo", sas: "SAS",
+  gcsO: "Glasgow ocular", gcsV: "Glasgow verbal", gcsM: "Glasgow motor",
   frProgramada: "FR programada", vtProgramado: "Vt programado", flujo: "Flujo", ti: "TI", presion: "P. soporte / control", peep: "PEEP",
   fio2: "FiO₂", frTotal: "FR total", vtEspirado: "Vt espirado", pPico: "P. pico", pPlateau: "P. plateau", pMedia: "P. media",
   autoPeep: "Auto PEEP", volMinuto: "Vol. minuto", temperatura: "Temperatura", fuga: "Fuga", presionMax: "IPAP máx."
@@ -211,20 +241,49 @@ const ETIQUETA: Record<CampoDictado, string> = {
 
 /** Nombre del dato como se ve en el control de ese modo («EPAP» en BiPAP, «P. soporte» en CPAP+PS). */
 export function etiquetaDictado(campo: CampoDictado, modalidad: Modalidad): string {
-  if (campo === "fc" || campo === "pas" || campo === "pad" || campo === "spo2" || campo === "modalidad") return ETIQUETA[campo];
-  return CAMPOS_POR_MODALIDAD[modalidad].find((d) => d.campo === campo)?.etiqueta ?? ETIQUETA[campo];
+  if (esInfusion(campo)) return INFUSIONES.find((d) => d.id === idInfusion(campo))?.nombre ?? campo;
+  if (esVent(campo)) return CAMPOS_POR_MODALIDAD[modalidad].find((d) => d.campo === campo)?.etiqueta.replace(/ \(.*\)$/, "") ?? ETIQUETA[campo];
+  return ETIQUETA[campo];
 }
 
-/** Limites fisicos: fuera de ellos el dato no se aplica sin que alguien lo confirme. */
+/** Limites: fuera de ellos el dato no se aplica. */
 const RANGO: Partial<Record<CampoDictado, readonly [number, number]>> = {
   fc: [20, 250], pas: [40, 300], pad: [15, 200], spo2: [50, 100], fio2: [21, 100], peep: [0, 30], presion: [0, 60], presionMax: [0, 60],
   pPico: [0, 80], pPlateau: [0, 60], pMedia: [0, 50], autoPeep: [0, 30], frProgramada: [0, 60], frTotal: [0, 80],
-  vtProgramado: [50, 1500], vtEspirado: [20, 2000], ti: [0.2, 5], flujo: [0, 80], volMinuto: [0, 40], temperatura: [30, 40], fuga: [0, 150]
+  vtProgramado: [50, 1500], vtEspirado: [20, 2000], ti: [0.2, 5], flujo: [0, 80], volMinuto: [0, 40], temperatura: [30, 40], fuga: [0, 150],
+  sas: [1, 7], gcsO: [1, 4], gcsV: [1, 5], gcsM: [1, 6]
 };
-/** Imposibles: ni siquiera se ofrece «usar igual». */
-const IMPOSIBLE: Partial<Record<CampoDictado, readonly [number, number]>> = { spo2: [0, 100], fio2: [21, 100] };
 
 const comoTeclado = (v: string): string => v.replace(".", ",");
+const numero = (v: string): number => Number(v.replace(",", "."));
+const IGUAL = "=";
+
+// ---------------------------------------------------------------------------
+// Valores del control anterior («igual», «sin cambios»)
+// ---------------------------------------------------------------------------
+
+const txt = (n: number | null | undefined): string | null => (n === null || n === undefined ? null : comoTeclado(String(n)));
+
+function valorAnterior(campo: CampoDictado, a: Control | null | undefined): string | null {
+  if (!a) return null;
+  if (esInfusion(campo)) return txt(a.infusiones[idInfusion(campo)]?.dosis);
+  switch (campo) {
+    case "fc": case "pas": case "pad": case "spo2":
+      return txt(a[campo]);
+    case "modalidad":
+      return a.ventilacion.modalidad;
+    case "sas":
+      return txt(a.sas);
+    case "gcsO":
+      return txt(a.glasgow?.ocular);
+    case "gcsV":
+      return txt(a.glasgow?.verbal);
+    case "gcsM":
+      return txt(a.glasgow?.motora);
+    default:
+      return txt(a.ventilacion[campo]);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Interpretacion
@@ -232,48 +291,69 @@ const comoTeclado = (v: string): string => v.replace(".", ",");
 
 interface Oido { campo: CampoDictado; valor: string }
 
-/** Lee el dictado completo y separa lo claro de lo dudoso. */
-export function interpretarDictado(texto: string, modalidadActual: Modalidad, via: ViaAerea): ResultadoDictado {
+/** Lee el dictado completo y separa lo que se aplica de lo que no. */
+export function interpretarDictado(texto: string, modalidadActual: Modalidad, via: ViaAerea, ctx: ContextoDictado = {}): ResultadoDictado {
   const ws = palabras(texto);
   const oidos: Oido[] = [];
-  const dudasCrudas: { tipo: "PIP" | "FR"; valor: string }[] = [];
-  const infusiones: { nombre: string; valor: string }[] = [];
-  let modoDictado: Modalidad | null = null;
   const noAplica: string[] = [];
+  let modoDictado: Modalidad | null = null;
+  const artificial = via !== "NATURAL";
 
-  const nombresInfusion: (readonly [string, string])[] = [
-    ...INFUSIONES.map((d) => [sinTildes(d.nombre.toLowerCase()), d.nombre] as const),
-    ...INFUSIONES.map((d) => [sinTildes(d.id.toLowerCase()), d.nombre] as const),
-    ["dexmedetomidina", "Precedex"], ["fentanil", "Fentanilo"], ["nora", "Noradrenalina"]
-  ];
-
-  /** El valor que sigue al nombre del dato (salta palabras de relleno). */
-  const valorDespues = (k: number): { valor: string; fin: number } | null => {
+  const coincide = (k: number, frase: string): boolean => frase.split(" ").every((p, n) => ws[k + n] === p);
+  const saltarRelleno = (k: number): number => {
     let j = k;
-    for (let saltos = 0; saltos < 3 && ws[j] !== undefined && RELLENO.has(ws[j]!) && !esPalabraNumero(ws[j]); saltos++) j++;
-    // «un» y «una» son relleno salvo que sean el numero.
-    return leerNumero(ws, j);
+    for (let s = 0; s < 3 && ws[j] !== undefined && RELLENO.has(ws[j]!) && !esPalabraNumero(ws[j]); s++) j++;
+    return j;
   };
-  const coincide = (k: number, frase: string): boolean => {
-    const f = frase.split(" ");
-    return f.every((p, n) => ws[k + n] === p);
+  /** «igual», «sin cambios», «se mantiene», «mismo»: devuelve donde termina. */
+  const igualDesde = (k: number): number | null => {
+    const j = saltarRelleno(k);
+    const w = ws[j];
+    if (w === "igual" || w === "mismo" || w === "misma" || w === "mantiene" || w === "mantenida" || w === "mantenido") return j + 1;
+    if (w === "sin" && (ws[j + 1] === "cambios" || ws[j + 1] === "cambio")) return j + 2;
+    return null;
+  };
+  /** El valor que sigue al nombre del dato. */
+  const valorDespues = (k: number): { valor: string; fin: number } | null => {
+    const ig = igualDesde(k);
+    if (ig !== null) return { valor: IGUAL, fin: ig };
+    return leerNumero(ws, saltarRelleno(k));
   };
 
   let i = 0;
   while (i < ws.length) {
-    // Modos
     const modo = MODOS.find(([f]) => coincide(i, f));
     if (modo) {
       modoDictado = modo[1];
       i += modo[0].split(" ").length;
       continue;
     }
-    // Infusiones: se consumen con su valor para que no se confundan con otro dato.
-    const inf = nombresInfusion.find(([f]) => coincide(i, f));
+    // Infusiones: dosis, escalon, «igual» o «suspendida».
+    const inf = NOMBRES_INFUSION.find(([f]) => coincide(i, f));
     if (inf) {
+      const campo: CampoDictado = `inf:${inf[1]}`;
+      let k = saltarRelleno(i + inf[0].split(" ").length);
+      if (SUSPENDER.has(ws[k] ?? "") || (ws[k] === "se" && SUSPENDER.has(ws[k + 1] ?? ""))) {
+        oidos.push({ campo, valor: "suspender" });
+        i = k + (ws[k] === "se" ? 2 : 1);
+        continue;
+      }
+      if (ws[k] === "escalon" || ws[k] === "nivel" || ws[k] === "paso") {
+        const n = leerNumero(ws, k + 1);
+        const dosis = n ? dosisDeEscalon(inf[1], Number(n.valor)) : null;
+        if (n && dosis !== null) oidos.push({ campo, valor: String(dosis) });
+        else noAplica.push(`${etiquetaDictado(campo, modalidadActual)}: escalón sin valor`);
+        i = n ? n.fin : k + 1;
+        continue;
+      }
       const v = valorDespues(i + inf[0].split(" ").length);
-      infusiones.push({ nombre: inf[1], valor: v ? comoTeclado(v.valor) : "sin valor" });
-      i = v ? v.fin : i + 1;
+      if (v) {
+        oidos.push({ campo, valor: v.valor });
+        i = v.fin;
+      } else {
+        noAplica.push(`${etiquetaDictado(campo, modalidadActual)} sin dosis`);
+        i = k;
+      }
       continue;
     }
     const frase = FRASES.find(([f]) => coincide(i, f));
@@ -283,20 +363,53 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
     }
     const [f, clave] = frase;
     const k = i + f.split(" ").length;
-    const v = valorDespues(k);
     if (clave === "volumenControl" || clave === "presionControl") {
       modoDictado = clave === "volumenControl" ? "ACVC" : "PCV";
-      if (clave === "presionControl" && v) {
-        oidos.push({ campo: "presion", valor: v.valor });
-        i = v.fin;
-      } else i = k;
+      const v = clave === "presionControl" ? leerNumero(ws, saltarRelleno(k)) : null;
+      if (v) oidos.push({ campo: "presion", valor: v.valor });
+      i = v ? v.fin : k;
       continue;
     }
+    if (clave === "gcs") {
+      const ig = igualDesde(k);
+      if (ig !== null) {
+        oidos.push({ campo: "gcsO", valor: IGUAL }, { campo: "gcsM", valor: IGUAL });
+        if (!artificial) oidos.push({ campo: "gcsV", valor: IGUAL });
+        i = ig;
+        continue;
+      }
+      // «glasgow 4 5 6», «4 T 6», «456»: ocular, verbal y motor.
+      const partes: string[] = [];
+      let j = saltarRelleno(k);
+      while (partes.length < 3 && ws[j] !== undefined) {
+        if (ws[j] === "t" || ws[j] === "te") { partes.push("T"); j++; continue; }
+        if (/^[1-6]{3}$/.test(ws[j]!)) { partes.push(...ws[j]!.split("")); j++; continue; }
+        const n = leerNumero(ws, j);
+        if (!n) break;
+        partes.push(n.valor);
+        j = n.fin;
+      }
+      const [o, v2, m] = partes.length === 2 ? [partes[0], "T", partes[1]] : partes;
+      if (partes.length === 1) noAplica.push(`Glasgow ${partes[0]}: dicta ocular, verbal y motor`);
+      else if (partes.length >= 2) {
+        if (o) oidos.push({ campo: "gcsO", valor: o });
+        if (v2 && v2 !== "T" && !artificial) oidos.push({ campo: "gcsV", valor: v2 });
+        if (m) oidos.push({ campo: "gcsM", valor: m });
+      }
+      i = j;
+      continue;
+    }
+    const v = valorDespues(k);
     if (!v) {
       i = k;
       continue;
     }
     if (clave === "pa") {
+      if (v.valor === IGUAL) {
+        oidos.push({ campo: "pas", valor: IGUAL }, { campo: "pad", valor: IGUAL });
+        i = v.fin;
+        continue;
+      }
       // «94 sobre 53», «94 con 53», «94/53»
       if (ws[v.fin] !== undefined && SEPARADORES_PA.has(ws[v.fin]!)) {
         const d = leerNumero(ws, v.fin + 1);
@@ -309,9 +422,11 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
       i = v.fin;
       continue;
     }
-    if (clave === "pip") dudasCrudas.push({ tipo: "PIP", valor: v.valor });
-    else if (clave === "fr") dudasCrudas.push({ tipo: "FR", valor: v.valor });
-    else oidos.push({ campo: clave, valor: v.valor });
+    if (clave === "gcsV" && artificial) {
+      i = v.fin;
+      continue;
+    }
+    oidos.push({ campo: clave, valor: v.valor });
     i = v.fin;
   }
 
@@ -320,112 +435,85 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
   if (modoDictado) {
     if (MODALIDADES_POR_VIA[via].includes(modoDictado)) modalidad = modoDictado;
     else if (modoDictado === "CNAF" && MODALIDADES_POR_VIA[via].includes("CNAF_TQT")) modalidad = "CNAF_TQT";
-    else noAplica.push(`Modo ${ETIQUETA_MODALIDAD[modoDictado]} (no corresponde a la vía aérea)`);
+    else noAplica.push(`Modo ${ETIQUETA_MODALIDAD[modoDictado]}: no corresponde a la vía aérea`);
   }
-  const aplica = new Set<CampoDictado>(["fc", "pas", "pad", "spo2", ...CAMPOS_POR_MODALIDAD[modalidad].map((d) => d.campo)]);
+  const aplicaVent = new Set<CampoDictado>(CAMPOS_POR_MODALIDAD[modalidad].map((d) => d.campo));
+  const existe = (c: CampoDictado): boolean => !esVent(c) || aplicaVent.has(c);
 
-  // Agrupar por dato: un mismo valor repetido es uno solo; valores distintos son conflicto.
-  const porCampo = new Map<CampoDictado, string[]>();
+  // «igual» toma el valor del control anterior; agrupar por dato.
+  const porCampo = new Map<CampoDictado, { valores: string[]; igual: boolean }>();
   for (const o of oidos) {
+    let campo = o.campo;
     // En los modos sin volumen programado, «volumen corriente» es lo que hace el paciente.
-    if (o.campo === "vtProgramado" && !aplica.has("vtProgramado") && aplica.has("vtEspirado")) o.campo = "vtEspirado";
-    if (!aplica.has(o.campo)) {
-      noAplica.push(`${etiquetaDictado(o.campo, modalidad)} ${comoTeclado(o.valor)} (no existe en ${ETIQUETA_MODALIDAD[modalidad]})`);
+    if (campo === "vtProgramado" && !aplicaVent.has("vtProgramado") && aplicaVent.has("vtEspirado")) campo = "vtEspirado";
+    const et = etiquetaDictado(campo, modalidad);
+    if (!existe(campo)) {
+      noAplica.push(`${et} ${o.valor === IGUAL ? "igual" : comoTeclado(o.valor)}: no existe en ${ETIQUETA_MODALIDAD[modalidad]}`);
       continue;
     }
-    porCampo.set(o.campo, [...(porCampo.get(o.campo) ?? []), o.valor]);
+    let valor = o.valor;
+    const igual = valor === IGUAL;
+    if (igual) {
+      const ant = valorAnterior(campo, ctx.anterior);
+      if (ant === null) {
+        noAplica.push(`${et} igual: no hay valor anterior`);
+        continue;
+      }
+      valor = ant;
+    }
+    const x = porCampo.get(campo) ?? { valores: [], igual: false };
+    porCampo.set(campo, { valores: [...x.valores, valor], igual: x.igual || igual });
   }
 
   const datos: DatoDictado[] = [];
   const dudas: DudaDictado[] = [];
   if (modoDictado && modalidad !== modalidadActual) datos.push({ campo: "modalidad", valor: modalidad, veces: 1 });
-  for (const [campo, valores] of porCampo) {
-    const distintos = [...new Set(valores.map((x) => Number(x)))];
+  for (const [campo, { valores, igual }] of porCampo) {
     const et = etiquetaDictado(campo, modalidad);
+    const distintos = [...new Set(valores.map((x) => (x === "suspender" ? x : String(numero(x)))))];
     if (distintos.length > 1) {
       dudas.push({
         id: `conflicto-${campo}`,
         tipo: "CONFLICTO",
-        texto: `Dijiste ${et} con valores distintos: ${distintos.map((x) => comoTeclado(String(x))).join(" y ")}. ¿Cuál vale?`,
-        opciones: [...distintos.map((x) => ({ etiqueta: comoTeclado(String(x)), campo, valor: comoTeclado(String(x)) })), { etiqueta: "Descartar", campo: null, valor: "" }]
+        texto: `Dijiste ${et} con valores distintos: ${distintos.map(comoTeclado).join(" y ")}. ¿Cuál vale?`,
+        opciones: [...distintos.map((x) => ({ etiqueta: comoTeclado(x), campo, valor: comoTeclado(x) })), { etiqueta: "Descartar", campo: null, valor: "" }]
       });
       continue;
     }
-    const n = distintos[0]!;
-    const rango = RANGO[campo];
-    if (rango && (n < rango[0] || n > rango[1])) {
-      const imp = IMPOSIBLE[campo];
-      const imposible = imp ? n < imp[0] || n > imp[1] : false;
-      dudas.push({
-        id: `rango-${campo}`,
-        tipo: "RANGO",
-        texto: `${et} ${comoTeclado(String(n))} está fuera de lo esperable${imposible ? " y no es posible" : ""}.`,
-        opciones: [...(imposible ? [] : [{ etiqueta: "Usar igual", campo, valor: comoTeclado(String(n)) }]), { etiqueta: "Descartar", campo: null, valor: "" }]
-      });
-      continue;
+    const valor = distintos[0]!;
+    if (valor !== "suspender") {
+      const n = numero(valor);
+      const rango = RANGO[campo];
+      if (!Number.isFinite(n) || (rango && (n < rango[0] || n > rango[1])) || (esInfusion(campo) && n <= 0)) {
+        noAplica.push(`${et} ${comoTeclado(valor)}: fuera de rango`);
+        continue;
+      }
     }
-    datos.push({ campo, valor: comoTeclado(valores[0]!), veces: valores.length });
+    datos.push({ campo, valor: comoTeclado(valor), veces: valores.length, ...(igual ? { igual: true } : {}) });
   }
 
-  // La sistolica tiene que ser mayor que la diastolica.
+  // La sistolica tiene que ser mayor que la diastolica: si no, ninguna se aplica.
   const pas = datos.find((d) => d.campo === "pas");
   const pad = datos.find((d) => d.campo === "pad");
-  if (pas && pad && Number(pas.valor.replace(",", ".")) <= Number(pad.valor.replace(",", "."))) {
+  if (pas && pad && numero(pas.valor) <= numero(pad.valor)) {
     datos.splice(datos.indexOf(pas), 1);
     datos.splice(datos.indexOf(pad), 1);
-    dudas.push({
-      id: "pa-invertida",
-      tipo: "RANGO",
-      texto: `La presión ${pas.valor}/${pad.valor} tiene la sistólica menor o igual que la diastólica.`,
-      opciones: [{ etiqueta: `Invertir: ${pad.valor}/${pas.valor}`, campo: "pas", valor: `${pad.valor}/${pas.valor}` }, { etiqueta: "Descartar", campo: null, valor: "" }]
-    });
+    noAplica.push(`Presión ${pas.valor}/${pad.valor}: la sistólica no es mayor que la diastólica`);
   }
 
-  // Si la opcion cae en un dato que ya se dicto con otro valor, la etiqueta lo dice: nada se
-  // reemplaza sin que se vea.
-  const opcion = (campo: CampoDictado, v: string): OpcionDuda => {
-    const ya = datos.find((x) => x.campo === campo);
-    const et = etiquetaDictado(campo, modalidad);
-    return { etiqueta: ya && ya.valor !== v ? `${et} (reemplaza ${ya.valor})` : et, campo, valor: v };
-  };
+  // SAS solo con sedoanalgesia en curso (la del control, con lo dictado de las infusiones).
+  const sas = datos.find((d) => d.campo === "sas");
+  if (sas && ctx.b && !sedoanalgesiaActivaEnBorrador(aplicarDictado(ctx.b, datos.filter((d) => d !== sas)))) {
+    datos.splice(datos.indexOf(sas), 1);
+    noAplica.push(`SAS ${sas.valor}: sin sedación en curso (se registra la vigilia)`);
+  }
 
-  // «PIP»: el motor suele transcribir PEEP como PIP. Nunca se decide solo.
-  dudasCrudas.forEach((d, n) => {
-    const v = comoTeclado(d.valor);
-    if (d.tipo === "PIP") {
-      const ops: OpcionDuda[] = [];
-      if (aplica.has("peep")) ops.push(opcion("peep", v));
-      if (aplica.has("pPico")) ops.push(opcion("pPico", v));
-      ops.push({ etiqueta: "Descartar", campo: null, valor: "" });
-      dudas.push({ id: `pip-${n}`, tipo: "PIP", texto: `Entendí «PIP ${v}». ¿Qué es?`, opciones: ops });
-      return;
-    }
-    // «frecuencia 22» a secas: solo es clara si el modo tiene una sola frecuencia respiratoria.
-    const prog = aplica.has("frProgramada");
-    const total = aplica.has("frTotal");
-    if (prog && total) {
-      dudas.push({
-        id: `fr-${n}`,
-        tipo: "FR",
-        texto: `Entendí «frecuencia ${v}». ¿Es la programada o la del paciente?`,
-        opciones: [
-          opcion("frProgramada", v),
-          opcion("frTotal", v),
-          { etiqueta: "Descartar", campo: null, valor: "" }
-        ]
-      });
-    } else if (total || prog) {
-      const campo: CampoDictado = total ? "frTotal" : "frProgramada";
-      if (!datos.some((x) => x.campo === campo)) datos.push({ campo, valor: v, veces: 1 });
-    }
-  });
-
-  return { modalidad, datos: ordenar(datos, modalidad), dudas, infusiones, noAplica };
+  return { modalidad, datos: ordenar(datos, modalidad), dudas, noAplica };
 }
 
-/** En el orden del formulario: signos vitales, modo y los datos del modo. */
+/** En el orden del formulario: signos vitales, Glasgow, infusiones, SAS, modo y los datos del modo. */
 function ordenar(datos: readonly DatoDictado[], modalidad: Modalidad): DatoDictado[] {
-  const orden: CampoDictado[] = ["fc", "pas", "pad", "spo2", "modalidad", ...CAMPOS_POR_MODALIDAD[modalidad].map((d) => d.campo)];
+  const orden: string[] = ["fc", "pas", "pad", "spo2", "gcsO", "gcsV", "gcsM", ...INFUSIONES.map((d) => `inf:${d.id}`), "sas", "modalidad", ...CAMPOS_POR_MODALIDAD[modalidad].map((d) => d.campo)];
   return [...datos].sort((a, b) => orden.indexOf(a.campo) - orden.indexOf(b.campo));
 }
 
@@ -435,11 +523,6 @@ export function resolverDudas(r: ResultadoDictado, elecciones: Readonly<Record<s
   for (const d of r.dudas) {
     const e = elecciones[d.id];
     if (!e || e.campo === null) continue;
-    if (d.id === "pa-invertida") {
-      const [s, di] = e.valor.split("/");
-      datos.push({ campo: "pas", valor: s!, veces: 1 }, { campo: "pad", valor: di!, veces: 1 });
-      continue;
-    }
     const i = datos.findIndex((x) => x.campo === e.campo);
     if (i >= 0) datos.splice(i, 1);
     datos.push({ campo: e.campo, valor: e.valor, veces: 1 });
@@ -449,9 +532,26 @@ export function resolverDudas(r: ResultadoDictado, elecciones: Readonly<Record<s
 
 /** Valor que hoy tiene el borrador en ese dato (para mostrar lo que se reemplaza). */
 export function valorActual(b: BorradorControl, campo: CampoDictado): string {
-  if (campo === "fc" || campo === "pas" || campo === "pad" || campo === "spo2") return b[campo];
-  if (campo === "modalidad") return b.modalidad;
-  return b.vent[campo];
+  if (esInfusion(campo)) {
+    const x = b.infusiones[idInfusion(campo)];
+    return x.activa ? x.dosis : "";
+  }
+  switch (campo) {
+    case "fc": case "pas": case "pad": case "spo2":
+      return b[campo];
+    case "modalidad":
+      return b.modalidad;
+    case "sas":
+      return b.sas === null ? "" : String(b.sas);
+    case "gcsO":
+      return b.glasgow.ocular === null ? "" : String(b.glasgow.ocular);
+    case "gcsV":
+      return b.glasgow.verbal === null ? "" : String(b.glasgow.verbal);
+    case "gcsM":
+      return b.glasgow.motora === null ? "" : String(b.glasgow.motora);
+    default:
+      return b.vent[campo];
+  }
 }
 
 /** Escribe en el borrador SOLO los datos confirmados. No toca nada mas ni guarda. */
@@ -460,24 +560,63 @@ export function aplicarDictado(b: BorradorControl, datos: readonly DatoDictado[]
   const modo = datos.find((d) => d.campo === "modalidad");
   if (modo) x = cambiarModalidad(x, modo.valor as Modalidad);
   for (const d of datos) {
-    if (d.campo === "modalidad") continue;
-    if (d.campo === "fc" || d.campo === "pas" || d.campo === "pad" || d.campo === "spo2") x = { ...x, [d.campo]: d.valor };
-    else x = { ...x, vent: { ...x.vent, [d.campo]: d.valor } };
+    const c = d.campo;
+    if (c === "modalidad") continue;
+    if (esInfusion(c)) {
+      const id = idInfusion(c);
+      if (d.valor === "suspender") x = suspenderInfusion(x, id);
+      else {
+        if (!x.infusiones[id].activa) x = iniciarInfusion(x, id);
+        x = { ...x, infusiones: { ...x.infusiones, [id]: { ...x.infusiones[id], activa: true, libre: true, escalon: "", dosis: d.valor } } };
+      }
+      continue;
+    }
+    switch (c) {
+      case "fc": case "pas": case "pad": case "spo2":
+        x = { ...x, [c]: d.valor };
+        break;
+      case "sas":
+        x = { ...x, sas: Number(d.valor) as BorradorControl["sas"] };
+        break;
+      case "gcsO":
+        x = { ...x, glasgow: { ...x.glasgow, ocular: Number(d.valor) as 1 | 2 | 3 | 4 } };
+        break;
+      case "gcsV":
+        x = { ...x, glasgow: { ...x.glasgow, verbal: Number(d.valor) as 1 | 2 | 3 | 4 | 5 } };
+        break;
+      case "gcsM":
+        x = { ...x, glasgow: { ...x.glasgow, motora: Number(d.valor) as 1 | 2 | 3 | 4 | 5 | 6 } };
+        break;
+      default:
+        x = { ...x, vent: { ...x.vent, [c]: d.valor } };
+    }
   }
   return x;
 }
 
-/** Texto corto de un dato para la guia y la revision («94/53», «ACVC», «8»). */
+/** Texto corto de un dato para la guia y la revision («94/53», «ACVC», «8», «suspender»). */
 export function textoDato(d: DatoDictado): string {
   return d.campo === "modalidad" ? ETIQUETA_MODALIDAD[d.valor as Modalidad] : d.valor;
 }
 
-/** Los datos que se pueden dictar con este modo, en el orden del formulario (para la guia). */
-export function guiaDictado(modalidad: Modalidad): readonly { readonly campo: CampoDictado | "pa"; readonly etiqueta: string }[] {
+/** Clave de la casilla del formulario donde cae un dato («pa» junta PAS y PAD, «gcs» el Glasgow). */
+export function casillaDe(campo: CampoDictado): string {
+  if (campo === "pas" || campo === "pad") return "pa";
+  if (campo === "gcsO" || campo === "gcsV" || campo === "gcsM") return "gcs";
+  return campo;
+}
+
+/** Los datos que se pueden dictar, en el orden del formulario (para la guia). */
+export function guiaDictado(modalidad: Modalidad, b?: BorradorControl): readonly { readonly campo: string; readonly etiqueta: string }[] {
+  const infusiones = b ? INFUSIONES.filter((d) => b.infusiones[d.id].activa).map((d) => ({ campo: `inf:${d.id}`, etiqueta: d.nombre })) : [];
+  const sedada = b ? sedoanalgesiaActivaEnBorrador(b) : false;
   return [
     { campo: "fc", etiqueta: "FC" },
     { campo: "pa", etiqueta: "PA" },
     { campo: "spo2", etiqueta: "SpO₂" },
+    { campo: "gcs", etiqueta: "Glasgow" },
+    ...infusiones,
+    ...(sedada ? [{ campo: "sas", etiqueta: "SAS" }] : []),
     { campo: "modalidad", etiqueta: "Modo" },
     ...CAMPOS_POR_MODALIDAD[modalidad].map((d) => ({ campo: d.campo, etiqueta: d.etiqueta.replace(/ \(.*\)$/, "") }))
   ];

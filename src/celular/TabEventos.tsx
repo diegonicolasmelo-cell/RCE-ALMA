@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CircleAlert, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, CircleAlert, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -16,9 +16,11 @@ import {
   nombreCama,
   botonExtubacion,
   motivoSinPve,
-  estadoFlujoPve
+  estadoFlujoPve,
+  MOTIVOS_EGRESO,
+  ETIQUETA_MOTIVO_EGRESO
 } from "@core/index";
-import type { DispositivoPosterior, EventoClinico, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
+import type { DispositivoPosterior, EventoClinico, MotivoEgreso, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
@@ -138,6 +140,12 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
           ...(libres.length === 0 ? { deshabilitado: true, ayuda: "No hay camas libres." } : {}),
           campos: [{ id: "cama", etiqueta: "Cama nueva · solo las libres", opciones: libres.map((c) => ({ valor: c, texto: nombreCama(c) })) }],
           crear: (v, b) => ({ ...b, tipo: "TRASLADO_CAMA", desde: ep.cama, hasta: v["cama"] ?? ep.cama })
+        },
+        {
+          // El egreso no es un evento: cierra el episodio (lo mismo que «Dar de alta» en el PC).
+          k: "egreso", texto: "Dar de alta (egreso)",
+          campos: [{ id: "mot", etiqueta: "Motivo de egreso (REM 28)", opciones: [{ valor: "", texto: "— elegir —" }, ...MOTIVOS_EGRESO.map((m) => ({ valor: m, texto: ETIQUETA_MOTIVO_EGRESO[m] }))] }],
+          crear: () => { throw new Error("el egreso no es un evento"); }
         }
       ]
     },
@@ -200,6 +208,17 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     if (it.k === "traslado") {
       const destino = v["cama"] ?? "";
       if (!libres.includes(destino)) return avisar("Elige una cama libre.");
+    }
+    if (it.k === "egreso") {
+      const motivo = v["mot"] as MotivoEgreso | "";
+      if (!motivo) return avisar("Elige el motivo de egreso.");
+      await repo.darAlta(ep.id, motivo);
+      setAbierto(null);
+      setValores({});
+      useApp.getState().descartar(ep.id);
+      useApp.getState().irA("camas");
+      avisar(`${nombreCama(ep.cama)} dada de alta (${ETIQUETA_MOTIVO_EGRESO[motivo].toLowerCase()}). La cama queda libre; el nombre y el RUT se borran en el PC.`);
+      return;
     }
     const ahoraReal = new Date();
     const comentario = it.comentarioDe ? (v[it.comentarioDe] ?? "") : "";
@@ -330,11 +349,12 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
             </div>
           ) : (
             <div className="row">
-              <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar</button>
+              <button type="button" className={item.peligro || item.k === "egreso" ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>{item.k === "egreso" ? "Confirmar egreso" : "Registrar"}</button>
               <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
             </div>
           )}
           {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
+          {item.k === "egreso" && <p className="small muted">El paciente sale de la lista y la cama queda libre. Lo clínico se conserva para las estadísticas; el nombre y el RUT se borran en el PC.</p>}
         </div>
       )}
 
@@ -377,6 +397,6 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
 /** Icono de cada evento (en el diseño nuevo va sobre el nombre; en el clásico no se muestra). */
 const ICONO_EVENTO: Record<string, LucideIcon> = {
   extub: CircleAlert, pve: Timer, reint: RotateCw, traq: Scissors, ajuste: Ruler, cambioTubo: Repeat, cambioCanula: Repeat,
-  decan: CircleMinus, autoext: TriangleAlert, traslado: ArrowLeftRight, supinar: RotateCcw, prono: RotateCw, fbc: Eye,
+  decan: CircleMinus, autoext: TriangleAlert, traslado: ArrowLeftRight, egreso: LogOut, supinar: RotateCcw, prono: RotateCw, fbc: Eye,
   cult: TestTube, img: ScanLine, asist: HandHelping, hme: Filter, trach: Filter, hepa: Filter, pcr: HeartPulse, cent: ShieldAlert
 };

@@ -1404,6 +1404,21 @@ async function esperarServidor() {
       assert.match(await pc.textContent(".detail-head"), /UCI-04 · Paciente Prueba Cuatro/);
     });
 
+    await prueba("dar de alta desde el celular: pide el motivo, confirma aparte y la cama queda libre", async () => {
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
+      await cel.click('.evgrid button:has-text("Dar de alta")');
+      await cel.waitForSelector("#evf-mot");
+      assert.equal(await cel.inputValue("#evf-mot"), "", "el motivo no viene elegido");
+      await cel.click('button:text-is("Confirmar egreso")');
+      assert.match(await aviso(), /Elige el motivo de egreso/);
+      await cel.selectOption("#evf-mot", "ALTA");
+      await cel.click('button:text-is("Confirmar egreso")');
+      await cel.waitForSelector('.toast-app:has-text("dada de alta")');
+      await cel.waitForSelector('article.cama-sin:has-text("Cama 9")');
+      assert.equal(await cel.locator('article[aria-label="Cama UCI-09"]:not(.cama-sin)').count(), 0, "el paciente sale de la lista");
+    });
+
     await prueba("sin errores en la consola durante todo el recorrido", async () => {
       assert.deepEqual(errores, []);
     });

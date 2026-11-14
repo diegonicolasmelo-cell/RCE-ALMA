@@ -15,6 +15,9 @@ export type VistaCelular = "elegir" | "camas" | "cama" | "evaluacion" | "pve" | 
 export type Tema = "auto" | "dia" | "noche";
 /** Aspecto de las pantallas del paciente: "nuevo" (el diseño de Sleek) o "clasico" (el de antes). */
 export type Estilo = "nuevo" | "clasico";
+/** Color de acento que cada persona elige para su Kápta. */
+export type Acento = "azul" | "rosado" | "verde" | "amarillo";
+export const ACENTOS: readonly (readonly [Acento, string])[] = [["azul", "Azul profesional"], ["rosado", "Rosado"], ["verde", "Verde clínico"], ["amarillo", "Amarillo pato"]];
 
 export interface Sesion {
   readonly rut: string;
@@ -63,6 +66,8 @@ interface EstadoApp {
   /** Dictado por voz en el control: en prueba, cada persona lo activa en su celular. */
   dictado: boolean;
   setDictado: (activo: boolean) => void;
+  acento: Acento;
+  setAcento: (a: Acento) => void;
 
   /** Un borrador por cama: se conserva al cambiar de cama y de pestana. */
   borradores: Record<string, BorradorControl>;
@@ -92,6 +97,15 @@ function leerTema(): Tema {
 }
 const CLAVE_ESTILO = "kapta:estilo";
 const CLAVE_DICTADO = "kapta:dictado";
+const CLAVE_ACENTO = "kapta:acento";
+function leerAcento(): Acento {
+  try {
+    const a = globalThis.localStorage?.getItem(CLAVE_ACENTO);
+    return a === "rosado" || a === "verde" || a === "amarillo" ? a : "azul";
+  } catch {
+    return "azul";
+  }
+}
 function leerBandera(clave: string): boolean {
   try {
     return globalThis.localStorage?.getItem(clave) === "1";
@@ -142,6 +156,11 @@ export const useApp = create<EstadoApp>((set) => ({
   setTema: (tema) => {
     guardarTema(tema);
     set({ tema });
+  },
+  acento: leerAcento(),
+  setAcento: (acento) => {
+    try { globalThis.localStorage?.setItem(CLAVE_ACENTO, acento); } catch { /* vale solo para esta sesion */ }
+    set({ acento });
   },
   dictado: leerBandera(CLAVE_DICTADO),
   setDictado: (dictado) => {

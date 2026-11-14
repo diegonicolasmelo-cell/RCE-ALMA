@@ -132,6 +132,11 @@ export function Celular() {
   );
   const tema = useApp((s) => s.tema);
   const estilo = useApp((s) => s.estilo);
+  const acento = useApp((s) => s.acento);
+  useEffect(() => {
+    document.documentElement.dataset["acento"] = acento;
+    return () => { delete document.documentElement.dataset["acento"]; };
+  }, [acento]);
   useEffect(() => {
     document.documentElement.dataset["estilo"] = estilo;
     return () => { delete document.documentElement.dataset["estilo"]; };

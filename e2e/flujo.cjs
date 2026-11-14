@@ -183,6 +183,13 @@ async function esperarServidor() {
       await cuenta.locator('[role=radio]:has-text("Automático")').click();
       const hora = await cel.evaluate(() => new Date().getHours());
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), hora >= 8 && hora < 20 ? "light" : "dark");
+      // Color de tu Kápta: azul por defecto; se elige entre cuatro.
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
+      await cuenta.locator('[role=radio][aria-label="Rosado"]').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "rosado");
+      assert.equal(await cel.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), "#b94f7a");
+      await cuenta.locator('[role=radio][aria-label="Azul profesional"]').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
       // Diseño de las pantallas del paciente: nuevo por defecto, y el clásico sigue disponible.
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
       await cuenta.locator('[role=radio]:has-text("Clásico")').click();

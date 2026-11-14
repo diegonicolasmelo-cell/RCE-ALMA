@@ -35,7 +35,7 @@ import {
 import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
-import { FichaAlma } from "./FichaAlma";
+import { SabanaVista } from "../estacion/SabanaVista";
 import { useServicios } from "../app/contexto";
 import { iniciarCodigoPcr } from "./CodigoPcr";
 import { avisoVozLeido, marcarAvisoVozLeido, motivoSinVoz, vozDisponible } from "./voz";
@@ -448,7 +448,7 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
             className="card tarjeta-control"
             role="button"
             tabIndex={0}
-            aria-label={`Ver el control · ${nombreCama(r.ep.cama)} · ${c.hora}`}
+            aria-label={`Ver la sábana · ${nombreCama(r.ep.cama)} · ${c.hora}`}
             onClick={() => setAbierto({ episodioId: r.ep.id, controlId: c.id })}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAbierto({ episodioId: r.ep.id, controlId: c.id }); } }}
           >
@@ -463,12 +463,20 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
               <span><b>{n(c.spo2, " %")}</b>SpO₂</span>
               <span><b>{n(c.ventilacion.fio2, " %")}</b>FiO₂</span>
             </div>
-            <span className="ver-sabana">Ver control <ChevronRight size={15} aria-hidden /></span>
+            <span className="ver-sabana">Ver sábana <ChevronRight size={15} aria-hidden /></span>
           </article>
         );
       })}
       {sab && abierto && (
-        <FichaAlma ep={sab.ep} controles={sab.controles} desde={desde} eventos={sab.eventos} inicial={abierto.controlId} ahora={ahora} onCerrar={() => setAbierto(null)} />
+        <div className="sabana-cel" role="dialog" aria-label={`Sábana · ${nombreCama(sab.ep.cama)}`}>
+          <div className="sabana-cel-cab">
+            <button type="button" className="bt-plano" aria-label="Volver" onClick={() => setAbierto(null)}><ChevronLeft size={22} aria-hidden /></button>
+            <h2>Sábana · {nombreCama(sab.ep.cama)}</h2>
+          </div>
+          <div className="sabana-cel-cuerpo">
+            <SabanaVista ep={sab.ep} controles={sab.controles} eventos={sab.eventos} ahora={ahora} resaltar={abierto.controlId} />
+          </div>
+        </div>
       )}
     </div>
   );

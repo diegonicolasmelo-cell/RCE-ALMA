@@ -16,6 +16,7 @@ import {
   CircleHelp,
   ClipboardList,
   Flag,
+  Droplet,
   HeartPulse,
   Mic,
   History,
@@ -33,7 +34,7 @@ import {
 } from "lucide-react";
 import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
-import { useApp } from "../app/store";
+import { ACENTOS, useApp } from "../app/store";
 import { SabanaVista } from "../estacion/SabanaVista";
 import { useServicios } from "../app/contexto";
 import { iniciarCodigoPcr } from "./CodigoPcr";
@@ -285,6 +286,8 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
   const setTema = useApp((s) => s.setTema);
   const estilo = useApp((s) => s.estilo);
   const setEstilo = useApp((s) => s.setEstilo);
+  const acento = useApp((s) => s.acento);
+  const setAcento = useApp((s) => s.setAcento);
   const dictado = useApp((s) => s.dictado);
   const setDictado = useApp((s) => s.setDictado);
   const vozOk = vozDisponible();
@@ -340,6 +343,15 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
           <div className="seg-tema" role="radiogroup" aria-label="Apariencia">
             {TEMAS.map(([k, t, Icono]) => (
               <button key={k} type="button" role="radio" aria-checked={tema === k} onClick={() => setTema(k)}><Icono size={15} aria-hidden /> {t}</button>
+            ))}
+          </div>
+          <div className="pc-fila bloque">
+            <Droplet size={22} aria-hidden />
+            <span>Color de tu Kápta<small>{ACENTOS.find(([k]) => k === acento)?.[1]}</small></span>
+          </div>
+          <div className="acentos" role="radiogroup" aria-label="Color de tu Kápta">
+            {ACENTOS.map(([k, t]) => (
+              <button key={k} type="button" role="radio" aria-checked={acento === k} aria-label={t} title={t} className={`acento ${k}`} onClick={() => setAcento(k)} />
             ))}
           </div>
           <div className="pc-fila bloque">

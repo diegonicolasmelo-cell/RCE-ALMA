@@ -487,7 +487,7 @@ body:has(.kb:not([hidden])) .fondo-flotante .panel-flotante{max-height:calc(100v
 .kb button{min-height:0;height:100%;padding:0;border:0;border-radius:8px;background:#fff;color:#14243a;font:600 21px var(--font-data);box-shadow:0 1px 0 rgba(20,36,58,.18);cursor:pointer}
 .kb button:active{background:var(--accent-soft)}
 .kb .fn{background:#cfd8e3;font:600 15px var(--font-ui)}
-.kb .sig{grid-column:4;grid-row:2 / span 3;background:var(--accent);color:#fff;font:700 17px var(--font-ui)}
+.kb .sig{grid-column:4;grid-row:2 / span 3;background:var(--accent);color:var(--on-accent);font:700 17px var(--font-ui)}
 /* Con el teclado propio abierto se ocultan la cabecera, las pestanas y el pie (no tapan nada). */
 body.teclado-propio .cel-top,body.teclado-propio .ctl-cabeza,body.teclado-propio .banda,body.teclado-propio .ph-tabs,body.teclado-propio .cel-pie{display:none!important}
 body.teclado-propio #cuerpo.escribiendo{padding-bottom:calc(65vh + 200px)}
@@ -796,7 +796,7 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 [data-estilo="nuevo"] .kb{background:var(--panel-2)}
 [data-estilo="nuevo"] .kb button{border:1px solid var(--line);border-radius:14px;box-shadow:none;background:var(--panel);color:var(--ink)}
 [data-estilo="nuevo"] .kb .fn{background:var(--panel-2)}
-[data-estilo="nuevo"] .kb .sig{background:var(--accent);border-color:var(--accent);color:#fff;border-radius:14px}
+[data-estilo="nuevo"] .kb .sig{background:var(--accent);border-color:var(--accent);color:var(--on-accent);border-radius:14px}
 
 /* Pie: tres botones de guardar. */
 [data-estilo="nuevo"] .cel-pie{background:var(--panel)}
@@ -904,7 +904,7 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 .pulsos i.on{background:var(--crit)}
 .metro .ajuste,.cod-ops{display:flex;gap:6px}
 .metro .ajuste button,.cod-ops button{flex:1;min-height:40px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:700 14px var(--font-ui);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
-.cod-ops button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.cod-ops button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .cod-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .cod-bt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:68px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);font:600 15px var(--font-ui);text-align:left;cursor:pointer}
 .cod-bt small{font-weight:500;font-size:12px;color:var(--ink-2)}
@@ -1006,7 +1006,7 @@ body.dictando .cel-pie{visibility:hidden}
 .voz-duda{display:flex;flex-direction:column;gap:7px;padding:9px 12px;border-top:1px solid var(--line);font-size:14px}
 .voz-duda .ops{display:flex;gap:6px;flex-wrap:wrap}
 .voz-duda .ops button{flex:1;min-height:42px;min-width:5em;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:700 13.5px var(--font-ui);cursor:pointer}
-.voz-duda .ops button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.voz-duda .ops button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .voz-dato{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
 .voz-dato input{width:18px;height:18px;accent-color:var(--accent)}
 .voz-dato small{display:block;color:var(--ink-2);font-size:11.5px}
@@ -1026,3 +1026,20 @@ body.dictando .cel-pie{visibility:hidden}
 .aviso-voz p,.aviso-voz ul{margin:0}
 .aviso-voz ul{padding-left:18px}
 @media (prefers-reduced-motion:reduce){.voz-escucha i{animation:none}}
+
+/* ---- Color de tu Kápta: acento elegido por cada persona (azul por defecto) ---- */
+:root[data-acento="rosado"]{--accent:#b94f7a;--accent-soft:#f9e6ee;--on-accent:#ffffff}
+:root[data-acento="verde"]{--accent:#0f7f6c;--accent-soft:#dff2ed;--on-accent:#ffffff}
+:root[data-acento="amarillo"]{--accent:#9a6f00;--accent-soft:#fff1c2;--on-accent:#ffffff}
+@media (prefers-color-scheme: dark){
+  :root[data-acento="rosado"]:not([data-theme="light"]){--accent:#de86a9;--accent-soft:#3a2230;--on-accent:#2a0f1c}
+  :root[data-acento="verde"]:not([data-theme="light"]){--accent:#3fbfa5;--accent-soft:#132f29;--on-accent:#06231d}
+  :root[data-acento="amarillo"]:not([data-theme="light"]){--accent:#f2c12e;--accent-soft:#352b10;--on-accent:#241a00}
+}
+:root[data-theme="dark"][data-acento="rosado"]{--accent:#de86a9;--accent-soft:#3a2230;--on-accent:#2a0f1c}
+:root[data-theme="dark"][data-acento="verde"]{--accent:#3fbfa5;--accent-soft:#132f29;--on-accent:#06231d}
+:root[data-theme="dark"][data-acento="amarillo"]{--accent:#f2c12e;--accent-soft:#352b10;--on-accent:#241a00}
+.acentos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 6px;justify-items:center}
+.acento{width:44px;height:44px;border-radius:50%;border:3px solid var(--panel);box-shadow:0 0 0 1px var(--line);cursor:pointer}
+.acento[aria-checked="true"]{box-shadow:0 0 0 3px var(--ink)}
+.acento.azul{background:#2a78d6}.acento.rosado{background:#d77fa3}.acento.verde{background:#16927c}.acento.amarillo{background:#f2c12e}

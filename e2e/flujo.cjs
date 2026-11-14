@@ -1241,6 +1241,34 @@ async function esperarServidor() {
       await ctx.setOffline(false);
     });
 
+    await prueba("iPhone: en Safari el enlace se queda en la dirección (la app instalada nace conectada); ya instalada se borra; sin conectar pide pegarlo", async () => {
+      const iphoneUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+      const enlace = "#config?u=" + encodeURIComponent("https://script.google.com/macros/s/AKfyPRUEBA/exec") + "&a=llave_prueba";
+      const manifiesto = await (await cel.request.get(URL + "manifest.webmanifest")).json();
+      assert.equal(manifiesto.start_url, undefined, "sin start_url: al instalar se usa la dirección con el enlace");
+      const safari = await navegador.newContext({ viewport: { width: 390, height: 844 }, userAgent: iphoneUA, isMobile: true, hasTouch: true });
+      const ps = await safari.newPage();
+      await ps.goto(URL + enlace);
+      await ps.waitForTimeout(1500);
+      assert.match(ps.url().replace(/^[^#]*/, ""), /^#config\?u=/, "en Safari el enlace queda en la dirección");
+      await safari.close();
+      const instalada = await navegador.newContext({ viewport: { width: 390, height: 844 }, userAgent: iphoneUA, isMobile: true, hasTouch: true });
+      await instalada.addInitScript(() => Object.defineProperty(navigator, "standalone", { get: () => true }));
+      const pi = await instalada.newPage();
+      await pi.goto(URL + enlace);
+      await pi.waitForTimeout(1500);
+      assert.equal(pi.url().includes("#config"), false, "ya instalada, el enlace se borra de la barra");
+      await instalada.close();
+      const sinConectar = await navegador.newContext({ viewport: { width: 390, height: 844 }, userAgent: iphoneUA, isMobile: true, hasTouch: true });
+      await sinConectar.addInitScript(() => Object.defineProperty(navigator, "standalone", { get: () => true }));
+      const pn = await sinConectar.newPage();
+      await pn.goto(URL);
+      await pn.waitForTimeout(1200);
+      const texto = await pn.textContent("body");
+      if (/Falta conectar/.test(texto)) assert.match(texto, /pégalo aquí/);
+      await sinConectar.close();
+    });
+
     await prueba("ninguna pantalla desborda horizontalmente en un celular de 390 px", async () => {
       for (const ruta of ["#celular", "#estacion"]) {
         await cel.goto(URL + ruta);

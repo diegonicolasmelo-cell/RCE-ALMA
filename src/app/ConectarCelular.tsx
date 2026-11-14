@@ -74,12 +74,13 @@ export function ConectarCelular({ mensaje }: { mensaje: string }) {
   return (
     <div className="login">
       <div className="stack" style={{ gap: 12 }}>
-        <div className="notice warn">{mensaje}</div>
         <div className="card stack" style={{ gap: 10 }}>
-          <b>¿Instalaste la app en la pantalla de inicio?</b>
-          <p className="small muted" style={{ margin: 0 }}>Copia el enlace de configuración (en WhatsApp: mantén presionado el mensaje y elige «Copiar») y pégalo aquí.</p>
+          <b>Falta conectar este celular a la unidad</b>
+          <p className="small muted" style={{ margin: 0 }}>Es un paso, una sola vez. Copia el «enlace para celulares» que te enviaron (en WhatsApp: mantén presionado el mensaje y elige «Copiar») y pégalo aquí.</p>
           <CuadroEnlace />
+          <p className="small muted" style={{ margin: 0 }}>En iPhone, la app instalada no ve lo que se abrió en Safari: por eso lo pide aquí. Si prefieres, abre el enlace en Safari y desde ahí «Compartir → Agregar a inicio»: la app queda conectada sola.</p>
         </div>
+        <p className="small muted" style={{ margin: 0 }}>{mensaje}</p>
       </div>
     </div>
   );

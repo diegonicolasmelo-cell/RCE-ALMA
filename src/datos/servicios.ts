@@ -52,7 +52,12 @@ async function crear(): Promise<Servicios> {
     const conexion: ConexionDispositivo = { apiUrl: apiUrlEnlace, appToken: h.appToken, ...(h.sinapseUrl ? { sinapseUrl: h.sinapseUrl } : {}) };
     await guardarMeta(db, CLAVE_CONEXION, conexion);
   }
-  if (h.token || h.apiUrl || h.appToken || h.sinapseUrl) {
+  // En iPhone, la app instalada en la pantalla de inicio NO comparte lo guardado en Safari y
+  // parte desde la direccion que tenia la pagina al «Agregar a inicio». Por eso, en Safari (aun
+  // sin instalar) el enlace de configuracion se deja en la direccion: asi la app instalada nace
+  // conectada. Ya instalada, o en Android (que si comparte), se borra de la barra como siempre.
+  const iosSinInstalar = esIphone() && !esAppInstalada() && Boolean(h.apiUrl && h.appToken) && !h.token;
+  if ((h.token || h.apiUrl || h.appToken || h.sinapseUrl) && !iosSinInstalar) {
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${h.limpio}`);
     // Tambien en la barra de afuera del iframe, que es la que ve la persona.
     if (gs && gas) reemplazarHashExterno(h.limpio, gas.parametros, gs);
@@ -136,4 +141,16 @@ export async function refrescarDotacion(db: BaseLocal, api: ClienteApi): Promise
   const lista = fijarDotacion(r.dotacion);
   await guardarMeta(db, CLAVE_DOTACION, lista);
   return lista.length > 0 ? true : "vacia";
+}
+
+/** iPhone o iPad (los iPad nuevos se presentan como Mac con pantalla tactil). */
+export function esIphone(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/** La app abierta desde la pantalla de inicio (no en una pestaña del navegador). */
+export function esAppInstalada(): boolean {
+  if (typeof window === "undefined") return false;
+  return (navigator as Navigator & { standalone?: boolean }).standalone === true || Boolean(window.matchMedia?.("(display-mode: standalone)").matches);
 }

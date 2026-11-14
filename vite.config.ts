@@ -22,7 +22,9 @@ export default defineConfig({
         display: "standalone",
         orientation: "portrait",
         // Relativos: funciona igual en la raiz de un dominio o en un subdirectorio (GitHub Pages).
-        start_url: "./",
+        // Sin start_url: al instalar, el telefono usa la direccion de la pagina. En iPhone esa
+        // direccion trae el enlace de configuracion y la app instalada nace conectada.
+        start_url: undefined as unknown as string,
         scope: "./",
         icons: [
           { src: "pwa-192.png", sizes: "192x192", type: "image/png" },

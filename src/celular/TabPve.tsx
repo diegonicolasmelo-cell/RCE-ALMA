@@ -10,7 +10,7 @@
  * y la hora REAL de cada paso (se sugiere la de ahora y se corrige). Todo queda como eventos.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
   CRITERIOS_PVE,
@@ -90,19 +90,22 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   const [fuera, setFuera] = useState(false);
   const [sinPve, setSinPve] = useState(false);
   const [hora, setHora] = useState(horaDe(new Date()));
+  /** Si nadie corrigio la hora, vale la de AHORA: la sugerida puede quedar un minuto atras. */
+  const horaTocada = useRef(false);
   const [reeval, setReeval] = useState<MomentoPostExtub | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const set = (k: string, v: string): void => setF((x) => ({ ...x, [k]: v }));
   const limpiar = (): void => {
     setF({});
     setHora(horaDe(new Date()));
+    horaTocada.current = false;
     setMsg(null);
   };
 
   /** Un evento con la hora REAL del paso (puede ser unos minutos antes de anotarlo). */
   const ev = async (e: Record<string, unknown>): Promise<EventoClinico | null> => {
     const t = new Date();
-    const real = momentoDeEvaluacion(hora, t);
+    const real = horaTocada.current ? momentoDeEvaluacion(hora, t) : t;
     if (!real) {
       setMsg("Revisa la hora: la real, de las últimas 12 horas.");
       return null;
@@ -125,7 +128,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
   );
   const horaFila = (etiqueta: string): JSX.Element => (
     <Fila etiqueta={etiqueta} ayuda={cuando(hora)}>
-      <input id="pve-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+      <input id="pve-hora" type="time" value={hora} onChange={(e) => { horaTocada.current = true; setHora(e.target.value); }} />
     </Fila>
   );
 

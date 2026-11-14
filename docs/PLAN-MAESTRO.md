@@ -617,6 +617,10 @@ trabajo del turno y se retiró el mismo día.
 - Agregar una guardia de punta a punta con el motor de Safari (WebKit), que hoy no se usa: las pruebas
   corren solo en Chromium, y por eso este fallo no se detectó.
 
-**Preguntas pendientes para Diego:** ① ¿Se quedó pegado al abrirla, o al intentar cerrarla o cambiar de
+**Respuesta de Diego (14-nov):** se pegó **al abrirla, desde Pacientes, en la app instalada** del iPhone.
+Eso coincide con la hipótesis 1: la tarjeta de Pacientes está dentro de la lista con scroll y la ficha se
+montaba ahí adentro. Falta solo la versión de iOS. **Sigue sin programarse** hasta que Diego lo pida.
+
+**Preguntas que quedaban:** ① ¿Se quedó pegado al abrirla, o al intentar cerrarla o cambiar de
 pestaña? ② ¿Desde Controles, desde la tarjeta de la cama, o las dos? ③ ¿En Safari o en la app instalada?
 ④ ¿Qué versión de iOS tenía el teléfono (Ajustes → General → Información)?

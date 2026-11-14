@@ -564,6 +564,14 @@ Dictado continuo con revisión. El dictado guiado campo por campo queda para una
   valores imposibles o fuera de rango no se aplican (quedan en «No se aplican»); «igual», «sin
   cambios» o «se mantiene» repiten el valor del control anterior. Solo se pregunta cuando un
   mismo dato se dijo con valores distintos. Nada de lo dictado es obligatorio.
+- **Glasgow:** siempre ocular, verbal, motor («2 1 4», «uno ocular, tubo y cuatro», «456»); con
+  tubo o TQT el verbal es T (si dicen 1 es el del tubo); un total dicho junto se deja de lado.
+- **Infusiones:** «infusiones / drogas activas sin cambios» repite todas las que están en curso;
+  una por una con «sin cambios», «mismo escalón», la dosis o «escalón N».
+- **Modos según la vía:** ACVC/«acbc», ACPC; «CPAP» con tubo o TQT es CPAP + PS y con vía natural
+  es VNI CPAP («CPAP 8» = presión de la interfaz); «VNI/BNI» con vía natural pregunta CPAP o S/T;
+  CNAF («cenaf») por TQT es alto flujo por TQT; naricera, Venturi («multivent»), reservorio,
+  BiPAP/S-T y AVAPS. «Aire ambiente» aún no existe como modalidad.
 - **Guía visual:** mientras se habla, una franja baja muestra el texto y las píldoras de los datos
   del modo (verde lo ya dicho, ámbar lo dudoso); el formulario queda a la vista, cada dato oído
   aparece en gris junto a su casilla sin escribirla, y la pantalla baja sola hasta él salvo que la

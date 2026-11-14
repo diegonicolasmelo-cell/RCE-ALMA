@@ -36,7 +36,7 @@ export interface OpcionDuda {
 
 export interface DudaDictado {
   readonly id: string;
-  readonly tipo: "CONFLICTO";
+  readonly tipo: "CONFLICTO" | "MODO";
   readonly texto: string;
   readonly opciones: readonly OpcionDuda[];
 }
@@ -69,7 +69,7 @@ const sinTildes = (s: string): string => s.normalize("NFD").replace(/[̀-ͯ]/g, 
 
 function palabras(texto: string): string[] {
   let t = sinTildes(texto.toLowerCase());
-  t = t.replace(/(\d)\s*,\s*(\d)/g, "$1.$2"); // 0,01 -> 0.01
+  t = t.replace(/(\d),(\d)/g, "$1.$2"); // 0,01 -> 0.01 («7, 2» con espacio es una lista)
   t = t.replace(/(\d)\s*\/\s*(\d)/g, "$1 / $2"); // 94/53 -> 94 / 53
   t = t.replace(/(\d)\s*%/g, "$1");
   t = t.replace(/\b(fio|spo|sat o|s p o|f i o)\s*(2|dos)\b/g, (_m, a: string) => (a.startsWith("f") ? "fio2" : "spo2"));
@@ -208,14 +208,26 @@ const FRASES = porLargo<Clave>([
   ["respuesta motora", "gcsM"], ["motora", "gcsM"], ["motor", "gcsM"]
 ]);
 
-/** Frases de modo (sin numero detras). «presion control 18» ademas es la P. control. */
-const MODOS = porLargo<Modalidad>([
-  ["cpap con presion de soporte", "CPAP_PS"], ["cpap mas presion de soporte", "CPAP_PS"], ["cpap mas soporte", "CPAP_PS"], ["cpap ps", "CPAP_PS"],
-  ["cpap con soporte", "CPAP_PS"], ["modo cpap", "CPAP_PS"],
-  ["canula nasal de alto flujo", "CNAF"], ["alto flujo", "CNAF"], ["cnaf", "CNAF"],
-  ["tubo t", "TUBO_T"], ["tubo en t", "TUBO_T"], ["naricera", "O2_NARICERA"], ["venturi", "O2_VENTURI"],
-  ["mascarilla con reservorio", "O2_RESERVORIO"], ["mascarilla de reservorio", "O2_RESERVORIO"], ["mascarilla simple", "O2_MASCARILLA"],
-  ["bipap", "VNI_ST"], ["avaps", "AVAPS"]
+/**
+ * Frases de modo. Algunas dependen de la via aerea:
+ *  - «CPAP» con tubo o TQT es CPAP + presion de soporte; con via natural es VNI en CPAP.
+ *  - «VNI»/«BNI» con via natural puede ser CPAP o S/T: se pregunta. Con TQT es S/T.
+ *  - «CNAF» con TQT es alto flujo por TQT.
+ */
+type Modo = Modalidad | "CPAP" | "VNI" | "AIRE";
+const MODOS = porLargo<Modo>([
+  ["acvc", "ACVC"], ["acbc", "ACVC"], ["a c v c", "ACVC"], ["a c b c", "ACVC"], ["asistida controlada por volumen", "ACVC"], ["volumen controlado", "ACVC"],
+  ["acpc", "PCV"], ["a c p c", "PCV"], ["asistida controlada por presion", "PCV"], ["presion controlada", "PCV"],
+  ["cpap mas presion de soporte", "CPAP_PS"], ["cpap ps", "CPAP_PS"], ["cpap mas ps", "CPAP_PS"], ["cpap con ps", "CPAP_PS"], ["cpap", "CPAP"], ["c pap", "CPAP"],
+  ["vni cpap", "VNI_CPAP"], ["bni cpap", "VNI_CPAP"], ["cpap no invasivo", "VNI_CPAP"],
+  ["vni st", "VNI_ST"], ["bni st", "VNI_ST"], ["vni s t", "VNI_ST"], ["bni s t", "VNI_ST"], ["bipap", "VNI_ST"], ["bi pap", "VNI_ST"], ["s t", "VNI_ST"], ["st", "VNI_ST"],
+  ["ventilacion no invasiva", "VNI"], ["vni", "VNI"], ["bni", "VNI"], ["avaps", "AVAPS"], ["a vaps", "AVAPS"],
+  ["canula nasal de alto flujo", "CNAF"], ["alto flujo", "CNAF"], ["cnaf", "CNAF"], ["cenaf", "CNAF"], ["c n a f", "CNAF"], ["cetaf", "CNAF"], ["naf", "CNAF"],
+  ["tubo t", "TUBO_T"], ["tubo en t", "TUBO_T"],
+  ["naricera", "O2_NARICERA"], ["nariceras", "O2_NARICERA"], ["canula nasal", "O2_NARICERA"],
+  ["mascarilla multivent", "O2_VENTURI"], ["multivent", "O2_VENTURI"], ["multi vent", "O2_VENTURI"], ["multiven", "O2_VENTURI"], ["venturi", "O2_VENTURI"],
+  ["mascarilla con reservorio", "O2_RESERVORIO"], ["mascarilla de reservorio", "O2_RESERVORIO"], ["reservorio", "O2_RESERVORIO"], ["mascarilla simple", "O2_MASCARILLA"],
+  ["aire ambiente", "AIRE"], ["aire ambiental", "AIRE"], ["ambiental", "AIRE"]
 ]);
 
 /** Nombres de las infusiones como se dicen. */
@@ -223,6 +235,7 @@ const NOMBRES_INFUSION = porLargo<IdInfusion>([
   ...INFUSIONES.map((d) => [sinTildes(d.nombre.toLowerCase()), d.id] as const),
   ...INFUSIONES.map((d) => [sinTildes(d.id.toLowerCase()), d.id] as const),
   ["dexmedetomidina", "dexmedetomidina"], ["dexmede", "dexmedetomidina"], ["fentanil", "fentanilo"], ["nora", "noradrenalina"],
+  ["medazolam", "midazolam"], ["midazolan", "midazolam"], ["precedes", "dexmedetomidina"],
   ["vaso", "vasopresina"], ["dobuta", "dobutamina"], ["mida", "midazolam"]
 ]);
 
@@ -296,7 +309,7 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
   const ws = palabras(texto);
   const oidos: Oido[] = [];
   const noAplica: string[] = [];
-  let modoDictado: Modalidad | null = null;
+  let modoDictado: Modo | null = null;
   const artificial = via !== "NATURAL";
 
   const coincide = (k: number, frase: string): boolean => frase.split(" ").every((p, n) => ws[k + n] === p);
@@ -309,7 +322,7 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
   const igualDesde = (k: number): number | null => {
     const j = saltarRelleno(k);
     const w = ws[j];
-    if (w === "igual" || w === "mismo" || w === "misma" || w === "mantiene" || w === "mantenida" || w === "mantenido") return j + 1;
+    if (["igual", "iguales", "mismo", "misma", "mismos", "mantiene", "mantienen", "mantenida", "mantenido", "mantenidas"].includes(w ?? "")) return j + 1;
     if (w === "sin" && (ws[j + 1] === "cambios" || ws[j + 1] === "cambio")) return j + 2;
     return null;
   };
@@ -326,6 +339,33 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
     if (modo) {
       modoDictado = modo[1];
       i += modo[0].split(" ").length;
+      // «CPAP 8» con via natural: el numero es la presion de la interfaz.
+      if (!artificial && (modo[1] === "CPAP" || modo[1] === "VNI_CPAP")) {
+        const n = leerNumero(ws, saltarRelleno(i));
+        if (n) { oidos.push({ campo: "peep", valor: n.valor }); i = n.fin; }
+      }
+      continue;
+    }
+    // «Infusiones sin cambios», «drogas activas sin cambios», «todas sin cambios».
+    if (["infusiones", "drogas", "farmacos", "todas", "infusion"].includes(ws[i]!)) {
+      let j = i + 1;
+      while (["activas", "en", "curso", "las", "todas", "vasoactivas", "y", "sedacion", "sedantes"].includes(ws[j] ?? "")) j++;
+      const ig = igualDesde(j);
+      if (ig !== null) {
+        const activas = ctx.b ? INFUSIONES.filter((d) => ctx.b!.infusiones[d.id].activa) : [];
+        if (activas.length === 0) noAplica.push("Infusiones sin cambios: no hay infusiones en curso");
+        for (const d of activas) oidos.push({ campo: `inf:${d.id}`, valor: IGUAL });
+        i = ig;
+        continue;
+      }
+    }
+    // «uno ocular», «cuatro motor»: el número antes del componente del Glasgow.
+    const antes = leerNumero(ws, i);
+    const COMPONENTES: Record<string, "gcsO" | "gcsV" | "gcsM"> = { ocular: "gcsO", verbal: "gcsV", motor: "gcsM", motora: "gcsM" };
+    const comp = antes ? COMPONENTES[ws[antes.fin] ?? ""] : undefined;
+    if (antes && comp) {
+      if (!(comp === "gcsV" && artificial)) oidos.push({ campo: comp, valor: antes.valor });
+      i = antes.fin + 1;
       continue;
     }
     // Infusiones: dosis, escalon, «igual» o «suspendida».
@@ -339,6 +379,12 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
         continue;
       }
       if (ws[k] === "escalon" || ws[k] === "nivel" || ws[k] === "paso") {
+        const igEsc = igualDesde(k + 1);
+        if (igEsc !== null) {
+          oidos.push({ campo, valor: IGUAL });
+          i = igEsc;
+          continue;
+        }
         const n = leerNumero(ws, k + 1);
         const dosis = n ? dosisDeEscalon(inf[1], Number(n.valor)) : null;
         if (n && dosis !== null) oidos.push({ campo, valor: String(dosis) });
@@ -378,23 +424,34 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
         i = ig;
         continue;
       }
-      // «glasgow 4 5 6», «4 T 6», «456»: ocular, verbal y motor.
+      // Siempre en orden ocular, verbal, motor: «glasgow 2 1 4», «uno ocular, tubo y cuatro»,
+      // «3 T 5», «456». Con tubo el verbal es T (si dicen 1, es el 1 del tubo). Un total que se
+      // dice junto («glasgow 7, 2 1 4») se deja de lado.
       const partes: string[] = [];
       let j = saltarRelleno(k);
-      while (partes.length < 3 && ws[j] !== undefined) {
-        if (ws[j] === "t" || ws[j] === "te") { partes.push("T"); j++; continue; }
-        if (/^[1-6]{3}$/.test(ws[j]!)) { partes.push(...ws[j]!.split("")); j++; continue; }
+      while (partes.length < 4 && ws[j] !== undefined) {
+        const w = ws[j]!;
+        if (["t", "te", "tubo", "tet", "tot", "tqt", "intubado", "traqueostomia"].includes(w)) { partes.push("T"); j++; continue; }
+        if (["ocular", "verbal", "motor", "motora", "y", "con", "de", "apertura", "respuesta", "en", "total"].includes(w)) { j++; continue; }
+        if (/^[1-6]{3}$/.test(w)) { partes.push(...w.split("")); j++; continue; }
         const n = leerNumero(ws, j);
         if (!n) break;
         partes.push(n.valor);
         j = n.fin;
       }
-      const [o, v2, m] = partes.length === 2 ? [partes[0], "T", partes[1]] : partes;
-      if (partes.length === 1) noAplica.push(`Glasgow ${partes[0]}: dicta ocular, verbal y motor`);
-      else if (partes.length >= 2) {
-        if (o) oidos.push({ campo: "gcsO", valor: o });
-        if (v2 && v2 !== "T" && !artificial) oidos.push({ campo: "gcsV", valor: v2 });
-        if (m) oidos.push({ campo: "gcsM", valor: m });
+      // Un total (mayor que 6, o el primero de cuatro) no es un componente.
+      let total: string | undefined;
+      while (partes.length > 0 && (partes.length === 4 || (partes[0] !== "T" && Number(partes[0]) > 6))) total = partes.shift();
+      while (partes.length > 3) partes.pop();
+      let o: string | undefined, v2: string | undefined, m: string | undefined;
+      if (partes.length === 3) [o, v2, m] = partes;
+      else if (partes.length === 2 && artificial) [o, m] = partes;
+      if (o !== undefined && m !== undefined) {
+        if (o !== "T") oidos.push({ campo: "gcsO", valor: o });
+        if (!artificial && v2 !== undefined && v2 !== "T") oidos.push({ campo: "gcsV", valor: v2 });
+        if (m !== "T") oidos.push({ campo: "gcsM", valor: m });
+      } else if ((partes.length > 0 || total) && !oidos.some((x) => x.campo === "gcsO" || x.campo === "gcsM")) {
+        noAplica.push(`Glasgow ${[total, ...partes].filter(Boolean).join(" ")}: dicta ocular, verbal y motor, en ese orden`);
       }
       i = j;
       continue;
@@ -432,10 +489,19 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
 
   // El modo dictado manda si corresponde a la via; si no, no se aplica.
   let modalidad = modalidadActual;
-  if (modoDictado) {
-    if (MODALIDADES_POR_VIA[via].includes(modoDictado)) modalidad = modoDictado;
-    else if (modoDictado === "CNAF" && MODALIDADES_POR_VIA[via].includes("CNAF_TQT")) modalidad = "CNAF_TQT";
-    else noAplica.push(`Modo ${ETIQUETA_MODALIDAD[modoDictado]}: no corresponde a la vía aérea`);
+  let modoAmbiguo = false;
+  if (modoDictado === "AIRE") noAplica.push("Aire ambiente: todavía no es una modalidad en Kápta");
+  else if (modoDictado) {
+    let m: Modalidad | null;
+    if (modoDictado === "CPAP") m = artificial ? "CPAP_PS" : "VNI_CPAP";
+    else if (modoDictado === "VNI") {
+      if (via === "TQT") m = "VNI_ST";
+      else if (via === "NATURAL") { m = "VNI_ST"; modoAmbiguo = true; }
+      else m = null;
+    } else if (modoDictado === "CNAF" && via === "TQT") m = "CNAF_TQT";
+    else m = modoDictado;
+    if (m && MODALIDADES_POR_VIA[via].includes(m)) modalidad = m;
+    else noAplica.push(`Modo ${m ? ETIQUETA_MODALIDAD[m] : "VNI"}: no corresponde a la vía aérea`);
   }
   const aplicaVent = new Set<CampoDictado>(CAMPOS_POR_MODALIDAD[modalidad].map((d) => d.campo));
   const existe = (c: CampoDictado): boolean => !esVent(c) || aplicaVent.has(c);
@@ -454,7 +520,8 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
     let valor = o.valor;
     const igual = valor === IGUAL;
     if (igual) {
-      const ant = valorAnterior(campo, ctx.anterior);
+      let ant = valorAnterior(campo, ctx.anterior);
+      if (ant === null && esInfusion(campo) && ctx.b?.infusiones[idInfusion(campo)].activa) ant = ctx.b.infusiones[idInfusion(campo)].dosis || null;
       if (ant === null) {
         noAplica.push(`${et} igual: no hay valor anterior`);
         continue;
@@ -467,7 +534,19 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
 
   const datos: DatoDictado[] = [];
   const dudas: DudaDictado[] = [];
-  if (modoDictado && modalidad !== modalidadActual) datos.push({ campo: "modalidad", valor: modalidad, veces: 1 });
+  if (modoAmbiguo) {
+    // «VNI» con via natural: CPAP o S/T. Las casillas se juzgan con S/T, que las tiene todas.
+    dudas.push({
+      id: "modo-vni",
+      tipo: "MODO",
+      texto: "Dijiste VNI. ¿En qué modo?",
+      opciones: [
+        { etiqueta: ETIQUETA_MODALIDAD.VNI_CPAP, campo: "modalidad", valor: "VNI_CPAP" },
+        { etiqueta: ETIQUETA_MODALIDAD.VNI_ST, campo: "modalidad", valor: "VNI_ST" },
+        { etiqueta: "No cambiar", campo: null, valor: "" }
+      ]
+    });
+  } else if (modoDictado && modoDictado !== "AIRE" && modalidad !== modalidadActual) datos.push({ campo: "modalidad", valor: modalidad, veces: 1 });
   for (const [campo, { valores, igual }] of porCampo) {
     const et = etiquetaDictado(campo, modalidad);
     const distintos = [...new Set(valores.map((x) => (x === "suspender" ? x : String(numero(x)))))];

@@ -124,3 +124,42 @@ describe("dictado por voz: números", () => {
     expect(mapa(interpretarDictado("volumen corriente 420", "CPAP_PS", "TET"))).toEqual({ vtEspirado: "420" });
   });
 });
+
+describe("dictado por voz: Glasgow en orden, infusiones sin cambios y modos según la vía", () => {
+  it("Glasgow siempre ocular, verbal, motor; con tubo el verbal es T (si dicen 1 es el del tubo)", () => {
+    expect(mapa(interpretarDictado("glasgow uno ocular, tubo y cuatro", "ACVC", "TET"))).toEqual({ gcsO: "1", gcsM: "4" });
+    expect(mapa(interpretarDictado("glasgow 2 1 4, glasgow 7", "ACVC", "TET"))).toEqual({ gcsO: "2", gcsM: "4" });
+    expect(mapa(interpretarDictado("glasgow 7, 2 1 4", "O2_NARICERA", "NATURAL"))).toEqual({ gcsO: "2", gcsV: "1", gcsM: "4" });
+    expect(mapa(interpretarDictado("glasgow uno uno tres", "O2_NARICERA", "NATURAL"))).toEqual({ gcsO: "1", gcsV: "1", gcsM: "3" });
+    expect(mapa(interpretarDictado("uno ocular, cuatro motor", "ACVC", "TET"))).toEqual({ gcsO: "1", gcsM: "4" });
+    // Sin tubo hacen falta los tres.
+    expect(interpretarDictado("glasgow 3 5", "O2_NARICERA", "NATURAL").datos).toEqual([]);
+  });
+  it("«infusiones sin cambios» repite todas las que están en curso; también una por una o «mismo escalón»", () => {
+    let b = iniciarInfusion(borrador(), "fentanilo");
+    b = iniciarInfusion(b, "noradrenalina");
+    b = { ...b, infusiones: { ...b.infusiones, noradrenalina: { ...b.infusiones.noradrenalina, dosis: "0,05" } } };
+    expect(mapa(interpretarDictado("drogas activas sin cambios", "ACVC", "TET", { b }))).toEqual({ "inf:fentanilo": b.infusiones.fentanilo.dosis.replace(".", ","), "inf:noradrenalina": "0,05" });
+    expect(mapa(interpretarDictado("midazolam... no, fentanilo mismo escalón", "ACVC", "TET", { b }))).toEqual({ "inf:fentanilo": b.infusiones.fentanilo.dosis.replace(".", ",") });
+    expect(mapa(interpretarDictado("medazolam 0,04", "ACVC", "TET", { b }))).toEqual({ "inf:midazolam": "0,04" });
+  });
+  it("modos: ACVC, ACPC, CPAP con tubo es CPAP+PS; con vía natural es VNI CPAP; CNAF por TQT", () => {
+    const modo = (t: string, actual: Parameters<typeof interpretarDictado>[1], via: Parameters<typeof interpretarDictado>[2]) => interpretarDictado(t, actual, via).datos.find((d) => d.campo === "modalidad")?.valor;
+    expect(modo("acbc", "CPAP_PS", "TET")).toBe("ACVC");
+    expect(modo("a c p c", "ACVC", "TET")).toBe("PCV");
+    expect(modo("cpap", "ACVC", "TET")).toBe("CPAP_PS");
+    expect(modo("cpap más presión de soporte", "ACVC", "TQT")).toBe("CPAP_PS");
+    expect(modo("cpap", "O2_NARICERA", "NATURAL")).toBe("VNI_CPAP");
+    expect(modo("cenaf", "O2_NARICERA", "NATURAL")).toBe("CNAF");
+    expect(modo("cnaf", "ACVC", "TQT")).toBe("CNAF_TQT");
+    expect(modo("mascarilla multivent", "CNAF", "NATURAL")).toBe("O2_VENTURI");
+    expect(modo("naricera", "CNAF", "NATURAL")).toBe("O2_NARICERA");
+    expect(modo("bni st", "CNAF", "NATURAL")).toBe("VNI_ST");
+    expect(modo("avaps", "ACVC", "TQT")).toBe("AVAPS");
+    // «VNI» a secas con vía natural pregunta CPAP o S/T.
+    expect(interpretarDictado("bni", "CNAF", "NATURAL").dudas[0]?.tipo).toBe("MODO");
+    // «CPAP 8» con vía natural es la presión de la interfaz.
+    expect(mapa(interpretarDictado("cpap 8", "O2_NARICERA", "NATURAL"))).toEqual({ modalidad: "VNI_CPAP", peep: "8" });
+    expect(interpretarDictado("aire ambiental", "CNAF", "NATURAL").noAplica[0]).toMatch(/Aire ambiente/);
+  });
+});

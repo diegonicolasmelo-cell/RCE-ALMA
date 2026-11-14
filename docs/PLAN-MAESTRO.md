@@ -578,3 +578,45 @@ Dictado continuo con revisión. El dictado guiado campo por campo queda para una
   persona esté moviendo el formulario.
 - **Nada se guarda por voz:** «Aplicar» solo llena las casillas confirmadas (marcadas en azul, con
   «Deshacer»); el control se guarda con el botón de siempre y pasa por las mismas validaciones.
+
+## 17. Ficha del control en el celular (ARCHIVADA, 14-nov-2026)
+
+**Estado:** archivada por Diego («déjalo archivado, trabaja en ello pero no lo programes»). El código vive
+en la rama `ficha-control-celular` y **no está en `main`**: el equipo volvió a la sábana completa.
+
+**Qué es:** al tocar un control (en Controles o en la hora del último control de la tarjeta) se abre una
+pantalla sin scroll con tres pestañas: *Último control* (FC, PA, Glasgow, SAS, SpO₂ y FiO₂ arriba; los
+campos de VM en el orden del formulario de ALMA abajo), *Sábana* (24 h o toda la estadía) y *Evaluaciones*.
+Sirve para pasar los datos a ALMA desde el celular sin abrir el PC.
+
+**Qué pasó en el hospital:** en Android se vio bien; **en iPhone «se quedaba pegado»**. Interfirió con el
+trabajo del turno y se retiró el mismo día.
+
+**Hipótesis, de más a menos probable (leídas en el código, sin iPhone para comprobarlas):**
+1. **La capa se dibuja DENTRO de la lista que se desplaza.** La ficha es `position:absolute; inset:0`, pero
+   se monta dentro de `.cel-cuerpo` (la lista de camas o de controles, con `overflow-y:auto`). En Chrome se
+   ubica contra `.app-cel` y tapa la pantalla. Safari de iPhone tiene fallas conocidas con capas absolutas
+   dentro de un contenedor con scroll: la capa puede quedar corrida hacia arriba (la X fuera de la vista) o
+   los toques pueden llegar a la lista de abajo en vez de a la ficha. Eso se ve exactamente como «pegado».
+   Pesa más en Pacientes, donde se toca una tarjeta que suele estar abajo en la lista.
+   *Arreglo a evaluar:* montar la ficha fuera de la lista (al nivel de `.app-cel`, o con un portal) y usar
+   `position:fixed` con los márgenes del notch.
+2. **Filas que se reparten el alto con `grid` + botones al 100 %.** Las versiones de Safari anteriores a
+   iOS 16 calculan mal la altura de un hijo al 100 % dentro de una fila `minmax(0,1fr)`: la lista puede
+   quedar con alto cero o desbordada sin poder desplazarse.
+   *Arreglo a evaluar:* filas con alto fijo calculado (alto disponible ÷ número de campos) en vez de 100 %.
+3. **La barra de abajo y la del sistema tapan los botones del pie.** En la app instalada en iPhone, el
+   indicador de inicio y la barra de navegación de Kápta pueden quedar encima de «Sábana completa» y
+   «Copiar evolución». No explica por sí sola el «pegado», pero suma.
+
+**Cómo se prueba antes de volver a publicarla (sin tocar `main`):**
+- Publicarla en una dirección de prueba aparte (otra rama de Pages o un artefacto con datos ficticios) y
+  abrirla en un iPhone del equipo, en Safari Y en la app instalada.
+- Probar desde Controles y desde Pacientes, con la lista desplazada hacia abajo antes de tocar.
+- Anotar la versión de iOS de cada teléfono.
+- Agregar una guardia de punta a punta con el motor de Safari (WebKit), que hoy no se usa: las pruebas
+  corren solo en Chromium, y por eso este fallo no se detectó.
+
+**Preguntas pendientes para Diego:** ① ¿Se quedó pegado al abrirla, o al intentar cerrarla o cambiar de
+pestaña? ② ¿Desde Controles, desde la tarjeta de la cama, o las dos? ③ ¿En Safari o en la app instalada?
+④ ¿Qué versión de iOS tenía el teléfono (Ajustes → General → Información)?

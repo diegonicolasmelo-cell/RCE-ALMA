@@ -73,7 +73,8 @@ export const CAMPOS_VENT_OBSERVADOS: readonly CampoVent[] = [
   "pMedia",
   "autoPeep",
   "volMinuto",
-  "fuga"
+  "fuga",
+  "ie"
 ];
 
 export interface BorradorInfusion {
@@ -406,7 +407,8 @@ export function materializarControl(b: BorradorControl, datos: DatosMaterializac
     fuga: campo("fuga"),
     presionMax: campo("presionMax"),
     musculaturaAccesoria: pideMusculaturaAccesoria(b.modalidad) ? b.musculaturaAccesoria : null,
-    volMinuto: campo("volMinuto")
+    volMinuto: campo("volMinuto"),
+    ie: campo("ie")
   };
 
   const m = datos.monitoreo;

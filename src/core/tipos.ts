@@ -76,7 +76,9 @@ export type CampoVent =
   /** Fuga de la interfaz (VNI), L/min. */
   | "fuga"
   /** IPAP maxima (AVAPS). La minima va en `presion`. */
-  | "presionMax";
+  | "presionMax"
+  /** Relacion I:E leida del ventilador, como el numero despues de «1:» (p. ej. 2,5 = 1:2,5). */
+  | "ie";
 
 export const CAMPOS_VENT: readonly CampoVent[] = [
   "frProgramada",
@@ -95,7 +97,8 @@ export const CAMPOS_VENT: readonly CampoVent[] = [
   "volMinuto",
   "temperatura",
   "fuga",
-  "presionMax"
+  "presionMax",
+  "ie"
 ];
 
 /**

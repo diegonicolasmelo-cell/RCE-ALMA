@@ -185,6 +185,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("pPico", "P. pico", "cmH₂O"),
     o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
     o("pMedia", "P. media", "cmH₂O"),
+    o("ie", "I:E", "1 : …"),
     o("autoPeep", "Auto PEEP", "cmH₂O")
   ],
   PCV: [
@@ -199,6 +200,7 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
     o("pPico", "P. pico", "cmH₂O"),
     o("pPlateau", "P. plateau (meseta)", "cmH₂O"),
     o("pMedia", "P. media", "cmH₂O"),
+    o("ie", "I:E", "1 : …"),
     o("autoPeep", "Auto PEEP", "cmH₂O")
   ],
   // En espontaneas importa la presion pico, no la media.

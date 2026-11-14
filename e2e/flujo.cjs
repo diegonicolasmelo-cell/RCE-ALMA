@@ -237,7 +237,10 @@ async function esperarServidor() {
       const et = await cel.locator('section[aria-label="Terapia ventilatoria"] .fila .et').allTextContents();
       assert.ok(et.some((t) => t.startsWith("P. control")) && et.some((t) => t.startsWith("Auto PEEP")), et.join(" | "));
       assert.ok(!et.some((t) => t.startsWith("Vt programado")), "en ACPC no hay volumen programado");
+      // La I:E se anota en las controladas (aunque falten TI o flujo); en CPAP+PS no hay.
+      assert.ok(et.some((t) => t.startsWith("I:E")), "en ACPC se anota la I:E: " + et.join(" | "));
       await cel.selectOption("#in-modo", "ACVC");
+      assert.equal(await cel.locator("#in-vent-ie").count(), 1, "en ACVC se anota la I:E");
     });
 
     await prueba("el Vt dice cuanto es por kilo de peso ideal, y la talla se corrige ahi mismo", async () => {

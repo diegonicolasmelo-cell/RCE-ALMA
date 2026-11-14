@@ -207,6 +207,11 @@ describe("camposAlma: orden de ALMA y regla por modalidad", () => {
     expect(valor(c, "I:E")).toBe("1:2");
   });
 
+  it("la I:E anotada llega a ALMA aunque falten TI y flujo", () => {
+    const c = camposAlma(unControl({ ventilacion: unaVentilacion({ ti: null, flujo: null, ie: 3 }) }), pbw);
+    expect(valor(c, "I:E")).toBe("1:3");
+  });
+
   it("con asincronía la compliance dice el motivo y no un número falso", () => {
     const c = camposAlma(unControl({ ventilacion: unaVentilacion({ asincronico: true }) }), pbw);
     expect(valor(c, "Compliance Estática")).toBe("no valorable (asincronía)");

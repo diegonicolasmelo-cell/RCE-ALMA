@@ -234,7 +234,8 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     posibleFuga,
     // Se anota el volumen minuto espirado que muestra el ventilador; no se calcula.
     volumenMinuto: esVMI ? v.volMinuto : null,
-    relacionIE: controlada ? relacionIE(v.ti, v.frTotal) : null,
+    // Manda la I:E anotada (la que muestra el ventilador); si no se anoto, se calcula con TI y FR.
+    relacionIE: controlada ? (v.ie !== undefined && v.ie !== null && v.ie > 0 ? `1:${v.ie}` : relacionIE(v.ti, v.frTotal)) : null,
     peepTotal,
     drivingPressure,
     origenDriving,

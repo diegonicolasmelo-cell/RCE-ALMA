@@ -168,6 +168,7 @@ function bloqueRespiratorio(c: Control, pbw: number): string {
     p.push(`volumen minuto espirado ${d.volumenMinuto} L/min`);
   }
   if (controlada && v.ti !== null) p.push(`TI ${v.ti} s${d.relacionIE ? ` (I:E ${d.relacionIE})` : ""}`);
+  else if (controlada && d.relacionIE) p.push(`I:E ${d.relacionIE}`);
   p.push(`P.pico ${fmt(v.pPico)}`);
 
   if (d.drivingPressure !== null) {

@@ -199,6 +199,7 @@ const FRASES = porLargo<Clave>([
   ["presion media", "pMedia"],
   ["presion de soporte", "presion"], ["presion soporte", "presion"], ["soporte", "presion"], ["ipap", "presion"],
   ["tiempo inspiratorio", "ti"], ["ti", "ti"],
+  ["relacion i e", "ie"], ["relacion ie", "ie"], ["i e", "ie"], ["ie", "ie"],
   ["fraccion inspirada de oxigeno", "fio2"], ["fraccion inspirada", "fio2"], ["fio2", "fio2"], ["fio", "fio2"],
   ["temperatura", "temperatura"], ["fuga", "fuga"], ["flujo", "flujo"],
   ["presion control", "presionControl"], ["volumen control", "volumenControl"],
@@ -249,7 +250,7 @@ const ETIQUETA: Record<Exclude<CampoDictado, `inf:${IdInfusion}`>, string> = {
   gcsO: "Glasgow ocular", gcsV: "Glasgow verbal", gcsM: "Glasgow motor",
   frProgramada: "FR programada", vtProgramado: "Vt programado", flujo: "Flujo", ti: "TI", presion: "P. soporte / control", peep: "PEEP",
   fio2: "FiO₂", frTotal: "FR total", vtEspirado: "Vt espirado", pPico: "P. pico", pPlateau: "P. plateau", pMedia: "P. media",
-  autoPeep: "Auto PEEP", volMinuto: "Vol. minuto", temperatura: "Temperatura", fuga: "Fuga", presionMax: "IPAP máx."
+  autoPeep: "Auto PEEP", volMinuto: "Vol. minuto", temperatura: "Temperatura", fuga: "Fuga", presionMax: "IPAP máx.", ie: "I:E"
 };
 
 /** Nombre del dato como se ve en el control de ese modo («EPAP» en BiPAP, «P. soporte» en CPAP+PS). */
@@ -263,7 +264,7 @@ export function etiquetaDictado(campo: CampoDictado, modalidad: Modalidad): stri
 const RANGO: Partial<Record<CampoDictado, readonly [number, number]>> = {
   fc: [20, 250], pas: [40, 300], pad: [15, 200], spo2: [50, 100], fio2: [21, 100], peep: [0, 30], presion: [0, 60], presionMax: [0, 60],
   pPico: [0, 80], pPlateau: [0, 60], pMedia: [0, 50], autoPeep: [0, 30], frProgramada: [0, 60], frTotal: [0, 80],
-  vtProgramado: [50, 1500], vtEspirado: [20, 2000], ti: [0.2, 5], flujo: [0, 80], volMinuto: [0, 40], temperatura: [30, 40], fuga: [0, 150],
+  vtProgramado: [50, 1500], vtEspirado: [20, 2000], ti: [0.2, 5], flujo: [0, 80], volMinuto: [0, 40], temperatura: [30, 40], fuga: [0, 150], ie: [0.2, 9],
   sas: [1, 7], gcsO: [1, 4], gcsV: [1, 5], gcsM: [1, 6]
 };
 

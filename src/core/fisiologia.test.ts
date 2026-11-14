@@ -277,3 +277,22 @@ describe("neuromonitoreo y Glasgow bajo sedación", () => {
     expect(calcularDerivados(c, 67.8).glasgowBajoSedacion).toBe(false);
   });
 });
+
+describe("I:E anotada en el formulario", () => {
+  it("sin TI ni flujo, la I:E anotada sale igual", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ ti: null, flujo: null, ie: 2.5 }) });
+    expect(calcularDerivados(c, 67.8).relacionIE).toBe("1:2.5");
+  });
+  it("si se anoto, manda sobre la calculada con TI y FR", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ ti: 1, frTotal: 20, ie: 3 }) });
+    expect(calcularDerivados(c, 67.8).relacionIE).toBe("1:3");
+  });
+  it("sin anotar, se sigue calculando", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ ti: 1, frTotal: 20, ie: null }) });
+    expect(calcularDerivados(c, 67.8).relacionIE).toBe("1:2");
+  });
+  it("en CPAP+PS no hay I:E", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", ie: 2 }) });
+    expect(calcularDerivados(c, 67.8).relacionIE).toBeNull();
+  });
+});

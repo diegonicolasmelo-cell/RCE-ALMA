@@ -63,7 +63,7 @@ describe("regla anti-sesgo: lo que se lee del monitor nace en blanco", () => {
   });
 
   it("cubre exactamente lo observado", () => {
-    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "frTotal", "fuga", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
+    expect([...CAMPOS_VENT_OBSERVADOS].sort()).toEqual(["autoPeep", "frTotal", "fuga", "ie", "pMedia", "pPico", "pPlateau", "volMinuto", "vtEspirado"]);
   });
 
   it("el S5Q nace en blanco", () => {
@@ -242,6 +242,11 @@ describe("materializarControl", () => {
     const c = materializarControl(b, datos);
     expect(c.fc).toBeNull();
     expect(c.ventilacion.pPlateau).toBeNull();
+  });
+
+  it("la I:E anotada en el formulario se guarda (ACVC), con coma decimal", () => {
+    const b = completo({ vent: { ...completo().vent, ie: "2,5" } });
+    expect(materializarControl(b, datos).ventilacion.ie).toBe(2.5);
   });
 
   it("toma la vía aérea del episodio, no del borrador", () => {

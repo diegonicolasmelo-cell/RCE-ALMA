@@ -13,16 +13,14 @@ import {
   bnmVigente,
   ETIQUETA_ELEMENTO,
   horasDeVm,
-  eventosSinMonitorizar,
-  textoCategoriaRem,
-  textoEdad
+  eventosSinMonitorizar
 } from "@core/index";
 import type { Control, Episodio, EventoClinico, HorasVm, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta } from "../app/hooks";
 import { useApp } from "../app/store";
 import { Pildora } from "./componentes";
-import { IngresoRapido } from "./IngresoRapido";
+import { CompletarRem, IngresoRapido } from "./IngresoRapido";
 import { TrasladoCama } from "./TrasladoCama";
 import { useAtras } from "./Inicio";
 
@@ -45,8 +43,10 @@ export function ListaCamas() {
   const [ingresando, setIngresando] = useState<string | null>(null);
   /** Paciente al que se le esta cambiando la cama (panel flotante con las camas libres). */
   const [trasladando, setTrasladando] = useState<Episodio | null>(null);
+  /** Paciente al que se le completan la edad y el diagnostico REM. */
+  const [remDe, setRemDe] = useState<Episodio | null>(null);
   const pedirEvento = useApp((s) => s.pedirEvento);
-  useAtras(ingresando !== null || trasladando !== null, () => { setIngresando(null); setTrasladando(null); });
+  useAtras(ingresando !== null || trasladando !== null || remDe !== null, () => { setIngresando(null); setTrasladando(null); setRemDe(null); });
   // Pedidos del «+» de la barra: ingresar en una cama libre o cambiar a un paciente de cama.
   const ingresoPedido = useApp((s) => s.ingresoPedido);
   const trasladoPedido = useApp((s) => s.trasladoPedido);
@@ -97,6 +97,7 @@ export function ListaCamas() {
   return (
     <div className="cel-cuerpo" style={{ display: "grid", gap: 12 }}>
       {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
+      {remDe && <CompletarRem ep={remDe} onCerrar={() => setRemDe(null)} />}
       {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
@@ -157,7 +158,12 @@ export function ListaCamas() {
               {textoViaCama(ep, h)}
               {ep.viaAereaActual === "TET" && h && h.horas >= 48 && <> · <b style={{ color: "var(--crit-ink)" }}>NAVM ≥ 48 h</b></>}
             </div>
-            <div className="small muted">{textoCategoriaRem(ep.categoriaRem)} · {textoEdad(ep.rangoEdad)} · {ep.sexo}</div>
+            {/* La edad y el diagnostico REM son para la estadistica: no se muestran, solo se avisa si faltan. */}
+            {(ep.rangoEdad === null || ep.categoriaRem === null) && (
+              <button type="button" className="falta-rem" onClick={() => setRemDe(ep)}>
+                Falta para el REM: {[ep.rangoEdad === null ? "edad" : null, ep.categoriaRem === null ? "diagnóstico" : null].filter(Boolean).join(" y ")} ›
+              </button>
+            )}
             <div className="row" style={{ gap: 6 }}>
               <Pildora tipo={apk ? (apk.resultado === "CUMPLE" ? "good" : "crit") : ""}>{apk ? (apk.resultado === "CUMPLE" ? "APK firmada" : "APK no cumple") : "APK pendiente"}</Pildora>
               {flujo.fase === "EN_CURSO" && <Pildora tipo="acc">PVE {flujo.pve.minutosTranscurridos}/{flujo.pve.duracionMin} min</Pildora>}

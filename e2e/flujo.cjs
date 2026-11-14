@@ -104,7 +104,8 @@ async function esperarServidor() {
       assert.match(await cel.textContent(".app-cel"), /Otras camas/);
       assert.ok((await cel.locator('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")').count()) === 1);
       const tarjeta01 = await cel.textContent('article[aria-label="Cama UCI-01"]');
-      assert.match(tarjeta01, /Enfermedades respiratorias · 60–64 años · M/, "el celular ve la categoria REM y el rango etario");
+      assert.doesNotMatch(tarjeta01, /Enfermedades respiratorias|60–64 años/, "la edad y el diagnóstico REM son para la estadística: no se muestran en el celular");
+      assert.doesNotMatch(tarjeta01, /Falta para el REM/, "con edad y diagnóstico no hay aviso");
       assert.doesNotMatch(tarjeta01, /Shock séptico/, "el diagnostico escrito no llega al celular");
       // Mias 07-12: arriba 07..12, despues 01..06 y 13..18, todas en una columna.
       await cel.click('button:has-text("Cambiar mis camas")');
@@ -484,6 +485,11 @@ async function esperarServidor() {
       const cajaCm = await m.locator("#ir-cm").boundingBox();
       assert.ok(cajaCm.y + cajaCm.height <= cajaKb.y, "el teclado no tapa la casilla que se llena");
       await m.tap('.kb [data-kb="ocultar"]');
+      await m.tap("#ir-edad");
+      await m.waitForSelector(".kb:not([hidden])");
+      for (const k of ["6", "3"]) await m.tap(`.kb [data-kb="${k}"]`);
+      await m.tap('.kb [data-kb="ocultar"]');
+      await m.selectOption("#ir-cat", "Enfermedades respiratorias");
       await m.tap('form[aria-label="Ingreso Cama 18"] button[type=submit]');
       await m.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 18")');
       assert.match(await m.textContent(".banda .l1"), /TET 7,5 · 22 cm/);
@@ -1222,6 +1228,13 @@ async function esperarServidor() {
       assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /arcada/);
       await cel.fill("#ir-cm", "21");
       await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
+      assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /Falta la edad/);
+      await cel.fill("#ir-edad", "52");
+      assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"]'), /tramo del REM \(50–54 años\)/);
+      await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
+      assert.match(await cel.textContent('form[aria-label="Ingreso Cama 18"] [role=alert]'), /diagnóstico REM/);
+      await cel.selectOption("#ir-cat", "Enfermedades respiratorias");
+      await cel.click('form[aria-label="Ingreso Cama 18"] button[type=submit]');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 18")');
       assert.match(await cel.textContent(".banda .l1"), /TET 7 · 21 cm/);
       assert.match(await cel.textContent(".banda .l2"), /PI 52,4 kg/);
@@ -1229,7 +1242,8 @@ async function esperarServidor() {
       await pc.waitForTimeout(800);
       await pc.click('.cama:has-text("UCI-18")');
       await pc.waitForSelector('form[aria-label="Completar identidad"]');
-      assert.match(await pc.textContent(".detail-head"), /edad pendiente/);
+      assert.match(await pc.textContent(".detail-head"), /50–54 años · Enfermedades respiratorias/, "el PC ve el tramo y el diagnóstico REM del celular");
+      assert.equal(await pc.inputValue("#ci-cat"), "Enfermedades respiratorias", "el diagnóstico REM viene del celular");
       await pc.fill("#ci-nombre", "Paciente Prueba Dieciocho");
       await pc.fill("#ci-edad", "50");
       await pc.fill("#ci-dx", "Neumonía grave");

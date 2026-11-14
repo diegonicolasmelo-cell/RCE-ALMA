@@ -102,7 +102,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           </div>
           <div className="small ink2">Equipos: {describirEquipos(ep.equipos)}</div>
           <FechaIngreso ep={ep} eventos={eventos} ahora={ahora} />
-          {!identidad && (ep.rangoEdad === null || ep.categoriaRem === null) && <div className="mt"><CompletarIdentidad ep={ep} /></div>}
+          {!identidad && <div className="mt"><CompletarIdentidad ep={ep} /></div>}
           <div className="small ink2">
             APK · turno anterior: {apkPrevia ? `${apkPrevia.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkPrevia.hora} (${nombreProfesional(apkPrevia.rutAutor)})` : "sin registro"} · este turno:{" "}
             {apkActual ? `${apkActual.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkActual.hora}` : "pendiente"}

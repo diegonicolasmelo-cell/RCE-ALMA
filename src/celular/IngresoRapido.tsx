@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { OBJETIVOS_VT_ML_KG, calcularPbw, equiposDeLaCama, equiposParaVia, nombreCama, problemaEquipos, volumenObjetivoMl } from "@core/index";
-import type { EquipoEnSala, Episodio, Sexo, ViaAerea } from "@core/index";
+import { CATEGORIAS_REM, OBJETIVOS_VT_ML_KG, calcularPbw, rangoDeEdad, equiposDeLaCama, equiposParaVia, nombreCama, problemaEquipos, volumenObjetivoMl } from "@core/index";
+import type { CategoriaRem, EquipoEnSala, Episodio, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
@@ -39,6 +39,8 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
   const [cm, setCm] = useState("");
   const [sexo, setSexo] = useState<Sexo | null>(null);
   const [talla, setTalla] = useState("");
+  const [edad, setEdad] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaRem | "">("");
   const [error, setError] = useState<string | null>(null);
   // Los equipos viven en la cama: se parte de lo que dejo el ultimo paciente de esta sala.
   const [equipos, setEquipos] = useState<readonly EquipoEnSala[] | null>(null);
@@ -70,15 +72,18 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
     if (via === "TET" && numero(cm) === null) return setError("Faltan los cm en la arcada dental.");
     const problema = problemaEquipos(equipos ?? [], via);
     if (problema) return setError(problema);
+    const e = edadValida(edad);
+    if (e === null) return setError("Falta la edad (entre 0 y 120 años): va al REM como tramo de edad.");
+    if (categoria === "") return setError("Elige el diagnóstico REM del ingreso.");
     const ep: Episodio = {
       id: nuevoId(),
       cama,
-      // Edad y diagnostico los completa el PC junto con la identidad.
-      rangoEdad: null,
+      // Solo el tramo del REM: la edad exacta no se guarda. El nombre y el RUT, en el PC.
+      rangoEdad: rangoDeEdad(e),
       sexo,
       tallaCm: t,
       tallaOrigen: "ESTIMADA",
-      categoriaRem: null,
+      categoriaRem: categoria,
       viaAereaActual: via,
       calibreVia: via === "NATURAL" ? null : calibre.trim(),
       fijacionCm: via === "TET" ? cm.trim() : null,
@@ -128,11 +133,74 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
             </div>
           )}
           {via === "NATURAL" && <p className="small muted" style={{ margin: 0 }}>Con vía aérea natural se ofrecen oxigenoterapia y VNI.</p>}
+          <CamposRem idBase="ir" edad={edad} categoria={categoria} onEdad={setEdad} onCategoria={setCategoria} />
           {error && <div className="notice crit small" role="alert">{error}</div>}
         </div>
         <div className="pie-inf">
           <button type="button" className="btn" onClick={onCancelar}>Cancelar</button>
           <button type="submit" className="btn primary">Registrar ingreso</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/** Edad en años (0 a 120) o null. Se usa solo para elegir el tramo del REM: no se guarda. */
+function edadValida(v: string): number | null {
+  const n = numero(v);
+  return n === null || n < 0 || n > 120 ? null : Math.floor(n);
+}
+
+/** Edad (se guarda solo el tramo) y diagnostico REM: lo que el REM 28 necesita del ingreso. */
+function CamposRem({ idBase, edad, categoria, onEdad, onCategoria }: { idBase: string; edad: string; categoria: CategoriaRem | ""; onEdad: (v: string) => void; onCategoria: (v: CategoriaRem | "") => void }) {
+  return (
+    <>
+      <div className="small ink2">Para el REM</div>
+      <div className="fgrid2">
+        <div className="f"><label htmlFor={`${idBase}-edad`}>Edad <span className="muted">años</span></label><input id={`${idBase}-edad`} {...casillaNumerica(false)} enterKeyHint="next" autoComplete="off" value={edad} onChange={(e) => onEdad(e.target.value)} /></div>
+        <div className="f"><label htmlFor={`${idBase}-cat`}>Diagnóstico REM</label>
+          <select id={`${idBase}-cat`} value={categoria} onChange={(e) => onCategoria(e.target.value as CategoriaRem | "")}>
+            <option value="">— elegir —</option>
+            {CATEGORIAS_REM.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+      <p className="small muted" style={{ margin: 0 }}>La edad se guarda solo como tramo del REM ({edadValida(edad) !== null ? `${rangoDeEdad(edadValida(edad)!)} años` : "p. ej. 60–64"}); no se muestra en el celular.</p>
+    </>
+  );
+}
+
+/** Completa la edad y el diagnostico REM de un paciente ya ingresado (p. ej. antes de este cambio). */
+export function CompletarRem({ ep, onCerrar }: { ep: Episodio; onCerrar: () => void }) {
+  const { repo } = useServicios();
+  const avisar = useApp((s) => s.avisar);
+  const [edad, setEdad] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaRem | "">(ep.categoriaRem ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const guardar = async (): Promise<void> => {
+    const e = ep.rangoEdad !== null && edad.trim() === "" ? null : edadValida(edad);
+    if (ep.rangoEdad === null && e === null) return setError("Falta la edad (entre 0 y 120 años).");
+    if (edad.trim() !== "" && e === null) return setError("Revisa la edad: entre 0 y 120 años.");
+    if (categoria === "") return setError("Elige el diagnóstico REM.");
+    await repo.guardarEpisodio({ ...ep, rangoEdad: e === null ? ep.rangoEdad : rangoDeEdad(e), categoriaRem: categoria });
+    avisar(`Datos del REM de ${nombreCama(ep.cama)} guardados.`);
+    onCerrar();
+  };
+  return (
+    <div className="fondo-flotante centrado">
+      <form className="panel-flotante" role="dialog" aria-modal="true" aria-label={`Datos REM ${nombreCama(ep.cama)}`} onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
+        <header className="pf-cabeza">
+          <b>Datos REM · {nombreCama(ep.cama)}</b>
+          <button type="button" className="pf-cerrar" aria-label="Cerrar" onClick={onCerrar}><X size={20} aria-hidden /></button>
+        </header>
+        <div className="pf-cuerpo">
+          {ep.rangoEdad !== null && <p className="small muted" style={{ margin: 0 }}>La edad ya está registrada; escribe una solo si hay que corregirla.</p>}
+          <CamposRem idBase="cr" edad={edad} categoria={categoria} onEdad={setEdad} onCategoria={setCategoria} />
+          {error && <div className="notice crit small" role="alert">{error}</div>}
+        </div>
+        <div className="pie-inf">
+          <button type="button" className="btn" onClick={onCerrar}>Cancelar</button>
+          <button type="submit" className="btn primary">Guardar</button>
         </div>
       </form>
     </div>

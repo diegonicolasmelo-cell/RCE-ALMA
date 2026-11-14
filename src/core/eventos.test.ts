@@ -266,6 +266,9 @@ describe("eventos que se monitorizan con un control", async () => {
   it("la extubacion por PVE se sigue con los controles de la PVE, no pide control", () => {
     expect(eventosSinMonitorizar([unEvento({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", registradoEn: "2026-11-13T11:00:00.000Z" } as never)], [previo])).toEqual([]);
   });
+  it("un evento registrado sin control a proposito no queda pendiente", () => {
+    expect(eventosSinMonitorizar([{ ...puncion, sinControl: true } as never], [previo])).toEqual([]);
+  });
   it("la extubacion fuera de protocolo tampoco: se sigue con los controles post extubacion", () => {
     expect(eventosSinMonitorizar([unEvento({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", sinPve: "MENOS_24H_VM", registradoEn: "2026-11-13T11:00:00.000Z" } as never)], [previo])).toEqual([]);
   });

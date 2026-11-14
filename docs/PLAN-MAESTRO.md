@@ -539,6 +539,15 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
   ahora: teme que los toques accidentales saquen de la pantalla y prefiere un inicio más
   ordenado y controlado. Retomarla si en el uso se pide.
 
+- **I:E estimada con el flujo, para cuando no se anote** (14-nov-2026, Diego: «por ahora quedémonos con
+  la I:E anotada… para programarlo después»). Hoy la I:E sale de lo anotado (casilla «I:E» en ACVC y PCV) o,
+  si falta, del TI y la FR. Con flujo + Vt programado + FR total se podría estimar en ACVC: TI = Vt ÷ flujo
+  (onda cuadrada) o ≈ 2 × Vt ÷ flujo pico (desacelerada, según hasta dónde baje la rampa). **Por qué no se
+  hizo:** en la unidad la onda es casi siempre desacelerada y a veces cuadrada, y la pausa no es de rutina;
+  sin saber la onda el error llega casi al doble. Para retomarla haría falta una casilla «onda de flujo»
+  en ACVC y estimar SOLO con onda cuadrada, mostrándola como «≈ 1:x (estimada)». En PCV no aplica (el flujo
+  no se programa). Alternativa más simple: hacer obligatoria la I:E en ACVC/PCV.
+
 - **Proyecto asociado: registro de la reanimación (PCR) con metrónomo** (13-nov-2026).
   Diego tiene en Claude Design una app para el paro cardiorrespiratorio: un metrónomo de
   compresiones que puede sincronizarse con música precargada (o usar solo el metrónomo) y que deja

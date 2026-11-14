@@ -58,7 +58,7 @@ const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ val
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
 const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "decan"];
 /** Eventos que se registran y siguen con su control (todos menos filtros, TrachCare, cama y PVE). */
-const CON_CONTROL = ["extub", "reint", "traq", "autoext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent"];
+const CON_CONTROL = ["reint", "traq", "autoext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent"];
 
 const MOTIVOS_SIN_PVE: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => ({
   valor: k,
@@ -180,7 +180,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     (it.req === "tqt" && ep.viaAereaActual === "TQT");
   const item = abierto ? todos.find((i) => i.k === abierto) : undefined;
 
-  const registrar = async (it: Item, v: Record<string, string>): Promise<void> => {
+  const registrar = async (it: Item, v: Record<string, string>, conControl = true): Promise<void> => {
     const numOk = (x: string | undefined, min: number, max: number): boolean => {
       const n = Number((x ?? "").replace(",", "."));
       return (x ?? "").trim() !== "" && Number.isFinite(n) && n >= min && n <= max;
@@ -208,7 +208,8 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     if (post && !post.falla) {
       await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date(ahoraReal.getTime() - 1)), tipo: "FALLA_POST_EXTUB", falla: true, hipotesis: "", observaciones: "" } as EventoClinico);
     }
-    const ev = it.crear(v, baseEvento(ep, rutAutor, ahoraReal, comentario));
+    const creado = it.crear(v, baseEvento(ep, rutAutor, ahoraReal, comentario));
+    const ev = (conControl || !CON_CONTROL.includes(it.k) ? creado : { ...creado, sinControl: true }) as EventoClinico;
     await repo.registrarEvento(ev);
     setAbierto(null);
     setValores({});
@@ -238,6 +239,12 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       return;
     }
     // El evento queda guardado y se sigue con su control, que queda ligado a el.
+    if (!conControl && CON_CONTROL.includes(it.k)) {
+      // Sin control: si cambio la via aerea, el borrador del control viejo ya no sirve.
+      if (CAMBIAN_VIA.includes(it.k)) useApp.getState().descartar(ep.id);
+      avisar(it.peligro ? "Evento registrado sin control. El PC ya muestra la alerta con el informe pre-llenado." : `Evento registrado sin control: ${it.texto}.`);
+      return;
+    }
     if (pideControl(ev) && onCambioVia) {
       useApp.getState().monitorizarEvento({ episodioId: ep.id, eventoId: ev.id, texto: describirEvento(ev, [...eventos, ev]), hora: ev.hora });
       onCambioVia(`Evento registrado: ${it.texto}. Sigue con su monitorización.`, CAMBIAN_VIA.includes(it.k));
@@ -266,9 +273,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       irA("pve", ep.id);
       return;
     }
-    if (it.campos) {
+    // Con campos, o si puede llevar control (se elige con o sin control), se abre su tarjeta.
+    if (it.campos || CON_CONTROL.includes(it.k)) {
       setAbierto(it.k);
-      setValores(Object.fromEntries(it.campos.map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
+      setValores(Object.fromEntries((it.campos ?? []).map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
     } else {
       void registrar(it, {});
     }
@@ -297,10 +305,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </div>
       )}
 
-      {item?.campos && (
+      {item && (item.campos || CON_CONTROL.includes(item.k)) && (
         <div className="card stack" style={{ padding: 12, gap: 8, borderColor: item.peligro ? "var(--crit)" : undefined }}>
           <b>{item.texto}</b>
-          {item.campos.map((c) => (
+          {(item.campos ?? []).map((c) => (
             <div className="f" key={c.id}>
               <label htmlFor={`evf-${c.id}`}>{c.etiqueta}</label>
               {c.opciones ? (
@@ -312,10 +320,20 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
               )}
             </div>
           ))}
-          <div className="row">
-            <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>{CON_CONTROL.includes(item.k) ? "Registrar y monitorizar ›" : "Registrar"}</button>
-            <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
-          </div>
+          {CON_CONTROL.includes(item.k) ? (
+            <div className="stack" style={{ gap: 8 }}>
+              <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar y monitorizar ›</button>
+              <div className="row">
+                <button type="button" className="btn" style={{ flex: 1 }} onClick={() => void registrar(item, valores, false)}>Registrar sin control</button>
+                <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <div className="row">
+              <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar</button>
+              <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
+            </div>
+          )}
           {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
         </div>
       )}

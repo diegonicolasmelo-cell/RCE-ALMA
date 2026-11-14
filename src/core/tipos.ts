@@ -393,6 +393,8 @@ export interface EventoBase {
   readonly registradoEn: string;
   readonly rutAutor: string;
   readonly comentario: string;
+  /** Se registro a proposito sin control de monitorizacion: no queda pendiente. */
+  readonly sinControl?: boolean;
 }
 
 /** Con que queda tras extubarse. Una autoextubacion puede terminar en reintubacion inmediata. */

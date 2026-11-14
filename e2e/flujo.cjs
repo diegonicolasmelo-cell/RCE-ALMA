@@ -187,7 +187,7 @@ async function esperarServidor() {
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
       await cuenta.locator('[role=radio][aria-label="Rosado"]').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "rosado");
-      assert.equal(await cel.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), "#b94f7a");
+      assert.equal(await cel.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), (await cel.evaluate(() => document.documentElement.dataset.theme)) === "dark" ? "#de86a9" : "#b94f7a", "el rosado según el tema (de noche el Automático es oscuro)");
       await cuenta.locator('[role=radio][aria-label="Azul profesional"]').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
       // Diseño de las pantallas del paciente: nuevo por defecto, y el clásico sigue disponible.
@@ -981,6 +981,20 @@ async function esperarServidor() {
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.ok(linea.some((x) => /Paro cardiorrespiratorio, reanimación \d+ min, sin ROSC, 1 choque/.test(x)), linea.join(" | "));
       await cel.click('button:has-text("‹ Pacientes")');
+    });
+
+    await prueba("un evento se puede registrar sin control: queda en la linea de tiempo y no queda pendiente", async () => {
+      await cel.click('article[aria-label="Cama UCI-05"] button:has-text("Eventos")');
+      await cel.click('.evgrid button:has-text("fibrobroncoscopía")');
+      await cel.waitForSelector('button:text-is("Registrar sin control")');
+      assert.equal(await cel.locator('button:text-is("Registrar y monitorizar ›")').count(), 1, "también se ofrece seguir al control");
+      await cel.click('button:text-is("Registrar sin control")');
+      await cel.waitForSelector('.toast-app:has-text("Evento registrado sin control")');
+      await cel.waitForSelector('[aria-label="Línea de tiempo"] li:has-text("fibrobroncoscop")');
+      assert.equal(await cel.locator(".evgrid").count() > 0, true, "se queda en Eventos, no lleva al control");
+      assert.equal(await cel.locator(".franja-evento").count(), 0, "no queda un evento por monitorizar");
+      await cel.click('button:has-text("‹ Pacientes")');
+      assert.doesNotMatch(await cel.textContent('article[aria-label="Cama UCI-05"]'), /Evento sin monitorización/);
     });
 
     await prueba("abrir Monitorización de una cama con un evento sin control liga ese control al evento (sin pasar por Eventos)", async () => {

@@ -31,7 +31,7 @@ import {
   WifiOff,
   X
 } from "lucide-react";
-import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama } from "@core/index";
+import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama, turnoDe } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
 import { FichaAlma } from "./FichaAlma";
@@ -421,14 +421,19 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
   const [abierto, setAbierto] = useState<{ episodioId: string; controlId: string } | null>(null);
   const sab = abierto ? resumen.find((r) => r.ep.id === abierto.episodioId) : undefined;
   useAtras(abierto !== null, () => setAbierto(null));
-  const desde = ahora.getTime() - 24 * 3600_000;
+  // Solo el turno en curso: al empezar el siguiente la lista parte vacia. De cada cama, el ultimo.
+  const turno = turnoDe(ahora);
   const mios = resumen
-    .flatMap((r) => r.controles.filter((c) => c.rutAutor === rut && Date.parse(c.registradoEn) >= desde).map((c) => ({ c, r })))
+    .flatMap((r) => {
+      const delTurno = r.controles.filter((c) => c.rutAutor === rut && turnoDe(new Date(c.registradoEn)).clave === turno.clave);
+      const ultimo = delTurno.reduce<typeof delTurno[number] | null>((m, c) => (m === null || c.registradoEn > m.registradoEn ? c : m), null);
+      return ultimo ? [{ c: ultimo, r }] : [];
+    })
     .sort((a, b) => (a.c.registradoEn < b.c.registradoEn ? 1 : -1));
   return (
     <div className="cel-cuerpo" aria-label="Mis controles">
-      <p className="small muted" style={{ margin: 0 }}>Lo que registraste en las últimas 24 horas.</p>
-      {mios.length === 0 && <p className="muted">Aún no registras controles.</p>}
+      <p className="small muted" style={{ margin: 0 }}>Tu {etiquetaTurno(turno).toLowerCase()}: el último control que registraste en cada cama. En tu próximo turno la lista parte de cero.</p>
+      {mios.length === 0 && <p className="muted">Aún no registras controles en este turno.</p>}
       {mios.map(({ c, r }) => {
         const evento = c.eventoId ? r.eventos.find((e) => e.id === c.eventoId) : undefined;
         return (
@@ -458,7 +463,7 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
       })}
       {sab && abierto && (
         <FichaAlma
-          pacientes={[...resumen].sort((a, b) => a.ep.cama.localeCompare(b.ep.cama, "es", { numeric: true }))}
+          pacientes={mios.map(({ c, r }) => ({ ...r, elegido: c.id })).sort((a, b) => a.ep.cama.localeCompare(b.ep.cama, "es", { numeric: true }))}
           inicial={abierto}
           ahora={ahora}
           onCerrar={() => setAbierto(null)}

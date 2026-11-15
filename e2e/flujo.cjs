@@ -931,6 +931,10 @@ async function esperarServidor() {
       const tarjeta = cel.locator(".tarjeta-control").first();
       await tarjeta.waitFor();
       const [cama, hora] = (await tarjeta.locator("header b").textContent()).split(" · ");
+      // Solo el turno en curso, y de cada cama el ultimo control.
+      assert.match(await cel.textContent('[aria-label="Mis controles"]'), /Tu turno (día|noche): el último control/);
+      const camasLista = (await cel.locator(".tarjeta-control header b").allTextContents()).map((t) => t.split(" · ")[0]);
+      assert.equal(new Set(camasLista).size, camasLista.length, "una tarjeta por cama: " + camasLista.join("|"));
       await tarjeta.click();
       // Se abre el control en grande, fuera de la lista con scroll (si no, el iPhone instalado se pega).
       const hoja = cel.locator("[role=dialog].ficha-alma");

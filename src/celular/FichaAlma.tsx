@@ -36,6 +36,8 @@ export interface PacienteFicha {
   readonly ep: Episodio;
   readonly controles: readonly Control[];
   readonly eventos: readonly EventoClinico[];
+  /** El control que se muestra de esta cama (p. ej. el tuyo de este turno); si falta, el ultimo. */
+  readonly elegido?: string;
 }
 
 /**
@@ -54,7 +56,7 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
   const { ep, controles, eventos } = pac;
   const ordenados = [...controles].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   // En la cama que se toco, el control tocado; en las demas, el ultimo.
-  const c = (ep.id === inicial.episodioId ? ordenados.find((x) => x.id === inicial.controlId) : undefined) ?? ordenados[ordenados.length - 1]!;
+  const c = (ep.id === inicial.episodioId ? ordenados.find((x) => x.id === inicial.controlId) : undefined) ?? ordenados.find((x) => x.id === pac.elegido) ?? ordenados[ordenados.length - 1]!;
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const clase = claseModoAlma(c.ventilacion.modalidad);
   // Fuera de VM (CNAF, VNI, O2) el formulario de ALMA no aplica: se muestra solo lo anotado.

@@ -109,6 +109,7 @@ async function esperarServidor() {
       assert.doesNotMatch(tarjeta01, /Shock séptico/, "el diagnostico escrito no llega al celular");
       // Mias 07-12: arriba 07..12, despues 01..06 y 13..18, todas en una columna.
       await cel.click('button:has-text("Cambiar mis camas")');
+      if (process.env.FOTO_PANEL) { await cel.waitForSelector(".marca-cab img"); await cel.waitForTimeout(400); await cel.screenshot({ path: process.env.FOTO_PANEL + "-entrada.png" }); }
       await cel.click('.chip:text-is("01–06")');
       await cel.click('#btn-ver-camas');
       await cel.waitForSelector("text=Mis camas (6)");
@@ -191,12 +192,16 @@ async function esperarServidor() {
       const hora = await cel.evaluate(() => new Date().getHours());
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), hora >= 8 && hora < 20 ? "light" : "dark");
       // Color de tu Kaptus: azul por defecto; se elige entre cuatro.
-      assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "kaptus", "de fábrica, el turquesa de Kaptus");
+      assert.equal(await cuenta.locator('.acentos [role=radio]').count(), 5, "el turquesa y los cuatro de siempre");
       await cuenta.locator('[role=radio][aria-label="Rosado"]').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "rosado");
       assert.equal(await cel.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), (await cel.evaluate(() => document.documentElement.dataset.theme)) === "dark" ? "#de86a9" : "#b94f7a", "el rosado según el tema (de noche el Automático es oscuro)");
       await cuenta.locator('[role=radio][aria-label="Azul profesional"]').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
+      assert.equal(await cel.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), (await cel.evaluate(() => document.documentElement.dataset.theme)) === "dark" ? "#3987e5" : "#2a78d6", "el azul sigue disponible");
+      await cuenta.locator('[role=radio][aria-label="Turquesa Kaptus"]').click();
+      assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "kaptus");
       // Diseño de las pantallas del paciente: nuevo por defecto, y el clásico sigue disponible.
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
       await cuenta.locator('[role=radio]:has-text("Clásico")').click();

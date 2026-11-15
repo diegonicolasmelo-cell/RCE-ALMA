@@ -381,7 +381,7 @@ function Radar({ valores }: { valores: readonly (number | null)[] }) {
             </g>
           );
         })}
-        <polygon points={poligono((i) => (R * Math.max(0, valores[i] ?? 0)) / 5)} fill="rgba(42,120,214,.22)" stroke="var(--accent)" strokeWidth="2" />
+        <polygon points={poligono((i) => (R * Math.max(0, valores[i] ?? 0)) / 5)} fill="var(--accent)" fillOpacity="0.22" stroke="var(--accent)" strokeWidth="2" />
       </svg>
     </div>
   );

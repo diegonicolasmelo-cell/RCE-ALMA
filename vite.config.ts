@@ -17,7 +17,7 @@ export default defineConfig({
         short_name: "Kaptus",
         description: "Monitorización kinésica a pie de cama · UCI Adulto",
         lang: "es",
-        theme_color: "#0b2c5a",
+        theme_color: "#0e3b40",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",

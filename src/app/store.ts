@@ -16,8 +16,8 @@ export type Tema = "auto" | "dia" | "noche";
 /** Aspecto de las pantallas del paciente: "nuevo" (el diseño de Sleek) o "clasico" (el de antes). */
 export type Estilo = "nuevo" | "clasico";
 /** Color de acento que cada persona elige para su Kápta. */
-export type Acento = "azul" | "rosado" | "verde" | "amarillo";
-export const ACENTOS: readonly (readonly [Acento, string])[] = [["azul", "Azul profesional"], ["rosado", "Rosado"], ["verde", "Verde clínico"], ["amarillo", "Amarillo pato"]];
+export type Acento = "kaptus" | "azul" | "rosado" | "verde" | "amarillo";
+export const ACENTOS: readonly (readonly [Acento, string])[] = [["kaptus", "Turquesa Kaptus"], ["azul", "Azul profesional"], ["rosado", "Rosado"], ["verde", "Verde clínico"], ["amarillo", "Amarillo pato"]];
 
 export interface Sesion {
   readonly rut: string;
@@ -104,9 +104,9 @@ const CLAVE_ACENTO = "kapta:acento";
 function leerAcento(): Acento {
   try {
     const a = globalThis.localStorage?.getItem(CLAVE_ACENTO);
-    return a === "rosado" || a === "verde" || a === "amarillo" ? a : "azul";
+    return a === "azul" || a === "rosado" || a === "verde" || a === "amarillo" ? a : "kaptus";
   } catch {
-    return "azul";
+    return "kaptus";
   }
 }
 function leerBandera(clave: string): boolean {

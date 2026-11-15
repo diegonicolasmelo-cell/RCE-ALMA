@@ -3,13 +3,13 @@
  * paisaje de Coquimbo (el faro y la cruz) al pie de las pantallas de entrada.
  */
 import { useEffect } from "react";
-import bannerNoche from "./iconos/banner-noche.png?inline";
+import bannerNoche from "./iconos/kaptus-noche.png?inline";
 
-/** Azul marino de la franja de entrada. */
-export const AZUL_MARINO = "#0b2c5a";
+/** Petróleo de la identidad Kaptus: la franja de entrada y las barras del telefono. */
+export const AZUL_MARINO = "#0e3b40";
 /** Fondo de la app de dia y de noche (el mismo de --bg). */
-export const FONDO_DIA = "#eef1f4";
-export const FONDO_NOCHE = "#0e1318";
+export const FONDO_DIA = "#edf2f1";
+export const FONDO_NOCHE = "#0c1517";
 
 /**
  * Color de las franjas del telefono (la de la hora y la bateria, y en Android la de los botones):
@@ -31,7 +31,7 @@ export function useColorBarras(color: string): void {
 export function CabeceraMarca({ mini = false }: { mini?: boolean }) {
   return (
     <header className={`marca-cab${mini ? " mini" : ""}`}>
-      <img src={bannerNoche} alt="Kápta CSV · Control de signos vitales · Hospital San Pablo de Coquimbo" />
+      <img src={bannerNoche} alt="Kaptus · CSV · Control de signos vitales" />
       <svg className="ola" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 18 C 90 44, 210 0, 400 22 L400 40 L0 40 Z" className="ola-clara" />
         <path d="M0 28 C 120 46, 250 12, 400 30 L400 40 L0 40 Z" className="ola-fondo" />

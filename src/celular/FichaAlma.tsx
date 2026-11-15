@@ -1,13 +1,10 @@
-import { Copy, Table2, X } from "lucide-react";
+import { Table2, X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, camposAlma, claseModoAlma, componerNotaAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
+import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, camposAlma, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
 import type { Control, Episodio, EventoClinico } from "@core/index";
-import { useServicios } from "../app/contexto";
-import { useApp } from "../app/store";
-import { horaDe } from "../app/util";
 import { SabanaVista } from "../estacion/SabanaVista";
-import { copiarTexto, iniciales } from "../estacion/util";
+import { iniciales } from "../estacion/util";
 
 const n = (v: number | null | undefined, u = ""): string => (v === null || v === undefined ? "—" : `${v}${u}`);
 
@@ -29,7 +26,8 @@ function signosAlma(c: Control, pbw: number): readonly { etiqueta: string; valor
 /**
  * Un control en una sola pantalla, para pasarlo a ALMA desde el celular: arriba los signos que
  * se copian (FC, PA, Glasgow, SAS, SpO2 y FiO2) y abajo los campos de ventilacion mecanica en el
- * orden del formulario de ALMA, segun el modo. Tocar un campo lo tacha (solo en esta pantalla).
+ * orden del formulario de ALMA, segun el modo, para mirarlos y tipearlos a mano en ALMA. Tocar un
+ * campo lo tacha (solo en esta pantalla).
  * La sabana completa queda a un toque.
  */
 /** Lo que la ficha necesita de cada paciente. */
@@ -45,8 +43,6 @@ export interface PacienteFicha {
  * instalado la dejaba pegada (ver docs/PLAN-MAESTRO.md, seccion 17).
  */
 export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: readonly PacienteFicha[]; inicial: { readonly episodioId: string; readonly controlId: string }; ahora: Date; onCerrar: () => void }) {
-  const { repo } = useServicios();
-  const avisar = useApp((s) => s.avisar);
   // Solo las camas con algun control, en el orden de las camas.
   const camas = pacientes.filter((p) => p.controles.length > 0);
   const [idx, setIdx] = useState(() => Math.max(0, camas.findIndex((p) => p.ep.id === inicial.episodioId)));
@@ -68,14 +64,6 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
     setHechos(new Set());
   };
   const tachar = (i: number): void => setHechos((h) => { const x = new Set(h); if (x.has(i)) x.delete(i); else x.add(i); return x; });
-  const copiar = async (): Promise<void> => {
-    // La "ultima atencion" es la de este control: lo posterior no entra.
-    const hasta = ordenados.filter((x) => x.registradoEn <= c.registradoEn);
-    const nota = componerNotaAlma({ episodio: ep, controles: hasta, eventos, apk: [], modo: "ULTIMA_ATENCION", ahora, diagnostico: null });
-    const ok = await copiarTexto(nota);
-    if (ok) await repo.marcarTranscrito(ep.id, horaDe(new Date()));
-    avisar(ok ? "Evolución copiada. Pégala en ALMA." : "El teléfono no dejó copiar. Inténtalo de nuevo.");
-  };
   const anterior = camas[idx - 1];
   const siguiente = camas[idx + 1];
   const capa = (nodo: JSX.Element): JSX.Element => createPortal(nodo, document.querySelector(".app-cel") ?? document.body);
@@ -141,7 +129,6 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
         <button type="button" className="btn sm" onClick={() => setVista("sabana")}><Table2 size={14} aria-hidden /> Ver sábana</button>
         <button type="button" className="btn sm primary" disabled={!siguiente} onClick={() => ir(1)}>{siguiente ? `Siguiente: ${nombreCama(siguiente.ep.cama)} ›` : "Última cama"}</button>
       </div>
-      <button type="button" className="linkbtn fa-copiar" onClick={() => void copiar()}><Copy size={13} aria-hidden /> Copiar evolución para ALMA</button>
     </div>
   );
 }

@@ -770,11 +770,10 @@ body.teclado-propio .barra-inf{display:none}
 .fa-pestanas button{flex:1;min-width:0;border:0;background:var(--panel);color:var(--ink-2);font:inherit;font-size:13.5px;padding:8px 4px}
 .fa-pestanas button[aria-selected="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
 .sabana-cel .fa-pestanas{margin:8px 10px 0}
-.fa-pie{display:flex;gap:8px;padding:6px 10px 10px;border-top:1px solid var(--line)}
+.fa-pie{display:flex;gap:8px;padding:6px 10px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
 .fa-pie .btn{flex:1;justify-content:center}
 .fa-capa{z-index:46}
 .fa-pie .btn:disabled{opacity:.5}
-.fa-copiar{align-self:center;display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:0 0 calc(8px + env(safe-area-inset-bottom,0px))}
 .sabana-cel table.sab-plana td.v{min-width:3.6em;max-width:7.5em}
 .sabana-cel table.sab-plana tr.sv-grupo td span{position:sticky;left:8px}
 .sabana-cel .sabana-vista{border:0;border-radius:0;box-shadow:none;margin-top:0}

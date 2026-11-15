@@ -18,7 +18,7 @@ export default defineConfig({
         description: "Monitorización kinésica a pie de cama · UCI Adulto",
         lang: "es",
         theme_color: "#0e3b40",
-        background_color: "#ffffff",
+        background_color: "#0e3b40",
         display: "standalone",
         orientation: "portrait",
         // Relativos: funciona igual en la raiz de un dominio o en un subdirectorio (GitHub Pages).

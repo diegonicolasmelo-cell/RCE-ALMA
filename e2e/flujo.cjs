@@ -89,6 +89,16 @@ async function esperarServidor() {
     });
 
     await prueba("entra con correo y contraseña, elige sus camas y la portada las muestra primero", async () => {
+      // La tarjeta de acceso queda centrada entre la franja con el logo y el paisaje.
+      await cel.waitForSelector(".acceso-tarjeta");
+      const [arriba, abajo] = await cel.evaluate(() => {
+        const cab = document.querySelector(".marca-cab").getBoundingClientRect();
+        const t = document.querySelector(".acceso-tarjeta").getBoundingClientRect();
+        const p = document.querySelector(".acceso .paisaje").getBoundingClientRect();
+        return [Math.round(t.top - cab.bottom), Math.round(p.top - t.bottom)];
+      });
+      assert.ok(arriba >= 0 && Math.abs(arriba - abajo) <= 4, `centrada: ${arriba} px arriba y ${abajo} px abajo`);
+      if (process.env.FOTO_PANEL) await cel.screenshot({ path: process.env.FOTO_PANEL + "-acceso.png" });
       await entrar("diego.melo@demo.upc", "kine");
       await cel.waitForSelector("text=¿Cuáles son tus camas hoy?");
       assert.equal(await cel.locator('[aria-label="Camas"] .chip').count(), 18);

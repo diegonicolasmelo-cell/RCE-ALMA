@@ -828,14 +828,14 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 [data-estilo="nuevo"] .ev-chk{border-radius:12px}
 .seg-tema.dos{grid-template-columns:1fr 1fr}
 
-/* ---- Entrada: franja azul marino con la marca, tarjeta de acceso y paisaje de Coquimbo ---- */
+/* ---- Entrada: franja petróleo con la marca, tarjeta de acceso y paisaje de Coquimbo ---- */
 :root{--marino:#0e3b40;--marino-2:#0f6b62;--cielo:#d8efe9;--cielo-2:#edf8f5}
 :root[data-theme="dark"]{--cielo:#10302c;--cielo-2:#0b1d1b}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--cielo:#10302c;--cielo-2:#0b1d1b}}
 .marca-cab{position:relative;background:linear-gradient(160deg,var(--marino) 0%,var(--marino-2) 100%);padding:calc(26px + env(safe-area-inset-top,0px)) 20px 46px;display:flex;justify-content:center}
 .marca-cab img{width:100%;max-width:280px;height:auto;position:relative;z-index:1}
 .marca-cab .ola{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:40px}
-.marca-cab .ola-clara{fill:#5fa8e8;opacity:.55}
+.marca-cab .ola-clara{fill:#2fc2ad;opacity:.45}
 .marca-cab .ola-fondo{fill:var(--cielo-2)}
 .marca-cab.mini{padding:calc(12px + env(safe-area-inset-top,0px)) 20px 30px}
 .marca-cab.mini img{max-width:200px}
@@ -843,7 +843,7 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 .marca-cab.mini .ola-fondo{fill:var(--bg)}
 
 .acceso{min-height:100%;display:flex;flex-direction:column;background:linear-gradient(180deg,var(--cielo-2) 0%,var(--cielo) 100%);position:relative;overflow-x:hidden}
-.acceso-tarjeta{position:relative;z-index:1;width:calc(100% - 32px);max-width:420px;margin:-8px auto 0;background:var(--panel);border-radius:24px;padding:22px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 32px rgba(11,44,90,.12)}
+.acceso-tarjeta{position:relative;z-index:1;width:calc(100% - 32px);max-width:420px;margin:auto;background:var(--panel);border-radius:24px;padding:22px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 32px rgba(14,59,64,.12)}
 .acceso-titulo{display:flex;align-items:center;gap:14px}
 .acceso-titulo .ico{width:56px;height:56px;flex:none;border-radius:16px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
 .acceso-titulo h1{margin:0;font-size:22px;color:var(--ink);line-height:1.15}
@@ -858,9 +858,11 @@ table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 .acceso-pie{display:flex;justify-content:center;align-items:center;gap:6px;margin:0;color:var(--ink-2);font-size:12.5px}
 .acceso-pie span{opacity:.5}
 .paisaje{display:block;width:100%;height:auto;aspect-ratio:400/130;margin-top:auto;flex:none}
-.paisaje .cerro-lejano{fill:#a9cdf0;opacity:.5}
-.paisaje .silueta{fill:#8dbbe8;opacity:.75}
-.paisaje .cerro{fill:#8dbbe8;opacity:.55}
+/* En el acceso la tarjeta queda centrada entre la franja y el paisaje (margin:auto reparte el alto libre). */
+.acceso .paisaje{margin-top:0}
+.paisaje .cerro-lejano{fill:#a8ddd2;opacity:.55}
+.paisaje .silueta{fill:#7cc4b6;opacity:.75}
+.paisaje .cerro{fill:#7cc4b6;opacity:.55}
 
 /* Elegir camas: mismos azules que la entrada. */
 .elegir-camas{display:grid;gap:14px;align-content:start}

@@ -991,6 +991,59 @@ async function esperarServidor() {
       assert.equal(await cel.evaluate(() => history.state && history.state.kapta), true, "pasado el aviso, la guardia vuelve");
     });
 
+    await prueba("control en grande, peor caso: un control de ACVC con TODOS los campos anotados y un evento cabe sin scroll en 390 x 844 y en 360 x 640", async () => {
+      // Se copia el ultimo control registrado y se le anotan todos los campos de ventilacion.
+      await cel.evaluate(() => new Promise((listo, falla) => {
+        const req = indexedDB.open("upc-pulse");
+        req.onerror = () => falla(req.error);
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction(["controles", "eventos"], "readwrite");
+          const todos = tx.objectStore("controles").getAll();
+          const evs = tx.objectStore("eventos").getAll();
+          tx.objectStore("controles").getAll().onsuccess = () => {
+            const ultimo = todos.result.sort((a, b) => (a.registradoEn < b.registradoEn ? 1 : -1))[0];
+            const ev = evs.result.find((e) => e.episodioId === ultimo.episodioId);
+            const largo = {
+              ...ultimo, id: "ct-largo", registradoEn: new Date().toISOString(), hora: new Date().toTimeString().slice(0, 5), viaAerea: "TET",
+              ...(ev ? { eventoId: ev.id } : {}),
+              fc: 112, pas: 138, pad: 74, spo2: 93, sas: 2, glasgow: { ocular: 2, verbal: 1, motora: 5 },
+              ventilacion: { ...ultimo.ventilacion, modalidad: "ACVC", asincronico: false, frProgramada: 18, vtProgramado: 450, flujo: 50, ti: 0.9, presion: null, peep: 8, fio2: 40, frTotal: 22,
+                vtEspirado: 445, pPico: 28, pPlateau: 22, pMedia: 13, autoPeep: 1, volMinuto: 9.8, ie: 2.5, compliance: 34, temperatura: null, fuga: null, presionMax: null, musculaturaAccesoria: null }
+            };
+            tx.objectStore("controles").put(largo);
+          };
+          tx.oncomplete = () => listo();
+          tx.onerror = () => falla(tx.error);
+        };
+      }));
+      await cel.reload();
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
+      await cel.locator(".tarjeta-control").first().click();
+      const hoja = cel.locator("[role=dialog].ficha-alma");
+      await hoja.waitFor();
+      const filas = await hoja.locator(".fa-campos li").count();
+      assert.ok(filas >= 15, "el peor caso trae muchas filas: " + filas);
+      for (const [w, h] of [[390, 844], [360, 640]]) {
+        await cel.setViewportSize({ width: w, height: h });
+        await cel.waitForTimeout(300);
+        const r = await hoja.evaluate((d) => {
+          const lista = d.querySelector(".fa-campos");
+          const textos = [...d.querySelectorAll(".fa-campos li b, .fa-campos li span, .fa-dato b")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent);
+          const altoFila = Math.min(...[...lista.querySelectorAll("li")].map((li) => li.getBoundingClientRect().height));
+          return { sobra: d.scrollHeight - d.clientHeight, lista: lista.scrollHeight - lista.clientHeight, altoFila, cortados: textos };
+        });
+        assert.ok(r.sobra <= 1 && r.lista <= 1, `${w}x${h}: sin scroll (${r.sobra}, ${r.lista})`);
+        assert.ok(r.altoFila >= 18, `${w}x${h}: cada fila se puede leer (${r.altoFila.toFixed(1)} px)`);
+        assert.deepEqual(r.cortados, [], `${w}x${h}: ningún valor queda cortado`);
+        assert.doesNotMatch(await hoja.locator(".fa-signos").textContent(), /NaN|undefined/, "los signos se leen bien");
+        if (process.env.FOTO_FICHA) await cel.screenshot({ path: process.env.FOTO_FICHA.replace(/\.png$/, `-${w}x${h}.png`) });
+      }
+      await cel.setViewportSize({ width: 390, height: 844 });
+      await hoja.locator('button[aria-label="Volver"]').click();
+    });
+
     await prueba("codigo PCR: parte sin cama desde el +, guarda cada toque, sobrevive a cerrar la app y al final se elige la cama", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('nav[aria-label="Navegación"] button[aria-label="Registrar"]');

@@ -492,7 +492,7 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
   // El modo dictado manda si corresponde a la via; si no, no se aplica.
   let modalidad = modalidadActual;
   let modoAmbiguo = false;
-  if (modoDictado === "AIRE") noAplica.push("Aire ambiente: todavía no es una modalidad en Kápta");
+  if (modoDictado === "AIRE") noAplica.push("Aire ambiente: todavía no es una modalidad en Kaptus");
   else if (modoDictado) {
     let m: Modalidad | null;
     if (modoDictado === "CPAP") m = artificial ? "CPAP_PS" : "VNI_CPAP";

@@ -179,12 +179,18 @@ async function esperarServidor() {
       assert.match(await cuenta.textContent(), /Diego Melo[\s\S]*6 camas a tu cargo/);
       await cuenta.locator('[role=radio]:has-text("Noche")').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), "dark");
+      // El logo de Kaptus al pie del panel: la luna de noche y el sol de dia.
+      const logoVisible = () => cel.evaluate(() => [...document.querySelectorAll(".pc-banner img")].find((i) => i.offsetParent !== null && i.naturalWidth > 0)?.className ?? "");
+      assert.equal(await logoVisible(), "de-noche");
+      if (process.env.FOTO_PANEL) { await cuenta.locator(".pc-banner").scrollIntoViewIfNeeded(); await cel.waitForTimeout(400); await cel.screenshot({ path: process.env.FOTO_PANEL + "-noche.png" }); }
       await cuenta.locator('[role=radio]:has-text("Día")').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), "light");
+      assert.equal(await logoVisible(), "de-dia");
+      if (process.env.FOTO_PANEL) { await cel.waitForTimeout(400); await cel.screenshot({ path: process.env.FOTO_PANEL + "-dia.png" }); }
       await cuenta.locator('[role=radio]:has-text("Automático")').click();
       const hora = await cel.evaluate(() => new Date().getHours());
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.theme), hora >= 8 && hora < 20 ? "light" : "dark");
-      // Color de tu Kápta: azul por defecto; se elige entre cuatro.
+      // Color de tu Kaptus: azul por defecto; se elige entre cuatro.
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "azul");
       await cuenta.locator('[role=radio][aria-label="Rosado"]').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "rosado");

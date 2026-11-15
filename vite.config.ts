@@ -13,12 +13,12 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["pwa-192.png", "pwa-512.png", "pwa-maskable-512.png", "apple-touch-icon.png"],
       manifest: {
-        name: "Kapta CSV · Control de signos vitales",
-        short_name: "Kapta CSV",
+        name: "Kaptus · Control de signos vitales",
+        short_name: "Kaptus",
         description: "Monitorización kinésica a pie de cama · UCI Adulto",
         lang: "es",
         theme_color: "#0b2c5a",
-        background_color: "#0b2c5a",
+        background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
         // Relativos: funciona igual en la raiz de un dominio o en un subdirectorio (GitHub Pages).

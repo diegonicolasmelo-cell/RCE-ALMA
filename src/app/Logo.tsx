@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import iconoCsv from "./iconos/kapta-csv.png?inline";
+import iconoCsv from "./iconos/kaptus-icono.png?inline";
 import iconoEstacion from "./iconos/kapta-estacion.png?inline";
 
-/** Verde = Kapta CSV (celular, control de signos vitales). Azul = Kapta Estación (computador). */
+/** El cactus = Kaptus (celular, control de signos vitales). Azul = la Estación (computador). */
 export type VarianteLogo = "csv" | "estacion";
 
 const ICONO: Record<VarianteLogo, string> = { csv: iconoCsv, estacion: iconoEstacion };

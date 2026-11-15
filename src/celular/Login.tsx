@@ -242,7 +242,7 @@ export function Login() {
         </div>
       )}
 
-      <p className="acceso-pie"><ShieldCheck size={16} aria-hidden /> Acceso seguro y confidencial <span aria-hidden>|</span> Kápta CSV</p>
+      <p className="acceso-pie"><ShieldCheck size={16} aria-hidden /> Acceso seguro y confidencial <span aria-hidden>|</span> Kaptus</p>
       {local && <div className="notice new small">Modo demostración (sin servidor): correo <b>{CORREO_DEMO}</b> (o cualquier nombre de la dotación) y contraseña <b className="mono">{PIN_DEMO.toLowerCase()}</b>. Los datos son inventados y quedan solo en este dispositivo.</div>}
     </form>
     <PaisajeCoquimbo />

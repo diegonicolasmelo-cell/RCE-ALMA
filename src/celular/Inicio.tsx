@@ -39,8 +39,8 @@ import { SabanaVista } from "../estacion/SabanaVista";
 import { useServicios } from "../app/contexto";
 import { iniciarCodigoPcr } from "./CodigoPcr";
 import { avisoVozLeido, marcarAvisoVozLeido, motivoSinVoz, vozDisponible } from "./voz";
-import bannerDia from "../app/iconos/banner-dia.png?inline";
-import bannerNoche from "../app/iconos/banner-noche.png?inline";
+import bannerDia from "../app/iconos/kaptus-dia.png?inline";
+import bannerNoche from "../app/iconos/kaptus-noche.png?inline";
 import type { Tema, VistaCelular } from "../app/store";
 
 /**
@@ -344,7 +344,7 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
           {avisoVoz && (
             <div className="aviso-voz" role="dialog" aria-label="Antes de activar el dictado">
               <b>Antes de activar el dictado</b>
-              <p>El audio lo procesa el servicio de voz del teléfono (Google en Android, Apple en iPhone): <b>sale del celular</b>. Kapta no graba ni guarda el audio ni el texto dictado.</p>
+              <p>El audio lo procesa el servicio de voz del teléfono (Google en Android, Apple en iPhone): <b>sale del celular</b>. Kaptus no graba ni guarda el audio ni el texto dictado.</p>
               <ul>
                 <li>No dictes nombres, RUT ni diagnósticos.</li>
                 <li>Úsalo solo en pruebas hasta que la unidad lo autorice.</li>
@@ -367,9 +367,9 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
           </div>
           <div className="pc-fila bloque">
             <Droplet size={22} aria-hidden />
-            <span>Color de tu Kápta<small>{ACENTOS.find(([k]) => k === acento)?.[1]}</small></span>
+            <span>Color de tu Kaptus<small>{ACENTOS.find(([k]) => k === acento)?.[1]}</small></span>
           </div>
-          <div className="acentos" role="radiogroup" aria-label="Color de tu Kápta">
+          <div className="acentos" role="radiogroup" aria-label="Color de tu Kaptus">
             {ACENTOS.map(([k, t]) => (
               <button key={k} type="button" role="radio" aria-checked={acento === k} aria-label={t} title={t} className={`acento ${k}`} onClick={() => setAcento(k)} />
             ))}
@@ -392,7 +392,7 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
           </button>
         </div>
         <div className="pc-banner">
-          <img className="de-dia" src={bannerDia} alt="Kápta CSV · Control de signos vitales · Hospital San Pablo de Coquimbo" />
+          <img className="de-dia" src={bannerDia} alt="Kaptus · CSV · Control de signos vitales" />
           <img className="de-noche" src={bannerNoche} alt="" aria-hidden />
         </div>
         <button type="button" className="pc-salir" onClick={onSalir}>Cerrar sesión</button>

@@ -65,7 +65,7 @@ export async function activarHuella(db: BaseLocal, correo: string, nombre: strin
     const cred = (await navigator.credentials.create({
       publicKey: {
         challenge: azar(32),
-        rp: { name: "Kapta CSV" },
+        rp: { name: "Kaptus" },
         // Identificador al azar: no lleva el correo ni ningun dato de la persona.
         user: { id: azar(16), name: correo, displayName: nombre },
         pubKeyCredParams: [

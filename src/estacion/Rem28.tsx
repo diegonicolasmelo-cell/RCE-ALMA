@@ -68,7 +68,7 @@ export function Rem28({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
           <button type="button" className="btn primary sm" onClick={() => void descargar()}><Download size={15} aria-hidden /> Descargar Excel REM 28</button>
         </span>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Calculado de lo registrado en Kapta. Tipo de atención: cerrada, UPC. Aquí se muestran solo los rangos con datos; el Excel es la planilla REM 28 completa, con sus totales y comprobaciones.</p>
+      <p className="small muted" style={{ margin: 0 }}>Calculado de lo registrado en Kaptus. Tipo de atención: cerrada, UPC. Aquí se muestran solo los rangos con datos; el Excel es la planilla REM 28 completa, con sus totales y comprobaciones.</p>
 
       {(r.ingresosSinCategoria > 0 || sinRango > 0 || r.egresosSinMotivo > 0) && (
         <div className="notice warn small" role="status">

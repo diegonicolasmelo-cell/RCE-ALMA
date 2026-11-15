@@ -922,19 +922,40 @@ async function esperarServidor() {
       assert.equal(await cel.locator('section[aria-label="Terapia ventilatoria"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
     });
 
-    await prueba("Controles: tocar una tarjeta abre la sabana de ese paciente en el celular, con ese control destacado; el panel se cierra deslizando a la derecha", async () => {
+    await prueba("Controles: tocar una tarjeta abre el control en grande, avanza de cama y abre la sabana con ese control destacado; el panel se cierra deslizando a la derecha", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
       const tarjeta = cel.locator(".tarjeta-control").first();
       await tarjeta.waitFor();
       const [cama, hora] = (await tarjeta.locator("header b").textContent()).split(" · ");
       await tarjeta.click();
-      const hoja = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
+      // Se abre el control en grande, fuera de la lista con scroll (si no, el iPhone instalado se pega).
+      const hoja = cel.locator("[role=dialog].ficha-alma");
       await hoja.waitFor();
-      assert.equal(await hoja.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");
+      assert.match(await hoja.locator(".fa-tit b").textContent(), new RegExp(`${cama} · ${hora}`));
+      assert.equal(await hoja.evaluate((d) => d.closest(".cel-cuerpo") === null && d.parentElement.classList.contains("app-cel")), true, "la ficha cuelga de .app-cel, no de la lista");
+      const signos = await hoja.locator(".fa-signos .fa-dato span").allTextContents();
+      for (const e of ["FC", "PA", "Glasgow", "SpO₂", "FiO₂"]) assert.ok(signos.some((t) => t.startsWith(e)), "falta " + e + ": " + signos.join("|"));
+      const desborde = await hoja.evaluate((d) => [d.scrollHeight - d.clientHeight, d.querySelector(".fa-campos").scrollHeight - d.querySelector(".fa-campos").clientHeight]);
+      assert.ok(desborde[0] <= 1 && desborde[1] <= 1, "sin scroll: " + desborde.join(","));
+      if (process.env.FOTO_FICHA) { await cel.waitForTimeout(400); await cel.screenshot({ path: process.env.FOTO_FICHA }); }
+      // A la cama siguiente, directo desde el control.
+      const sig = hoja.locator('.fa-pie button:has-text("Siguiente")');
+      const destino = (await sig.textContent()).replace(/^Siguiente: | ›$/g, "");
+      await sig.click();
+      await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), destino);
+      await hoja.locator('button[aria-label^="Cama anterior"]').click();
+      await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), cama);
+      // La sábana sigue a un toque, con el control destacado.
+      await hoja.locator('button:has-text("Ver sábana")').click();
+      const sab = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
+      await sab.waitFor();
+      assert.equal(await sab.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");
       const ancho = await cel.evaluate(() => document.documentElement.scrollWidth);
       const culpables = await cel.evaluate(() => [...document.querySelectorAll(".sabana-cel *")].filter((e) => e.getBoundingClientRect().right > 392 && !e.closest(".scroll-x")).slice(0, 5).map((e) => e.tagName + "." + e.className + " " + Math.round(e.getBoundingClientRect().right)).join(" | ") + " · padre " + (document.querySelector(".sabana-cel").offsetParent?.className) + " " + Math.round(document.querySelector(".sabana-cel").offsetParent?.getBoundingClientRect().width) + " · body " + document.body.scrollWidth + " app " + Math.round(document.querySelector(".app-cel").getBoundingClientRect().width));
       assert.ok(ancho <= 391, `la sabana no desborda la pantalla (${ancho}px): ${culpables}`);
+      await sab.locator('[role=tab]:has-text("Último control")').click();
+      await hoja.waitFor();
       await hoja.locator('button[aria-label="Volver"]').click();
       await hoja.waitFor({ state: "detached" });
       // Panel de la cuenta: se cierra deslizando el dedo hacia la derecha.

@@ -547,7 +547,7 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
   «TQTeitor» y se reencauzaron a seguir el protocolo y registrar bien); se cuentan con lo ya registrado (cada
   control y evento guarda `rutAutor`); íconos SVG propios, no emojis. Falta: que Diego confirme catálogo y cifras.
 
-- **Control en grande desde Controles** (15-nov-2026, pendiente). Retomar la rama `ficha-control-celular`
+- **Control en grande desde Controles** (15-nov-2026) — ✅ PROGRAMADO el mismo día: ficha montada en `.app-cel` con portal, solo desde Controles, ‹ › y «Siguiente» pasan de cama. **Falta probarlo en un iPhone instalado.** Nota original: Retomar la rama `ficha-control-celular`
   (ver sección 17) SOLO desde «Controles», con la ficha montada fuera de la lista con scroll (portal a nivel de
   `.app-cel`, `position:fixed`) para evitar el bloqueo del iPhone, y con el botón «Ver sábana». Probar en un
   iPhone real antes de darlo por bueno.

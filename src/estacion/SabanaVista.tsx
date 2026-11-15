@@ -17,8 +17,9 @@ const fechaHora = (iso: string): string => {
  * los hitos de via aerea que generaron ese control. Los demas eventos van en una lista aparte
  * y las evaluaciones en su propia pestana.
  */
-export function SabanaVista({ ep, controles, eventos, ahora, resaltar }: { ep: Episodio; controles: readonly Control[]; eventos: readonly EventoClinico[]; ahora: Date; /** Control a destacar y mostrar (p. ej. el que se toco en el celular). */ resaltar?: string }) {
-  const [pestana, setPestana] = useState<"sabana" | "evaluaciones">("sabana");
+export function SabanaVista({ ep, controles, eventos, ahora, resaltar, fija }: { ep: Episodio; controles: readonly Control[]; eventos: readonly EventoClinico[]; ahora: Date; /** Control a destacar y mostrar (p. ej. el que se toco en el celular). */ resaltar?: string; /** Muestra solo esa pestana (el celular pone las suyas arriba). */ fija?: "sabana" | "evaluaciones" }) {
+  const [estaPestana, setPestana] = useState<"sabana" | "evaluaciones">("sabana");
+  const pestana = fija ?? estaPestana;
   const [rango, setRango] = useState<RangoSabana>("24H");
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const filas = useMemo(() => filasSabana(pbw, ep.monitoreo), [pbw, ep.monitoreo]);
@@ -46,10 +47,10 @@ export function SabanaVista({ ep, controles, eventos, ahora, resaltar }: { ep: E
   return (
     <section className="sabana-vista" aria-label="Sábana">
       <div className="sv-barra">
-        <div className="sv-pestanas" role="tablist" aria-label="Sábana o evaluaciones">
+        {!fija && <div className="sv-pestanas" role="tablist" aria-label="Sábana o evaluaciones">
           <button type="button" role="tab" aria-selected={pestana === "sabana"} onClick={() => setPestana("sabana")}>Sábana</button>
           <button type="button" role="tab" aria-selected={pestana === "evaluaciones"} onClick={() => setPestana("evaluaciones")}>Evaluaciones ({evaluaciones.length})</button>
-        </div>
+        </div>}
         {pestana === "sabana" && (
           <div className="sv-rango" role="group" aria-label="Rango">
             <button type="button" aria-pressed={rango === "24H"} onClick={() => setRango("24H")}>Últimas 24 h</button>

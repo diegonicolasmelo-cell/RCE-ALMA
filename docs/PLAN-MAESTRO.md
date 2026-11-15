@@ -539,6 +539,19 @@ Glasgow condicionado están mal, da igual qué tan bonita sea la pantalla.
   ahora: teme que los toques accidentales saquen de la pantalla y prefiere un inicio más
   ordenado y controlado. Retomarla si en el uso se pide.
 
+- **Medallas personales** (15-nov-2026, Diego: «perfecto, déjalo en memoria y pendiente»). Mockup aprobado
+  en concepto: https://claude.ai/artifact/V5vCnh1T5e4sys4nnvZu1z. Galería desde el círculo con iniciales del
+  panel lateral; nueve medallas con bronce/plata/oro (Cultivador, Transportista, Guardián de la PVE, Vigía post
+  extubación, Asistente de FBC, Recibidor, Puntual, Noctámbulo, Voz clara). Reglas: personales y privadas, sin
+  ranking; **no premian decisiones clínicas** (nada por extubar más ni por TQT: Diego propuso «Extubador» y
+  «TQTeitor» y se reencauzaron a seguir el protocolo y registrar bien); se cuentan con lo ya registrado (cada
+  control y evento guarda `rutAutor`); íconos SVG propios, no emojis. Falta: que Diego confirme catálogo y cifras.
+
+- **Control en grande desde Controles** (15-nov-2026, pendiente). Retomar la rama `ficha-control-celular`
+  (ver sección 17) SOLO desde «Controles», con la ficha montada fuera de la lista con scroll (portal a nivel de
+  `.app-cel`, `position:fixed`) para evitar el bloqueo del iPhone, y con el botón «Ver sábana». Probar en un
+  iPhone real antes de darlo por bueno.
+
 - **I:E estimada con el flujo, para cuando no se anote** (14-nov-2026, Diego: «por ahora quedémonos con
   la I:E anotada… para programarlo después»). Hoy la I:E sale de lo anotado (casilla «I:E» en ACVC y PCV) o,
   si falta, del TI y la FR. Con flujo + Vt programado + FR total se podría estimar en ACVC: TI = Vt ÷ flujo

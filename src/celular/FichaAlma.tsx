@@ -1,4 +1,4 @@
-import { Table2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
@@ -99,12 +99,11 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
     <div className={`sabana-cel fa-capa ficha-alma ${densidad}`} role="dialog" aria-label={`Control · ${nombreCama(ep.cama)} · ${c.hora}`}>
       <div className="fa-cab">
         <button type="button" className="fa-flecha fa-cerrar" aria-label="Volver" onClick={onCerrar}><X size={18} aria-hidden /></button>
-        <button type="button" className="fa-flecha" aria-label={anterior ? `Cama anterior · ${nombreCama(anterior.ep.cama)}` : "Cama anterior"} disabled={!anterior} onClick={() => ir(-1)}>‹</button>
         <div className="fa-tit">
           <b>{nombreCama(ep.cama)} · {c.hora}</b>
           <span>{ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? ""} · {iniciales(c.rutAutor)} · cama {idx + 1} de {camas.length}</span>
         </div>
-        <button type="button" className="fa-flecha" aria-label={siguiente ? `Cama siguiente · ${nombreCama(siguiente.ep.cama)}` : "Cama siguiente"} disabled={!siguiente} onClick={() => ir(1)}>›</button>
+        <span className="fa-flecha fa-hueco" aria-hidden />
       </div>
       {pestanas}
       {evento && <div className="fa-evento">⚑ {describirEvento(evento, eventos)} · {evento.hora}</div>}
@@ -128,8 +127,9 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
         ))}
       </ul>
       <div className="fa-pie">
-        <button type="button" className="btn sm" onClick={() => setVista("sabana")}><Table2 size={14} aria-hidden /> Ver sábana</button>
-        <button type="button" className="btn sm primary" disabled={!siguiente} onClick={() => ir(1)}>{siguiente ? `Siguiente: ${nombreCama(siguiente.ep.cama)} ›` : "Última cama"}</button>
+        {/* Un solo lugar para moverse entre camas (abajo, a la mano); la sabana esta en las pestañas. */}
+        <button type="button" className="btn sm" aria-label={anterior ? `Cama anterior · ${nombreCama(anterior.ep.cama)}` : "Cama anterior"} disabled={!anterior} onClick={() => ir(-1)}>{anterior ? `‹ ${nombreCama(anterior.ep.cama)}` : "Primera cama"}</button>
+        <button type="button" className="btn sm primary" aria-label={siguiente ? `Cama siguiente · ${nombreCama(siguiente.ep.cama)}` : "Cama siguiente"} disabled={!siguiente} onClick={() => ir(1)}>{siguiente ? `Siguiente: ${nombreCama(siguiente.ep.cama)} ›` : "Última cama"}</button>
       </div>
     </div>
   );

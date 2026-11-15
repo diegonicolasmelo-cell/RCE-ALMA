@@ -920,6 +920,9 @@ async function esperarServidor() {
       assert.equal(await cel.locator('section[aria-label="CSV"] #in-spo2').count(), 1, "la SpO2 va en CSV, como en el registro simple");
       for (const e of ["Flujo", "Temperatura", "FiO₂", "FR"]) assert.ok(etiquetas.some((t) => t.startsWith(e)), "falta " + e + " en " + etiquetas.join("|"));
       assert.equal(await cel.locator('section[aria-label="Terapia ventilatoria"] [aria-label="Uso de musculatura accesoria"]').count(), 1);
+      // La temperatura de la CNAF se pide: sin ella no se guarda.
+      await cel.click("#btn-guardar-control");
+      assert.match(await aviso(), /temperatura de la CNAF/);
     });
 
     await prueba("Controles: tocar una tarjeta abre el control en grande, avanza de cama y abre la sabana con ese control destacado; el panel se cierra deslizando a la derecha", async () => {
@@ -947,10 +950,12 @@ async function esperarServidor() {
       const destino = (await sig.textContent()).replace(/^Siguiente: | ›$/g, "");
       await sig.click();
       await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), destino);
-      await hoja.locator('button[aria-label^="Cama anterior"]').click();
+      assert.equal(await hoja.locator(".fa-cab button").count(), 1, "arriba solo la X: moverse entre camas va abajo");
+      assert.equal(await hoja.locator('button:has-text("Ver sábana")').count(), 0, "la sábana va solo en las pestañas");
+      await hoja.locator('.fa-pie button[aria-label^="Cama anterior"]').click();
       await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), cama);
       // La sábana sigue a un toque, con el control destacado.
-      await hoja.locator('button:has-text("Ver sábana")').click();
+      await hoja.locator('[role=tab]:has-text("Sábana")').click();
       const sab = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
       await sab.waitFor();
       assert.equal(await sab.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");

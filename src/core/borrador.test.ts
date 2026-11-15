@@ -191,6 +191,15 @@ describe("validarBorrador", () => {
   const sinApk: { apkVigente: ValidacionApk | null } = { apkVigente: null };
   const campos = (b: BorradorControl, ctx = sinApk) => validarBorrador(b, ctx).map((p) => p.campo);
 
+  it("en CNAF (y CNAF por TQT) pide la temperatura; en otros modos no", () => {
+    for (const m of ["CNAF", "CNAF_TQT"] as const) {
+      const b = cambiarModalidad(completo(), m);
+      expect(campos({ ...b, vent: { ...b.vent, temperatura: "" } })).toContain("temperatura");
+      expect(campos({ ...b, vent: { ...b.vent, temperatura: "37" } })).not.toContain("temperatura");
+    }
+    expect(campos(completo())).not.toContain("temperatura");
+  });
+
   it("un borrador recién creado reporta todo lo obligatorio", () => {
     const b = crearBorradorNuevoControl(episodio, unControl(), episodio.rutTitular);
     const c = campos(b);

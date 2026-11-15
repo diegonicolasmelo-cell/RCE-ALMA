@@ -42,7 +42,7 @@ export function ubicacionDeCampo(campo: string): { tab: "control" | TabControl; 
   if (campo.startsWith("infusion:")) {
     return { tab: "control", seg: "inf" };
   }
-  if (campo === "frTotal") return { tab: "control", seg: "vent" };
+  if (campo === "frTotal" || campo === "temperatura") return { tab: "control", seg: "vent" };
   if (campo === "modalidad" || campo === "horaEvento") return { tab: "control", seg: "modo" };
   if (campo === "spo2") return { tab: "control", seg: "pa" };
   if (campo === "kine") return { tab: "kine", seg: "kine" };

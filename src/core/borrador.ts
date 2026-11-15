@@ -321,6 +321,8 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
     if (medicionDe(b[c]) === null) falta(c, ETIQUETA_VITAL[c]);
   }
   if (medicionDe(b.vent.frTotal) === null) falta("frTotal", "FR total");
+  // En CNAF (tambien por TQT) la temperatura del humidificador es parte de la programacion: se pide.
+  if ((b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT") && medicionDe(b.vent.temperatura) === null) falta("temperatura", "temperatura de la CNAF");
   if (ctx.viaAerea && !modalidadPermitida(b.modalidad, ctx.viaAerea)) {
     falta("modalidad", `un modo que corresponda a la vía aérea (${ETIQUETA_MODALIDAD[b.modalidad]} no se usa con ${ctx.viaAerea === "NATURAL" ? "vía aérea natural" : ctx.viaAerea})`);
   }

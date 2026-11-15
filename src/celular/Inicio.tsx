@@ -21,7 +21,6 @@ import {
   Mic,
   History,
   Moon,
-  Palette,
   Plus,
   RefreshCw,
   Sun,
@@ -284,8 +283,6 @@ const TEMAS: readonly (readonly [Tema, string, typeof Sun])[] = [["auto", "Autom
 export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir }: { nombre: string; rol: string; turno: TurnoGuardia; nMias: number; sync: EstadoSync; onCerrar: () => void; onSalir: () => void }) {
   const tema = useApp((s) => s.tema);
   const setTema = useApp((s) => s.setTema);
-  const estilo = useApp((s) => s.estilo);
-  const setEstilo = useApp((s) => s.setEstilo);
   const acento = useApp((s) => s.acento);
   const setAcento = useApp((s) => s.setAcento);
   const dictado = useApp((s) => s.dictado);
@@ -373,14 +370,6 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
             {ACENTOS.map(([k, t]) => (
               <button key={k} type="button" role="radio" aria-checked={acento === k} aria-label={t} title={t} className={`acento ${k}`} onClick={() => setAcento(k)} />
             ))}
-          </div>
-          <div className="pc-fila bloque">
-            <Palette size={22} aria-hidden />
-            <span>Diseño de las pantallas<small>Del paciente: control, eventos, PVE y evaluaciones</small></span>
-          </div>
-          <div className="seg-tema dos" role="radiogroup" aria-label="Diseño de las pantallas">
-            <button type="button" role="radio" aria-checked={estilo === "nuevo"} onClick={() => setEstilo("nuevo")}>Nuevo</button>
-            <button type="button" role="radio" aria-checked={estilo === "clasico"} onClick={() => setEstilo("clasico")}>Clásico</button>
           </div>
           <button type="button" className="pc-fila" onClick={sync.sincronizar}>
             <RefreshCw size={22} aria-hidden />

@@ -116,12 +116,9 @@ function leerBandera(clave: string): boolean {
     return false;
   }
 }
+/** Solo queda el diseño nuevo: lo que alguien haya elegido antes (el clásico) ya no se aplica. */
 function leerEstilo(): Estilo {
-  try {
-    return globalThis.localStorage?.getItem(CLAVE_ESTILO) === "clasico" ? "clasico" : "nuevo";
-  } catch {
-    return "nuevo";
-  }
+  return "nuevo";
 }
 function guardarTema(t: Tema): void {
   try {

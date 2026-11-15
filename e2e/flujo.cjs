@@ -202,12 +202,9 @@ async function esperarServidor() {
       assert.equal(await cel.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()), (await cel.evaluate(() => document.documentElement.dataset.theme)) === "dark" ? "#3987e5" : "#2a78d6", "el azul sigue disponible");
       await cuenta.locator('[role=radio][aria-label="Turquesa Kaptus"]').click();
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.acento), "kaptus");
-      // Diseño de las pantallas del paciente: nuevo por defecto, y el clásico sigue disponible.
+      // Diseño de las pantallas: solo el nuevo, sin nada que elegir.
       assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
-      await cuenta.locator('[role=radio]:has-text("Clásico")').click();
-      assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "clasico");
-      await cuenta.locator('[role=radio]:has-text("Nuevo")').click();
-      assert.equal(await cel.evaluate(() => document.documentElement.dataset.estilo), "nuevo");
+      assert.equal(await cuenta.locator('[aria-label="Diseño de las pantallas"]').count(), 0, "ya no se ofrece el clásico");
       await cuenta.locator('button[aria-label="Cerrar"]').click();
       await cuenta.waitFor({ state: "detached" });
       // Vuelve a donde estaba el recorrido: el control de la cama 1.

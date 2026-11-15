@@ -936,6 +936,9 @@ async function esperarServidor() {
       assert.equal(await hoja.evaluate((d) => d.closest(".cel-cuerpo") === null && d.parentElement.classList.contains("app-cel")), true, "la ficha cuelga de .app-cel, no de la lista");
       const signos = await hoja.locator(".fa-signos .fa-dato span").allTextContents();
       for (const e of ["FC", "PA", "Glasgow", "SpO₂", "FiO₂"]) assert.ok(signos.some((t) => t.startsWith(e)), "falta " + e + ": " + signos.join("|"));
+      const filas = await hoja.locator(".fa-campos li span").allTextContents();
+      assert.ok(!filas.includes("SAS"), "el SAS va arriba, no se repite: " + filas.join("|"));
+      assert.equal(await hoja.locator(".fa-campos").textContent().then((t) => /en blanco/.test(t)), false, "sin casillas vacías");
       const desborde = await hoja.evaluate((d) => [d.scrollHeight - d.clientHeight, d.querySelector(".fa-campos").scrollHeight - d.querySelector(".fa-campos").clientHeight]);
       assert.ok(desborde[0] <= 1 && desborde[1] <= 1, "sin scroll: " + desborde.join(","));
       if (process.env.FOTO_FICHA) { await cel.waitForTimeout(400); await cel.screenshot({ path: process.env.FOTO_FICHA }); }

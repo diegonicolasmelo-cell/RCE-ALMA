@@ -1,9 +1,10 @@
 import { Table2, X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, camposAlma, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
+import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
 import type { Control, Episodio, EventoClinico } from "@core/index";
 import { SabanaVista } from "../estacion/SabanaVista";
+import { ventilacionDeLaHoja } from "../estacion/sabana";
 import { iniciales } from "../estacion/util";
 
 const n = (v: number | null | undefined, u = ""): string => (v === null || v === undefined ? "—" : `${v}${u}`);
@@ -25,9 +26,9 @@ function signosAlma(c: Control, pbw: number): readonly { etiqueta: string; valor
 
 /**
  * Un control en una sola pantalla, para pasarlo a ALMA desde el celular: arriba los signos que
- * se copian (FC, PA, Glasgow, SAS, SpO2 y FiO2) y abajo los campos de ventilacion mecanica en el
- * orden del formulario de ALMA, segun el modo, para mirarlos y tipearlos a mano en ALMA. Tocar un
- * campo lo tacha (solo en esta pantalla).
+ * se copian (FC, PA, Glasgow, SAS, SpO2 y FiO2) y abajo la ventilacion en el orden de la hoja,
+ * solo con lo anotado, para mirarlo y tipearlo a mano en ALMA. Tocar un campo lo tacha (solo en
+ * esta pantalla).
  * La sabana completa queda a un toque.
  */
 /** Lo que la ficha necesita de cada paciente. */
@@ -57,7 +58,8 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const clase = claseModoAlma(c.ventilacion.modalidad);
   // Fuera de VM (CNAF, VNI, O2) el formulario de ALMA no aplica: se muestra solo lo anotado.
-  const campos = camposAlma(c, pbw, ep.equipos).filter((f) => clase !== null || (f.valor !== null && f.valor !== "—"));
+  // La ventilacion en el orden de la hoja (las mismas filas de la sabana), solo lo que tiene dato.
+  const campos = ventilacionDeLaHoja(c, pbw, ep.monitoreo);
   const evento = c.eventoId ? eventos.find((e) => e.id === c.eventoId) : undefined;
   const ir = (d: number): void => {
     setIdx((i) => Math.min(camas.length - 1, Math.max(0, i + d)));
@@ -114,13 +116,13 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
           </div>
         ))}
       </div>
-      <div className="fa-t">{clase ? `Ventilación mecánica · formulario de ALMA` : `${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? "Soporte"} · no va al formulario de VM`}</div>
-      <ul className="fa-campos" aria-label="Campos para ALMA">
+      <div className="fa-t">{clase ? "Ventilación mecánica · orden de la hoja" : `${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? "Soporte"} · orden de la hoja`}</div>
+      <ul className="fa-campos" aria-label="Ventilación">
         {campos.map((f, i) => (
-          <li key={f.etiqueta} className={`${hechos.has(i) ? "hecho" : ""}${f.valor === null ? " blanco" : ""}${f.etiqueta === "Comentarios" ? " com" : ""}`}>
+          <li key={f.etiqueta} className={hechos.has(i) ? "hecho" : ""}>
             <button type="button" aria-pressed={hechos.has(i)} onClick={() => tachar(i)}>
               <span>{f.etiqueta}</span>
-              <b>{f.valor ?? "en blanco"}</b>
+              <b>{f.valor}</b>
             </button>
           </li>
         ))}

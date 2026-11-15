@@ -4,6 +4,7 @@
  */
 
 import {
+  CAMPOS_POR_MODALIDAD,
   OPCIONES_DEGLUCION,
   etiquetaAspecto,
   ETIQUETA_MODALIDAD,
@@ -227,4 +228,27 @@ export function otrosEventos(eventos: readonly EventoClinico[], rango: RangoSaba
 /** Las evaluaciones del episodio, de la mas nueva a la mas antigua. */
 export function evaluacionesDe(eventos: readonly EventoClinico[]): readonly EventoClinico[] {
   return eventos.filter((e) => e.tipo === "EVALUACION_PUNTUAL").sort((a, b) => b.registradoEn.localeCompare(a.registradoEn));
+}
+
+// ---------------------------------------------------------------------------
+// La ventilacion de un control en el orden de la hoja (control en grande del celular)
+// ---------------------------------------------------------------------------
+
+/** Una fila sin dato en la sabana se ve como «--», «—» o «-- / --»: en la ficha no se muestra. */
+const sinDato = (t: string): boolean => t.replace(/--|—|\(pico\)|[\s/()]/g, "") === "";
+
+/** Nombre de la presion y la PEEP como se llaman en ese modo (P. control, P. soporte, IPAP, EPAP, CPAP). */
+function etiquetaEnModo(etiqueta: string, c: Control): string {
+  const def = (campo: "presion" | "peep"): string | undefined => CAMPOS_POR_MODALIDAD[c.ventilacion.modalidad].find((d) => d.campo === campo)?.etiqueta;
+  if (etiqueta.startsWith("P. sop")) return def("presion") ?? etiqueta;
+  if (etiqueta.startsWith("PEEP")) return def("peep") ?? etiqueta;
+  return etiqueta;
+}
+
+/** Las filas de «Terapia ventilatoria» de la sabana para este control, sin las vacias. */
+export function ventilacionDeLaHoja(c: Control, pbw: number, monitoreo: MonitoreoEpisodio): readonly { etiqueta: string; valor: string }[] {
+  return filasSabana(pbw, monitoreo)
+    .filter((f) => f.grupo === "Terapia ventilatoria")
+    .map((f) => ({ etiqueta: etiquetaEnModo(f.etiqueta, c), valor: f.celda(c).texto }))
+    .filter((f) => !sinDato(f.valor));
 }

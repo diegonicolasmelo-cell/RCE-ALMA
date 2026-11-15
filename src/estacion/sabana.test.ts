@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnasSabana, dvaCorta, filasSabana, otrosEventos, sedacionCorta } from "./sabana";
+import { columnasSabana, dvaCorta, filasSabana, otrosEventos, sedacionCorta, ventilacionDeLaHoja } from "./sabana";
 import { unControl, unEvento, unaVentilacion } from "@core/fixtures";
 
 const SIN_MONITOREO = { capnografia: false, pic: false, dve: false };
@@ -134,5 +134,23 @@ describe("porcentajes en la sabana", () => {
     expect(spo2.celda(c).texto).toBe("96 %");
     expect(fio2.celda({ ...c, ventilacion: { ...c.ventilacion, fio2: 40 } }).texto).toBe("40 %");
     expect(spo2.celda({ ...c, spo2: null }).texto).toBe("--");
+  });
+});
+
+describe("control en grande: la ventilación en el orden de la hoja", () => {
+  const SIN = { capnografia: false, pic: false, dve: false };
+  it("separa P. media y meseta, sin el SAS y sin filas vacías", () => {
+    const filas = ventilacionDeLaHoja(unControl({ ventilacion: unaVentilacion({ temperatura: null }) }), 67.8, SIN);
+    const et = filas.map((f) => f.etiqueta);
+    expect(et).not.toContain("SAS");
+    expect(et.indexOf("P. media")).toBeGreaterThan(-1);
+    expect(et.indexOf("P. plateau")).toBeGreaterThan(et.indexOf("P. media"));
+    expect(filas.every((f) => !/^(--|—)$/.test(f.valor))).toBe(true);
+    expect(et).not.toContain("Temperatura (CNAF)");
+  });
+  it("la presión y la PEEP con el nombre del modo", () => {
+    const pcv = ventilacionDeLaHoja(unControl({ ventilacion: unaVentilacion({ modalidad: "PCV", presion: 12, vtProgramado: null }) }), 67.8, SIN).map((f) => f.etiqueta);
+    expect(pcv).toContain("P. control");
+    expect(pcv).toContain("PEEP");
   });
 });

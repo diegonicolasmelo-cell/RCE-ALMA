@@ -98,6 +98,16 @@ export class Repositorio {
     });
   }
 
+  /** Deshace un alta reciente: el episodio vuelve a estar activo, sin egreso (la Estacion valida el plazo). */
+  async deshacerAlta(episodioId: string): Promise<void> {
+    await this.db.transaction("rw", this.tablas(), async () => {
+      const ep = await this.db.episodios.get(episodioId);
+      if (!ep || ep.activo) return;
+      const { egreso: _egreso, ...sinEgreso } = ep;
+      await this.sync.encolar([await this.poner({ ...sinEgreso, activo: true })]);
+    });
+  }
+
   // ---- lectura ----
 
   async episodiosActivos(): Promise<readonly Episodio[]> {

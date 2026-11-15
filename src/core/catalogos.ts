@@ -60,6 +60,7 @@ export const ETIQUETA_MODALIDAD: Readonly<Record<Modalidad, string>> = {
   PCV: "ACPC",
   CPAP_PS: "CPAP+PS",
   TUBO_T: "Tubo T / HME",
+  VALVULA_FONACION: "Válvula de fonación",
   CNAF_TQT: "Alto flujo por TQT",
   O2_NARICERA: "Naricera",
   O2_MASCARILLA: "Mascarilla simple",
@@ -83,6 +84,7 @@ export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
   PCV: "VENTILACION_MECANICA",
   CPAP_PS: "VENTILACION_MECANICA",
   TUBO_T: "DESCONEXION",
+  VALVULA_FONACION: "DESCONEXION",
   CNAF_TQT: "DESCONEXION",
   O2_NARICERA: "OXIGENOTERAPIA",
   O2_MASCARILLA: "OXIGENOTERAPIA",
@@ -102,7 +104,7 @@ export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
 export const MODALIDADES_POR_VIA: Readonly<Record<ViaAerea, readonly Modalidad[]>> = {
   NATURAL: ["O2_NARICERA", "O2_MASCARILLA", "O2_VENTURI", "O2_RESERVORIO", "CNAF", "VNI_CPAP", "VNI_ST"],
   TET: ["ACVC", "PCV", "CPAP_PS", "TUBO_T"],
-  TQT: ["ACVC", "PCV", "CPAP_PS", "TUBO_T", "CNAF_TQT", "VNI_ST", "AVAPS"]
+  TQT: ["ACVC", "PCV", "CPAP_PS", "TUBO_T", "VALVULA_FONACION", "CNAF_TQT", "VNI_ST", "AVAPS"]
 };
 
 export function modalidadPermitida(m: Modalidad, via: ViaAerea): boolean {
@@ -218,6 +220,8 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
   CNAF: [p("flujo", "Flujo", "L/min"), p("temperatura", "Temperatura", "°C"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
   CNAF_TQT: [p("flujo", "Flujo", "L/min"), p("temperatura", "Temperatura", "°C"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
   TUBO_T: [p("flujo", "Flujo O₂", "L/min"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
+  // Valvula de fonacion: solo con TQT; el O2 adicional (L/min) es opcional.
+  VALVULA_FONACION: [p("flujo", "O₂ adicional", "L/min"), o("frTotal", "FR", "rpm")],
   O2_NARICERA: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
   O2_MASCARILLA: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
   O2_RESERVORIO: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],

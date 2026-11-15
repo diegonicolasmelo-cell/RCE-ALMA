@@ -8,12 +8,23 @@ import { useClaveUnidad } from "./claveUnidad";
 import { useIdentidadesEnMemoria } from "./identidades";
 import { usePurgasPendientes } from "./purga";
 import { useDatosUnidad } from "./datos";
+import { Archivados } from "./Archivados";
+import { Entrega } from "./Entrega";
+import { Estadistica } from "./Estadistica";
 import { Estado } from "./Estado";
+import { Indicadores } from "./Indicadores";
 import { ParaAlma } from "./ParaAlma";
 import { Rem28 } from "./Rem28";
 import { Tablero } from "./Tablero";
 
-type Vista = "tablero" | "alma" | "rem" | "estado";
+type Vista = "tablero" | "entrega" | "alma" | "estadistica" | "indicadores" | "rem" | "archivados" | "estado";
+
+/** Tres grupos: lo de cada turno adelante, las cifras al medio y lo ocasional atras. */
+const GRUPOS: readonly { readonly titulo: string; readonly vistas: readonly (readonly [Vista, string])[] }[] = [
+  { titulo: "Turno", vistas: [["tablero", "Tablero"], ["entrega", "Entrega"], ["alma", "Para ALMA"]] },
+  { titulo: "Cifras", vistas: [["estadistica", "Estadística"], ["indicadores", "Indicadores"], ["rem", "REM 28"]] },
+  { titulo: "Archivo", vistas: [["archivados", "Archivados"], ["estado", "Estado"]] }
+];
 
 /**
  * Trae las referencias cifradas, las descifra con la clave de este PC y las refresca
@@ -63,14 +74,25 @@ export function Estacion() {
         )}
       </div>
 
-      <div className="tabs" role="tablist">
-        {([["tablero", "Tablero"], ["alma", "Para ALMA"], ["rem", "REM 28"], ["estado", "Estado"]] as const).map(([k, t]) => (
-          <button key={k} type="button" role="tab" className="tab" aria-selected={vista === k} onClick={() => setVista(k)}>{t}</button>
+      <nav className="tabs grupos-tabs" aria-label="Secciones de la Estación">
+        {GRUPOS.map((g) => (
+          <div key={g.titulo} className="grupo-tabs" role="tablist" aria-label={g.titulo}>
+            <span className="grupo-titulo">{g.titulo}</span>
+            <div className="grupo-botones">
+              {g.vistas.map(([k, t]) => (
+                <button key={k} type="button" role="tab" className="tab" aria-selected={vista === k} onClick={() => setVista(k)}>{t}</button>
+              ))}
+            </div>
+          </div>
         ))}
-      </div>
+      </nav>
 
       <main>
         {vista === "tablero" && <Tablero datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
+        {vista === "entrega" && <Entrega datos={datos} ahora={ahora} />}
+        {vista === "estadistica" && <Estadistica datos={datos} ahora={ahora} />}
+        {vista === "indicadores" && <Indicadores datos={datos} ahora={ahora} />}
+        {vista === "archivados" && <Archivados datos={datos} ahora={ahora} />}
         {vista === "alma" && <ParaAlma datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
         {vista === "rem" && <Rem28 datos={datos} ahora={ahora} />}
         {vista === "estado" && <Estado datos={datos} />}

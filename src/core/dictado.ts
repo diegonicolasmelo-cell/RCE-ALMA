@@ -226,6 +226,7 @@ const MODOS = porLargo<Modo>([
   ["ventilacion no invasiva", "VNI"], ["vni", "VNI"], ["bni", "VNI"], ["avaps", "AVAPS"], ["a vaps", "AVAPS"],
   ["canula nasal de alto flujo", "CNAF"], ["alto flujo", "CNAF"], ["cnaf", "CNAF"], ["cenaf", "CNAF"], ["c n a f", "CNAF"], ["cetaf", "CNAF"], ["naf", "CNAF"],
   ["tubo t", "TUBO_T"], ["tubo en t", "TUBO_T"],
+  ["valvula de fonacion", "VALVULA_FONACION"], ["valvula fonatoria", "VALVULA_FONACION"], ["valvula", "VALVULA_FONACION"],
   ["naricera", "O2_NARICERA"], ["nariceras", "O2_NARICERA"], ["canula nasal", "O2_NARICERA"],
   ["mascarilla multivent", "O2_VENTURI"], ["multivent", "O2_VENTURI"], ["multi vent", "O2_VENTURI"], ["multiven", "O2_VENTURI"], ["venturi", "O2_VENTURI"],
   ["mascarilla con reservorio", "O2_RESERVORIO"], ["mascarilla de reservorio", "O2_RESERVORIO"], ["reservorio", "O2_RESERVORIO"], ["mascarilla simple", "O2_MASCARILLA"],

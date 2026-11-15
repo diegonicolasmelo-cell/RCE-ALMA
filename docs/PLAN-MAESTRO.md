@@ -646,3 +646,20 @@ montaba ahí adentro. Falta solo la versión de iOS. **Sigue sin programarse** h
 **Preguntas que quedaban:** ① ¿Se quedó pegado al abrirla, o al intentar cerrarla o cambiar de
 pestaña? ② ¿Desde Controles, desde la tarjeta de la cama, o las dos? ③ ¿En Safari o en la app instalada?
 ④ ¿Qué versión de iOS tenía el teléfono (Ajustes → General → Información)?
+
+## 18. Estación en tres grupos (15-nov-2026, opción B aprobada por Diego)
+
+**Turno:** Tablero · Entrega · Para ALMA · **Cifras:** Estadística · Indicadores · REM 28 · **Archivo:** Archivados · Estado.
+Un solo motor (`src/core/estadistica.ts`) para Estadística, Indicadores y Archivados; el registro no cambia.
+
+- **Estadística** (feedback de lo hecho, por cama): KTR = controles, KTM / IMT = terapia física realizada (o su motivo),
+  modo ventilatorio, APK, eventos con la PVE incluida y quién firmó. Periodo turno/turno anterior/hoy/7 días/mes y filtro por kinesiólogo.
+- **Indicadores**: definiciones del tablero del RCE (Manuel). Fracaso = reintubación ≤ 48 h tras extubación programada
+  (meta 15 %, fijada por Diego); autoextubaciones /100 días-VM (meta 1–2); fuera de protocolo (meta < 25 %); PVE /100 días-pac.
+  Día-VM = día con un control en VMI. **Pendientes:** cargar el histórico mensual del RCE (Diego exporta
+  `INDICADORES_HISTORICO` en CSV) y los reingresos por **huella del RUT** en el PC (aprobada; no identifica al paciente).
+- **Entrega**: ficha por cama armada con lo registrado (cómo queda · eventos del turno · atención) + pendiente editable,
+  impresión en B/N y «Guardar como entregada» (queda en ese PC).
+- **Archivados**: egresados sin nombre ni RUT, con sábana completa; **deshacer alta** dentro de 24 h y con la cama libre.
+- **Válvula de fonación**: modo nuevo solo con TQT, O₂ adicional en L/min; cuenta turnos con válvula. **Sin cuff** (decisión de Diego).
+- **RUT fuera del repositorio**: pendiente de confirmación de Diego para reescribir el historial.

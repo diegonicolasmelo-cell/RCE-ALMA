@@ -1537,6 +1537,46 @@ async function esperarServidor() {
       assert.equal(await cel.locator('article[aria-label="Cama UCI-09"]:not(.cama-sin)').count(), 0, "el paciente sale de la lista");
     });
 
+    await prueba("Estación en tres grupos: Entrega, Estadística, Indicadores y Archivados (deshacer alta)", async () => {
+      await pc.waitForTimeout(800);
+      const grupos = await pc.locator(".grupos-tabs .grupo-titulo").allTextContents();
+      assert.deepEqual(grupos, ["Turno", "Cifras", "Archivo"]);
+      const foto = async (n) => { if (process.env.FOTO_EST) { await pc.waitForTimeout(300); await pc.screenshot({ path: `${process.env.FOTO_EST}-${n}.png`, fullPage: true }); } };
+      // Entrega: la ficha de cada cama se arma con lo registrado; el pendiente se guarda.
+      await pc.click('[role=tab]:text-is("Entrega")');
+      await pc.waitForSelector(".ent-ficha");
+      assert.ok(await pc.locator(".ent-ficha").count() > 0);
+      assert.match(await pc.textContent(".ent-ficha"), /Cómo queda[\s\S]*Eventos del turno[\s\S]*Atención/);
+      await pc.locator(".ent-ficha textarea").first().fill("Vigilar trabajo respiratorio.");
+      await pc.click('button:has-text("Guardar como entregada")');
+      await pc.waitForSelector('.pill:has-text("Entregada a las")');
+      await foto("entrega");
+      // Estadística: KTR, KTM / IMT, modo ventilatorio y eventos por cama.
+      await pc.click('[role=tab]:text-is("Estadística")');
+      await pc.click('[aria-label="Periodo"] button:text-is("Este mes")');
+      const cols = await pc.locator(".est-tabla thead th").allTextContents();
+      assert.deepEqual(cols, ["Cama", "Modo ventilatorio", "KTR", "KTM / IMT", "APK", "Eventos (PVE incluida)", "Firmó"]);
+      assert.ok(await pc.locator(".est-tabla tbody tr").count() > 0, "hay camas con registros este mes");
+      await foto("estadistica");
+      // Indicadores: los cuatro principales con su meta.
+      await pc.click('[role=tab]:text-is("Indicadores")');
+      const kpis = await pc.locator(".ind-kpi .t").allTextContents();
+      assert.deepEqual(kpis, ["Fracaso de extubación (≤ 48 h)", "Autoextubaciones", "Extubación fuera de protocolo", "PVE realizadas"]);
+      assert.match(await pc.textContent(".ind-kpis"), /meta < 15 %/);
+      await foto("indicadores");
+      // Archivados: la cama 9 recién egresada se puede deshacer.
+      await pc.click('[role=tab]:text-is("Archivados")');
+      const fila9 = pc.locator('.est-tabla tbody tr:has-text("Cama 9")');
+      await fila9.waitFor();
+      await fila9.locator('button:has-text("Ver sábana")').click();
+      await pc.waitForSelector('[aria-label="Sábana del episodio"]');
+      await foto("archivados");
+      await fila9.locator('button:has-text("Deshacer alta")').click();
+      await fila9.locator('button:has-text("Sí, deshacer")').click();
+      await pc.waitForSelector('.est-tabla tbody tr:has-text("Cama 9")', { state: "detached" });
+      await pc.click('[role=tab]:text-is("Tablero")');
+    });
+
     await prueba("sin errores en la consola durante todo el recorrido", async () => {
       assert.deepEqual(errores, []);
     });

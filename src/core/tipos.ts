@@ -39,6 +39,8 @@ export const MODALIDADES = [
   "PCV",
   "CPAP_PS",
   "TUBO_T",
+  /** Valvula de fonacion sobre la TQT (desconexion del ventilador), con O2 adicional en L/min. */
+  "VALVULA_FONACION",
   "CNAF_TQT",
   "O2_NARICERA",
   "O2_MASCARILLA",

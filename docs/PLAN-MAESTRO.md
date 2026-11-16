@@ -663,3 +663,26 @@ Un solo motor (`src/core/estadistica.ts`) para Estadística, Indicadores y Archi
 - **Archivados**: egresados sin nombre ni RUT, con sábana completa; **deshacer alta** dentro de 24 h y con la cama libre.
 - **Válvula de fonación**: modo nuevo solo con TQT, O₂ adicional en L/min; cuenta turnos con válvula. **Sin cuff** (decisión de Diego).
 - **RUT fuera del repositorio**: pendiente de confirmación de Diego para reescribir el historial.
+
+## 19. Paisaje Kaptus con logros secretos (GUARDADO para después, 16-nov-2026)
+
+Reemplaza a las «medallas» y al «museo con vitrinas». Diego aprobó la idea y pidió dejarla para programarla después.
+
+- **Paisaje único** de la Región de Coquimbo, de izquierda a derecha: costa de Punta de Choros con su isla y rocas, faro de
+  La Serena, bosque de niebla de Fray Jorge, valle y cordillera. Cada personaje tiene su lugar fijo; los que faltan son
+  huecos punteados con «?». Al tocar uno se ve su historia (el secreto descubierto, o quién lo regaló y su mensaje).
+- **16 personajes chibi**: degú, cururo, zorro culpeo, guanaco, chinchilla, pelícano, chungungo, pingüino de Humboldt,
+  delfín nariz de botella, chuncho, quisco, añañuca, *Copiapoa coquimbana*, papayo de La Serena, olivillo de Fray Jorge y
+  el desierto florido. Ojo: la *Lophophora* (peyote) es mexicana; no va.
+- **Logros secretos**: nadie sabe cómo se gana un personaje hasta descubrirlo; solo quien lo ganó conoce el secreto. La
+  unidad ve una franja con «Chuncho · 2 personas» sin decir cómo. Ejemplo de Diego: «el noctámbulo» = control registrado
+  **en vivo** entre 03:00 y 05:00 (nunca premiar registrar tarde ni registrar de más).
+- **Repetidos**: se ponen junto al otro en el paisaje o se **regalan a un colega con un mensaje**. El regalo lleva el
+  personaje, nunca el secreto. **Solo por la app, sin QR** (Diego, 16-nov).
+- **Logro de la unidad**: cuando entre todos sumen 10 secretos distintos descubiertos, florece el desierto en todos los paisajes.
+- Sin datos de pacientes en ninguna ficha; personal, sin ranking.
+- Mockups: museo https://claude.ai/artifact/NtJiDCax2hgeB1CRdZ4v2v · paisaje https://claude.ai/artifact/3Lq8HyLyA9ZQg5a9H1tYJ2
+  (la tabla de 15 secretos del mockup es un borrador para que Diego la ajuste).
+- **Dibujos**: Diego los genera con el prompt maestro (estilo fijo + una línea por especie + el paisaje), en PNG con fondo
+  transparente y sin suelo; se limpian aquí si vienen con cuadriculado o piso. Mientras tanto sirven los SVG del mockup.
+- Abierto: ¿un secreto se gana varias veces? ¿la franja muestra nombres o solo cuántos?

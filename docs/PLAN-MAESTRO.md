@@ -702,3 +702,7 @@ se extrae el dato, se confirma y se descarta. Las infusiones siguen manuales.
 - **Orden**: primero el monitor (un solo molde) para medir la precisión real; después los ventiladores, uno por uno.
 - **Falta de Diego**: el modelo exacto del monitor y 5 a 10 fotos por equipo, sin nombre ni RUT a la vista (equipo en modo
   demostración o en espera, o el nombre tapado).
+- **Decisiones de Diego (16-nov)**: dos botones (monitor y ventilador). Del monitor: FC, PA, SpO₂ y FR; **EtCO₂ y PIC solo
+  cuando el paciente los tiene** (Kaptus ya lo sabe por el monitoreo del episodio: capnografía y PIC) y la foto los muestra.
+  Un número dudoso **solo se marca en ámbar**, no bloquea el botón.
+- Mockup: https://claude.ai/artifact/KPaEWPiE7SkrwZXwYooaGS

@@ -302,6 +302,8 @@ export interface Episodio {
   readonly transcritoAlma: boolean;
   readonly horaTranscripcion: HoraHHMM | null;
   readonly pendienteEntrega: string;
+  /** Fase clinica en texto libre («En proceso de weaning»): abre la evolucion. Se cambia cuando cambia la fase. */
+  readonly faseClinica?: string;
   readonly activo: boolean;
   /** Motivo y momento del egreso (REM 28, B.1). Solo en episodios dados de alta desde la estacion. */
   readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string; readonly destino?: string };

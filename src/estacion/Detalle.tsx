@@ -104,6 +104,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
           </div>
           <div className="small ink2">Equipos: {describirEquipos(ep.equipos)}</div>
           <FechaIngreso ep={ep} eventos={eventos} ahora={ahora} />
+          <FaseClinica key={ep.id} ep={ep} />
           {!identidad && <div className="mt"><CompletarIdentidad ep={ep} /></div>}
           <div className="small ink2">
             APK · turno anterior: {apkPrevia ? `${apkPrevia.resultado === "CUMPLE" ? "firmada" : "no cumple"} ${apkPrevia.hora} (${nombreProfesional(apkPrevia.rutAutor)})` : "sin registro"} · este turno:{" "}
@@ -174,6 +175,26 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
         )}
         <p className="small muted mt">Al dar de alta se borra el nombre y el RUT. Lo clínico queda sin identidad para las estadísticas.</p>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Fase clinica en texto libre («En proceso de weaning»). Abre la evolucion para ALMA; se cambia
+ * cuando cambia la fase. Se guarda al salir del campo.
+ */
+function FaseClinica({ ep }: { ep: Episodio }) {
+  const { repo } = useServicios();
+  const [texto, setTexto] = useState(ep.faseClinica ?? "");
+  const guardar = (): void => {
+    const t = texto.trim();
+    if (t !== (ep.faseClinica ?? "")) void repo.guardarEpisodio({ ...ep, faseClinica: t });
+  };
+  return (
+    <div className="row small" style={{ gap: 6, alignItems: "center", marginTop: 4 }}>
+      <label htmlFor="fase-clinica" className="ink2">Fase clínica</label>
+      <input id="fase-clinica" value={texto} placeholder="p. ej. En proceso de weaning" style={{ flex: 1, minWidth: 220, textAlign: "left" }}
+        onChange={(e) => setTexto(e.target.value)} onBlur={guardar} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
     </div>
   );
 }

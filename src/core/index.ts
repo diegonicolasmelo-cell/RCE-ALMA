@@ -21,6 +21,7 @@ export * from "./rem28";
 export * from "./estadistica";
 export * from "./rem-mensual";
 export * from "./nota-alma";
+export * from "./texto-evolucion";
 export * from "./riesgo";
 export * from "./sanitizar";
 export * from "./sinapse";

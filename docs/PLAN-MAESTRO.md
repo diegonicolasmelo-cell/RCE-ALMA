@@ -731,3 +731,9 @@ igual que en BUDA); se mantienen los dos modos, **último control** y **resumen 
 - Abierto: ¿«HDN estable» sin dato de estable/inestable? ¿día de estadía 6 o 7? ¿agregar la fase clínica? ¿encabezado?
 - Pasos siguientes: 2 motor por bloques con pruebas de pacientes fijos · 3 narrar eventos con «queda con» · 4 separar de la
   estadística · 5 completar datos faltantes (fase clínica, gases).
+- **Decisiones de Diego (16-nov, tras el paso 1)**: «HDN s/DVA» sin estable/inestable · el día del ingreso es el **día 1**
+  de estadía · **fase clínica en texto libre** en el episodio (se escribe en la ficha del paciente en el PC) · **sin
+  encabezado** · la auscultación sigue en texto libre (Diego tiene dudas; no se tocó).
+- **Paso 2 PROGRAMADO (16-nov)**: `src/core/texto-evolucion.ts` (un solo motor, por bloques) reemplaza al texto viejo de
+  `nota-alma.ts`; `componerNotaAlma` lo llama. El resumen es solo del turno del último control. Corrección: el «11T» del
+  Glasgow con tubo era correcto (el RCE cuenta el verbal como 1T); solo sobraba el «/11T».

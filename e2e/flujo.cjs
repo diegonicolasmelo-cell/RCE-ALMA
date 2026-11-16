@@ -947,15 +947,20 @@ async function esperarServidor() {
       const desborde = await hoja.evaluate((d) => [d.scrollHeight - d.clientHeight, d.querySelector(".fa-campos").scrollHeight - d.querySelector(".fa-campos").clientHeight]);
       assert.ok(desborde[0] <= 1 && desborde[1] <= 1, "sin scroll: " + desborde.join(","));
       if (process.env.FOTO_FICHA) { await cel.waitForTimeout(400); await cel.screenshot({ path: process.env.FOTO_FICHA }); }
-      // A la cama siguiente, directo desde el control.
-      const sig = hoja.locator('.fa-pie button:has-text("Siguiente")');
-      const destino = (await sig.textContent()).replace(/^Siguiente: | ›$/g, "");
-      await sig.click();
-      await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), destino);
       assert.equal(await hoja.locator(".fa-cab button").count(), 1, "arriba solo la X: moverse entre camas va abajo");
       assert.equal(await hoja.locator('button:has-text("Ver sábana")').count(), 0, "la sábana va solo en las pestañas");
-      await hoja.locator('.fa-pie button[aria-label^="Cama anterior"]').click();
-      await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), cama);
+      // A la cama siguiente, directo desde el control. Solo hay «Siguiente» con dos camas o mas
+      // controladas en el turno en curso: recien cambiado el turno (8:00 o 20:00) puede haber una.
+      const sig = hoja.locator('.fa-pie button:has-text("Siguiente")');
+      if (camasLista.length > 1) {
+        const destino = (await sig.textContent()).replace(/^Siguiente: | ›$/g, "");
+        await sig.click();
+        await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), destino);
+        await hoja.locator('.fa-pie button[aria-label^="Cama anterior"]').click();
+        await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), cama);
+      } else {
+        assert.equal(await sig.count(), 0, "con una sola cama controlada no se ofrece avanzar");
+      }
       // La sábana sigue a un toque, con el control destacado.
       await hoja.locator('[role=tab]:has-text("Sábana")').click();
       const sab = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
@@ -1261,6 +1266,11 @@ async function esperarServidor() {
     });
 
     await prueba("Para ALMA: paso a paso con Modelo Ventilador, y copiar deja la cama Transcrita", async () => {
+      // La fase clinica se escribe en la ficha del paciente y abre la evolucion.
+      await pc.waitForSelector("#fase-clinica");
+      await pc.fill("#fase-clinica", "En proceso de weaning");
+      await pc.press("#fase-clinica", "Enter");
+      await pc.waitForTimeout(400);
       await pc.click('[role=tab]:has-text("Para ALMA")');
       await pc.waitForSelector(".alma");
       const campos = (await pc.locator(".flist li span:first-child").allTextContents()).map((s) => s.trim());
@@ -1269,7 +1279,10 @@ async function esperarServidor() {
       await pc.click('button:has-text("Copiar evolución para ALMA")');
       await pc.waitForTimeout(500);
       assert.match(await pc.locator(".alma .pill").last().textContent(), /Transcrito/);
-      assert.match(await pc.evaluate(() => navigator.clipboard.readText()), /EVOLUCIÓN KINESIOLOGÍA UPC/);
+      const evo = await pc.evaluate(() => navigator.clipboard.readText());
+      assert.match(evo, /^Paciente en día \d+ de estadía en UCI\./, "prosa del RCE: abre con el día de estadía");
+      assert.match(evo, /\nEn proceso de weaning\.\n/, "la fase clínica va en la segunda línea");
+      assert.doesNotMatch(evo, /KINESIOLOG|Klgo\.|--/, "sin encabezado, sin firma y sin vacíos");
     });
 
     await prueba("una cama libre aparece en la estacion; ingresar valida el RUT y la ocupa", async () => {

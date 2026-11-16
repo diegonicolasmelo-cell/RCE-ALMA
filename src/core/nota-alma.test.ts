@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { camposAlma, claseModoAlma, componerNotaAlma } from "./nota-alma";
+import { coma, diaDeEstadia, minusculaInicial, oracion } from "./texto-evolucion";
 import type { EntradaNota } from "./nota-alma";
 import { calcularPbw } from "./fisiologia";
-import { firmarApkCumple } from "./apk";
 import { unControl, unEpisodio, unEvento, unaVentilacion } from "./fixtures";
 import type { EventoClinico } from "./tipos";
 
@@ -13,159 +13,196 @@ function entrada(over: Partial<EntradaNota> = {}): EntradaNota {
 }
 const nota = (over: Partial<EntradaNota> = {}) => componerNotaAlma(entrada(over));
 
-describe("nota de turno completo", () => {
-  it("encabeza con la cama y nunca con el nombre del paciente", () => {
-    const n = nota();
-    expect(n).toContain("UCI-01");
-    expect(n).toContain("EVOLUCIÓN KINESIOLOGÍA UPC");
-    expect(n).not.toContain("Soto");
+describe("texto en la prosa del RCE: forma", () => {
+  it("sin encabezado, sin firma, sin nombre y sin «--» ni «no consignado»", () => {
+    for (const modo of ["TURNO_COMPLETO", "ULTIMA_ATENCION"] as const) {
+      const n = nota({ modo, controles: [unControl({ spo2: null, fc: null })] });
+      expect(n).not.toMatch(/KINESIOLOG|Klgo\.|Profesional|--|no consignado|Soto/);
+    }
   });
 
-  it("incluye la talla con su origen y el peso ideal", () => {
-    expect(nota()).toContain("talla 172 cm (estimada) | peso ideal 67.8 kg");
+  it("el día del ingreso es el día 1 de estadía", () => {
+    expect(diaDeEstadia(new Date(2026, 10, 10, 15).toISOString(), new Date(2026, 10, 16, 9))).toBe(7);
+    expect(diaDeEstadia(new Date(2026, 10, 16, 1).toISOString(), new Date(2026, 10, 16, 9))).toBe(1);
   });
 
-  it("hemodinamia con PAM calculada y el soporte cardiovascular", () => {
-    const n = nota({ controles: [unControl({ infusiones: { noradrenalina: { dosis: 0.08, escalon: null }, vasopresina: { dosis: 0.02, escalon: null } } })] });
-    expect(n).toContain("PAM 79 mmHg");
-    expect(n).toContain("Noradrenalina 0.08 mcg/kg/min + Vasopresina 0.02 UI/min");
+  it("abre con el día de estadía, el diagnóstico y la fase clínica escrita", () => {
+    const n = nota({ episodio: unEpisodio({ ingresadoEn: "2026-11-01T15:00:00.000Z", faseClinica: "En proceso de weaning" }), diagnostico: "Neumonía grave" });
+    expect(n.split("\n")[0]).toMatch(/^Paciente en día \d+ de estadía en UCI\. Dx: neumonía grave\.$/);
+    expect(n.split("\n")[1]).toBe("En proceso de weaning.");
+    expect(nota()).not.toContain("En proceso");
   });
 
-  it("describe la sedoanalgesia con dosis y escalón", () => {
-    expect(nota()).toContain("Fentanilo 1.2 mcg/kg/h (esc. 2)");
+  it("coma decimal y siglas intactas", () => {
+    expect(coma(13.71)).toBe("13,7");
+    expect(minusculaInicial("VNI con máscara")).toBe("VNI con máscara");
+    expect(minusculaInicial("Neumonía")).toBe("neumonía");
+    expect(oracion("hola. ")).toBe("Hola.");
   });
 
-  it("sin sedantes en curso informa estado de vigilia", () => {
-    const n = nota({ controles: [unControl({ infusiones: {}, sas: null, vigilia: "SOMNOLIENTO" })] });
-    expect(n).toContain("sin sedoanalgesia, estado de vigilia somnoliento");
-  });
-
-  it("informa la APK del turno y la producción", () => {
-    const apk = firmarApkCumple({ id: "a", episodioId: "ep-1", via: "TET", rutAutor: "x", siglas: "XX", ahora: new Date(2026, 10, 4, 15, 5) });
-    const n = nota({ apk: [apk], ahora: new Date(2026, 10, 4, 16, 0) });
-    expect(n).toContain("APK de este turno: firmada 15:05");
-    expect(n).toContain("Atenciones kinésicas (controles): 1");
-  });
-
-  it("avisa si no hay controles en vez de generar una nota vacía", () => {
-    expect(nota({ controles: [] })).toBe("[SIN CONTROLES REGISTRADOS EN EL TURNO PARA UCI-01]");
+  it("sin controles lo dice en vez de armar un texto vacío", () => {
+    expect(nota({ controles: [] })).toBe("Sin controles registrados.");
   });
 });
 
-describe("programado vs paciente, y resultantes por modalidad", () => {
-  it("ACVC: Vt programado y espirado con ml/kg, FR programada y total, volumen minuto, TI e I:E", () => {
-    const n = nota();
-    expect(n).toContain("Vt programado 430 ml (6.3 ml/kg PI)");
-    expect(n).toContain("Vt espirado 430 ml (6.3 ml/kg PI)");
-    expect(n).toContain("FR programada 18 / total 20 rpm");
-    expect(n).toContain("volumen minuto espirado 8.6 L/min");
-    expect(n).toContain("TI 1 s (I:E 1:2)");
+describe("conciencia y hemodinamia", () => {
+  it("sedoanalgesia con dosis y SAS; sin sedantes, la vigilia", () => {
+    expect(nota({ modo: "ULTIMA_ATENCION" })).toContain("Sedoanalgesia con fentanilo 1,2 mcg/kg/h, SAS 3.");
+    expect(nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ infusiones: {}, sas: null, vigilia: "SOMNOLIENTO" })] })).toContain("Sin sedoanalgesia, somnoliento.");
   });
 
-  it("el Tobin NO aparece en modalidades controladas", () => {
-    expect(nota()).not.toContain("Tobin");
+  it("GCS con tubo en T (verbal 1T) y sin tubo sobre 15; bajo sedación lo dice", () => {
+    expect(nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ glasgow: { ocular: 3, verbal: 1, motora: 5 } })] })).toContain("GCS 9T (O:3, V:1T, M:5) bajo sedación");
+    const natural = unControl({ viaAerea: "NATURAL", infusiones: {}, sas: null, vigilia: "VIGIL_ALERTA", glasgow: { ocular: 4, verbal: 5, motora: 6 } });
+    expect(nota({ modo: "ULTIMA_ATENCION", controles: [natural] })).toContain("GCS 15/15 (O:4, V:5, M:6).");
   });
 
-  it("el Tobin SÍ aparece en CPAP+PS", () => {
-    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", presion: 7, frProgramada: null, vtProgramado: null, flujo: null, ti: null, frTotal: 18, vtEspirado: 460 }) });
-    const n = nota({ controles: [c] });
+  it("HDN s/DVA, o c/DVA con las drogas; y la PAM calculada", () => {
+    expect(nota({ modo: "ULTIMA_ATENCION" })).toContain("HDN s/DVA. FC 96 lpm, PA 112/62 mmHg (PAM 79 mmHg).");
+    const n = nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ infusiones: { noradrenalina: { dosis: 0.08, escalon: null }, vasopresina: { dosis: 0.02, escalon: null } } })] });
+    expect(n).toContain("HDN c/DVA: noradrenalina 0,08 mcg/kg/min y vasopresina 0,02 UI/min.");
+  });
+
+  it("el resumen dice qué droga se suspendió en el turno", () => {
+    const c1 = unControl({ id: "a", infusiones: { noradrenalina: { dosis: 0.05, escalon: null } } });
+    const c2 = unControl({ id: "b", registradoEn: "2026-11-04T15:10:00.000Z", hora: "12:10", infusiones: {} });
+    expect(nota({ controles: [c1, c2] })).toContain("HDN s/DVA al cierre; se suspende noradrenalina durante el turno.");
+  });
+
+  it("neuromonitoreo con el PPC calculado y la DVE expandida", () => {
+    const n = nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ neuro: { etco2: 35, pic: 15, dveAlturaCmH2O: 12, dveAbierta: false } })] });
+    expect(n).toContain("Neuromonitoreo: PIC 15 mmHg (PPC 64 mmHg), EtCO₂ 35 mmHg, derivación ventricular externa (DVE) a 12 cmH₂O, cerrada.");
+  });
+});
+
+describe("soporte y parámetros por modalidad", () => {
+  it("ACVC: VAA, Vt programado con ml/kg, FR programada/total, VM, mecánica; sin Tobin", () => {
+    const n = nota({ modo: "ULTIMA_ATENCION" });
+    expect(n).toContain("VAA mediante TOT N° 8,0 a 22 cm de arcada dental, en VMI modo ACVC");
+    expect(n).toContain("Vt programado 430 ml (6,3 ml/kg PI)");
+    expect(n).toContain("FR 18/20 rpm");
+    expect(n).toContain("VM 8,6 L/min");
+    expect(n).toContain("P plateau 20 cmH₂O, DP 10 cmH₂O, Cest 43 ml/cmH₂O");
+    expect(n).not.toContain("Tobin");
+  });
+
+  it("CPAP+PS: PS e índice de Tobin, sin mecánica estática", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", presion: 7, frProgramada: null, vtProgramado: null, flujo: null, ti: null, frTotal: 18, vtEspirado: 460, pPlateau: null, compliance: null }) });
+    const n = nota({ modo: "ULTIMA_ATENCION", controles: [c] });
+    expect(n).toContain("PS 7 cmH₂O");
     expect(n).toContain("índice de Tobin 39");
-    expect(n).toContain("P. soporte 7");
-    expect(n).not.toContain("driving pressure");
+    expect(n).not.toContain("DP ");
   });
 
-  it("CNAF reporta flujo e índice ROX, sin volúmenes", () => {
-    const c = unControl({ viaAerea: "NATURAL", spo2: 94, ventilacion: unaVentilacion({ modalidad: "CNAF", fio2: 40, frTotal: 24, flujo: 50, vtProgramado: null, vtEspirado: null, peep: null }) });
-    const n = nota({ episodio: unEpisodio({ viaAereaActual: "NATURAL" }), controles: [c] });
-    expect(n).toContain("CNAF flujo 50 L/min");
-    expect(n).toContain("índice ROX 9.79");
+  it("CNAF: ventila espontáneo, flujo e índice ROX, sin volúmenes", () => {
+    const c = unControl({ viaAerea: "NATURAL", spo2: 94, ventilacion: unaVentilacion({ modalidad: "CNAF", fio2: 40, frTotal: 24, flujo: 50, temperatura: 37, vtProgramado: null, vtEspirado: null, peep: null }) });
+    const n = nota({ modo: "ULTIMA_ATENCION", episodio: unEpisodio({ viaAereaActual: "NATURAL" }), controles: [c] });
+    expect(n).toContain("Ventila espontáneo con apoyo de CNAF. Parámetros: flujo 50 L/min, T° 37 °C, FiO₂ 40%, FR 24 rpm, SpO₂ 94%, índice ROX 9,8.");
     expect(n).not.toContain("Vt espirado");
   });
-});
 
-/** La nota oficial no puede reportar una mecánica contaminada por esfuerzo activo. */
-describe("candado de mecánica aplicado a la nota", () => {
-  it("reporta ΔP y compliance cuando el plateau es válido", () => {
-    const n = nota();
-    expect(n).toContain("driving pressure 10");
-    expect(n).toContain("compliance estática 43");
-  });
-
-  it("NO reporta plateau, ΔP ni compliance con asincronía en modalidad controlada", () => {
-    const n = nota({ controles: [unControl({ ventilacion: unaVentilacion({ asincronico: true }) })] });
-    expect(n).not.toContain("driving pressure");
-    expect(n).not.toContain("compliance estática");
-    expect(n).not.toContain("P.plateau");
-    expect(n).toContain("mecánica estática no valorable");
-  });
-
-  it("sigue reportando lo que sí es real bajo asincronía", () => {
-    const n = nota({ controles: [unControl({ ventilacion: unaVentilacion({ asincronico: true }) })] });
+  it("candado de mecánica: con asincronía no hay DP ni Cest, y lo dice", () => {
+    const n = nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ ventilacion: unaVentilacion({ asincronico: true }) })] });
+    expect(n).not.toMatch(/DP \d|Cest|P plateau/);
+    expect(n).toContain("mecánica estática no valorable por asincronía");
     expect(n).toContain("Vt espirado 430 ml");
-    expect(n).toContain("volumen minuto espirado 8.6");
-  });
-});
-
-describe("eventos en la nota", () => {
-  it("destaca una autoextubación como evento de seguridad", () => {
-    const e = unEvento<Extract<EventoClinico, { tipo: "AUTOEXTUBACION" }>>({ tipo: "AUTOEXTUBACION", dispositivo: "CNAF", hora: "15:40", comentario: "Tracciona TET durante aseo." });
-    const n = nota({ eventos: [e] });
-    expect(n).toContain("EVENTOS DE SEGURIDAD DEL PACIENTE");
-    expect(n).toContain("AUTOEXTUBACIÓN, queda en");
-    expect(n).not.toMatch(/NO PLANIFICADA/i);
-    expect(n).toContain("Notificado para gestión de riesgo");
   });
 
-  it("un ajuste de tubo no se reporta como intubación", () => {
-    const e = unEvento<Extract<EventoClinico, { tipo: "AJUSTE_TUBO" }>>({ tipo: "AJUSTE_TUBO", fijacionCm: "23", motivo: "CONTROL_RADIOLOGICO", hora: "11:00" });
-    const n = nota({ eventos: [e] });
-    expect(n).toContain("Ajuste de fijación a 23 cm (control radiológico)");
-    expect(n).toContain("reintubaciones 0");
-  });
-
-  it("incluye los procedimientos nuevos: FBC, cultivo, traslado y filtro", () => {
-    const evs: EventoClinico[] = [
-      unEvento<Extract<EventoClinico, { tipo: "ASISTENCIA_FBC" }>>({ tipo: "ASISTENCIA_FBC", hora: "11:00" }),
-      unEvento<Extract<EventoClinico, { tipo: "TOMA_CULTIVO" }>>({ tipo: "TOMA_CULTIVO", muestra: "Aspirado traqueal", hora: "11:05" }),
-      unEvento<Extract<EventoClinico, { tipo: "CAMBIO_HMEF" }>>({ tipo: "CAMBIO_HMEF", hora: "11:10" })
-    ];
-    const n = nota({ eventos: evs });
-    expect(n).toContain("Asistencia en fibrobroncoscopía");
-    expect(n).toContain("Toma de cultivo (Aspirado traqueal)");
-    expect(n).toContain("Cambio de filtro HME");
-  });
-});
-
-describe("kine y secreciones", () => {
-  it("la última atención informa auscultación, secreciones y terapia física", () => {
-    const n = nota({ modo: "ULTIMA_ATENCION" });
-    expect(n).toContain("Auscultación: Crépitos");
-    expect(n).not.toMatch(/aspiración|TrachCare/);
-    expect(n).toContain("Secreciones mucopurulentas, cantidad moderada, reología espesa");
-    expect(n).toContain("Giros en cama / posicionamiento (IMS 1)");
-  });
-
-  it("el manejo de secreciones (tos, flujo pico de tos y deglución) va en la nota", () => {
-    const c = unControl({ kineResp: { auscultacion: "", aspecto: "NINGUNA", reologia: null, cantidad: null, tos: "DEFICIENTE", flujoPicoTos: 55, deglucion: "AUSENTE" } });
+  it("PCV sin plateau: la DP declara que usa la presión pico", () => {
+    const c = unControl({ ventilacion: unaVentilacion({ modalidad: "PCV", vtProgramado: null, flujo: null, presion: 15, peep: 8, pPlateau: null, pPico: 24, vtEspirado: 450 }) });
     const n = nota({ modo: "ULTIMA_ATENCION", controles: [c] });
-    expect(n).toContain("Sin secreciones");
-    expect(n).toContain("Manejo de secreciones: tos deficiente (flujo pico de tos 55 L/min), deglución ausente");
+    expect(n).toContain("P control 15 cmH₂O");
+    expect(n).toContain("DP 16 cmH₂O (con P pico)");
+    expect(n).not.toContain("P plateau");
+  });
+});
+
+describe("eventos: antes → evento → queda con", () => {
+  const ev = <T extends EventoClinico["tipo"]>(tipo: T, iso: string, hora: string, resto: Record<string, unknown> = {}): EventoClinico =>
+    unEvento({ tipo, registradoEn: iso, hora, ...resto } as never);
+
+  it("PVE superada y extubación se cuentan juntas, con lo que queda después", () => {
+    const c1 = unControl({ id: "c1", registradoEn: "2026-11-04T12:10:00.000Z", hora: "09:10", ventilacion: unaVentilacion({ modalidad: "CPAP_PS", presion: 8, frProgramada: null, vtProgramado: null, flujo: null, ti: null, peep: 6, fio2: 35, frTotal: 18, vtEspirado: 480, pPlateau: null, compliance: null }) });
+    const extub = ev("EXTUBACION_PROGRAMADA", "2026-11-04T13:40:00.000Z", "10:40", { id: "x1", dispositivo: "CNAF" });
+    const c2 = unControl({ id: "c2", registradoEn: "2026-11-04T14:00:00.000Z", hora: "11:00", eventoId: "x1", viaAerea: "NATURAL", spo2: 95, infusiones: {}, sas: null, vigilia: "VIGIL_ALERTA", glasgow: { ocular: 4, verbal: 5, motora: 6 },
+      ventilacion: unaVentilacion({ modalidad: "CNAF", flujo: 40, temperatura: 37, fio2: 40, frTotal: 22, vtProgramado: null, vtEspirado: null, peep: null }) });
+    const evs = [ev("INICIO_PVE", "2026-11-04T12:45:00.000Z", "09:45", { duracionMin: 30 }), ev("FIN_PVE", "2026-11-04T13:15:00.000Z", "10:15", { exitosa: true }), extub];
+    const n = nota({ episodio: unEpisodio({ viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null }), controles: [c1, c2], eventos: evs });
+    expect(n).toContain("Se realiza PVE según protocolo (30 min) a las 09:45 hrs con resultado superado, progresando a extubación programada a las 10:40 hrs.");
+    expect(n).toContain("Queda con CNAF 40 L/min, T° 37 °C, FiO₂ 40%, FR 22 rpm, SpO₂ 95%, GCS 15/15 (O:4, V:5, M:6).");
+    expect(n).toContain("en VMI modo CPAP+PS");
   });
 
-  it("terapia física contraindicada deja el motivo", () => {
+  it("autoextubación y extubación accidental, con lo que pasó", () => {
+    expect(nota({ eventos: [ev("AUTOEXTUBACION", "2026-11-04T13:00:00.000Z", "15:40", { dispositivo: "CNAF", comentario: "Tracciona TET durante aseo." })] })).toContain("Paciente se autoextuba a las 15:40 hrs. Tracciona TET durante aseo.");
+    expect(nota({ eventos: [ev("AUTOEXTUBACION", "2026-11-04T13:00:00.000Z", "15:40", { dispositivo: "CNAF", accidental: true })] })).toContain("Extubación accidental a las 15:40 hrs.");
+  });
+
+  it("un ajuste de tubo no es intubación; los procedimientos se narran y los filtros no", () => {
+    const n = nota({ eventos: [
+      ev("AJUSTE_TUBO", "2026-11-04T13:00:00.000Z", "11:00", { fijacionCm: "23", motivo: "CONTROL_RADIOLOGICO" }),
+      ev("ASISTENCIA_FBC", "2026-11-04T13:05:00.000Z", "11:05"),
+      ev("TOMA_CULTIVO", "2026-11-04T13:06:00.000Z", "11:06", { muestra: "Aspirado traqueal" }),
+      ev("CAMBIO_HMEF", "2026-11-04T13:10:00.000Z", "11:10")
+    ] });
+    expect(n).toContain("Se ajusta la fijación del TOT a 23 cm de arcada dental (control radiológico).");
+    expect(n).not.toMatch(/intubación/i);
+    expect(n).toContain("Se asiste fibrobroncoscopía a las 11:05 hrs.");
+    expect(n).toContain("Se toma muestra de aspirado traqueal para cultivo.");
+    expect(n).not.toMatch(/HME/);
+  });
+
+  it("PVE no realizada con su razón; un motivo «Otro» no se escribe", () => {
+    const n = nota({ eventos: [
+      ev("PVE_NO_REALIZADA", "2026-11-04T13:00:00.000Z", "10:00", { razon: "Secreciones abundantes" }),
+      ev("TERAPIA_FISICA", "2026-11-04T13:30:00.000Z", "10:30", { realizada: false, nivel: null, ems: false, ims: null, motivo: "Otro" })
+    ], controles: [unControl({ terapiaFisica: { estado: "NO", actividades: [], ims: null, motivoContraindicacion: null } })] });
+    expect(n).toContain("No se realiza PVE en este turno por secreciones abundantes.");
+    expect(n).toContain("KTM no realizada.");
+  });
+});
+
+describe("kinesiterapia y secreciones", () => {
+  it("KTM con nivel en palabras, IMT y educación", () => {
+    const n = nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ terapiaFisica: { estado: "NO", actividades: [], ims: null, motivoContraindicacion: null } })], eventos: [
+      unEvento({ tipo: "TERAPIA_FISICA", realizada: true, nivel: 4, ems: true, ims: 5, motivo: null } as never),
+      unEvento({ tipo: "IMT" } as never),
+      unEvento({ tipo: "EDUCACION", dirigidaA: "FAMILIA" } as never)
+    ] });
+    expect(n).toContain("Se realiza KTM nivel 4 (bipedestación), con EMS, IMS 5.");
+    expect(n).toContain("Se realiza IMT.");
+    expect(n).toContain("Se realiza educación a la familia.");
+  });
+
+  it("la terapia física de los controles antiguos y la contraindicada", () => {
+    expect(nota({ modo: "ULTIMA_ATENCION" })).toContain("Se realiza terapia física: giros en cama / posicionamiento.");
     const c = unControl({ terapiaFisica: { estado: "CONTRAINDICADA", actividades: [], ims: null, motivoContraindicacion: "PIC fuera de meta" } });
-    expect(nota({ modo: "ULTIMA_ATENCION", controles: [c] })).toContain("Terapia física contraindicada (PIC fuera de meta)");
+    expect(nota({ modo: "ULTIMA_ATENCION", controles: [c] })).toContain("KTM contraindicada por PIC fuera de meta.");
   });
 
-  it("atribuye el control a su autor y marca el de apoyo", () => {
-    const n = nota({ modo: "ULTIMA_ATENCION", controles: [unControl({ esControlApoyo: true })] });
-    expect(n).toContain("Klgo. Diego Melo (control de apoyo)");
+  it("auscultación y secreciones en una línea cada una; sin secreciones es un hallazgo", () => {
+    const n = nota({ modo: "ULTIMA_ATENCION" });
+    expect(n).toContain("Auscultación: Crépitos.");
+    expect(n).toContain("Secreciones mucopurulentas espesas en moderada cantidad.");
+    const c = unControl({ kineResp: { auscultacion: "", aspecto: "NINGUNA", reologia: null, cantidad: null, tos: "DEFICIENTE", flujoPicoTos: 55, deglucion: "AUSENTE" } });
+    expect(nota({ modo: "ULTIMA_ATENCION", controles: [c] })).toContain("Sin secreciones; tos deficiente, flujo pico de tos 55 L/min, deglución ausente.");
+  });
+});
+
+describe("los dos modos", () => {
+  it("el último control es el último cronológico aunque lleguen desordenados", () => {
+    const c1 = unControl({ id: "a", hora: "09:10", registradoEn: "2026-11-04T12:10:00.000Z", fc: 96 });
+    const c2 = unControl({ id: "b", hora: "14:20", registradoEn: "2026-11-04T17:20:00.000Z", fc: 77 });
+    expect(nota({ modo: "ULTIMA_ATENCION", controles: [c2, c1] })).toContain("FC 77 lpm");
   });
 
-  it("toma el último control cronológicamente aunque lleguen desordenados", () => {
-    const c1 = unControl({ id: "a", numero: 1, hora: "09:10", registradoEn: "2026-11-04T12:10:00.000Z" });
-    const c2 = unControl({ id: "b", numero: 2, hora: "14:20", registradoEn: "2026-11-04T17:20:00.000Z" });
-    expect(nota({ modo: "ULTIMA_ATENCION", controles: [c2, c1] })).toContain("ATENCIÓN #2 (14:20 hrs)");
+  it("el resumen es solo del turno del último control, cierra con la nota y el plan", () => {
+    const ayer = unControl({ id: "y", registradoEn: "2026-11-03T12:10:00.000Z", kineResp: { auscultacion: "Sibilancias", aspecto: null, reologia: null, cantidad: null, tos: null, flujoPicoTos: null, deglucion: null } });
+    const n = nota({ controles: [ayer, unControl()] });
+    expect(n).not.toContain("Sibilancias");
+    const lineas = n.split("\n");
+    expect(lineas.at(-2)).toBe("Nota: Queda acoplado a VMI protectora.");
+    expect(lineas.at(-1)).toBe("Plan: candidato a extubación si supera PVE vespertina.");
   });
 });
 
@@ -232,46 +269,6 @@ describe("camposAlma: orden de ALMA y regla por modalidad", () => {
 describe("novedades: PCV con presión pico, Glasgow, neuromonitoreo y equipos", () => {
   const pcvSinPlateau = unControl({
     ventilacion: unaVentilacion({ modalidad: "PCV", vtProgramado: null, flujo: null, presion: 15, peep: 8, pPlateau: null, pPico: 24, vtEspirado: 450 })
-  });
-
-  it("PCV sin plateau reporta la ΔP y la compliance declarando que usan la presión pico", () => {
-    const n = nota({ controles: [pcvSinPlateau] });
-    expect(n).toContain("driving pressure 16 (con P. pico)");
-    expect(n).toContain("compliance estática 43");
-    expect(n).not.toContain("compliance 28");
-    expect(n).not.toContain("P.plateau");
-    expect(n).toContain("P. control 15");
-  });
-
-  it("el Glasgow registrado bajo sedación lo dice", () => {
-    const n = nota({ controles: [unControl({ glasgow: { ocular: 3, verbal: 1, motora: 5 } })] });
-    expect(n).toContain("Glasgow 9T/11T (O3 V:NT M5) (registrado bajo sedación)");
-  });
-
-  it("incluye el neuromonitoreo con el PPC calculado", () => {
-    const c = unControl({ neuro: { etco2: 35, pic: 15, dveAlturaCmH2O: 12, dveAbierta: false } });
-    const n = nota({ controles: [c], modo: "ULTIMA_ATENCION" });
-    expect(n).toContain("EtCO₂ 35 mmHg");
-    expect(n).toContain("PIC 15 mmHg (PPC 64 mmHg)");
-    expect(n).toContain("DVE a 12 cmH₂O cerrada");
-  });
-
-  it("la nota declara el volumen minuto espirado anotado", () => {
-    const c = unControl({ ventilacion: unaVentilacion({ volMinuto: 9.1 }) });
-    expect(nota({ controles: [c] })).toContain("volumen minuto espirado 9.1 L/min");
-  });
-
-  it("la nota de turno lista los equipos de la sala", () => {
-    expect(nota()).toContain("Equipos: Savina 1 (en uso)");
-  });
-
-  it("un cambio de equipos queda como evento", () => {
-    const e = unEvento<Extract<EventoClinico, { tipo: "CAMBIO_EQUIPOS" }>>({
-      tipo: "CAMBIO_EQUIPOS",
-      equipos: [{ tipo: "VENTILADOR", modelo: "Vela", numero: 8, enUso: true }],
-      hora: "12:00"
-    });
-    expect(nota({ eventos: [e] })).toContain("Cambio de equipos: Vela 8 (en uso)");
   });
 
   it("camposAlma incluye Modelo Ventilador y Tipo de Humidificación según los equipos", () => {

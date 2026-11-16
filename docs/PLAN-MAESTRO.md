@@ -712,3 +712,22 @@ se extrae el dato, se confirma y se descarta. Las infusiones siguen manuales.
   o se dice el número («25»).
 - **Factibilidad (respuesta del 16-nov)**: monitor, alta (un solo molde, números grandes); ventiladores, media y distinta
   por modelo. Antes de programar la pantalla se mide con las fotos de Diego cuántos valores se leen bien por equipo.
+
+## 21. Motor de texto con la prosa del RCE (EN CURSO, 16-nov-2026)
+
+Decisiones de Diego: el texto sigue la **prosa corta del RCE** (el equipo la conoce); **sin firma** (estorba al copiar a ALMA,
+igual que en BUDA); se mantienen los dos modos, **último control** y **resumen del turno**.
+
+- Referencia: `dominio_texto.gs` del RCE (Manuel). Se traen sus reglas: lo vacío no se escribe; el negativo evaluado sí
+  («sin secreciones»); evento = antes → evento → queda con (en Kaptus, con el control ligado al evento); siglas intactas;
+  coma decimal; nunca «Otro» como motivo; orden fijo del texto. **No** se traen dos motores en espejo ni las plantillas con
+  comodines (en el RCE se apagaron por mala experiencia).
+- El resumen del turno deja fuera la «producción» (eso vive en Estadística) y cuenta solo lo que cambió.
+- **Paso 1 (hecho)**: comparación del mismo paciente, motor actual vs propuesta numerada línea por línea:
+  https://claude.ai/artifact/KSmbi1E3XyxzBbvmKnFoRT — espera las correcciones de Diego.
+- Errores del motor actual encontrados: «Glasgow 11T/11T» (con tubo es 10T), la KTM como evento no aparece en el
+  resumen («Terapia física realizada: 0»), «(sbc)» en minúscula, «Sin secreciones» repetido, «Días de VM: sin VM» en un
+  paciente que estuvo en VM ese turno.
+- Abierto: ¿«HDN estable» sin dato de estable/inestable? ¿día de estadía 6 o 7? ¿agregar la fase clínica? ¿encabezado?
+- Pasos siguientes: 2 motor por bloques con pruebas de pacientes fijos · 3 narrar eventos con «queda con» · 4 separar de la
+  estadística · 5 completar datos faltantes (fase clínica, gases).

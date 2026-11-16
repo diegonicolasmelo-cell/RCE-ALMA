@@ -706,3 +706,9 @@ se extrae el dato, se confirma y se descarta. Las infusiones siguen manuales.
   cuando el paciente los tiene** (Kaptus ya lo sabe por el monitoreo del episodio: capnografía y PIC) y la foto los muestra.
   Un número dudoso **solo se marca en ámbar**, no bloquea el botón.
 - Mockup: https://claude.ai/artifact/KPaEWPiE7SkrwZXwYooaGS
+- **Más de Diego (16-nov)**: la unidad configurará los ventiladores para que las mediciones aparezcan en la pantalla
+  principal; lo que exige maniobra (plateau) se fotografía cuando el valor medido está a la vista. Glasgow y lo clínico
+  quedan fuera de la foto. **En la confirmación, cada casilla en ámbar ofrece también el dictado**: se toca y se escribe
+  o se dice el número («25»).
+- **Factibilidad (respuesta del 16-nov)**: monitor, alta (un solo molde, números grandes); ventiladores, media y distinta
+  por modelo. Antes de programar la pantalla se mide con las fotos de Diego cuántos valores se leen bien por equipo.

@@ -27,7 +27,7 @@ export function eventoDeRiesgoMasReciente(eventos: readonly EventoClinico[]): Ev
 export function etiquetaEventoRiesgo(ev: EventoClinico): string {
   switch (ev.tipo) {
     case "AUTOEXTUBACION":
-      return "Autoextubación";
+      return ev.accidental ? "Extubación accidental" : "Autoextubación";
     case "PCR":
       return "PCR";
     case "EVENTO_CENTINELA":
@@ -40,7 +40,7 @@ export function etiquetaEventoRiesgo(ev: EventoClinico): string {
 function tituloEvento(ev: EventoClinico): string {
   switch (ev.tipo) {
     case "AUTOEXTUBACION":
-      return "Autoextubación";
+      return ev.accidental ? "Extubación accidental" : "Autoextubación";
     case "PCR":
       return `Paro cardiorrespiratorio, reanimación ${ev.duracionReanimacionMin} min`;
     case "EVENTO_CENTINELA":

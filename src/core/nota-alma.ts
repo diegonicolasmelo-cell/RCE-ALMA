@@ -11,7 +11,7 @@
  */
 
 import { buscarProfesional } from "./dotacion";
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, ETIQUETA_MOTIVO_CAMBIO_EQUIPO, textoCategoriaRem, textoEdad } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_DISPOSITIVO, ETIQUETA_MOTIVO_CAMBIO, ETIQUETA_MOTIVO_SIN_PVE, ESCALA_SAS, ESTADOS_VIGILIA, ETIQUETA_MODALIDAD, OPCIONES_DEGLUCION, etiquetaAspecto, ETIQUETA_MOTIVO_CAMBIO_EQUIPO, textoCategoriaRem, textoEdad, NIVELES_KTM, ETIQUETA_EDUCACION } from "./catalogos";
 import { apkVigente } from "./apk";
 import { resumenEvaluacion } from "./evaluaciones";
 import { etiquetaMomentoPostExtub, horasDeVm } from "./pve";
@@ -20,6 +20,7 @@ import { calcularDerivados, calcularPbw, esViaAereaArtificial } from "./fisiolog
 import { describirCardiovasculares, describirInfusiones, sedoanalgesiaActiva } from "./infusiones";
 import { esReintubacion, estadoProno, eventosDeRiesgo } from "./eventos";
 import { resumirTurno } from "./rem28";
+import { turnoDe } from "./turnos";
 import { esModalidadControlada, mecanicaBloqueadaPorAsincronia } from "./validez";
 import type {
   Control,
@@ -123,12 +124,20 @@ function textoKine(c: Control): string {
   return [textoAuscultacion(c), textoSecreciones(c), textoManejoSecreciones(c)].filter(Boolean).join(". ") || "Sin hallazgos respiratorios registrados";
 }
 
-function textoTerapiaFisica(c: Control): string {
+/**
+ * Terapia fisica de un control. Desde el 16-nov-2026 la KTM es un evento: si el control no la trae,
+ * se usa la KTM registrada (o no realizada) en el mismo turno del control.
+ */
+function textoTerapiaFisica(c: Control, eventos: readonly EventoClinico[] = []): string {
   const t = c.terapiaFisica;
   if (t.estado === "CONTRAINDICADA") {
     return `Terapia física contraindicada${t.motivoContraindicacion ? ` (${t.motivoContraindicacion})` : ""}`;
   }
-  if (t.estado === "NO") return "Sin terapia física";
+  if (t.estado === "NO") {
+    const turno = turnoDe(new Date(c.registradoEn)).clave;
+    const del = eventos.filter((e) => (e.tipo === "TERAPIA_FISICA" || e.tipo === "IMT") && turnoDe(new Date(e.registradoEn)).clave === turno);
+    return del.length ? del.map((e) => describirEvento(e)).join(". ") : "Sin terapia física";
+  }
   const acts = t.actividades.length > 0 ? t.actividades.join(" + ") : "Terapia física realizada";
   return `${acts}${t.ims !== null ? ` (IMS ${t.ims})` : ""}`;
 }
@@ -209,6 +218,7 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
         ? `Extubación fuera de protocolo (sin PVE: ${ETIQUETA_MOTIVO_SIN_PVE[ev.sinPve]}), queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`
         : `Extubación programada, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "AUTOEXTUBACION":
+      if (ev.accidental) return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "EXTUBACIÓN ACCIDENTAL con reintubación inmediata" : `EXTUBACIÓN ACCIDENTAL, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
       return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN con reintubación inmediata" : `AUTOEXTUBACIÓN, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "REINTUBACION": {
       const que = !eventos ? "Intubación / reintubación" : esReintubacion(ev, eventos) ? "Reintubación" : "Intubación";
@@ -254,6 +264,16 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return `Cambio de equipos: ${describirEquipos(ev.equipos)}${ev.motivo ? ` (${ETIQUETA_MOTIVO_CAMBIO_EQUIPO[ev.motivo].toLowerCase()})` : ""}`;
     case "TRASLADO_CAMA":
       return `Traslado de cama: ${ev.desde} → ${ev.hasta}`;
+    case "PVE_NO_REALIZADA":
+      return `PVE no realizada: ${ev.razon}`;
+    case "TERAPIA_FISICA":
+      return ev.realizada
+        ? `Terapia física (KTM)${ev.nivel ? ` nivel ${ev.nivel}: ${NIVELES_KTM.find((n) => n.nivel === ev.nivel)?.titulo.replace(/^Nivel \d · /, "").toLowerCase() ?? ""}` : ""}${ev.ems ? ", con EMS" : ""}${ev.ims !== null ? `, IMS ${ev.ims}` : ""}`
+        : `Terapia física no realizada: ${ev.motivo ?? "sin motivo"}`;
+    case "IMT":
+      return "Entrenamiento muscular inspiratorio (IMT)";
+    case "EDUCACION":
+      return `Educación ${ETIQUETA_EDUCACION[ev.dirigidaA]}`;
     case "PVE_SIN_EXTUBAR":
       return `PVE superada sin extubar${ev.motivo ? `: ${ev.motivo}` : ""}`;
     case "DESVINCULACION":
@@ -281,7 +301,7 @@ function notaUltimaAtencion(entrada: EntradaNota, pbw: number): string {
     `2. CONCIENCIA Y SEDACIÓN: ${capitalizar(textoConciencia(u, pbw))}.`,
     `3. RESPIRATORIO Y VÍA AÉREA: ${etiquetaVia(episodio)} en ${bloqueRespiratorio(u, pbw)}. SpO2 ${fmt(u.spo2)}%.${sec ? ` ${sec}.` : ""}`,
     ...(textoNeuro(u, pbw) ? [`   Neuromonitoreo: ${textoNeuro(u, pbw)}.`] : []),
-    `4. KINESITERAPIA: ${textoKine(u)} ${textoTerapiaFisica(u)}.`,
+    `4. KINESITERAPIA: ${textoKine(u)} ${textoTerapiaFisica(u, entrada.eventos)}.`,
     ...(u.observaciones ? [``, `Observación: ${u.observaciones}`] : [])
   ].join("\n");
 }

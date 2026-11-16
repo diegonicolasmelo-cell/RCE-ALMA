@@ -5,8 +5,11 @@
  *   B.1 ingresos y egresos: personas, por categoria REM, sexo y rango quinquenal.
  *   B.2 evaluacion inicial: una por ingreso del mes.
  *   B.3 evaluacion intermedia: cualquier reevaluacion (una escala que ya se habia medido en el episodio).
- *   B.4 sesiones: solo las motoras (controles con terapia fisica realizada).
- *   B.6 ejercicios terapeuticos = sesiones motoras; terapia respiratoria = controles.
+ *   B.4 sesiones: solo las motoras (eventos de terapia fisica realizada; antes, controles con ella).
+ *   B.6 ejercicios terapeuticos = sesiones motoras; terapia respiratoria = controles + IMT (como
+ *   el RCE); fisioterapia = sesiones con EMS; educacion = eventos de educacion (16-nov-2026).
+ *   BS 0102501 = personas con IMT en el mes; 01010922 PTO = personas con su PRIMERA
+ *   bipedestacion del episodio en el mes (KTM nivel 4 o 5).
  *   Asistencia en VMNI: cada conexion de un paciente a la VMNI.
  *   BS: una atencion por persona en el mes.
  */
@@ -14,6 +17,7 @@
 import { CATEGORIAS_REM, GRUPO_MODALIDAD, MOTIVOS_EGRESO, RANGOS_EDAD } from "./catalogos";
 import type { CategoriaRem, MotivoEgreso, RangoEdad } from "./catalogos";
 import type { Control, Episodio, EventoClinico } from "./tipos";
+import { primeraBipedestacion } from "./estadistica";
 
 /** "AAAA-MM" en hora local. */
 export function mesDe(iso: string): string {
@@ -59,6 +63,12 @@ export interface RemMensual {
   readonly terapiaRespiratoria: number;
   /** B.6 Ejercicios terapeuticos: sesiones motoras del mes. */
   readonly ejerciciosTerapeuticos: number;
+  /** B.6 Fisioterapia: sesiones con electroestimulacion (EMS). */
+  readonly fisioterapia: number;
+  /** B.6 Educacion a usuario/a, cuidador/a y/o familiar. */
+  readonly educacion: number;
+  /** Sesiones de IMT del mes (van dentro de la terapia respiratoria). */
+  readonly sesionesImt: number;
   /** Conexiones de pacientes a la VMNI en el mes (cada paso de otro soporte a VNI). */
   readonly conexionesVmni: number;
   readonly bs: {
@@ -72,6 +82,10 @@ export interface RemMensual {
     readonly permeabilizacionViaAerea: number;
     /** 0601171 Asistencia en IOT, VMNI o cambio de canula de TQT: personas con eso en el mes. */
     readonly asistenciaIotCanula: number;
+    /** 0102501 Reeducacion de la tos y respiracion (IMT): personas con IMT en el mes. */
+    readonly reeducacionTos: number;
+    /** 01010922 Prueba de tolerancia ortostatica: primeras bipedestaciones del episodio en el mes. */
+    readonly toleranciaOrtostatica: number;
   };
 }
 
@@ -123,6 +137,11 @@ export function consolidarRemMensual(
   let conAsistencia = 0;
   let conRespiratoria = 0;
   let conexionesVmni = 0;
+  let fisioterapia = 0;
+  let educacion = 0;
+  let sesionesImt = 0;
+  let conImt = 0;
+  let pto = 0;
 
   for (const ep of episodios) {
     if (ep.ingresadoEn && mesDe(ep.ingresadoEn) === mes) {
@@ -150,15 +169,23 @@ export function consolidarRemMensual(
       if (enVni && !veniaEnVni && mesDe(c.registradoEn) === mes) vmniDelMes++;
     });
     conexionesVmni += vmniDelMes;
-    const nMotoras = cs.filter((c) => c.terapiaFisica.estado === "REALIZADA").length;
-    terapiaRespiratoria += cs.length;
+    const evs = eventos.get(ep.id) ?? [];
+    const delMes = evs.filter((e) => mesDe(e.registradoEn) === mes);
+    const ktmAntigua = cs.filter((c) => c.terapiaFisica.estado === "REALIZADA");
+    const ktmEv = delMes.filter((e): e is Extract<EventoClinico, { tipo: "TERAPIA_FISICA" }> => e.tipo === "TERAPIA_FISICA" && e.realizada);
+    const nMotoras = ktmAntigua.length + ktmEv.length;
+    const nImt = ktmAntigua.filter((c) => c.terapiaFisica.actividades.some((a) => a.startsWith("IMT"))).length + delMes.filter((e) => e.tipo === "IMT").length;
+    terapiaRespiratoria += cs.length + nImt;
+    sesionesImt += nImt;
+    if (nImt > 0) conImt++;
+    fisioterapia += ktmAntigua.filter((c) => c.terapiaFisica.actividades.some((a) => a.startsWith("EMS"))).length + ktmEv.filter((e) => e.ems).length;
+    educacion += delMes.filter((e) => e.tipo === "EDUCACION").length;
+    const bip = primeraBipedestacion(todosCs, evs);
+    if (bip && mesDe(bip) === mes) pto++;
     if (nMotoras > 0) {
       sumarRango(motoras, ep, nMotoras);
       conMotora++;
     }
-
-    const evs = eventos.get(ep.id) ?? [];
-    const delMes = evs.filter((e) => mesDe(e.registradoEn) === mes);
     if (cs.length > 0 || delMes.length > 0) atendidas++;
     if (vmniDelMes > 0 || delMes.some((e) => EVENTOS_ASISTENCIA_IOT.includes(e.tipo))) conAsistencia++;
 
@@ -184,13 +211,18 @@ export function consolidarRemMensual(
     sesionesMotoras: motoras,
     terapiaRespiratoria,
     ejerciciosTerapeuticos: motoras.total,
+    fisioterapia,
+    educacion,
+    sesionesImt,
     conexionesVmni,
     bs: {
       evaluacionIntegral: ingresos.total,
       atencionIntegralUpc: atendidas,
       reeducacionMotriz: conMotora,
       permeabilizacionViaAerea: conRespiratoria,
-      asistenciaIotCanula: conAsistencia
+      asistenciaIotCanula: conAsistencia,
+      reeducacionTos: conImt,
+      toleranciaOrtostatica: pto
     }
   };
 }

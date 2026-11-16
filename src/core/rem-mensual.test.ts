@@ -69,3 +69,18 @@ describe("REM 28 del mes", () => {
   });
 
 });
+
+describe("REM 28: kinesiterapia como evento (16-nov-2026)", () => {
+  it("KTM, EMS, IMT, educación y PTO salen de los eventos", () => {
+    const e = unEpisodio({ id: "k", sexo: "F", rangoEdad: "60–64", categoriaRem: "Otros", ingresadoEn: "2026-11-01T12:00:00.000Z" });
+    const sinTf = { ...unControl(), id: "k1", episodioId: "k", registradoEn: "2026-11-02T12:00:00.000Z", terapiaFisica: { estado: "NO" as const, actividades: [], ims: null, motivoContraindicacion: null } };
+    const ktm = (dia: string, nivel: number, ems = false): EventoClinico => unEvento({ id: `t${dia}${nivel}`, episodioId: "k", tipo: "TERAPIA_FISICA", realizada: true, nivel, ems, ims: null, motivo: null, registradoEn: `2026-11-${dia}T12:00:00.000Z` } as never);
+    const evs = [ktm("02", 2, true), ktm("03", 4), ktm("04", 5),
+      unEvento({ id: "i1", episodioId: "k", tipo: "IMT", registradoEn: "2026-11-03T13:00:00.000Z" } as never),
+      unEvento({ id: "e1", episodioId: "k", tipo: "EDUCACION", dirigidaA: "FAMILIA", registradoEn: "2026-11-03T14:00:00.000Z" } as never)];
+    const r = consolidarRemMensual(NOV, [e], new Map([["k", [sinTf]]]), new Map([["k", evs]]));
+    expect(r.sesionesMotoras.total).toBe(3);
+    expect([r.fisioterapia, r.educacion, r.sesionesImt, r.terapiaRespiratoria]).toEqual([1, 1, 1, 2]);
+    expect([r.bs.reeducacionTos, r.bs.toleranciaOrtostatica, r.bs.reeducacionMotriz]).toEqual([1, 1, 1]);
+  });
+});

@@ -117,7 +117,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     { grupo: K, etiqueta: "Secreciones", celda: (c) => { const k = c.kineResp; if (!k.aspecto) return t("--"); if (k.aspecto === "NINGUNA") return t("sin secreciones"); return t([etiquetaAspecto(k.aspecto).toLowerCase(), k.cantidad?.toLowerCase(), k.reologia?.toLowerCase()].filter(Boolean).join(", ")); } },
     { grupo: K, etiqueta: "Tos / PEF", celda: (c) => t(c.kineResp.tos === null && c.kineResp.flujoPicoTos === null ? "--" : `${c.kineResp.tos === "EFICIENTE" ? "eficiente" : c.kineResp.tos === "DEFICIENTE" ? "deficiente" : "—"}${c.kineResp.flujoPicoTos !== null ? ` · ${c.kineResp.flujoPicoTos} L/min` : ""}`) },
     { grupo: K, etiqueta: "Deglución", celda: (c) => t(OPCIONES_DEGLUCION.find((d) => d.val === c.kineResp.deglucion)?.label ?? "--") },
-    { grupo: K, etiqueta: "Terapia física", celda: (c) => t(c.terapiaFisica.estado === "REALIZADA" ? `Sí${c.terapiaFisica.ims !== null ? ` · IMS ${c.terapiaFisica.ims}` : ""}` : c.terapiaFisica.estado === "CONTRAINDICADA" ? "Contraind." : "No") },
+    { grupo: K, etiqueta: "Terapia física", celda: (c) => t(c.terapiaFisica.estado === "REALIZADA" ? `Sí${c.terapiaFisica.ims !== null ? ` · IMS ${c.terapiaFisica.ims}` : ""}` : c.terapiaFisica.estado === "CONTRAINDICADA" ? "Contraind." : "--") },
     { grupo: "Firma", etiqueta: "Firma", celda: (c) => t(iniciales(c.rutAutor)) }
   );
   return filas;
@@ -140,7 +140,7 @@ export function hitoCorto(ev: EventoClinico, eventos: readonly EventoClinico[]):
     case "EXTUBACION_PROGRAMADA":
       return ev.sinPve ? "Extubación s/PVE" : "Extubación";
     case "AUTOEXTUBACION":
-      return "Autoextubación";
+      return ev.accidental ? "Extubación accid." : "Autoextubación";
     case "TRAQUEOSTOMIA":
       return "Traqueostomía";
     case "DECANULACION":

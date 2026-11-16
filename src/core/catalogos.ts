@@ -2,6 +2,8 @@
 
 import type {
   CampoVent,
+  DestinatarioEducacion,
+  NivelKtm,
   DispositivoPosterior,
   MotivoCambioVia,
   MotivoExtubacionSinPve,
@@ -480,6 +482,43 @@ export const NIVEL_POR_ACTIVIDAD: ReadonlyMap<string, 1 | 2 | 3 | 4> = new Map(
   NIVELES_TERAPIA_FISICA.flatMap((n) => n.items.map((i) => [i, n.nivel] as const))
 );
 
+/** Niveles de terapia fisica (KTM) del RCE. El nivel 4 o mas es bipedestacion: el PTO del REM. */
+export const NIVELES_KTM: readonly { readonly nivel: NivelKtm; readonly titulo: string }[] = [
+  { nivel: 1, titulo: "Nivel 1 · Protección muscular (no cooperador)" },
+  { nivel: 2, titulo: "Nivel 2 · Movilización en cama" },
+  { nivel: 3, titulo: "Nivel 3 · Sedente al borde de cama (SBC)" },
+  { nivel: 4, titulo: "Nivel 4 · Bipedestación" },
+  { nivel: 5, titulo: "Nivel 5 · Marcha" }
+];
+export const NIVEL_BIPEDESTACION: NivelKtm = 4;
+
+/** Por que no se hizo la terapia fisica del turno. */
+export const MOTIVOS_KTM_NO_REALIZADA: readonly string[] = [
+  ...MOTIVOS_CONTRAINDICACION_MOTORA,
+  "Paciente no coopera o rechaza",
+  "Procedimiento o examen en curso",
+  "Otro"
+];
+
+/** Las 9 razones del RCE para no hacer la PVE en el turno. */
+export const RAZONES_PVE_NO_REALIZADA: readonly string[] = [
+  "Sin condiciones ventilatorias",
+  "Inestabilidad hemodinámica",
+  "Sedación profunda / BNM",
+  "Compromiso de conciencia",
+  "Secreciones abundantes",
+  "Menos de 24 h de VM",
+  "Indicación médica de mantener soporte",
+  "Procedimiento o pabellón programado",
+  "Otra"
+];
+
+export const ETIQUETA_EDUCACION: Readonly<Record<DestinatarioEducacion, string>> = {
+  FAMILIA: "a la familia",
+  PACIENTE: "al paciente",
+  CUIDADOR: "al cuidador"
+};
+
 export const PROCEDIMIENTOS_MEDICOS: readonly string[] = [
   "Punción lumbar",
   "Traqueostomía percutánea en box",
@@ -587,6 +626,21 @@ export const ETIQUETA_MOTIVO_EGRESO: Readonly<Record<MotivoEgreso, string>> = {
   FALLECIMIENTO: "Fallecimiento",
   OTROS: "Otros (p. ej. traslado a otro hospital)"
 };
+
+/**
+ * Destinos de egreso (los del RCE). El motivo del REM sale del destino: las salas y el domicilio
+ * son alta, otro hospital o ELEAM son «otros», y anatomia patologica es fallecimiento.
+ */
+export const DESTINOS_EGRESO: readonly { readonly grupo: string; readonly destinos: readonly string[]; readonly motivo: MotivoEgreso }[] = [
+  { grupo: "Salas del hospital", destinos: ["Medicina", "Cirugía", "Traumatología", "Neurología/Neurocirugía", "Pediatría", "Pensionado", "Psiquiatría", "UGA", "UTI"], motivo: "ALTA" },
+  { grupo: "Egreso externo", destinos: ["Domicilio"], motivo: "ALTA" },
+  { grupo: "Otro establecimiento", destinos: ["Otro hospital", "ELEAM"], motivo: "OTROS" },
+  { grupo: "Fallecimiento", destinos: ["Fallecimiento (anatomía patológica)"], motivo: "FALLECIMIENTO" }
+];
+
+export function motivoDeDestino(destino: string): MotivoEgreso | null {
+  return DESTINOS_EGRESO.find((g) => g.destinos.includes(destino))?.motivo ?? null;
+}
 
 export function textoCategoriaRem(c: CategoriaRem | null): string {
   return c ?? "categoría REM pendiente";

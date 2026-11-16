@@ -78,7 +78,9 @@ export interface EpisodioNube {
   readonly horaTranscripcion: string | null;
   readonly pendienteEntrega: string;
   readonly activo: boolean;
-  readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string };
+  readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string; readonly destino?: string };
+  /** Huella cifrada de la persona (no es el RUT ni se revierte sin la clave de la unidad). */
+  readonly huellaPersona?: string;
   readonly apkArchivada: string | null;
 }
 
@@ -110,6 +112,7 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     pendienteEntrega: e.pendienteEntrega,
     activo: e.activo,
     ...(e.egreso ? { egreso: { ...e.egreso } } : {}),
+    ...(e.huellaPersona ? { huellaPersona: e.huellaPersona } : {}),
     apkArchivada: e.apkArchivada
   };
 }

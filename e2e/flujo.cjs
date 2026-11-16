@@ -486,7 +486,7 @@ async function esperarServidor() {
       await est.goto(URL + "#estacion");
       await est.click('.cama:has-text("UCI-18")');
       await est.click('button:text-is("Dar de alta")');
-      await est.selectOption("#motivo-egreso", "ALTA");
+      await est.selectOption("#destino-egreso", "Medicina");
       await est.click('button:has-text("Confirmar alta y borrar la identidad")');
       await est.waitForTimeout(500);
       await est.close();
@@ -555,9 +555,7 @@ async function esperarServidor() {
       assert.equal(await cel.locator("#sel-deglucion").count(), 0, "la deglucion ya no esta en el control");
       // la kine motora va aparte y no es obligatoria
       assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 0, "la terapia fisica no esta en kine respiratoria");
-      await cel.click('[role=tab]:has-text("Kine motora")');
-      assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 1);
-      await cel.click('[role=tab]:has-text("Kine resp.")');
+      assert.equal(await cel.locator('[role=tab]:has-text("Kine motora")').count(), 0, "la terapia fisica ahora es un evento");
       await cel.click("#btn-guardar-control");
       assert.match(await aviso(), /APK/);
       await cel.waitForTimeout(500);
@@ -682,7 +680,7 @@ async function esperarServidor() {
       await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
       assert.equal(await cel.locator('.evgrid button:text-is("Extubación fuera de protocolo")').count(), 0, "con mas de 24 h el boton es la PVE");
-      const pveBtn = cel.locator('.evgrid button:has-text("PVE")');
+      const pveBtn = cel.locator('.evgrid button:has-text("PVE"):not(:has-text("no realizada"))');
       assert.match(await pveBtn.textContent(), /último control en CPAP\+PS[\s\S]*fuera de protocolo/);
       await pveBtn.click();
       await cel.click('button:has-text("No corresponde PVE: extubar fuera de protocolo")');
@@ -1279,7 +1277,7 @@ async function esperarServidor() {
       assert.equal(await pc.locator('[aria-label="Camas libres"]').count(), 0, "unidad llena: sin camas libres");
       await pc.click('.cama:has-text("UCI-17")');
       await pc.click('button:text-is("Dar de alta")');
-      await pc.selectOption("#motivo-egreso", "ALTA");
+      await pc.selectOption("#destino-egreso", "Medicina");
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForSelector('[aria-label="Camas libres"] h3:has-text("Camas libres (1)")');
       await pc.click('button[aria-label="Ingresar paciente en Cama 17"]');
@@ -1309,7 +1307,7 @@ async function esperarServidor() {
       // El PC libera la cama 18.
       await pc.click('.cama:has-text("UCI-18")');
       await pc.click('button:text-is("Dar de alta")');
-      await pc.selectOption("#motivo-egreso", "ALTA");
+      await pc.selectOption("#destino-egreso", "Medicina");
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForTimeout(600);
       // El celular la ve libre y la ingresa.
@@ -1483,7 +1481,7 @@ async function esperarServidor() {
       await pc.click('[role=tab]:has-text("Tablero")');
       await pc.click('.cama:has-text("UCI-16")');
       await pc.click('button:text-is("Dar de alta")');
-      await pc.selectOption("#motivo-egreso", "ALTA");
+      await pc.selectOption("#destino-egreso", "Medicina");
       await pc.click('button:has-text("Confirmar alta y borrar la identidad")');
       await pc.waitForTimeout(600);
       await cel.goto(URL + "#celular");
@@ -1522,15 +1520,49 @@ async function esperarServidor() {
       assert.match(await pc.textContent(".detail-head"), /UCI-04 · Paciente Prueba Cuatro/);
     });
 
+    await prueba("kinesiterapia como evento: KTM con nivel (pide el nivel), IMT, educación y PVE no realizada con su razón", async () => {
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
+      await cel.waitForSelector('section:has(h3:text-is("Kinesiterapia"))');
+      await cel.click('.evgrid button:has-text("Terapia física (KTM)")');
+      await cel.waitForSelector("#evf-niv");
+      await cel.click('button:text-is("Registrar")');
+      assert.match(await aviso(), /Elige el nivel/);
+      const niveles = await cel.locator("#evf-niv option").allTextContents();
+      assert.equal(niveles.length, 6, "cinco niveles del RCE: " + niveles.join(" | "));
+      await cel.selectOption("#evf-niv", "4");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.linea-tiempo:has-text("nivel 4")');
+      await cel.click('.evgrid button:has-text("IMT")');
+      await cel.waitForSelector('.linea-tiempo:has-text("IMT")');
+      await cel.click('.evgrid button:has-text("Educación")');
+      await cel.selectOption("#evf-a", "FAMILIA");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.linea-tiempo:has-text("Educación a la familia")');
+      assert.equal(await cel.locator('.evgrid button:has-text("Extubación accidental")').count(), 0, "lo del tubo no se ofrece sin TET");
+      // PVE no realizada en una cama con TET: siempre con razón.
+      await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Eventos")');
+      assert.equal(await cel.locator('.evgrid button:has-text("Extubación accidental")').count(), 1);
+      await cel.click('.evgrid button:has-text("PVE no realizada")');
+      await cel.click('button:text-is("Registrar")');
+      assert.match(await aviso(), /por qué no se realizó/);
+      assert.equal(await cel.locator("#evf-raz option").count(), 10, "las 9 razones del RCE");
+      await cel.selectOption("#evf-raz", "Secreciones abundantes");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.linea-tiempo:has-text("PVE no realizada: Secreciones abundantes")');
+      await cel.click('button:has-text("‹ Pacientes")');
+    });
+
     await prueba("dar de alta desde el celular: pide el motivo, confirma aparte y la cama queda libre", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
       await cel.click('.evgrid button:has-text("Dar de alta")');
-      await cel.waitForSelector("#evf-mot");
-      assert.equal(await cel.inputValue("#evf-mot"), "", "el motivo no viene elegido");
+      await cel.waitForSelector("#evf-dest");
+      assert.equal(await cel.inputValue("#evf-dest"), "", "el destino no viene elegido");
       await cel.click('button:text-is("Confirmar egreso")');
-      assert.match(await aviso(), /Elige el motivo de egreso/);
-      await cel.selectOption("#evf-mot", "ALTA");
+      assert.match(await aviso(), /Elige el destino del egreso/);
+      await cel.selectOption("#evf-dest", "Medicina");
       await cel.click('button:text-is("Confirmar egreso")');
       await cel.waitForSelector('.toast-app:has-text("dada de alta")');
       await cel.waitForSelector('article.cama-sin:has-text("Cama 9")');
@@ -1557,17 +1589,21 @@ async function esperarServidor() {
       const cols = await pc.locator(".est-tabla thead th").allTextContents();
       assert.deepEqual(cols, ["Cama", "Modo ventilatorio", "KTR", "KTM / IMT", "APK", "Eventos (PVE incluida)", "Firmó"]);
       assert.ok(await pc.locator(".est-tabla tbody tr").count() > 0, "hay camas con registros este mes");
+      await pc.waitForSelector('.est-tabla tbody tr:has-text("Cama 9"):has-text("nivel 4 · PTO · IMT")');
+      assert.match(await pc.textContent(".est-dos"), /Secreciones abundantes/);
       await foto("estadistica");
       // Indicadores: los cuatro principales con su meta.
       await pc.click('[role=tab]:text-is("Indicadores")');
       const kpis = await pc.locator(".ind-kpi .t").allTextContents();
-      assert.deepEqual(kpis, ["Fracaso de extubación (≤ 48 h)", "Autoextubaciones", "Extubación fuera de protocolo", "PVE realizadas"]);
+      assert.deepEqual(kpis, ["Fracaso de extubación (≤ 48 h)", "Autoextubaciones y accidentales", "Extubación fuera de protocolo", "PVE realizadas"]);
       assert.match(await pc.textContent(".ind-kpis"), /meta < 15 %/);
+      assert.match(await pc.textContent('[aria-label="Indicadores"]'), /Egresos por destino[\s\S]*Medicina/);
       await foto("indicadores");
       // Archivados: la cama 9 recién egresada se puede deshacer.
       await pc.click('[role=tab]:text-is("Archivados")');
       const fila9 = pc.locator('.est-tabla tbody tr:has-text("Cama 9")');
       await fila9.waitFor();
+      assert.match(await fila9.textContent(), /Medicina/, "el destino del egreso queda en el archivo");
       await fila9.locator('button:has-text("Ver sábana")').click();
       await pc.waitForSelector('[aria-label="Sábana del episodio"]');
       await foto("archivados");

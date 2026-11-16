@@ -21,6 +21,8 @@ function periodo(r: Rango, ahora: Date): Periodo {
   }
 }
 
+/** Minutos a «12 h 30 min». */
+const horas = (min: number): string => (min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ""}`);
 const num = (v: number | null, d = 1): string => (v === null ? "—" : v.toLocaleString("es-CL", { maximumFractionDigits: d }));
 
 /** Semaforo de la meta: verde cumple, rojo no cumple, gris sin dato. */
@@ -44,8 +46,8 @@ export function Indicadores({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
       meta: `meta < ${META_FRACASO_PCT} %`, estado: i.fracasoPct === null ? "neu" : i.fracasoPct < META_FRACASO_PCT ? "ok" : "mal"
     },
     {
-      t: "Autoextubaciones", v: num(i.autoextPor100Vm), u: "/ 100 días-VM",
-      f: `${i.autoextubaciones} en ${i.diasVm} días-VM`,
+      t: "Autoextubaciones y accidentales", v: num(i.autoextPor100Vm), u: "/ 100 días-VM",
+      f: `${i.autoextubaciones} en ${i.diasVm} días-VM${i.accidentales ? ` · ${i.accidentales} accidental${i.accidentales === 1 ? "" : "es"}` : ""}`,
       meta: `meta ${META_AUTOEXT_POR_100_VM[0]}–${META_AUTOEXT_POR_100_VM[1]}`, estado: i.autoextPor100Vm === null ? "neu" : i.autoextPor100Vm <= META_AUTOEXT_POR_100_VM[1] ? "ok" : "mal"
     },
     {
@@ -124,7 +126,7 @@ export function Indicadores({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
           <div className="ind-fila"><span>Desvinculaciones</span><b>{i.desvinculaciones} · {i.desvincPacientes} pacientes</b></div>
           <div className="ind-fila"><span>Terminaron en reconexión</span><b>{i.desvincReconexiones}</b></div>
           <div className="ind-fila"><span>Horas fuera del ventilador</span><b>{num(i.desvincHoras)} · mediana {num(i.desvincMedianaHoras)}</b></div>
-          <div className="ind-fila"><span>Turnos con válvula de fonación</span><b>{i.turnosValvula}</b></div>
+          <div className="ind-fila"><span>Válvula de fonación</span><b>{horas(i.minutosValvula)} · {i.turnosValvula} turnos</b></div>
           <div className="ind-fila"><span>Decanulaciones</span><b>{i.decanulaciones}</b></div>
         </div>
         <div className="card stack" style={{ gap: 6 }}>
@@ -133,7 +135,23 @@ export function Indicadores({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
           <div className="ind-fila"><span>Ocupación promedio</span><b>{num(i.ocupacionProm)} camas</b></div>
           <div className="ind-fila"><span>Egresos</span><b>{i.egresos}</b></div>
           <div className="ind-fila"><span>Mortalidad (sin ajuste)</span><b>{i.fallecidos} · {num(i.mortalidadPct)} %</b></div>
-          <div className="ind-fila"><span>Reingresos (cruce por RUT en el PC)</span><b className="muted">pendiente</b></div>
+          <div className="ind-fila"><span>Reingresos (misma persona, por la huella del RUT)</span><b>{i.ingresosConHuella ? `${i.reingresos} de ${i.ingresosConHuella} ingresos con RUT` : <span className="muted">sin ingresos con RUT</span>}</b></div>
+        </div>
+      </div>
+
+      <div className="est-dos">
+        <div className="card stack" style={{ gap: 6 }}>
+          <h3 style={{ margin: 0 }}>Kinesiterapia</h3>
+          <div className="ind-fila"><span>Terapia física (KTM) realizada</span><b>{i.ktm}</b></div>
+          <div className="ind-fila"><span>Sesiones de IMT</span><b>{i.imt}</b></div>
+          <div className="ind-fila"><span>PTO · primera bipedestación del episodio</span><b>{i.pto}</b></div>
+          <div className="ind-fila"><span>Educación al paciente, familia o cuidador</span><b>{i.educacion}</b></div>
+        </div>
+        <div className="card stack" style={{ gap: 6 }}>
+          <h3 style={{ margin: 0 }}>Egresos por destino</h3>
+          {i.destinos.length === 0 ? <p className="small muted" style={{ margin: 0 }}>Sin egresos en el periodo.</p> : i.destinos.map((x) => (
+            <div key={x.destino} className="ind-fila"><span>{x.destino}</span><b>{x.n}</b></div>
+          ))}
         </div>
       </div>
       <p className="small muted" style={{ margin: 0 }}>Definiciones del tablero del RCE: fracaso = reintubación dentro de 48 h de una extubación programada (con o sin PVE); la autoextubación va aparte. Día-VM = día con al menos un control en ventilación mecánica invasiva. Mortalidad sin ajuste por gravedad.</p>

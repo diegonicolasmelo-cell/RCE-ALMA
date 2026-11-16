@@ -304,7 +304,12 @@ export interface Episodio {
   readonly pendienteEntrega: string;
   readonly activo: boolean;
   /** Motivo y momento del egreso (REM 28, B.1). Solo en episodios dados de alta desde la estacion. */
-  readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string };
+  readonly egreso?: { readonly motivo: MotivoEgreso; readonly en: string; readonly destino?: string };
+  /**
+   * Huella de la persona para contar reingresos: se calcula en el PC con la clave de la unidad a
+   * partir del RUT. No es el RUT ni se puede revertir sin esa clave; solo dice «es la misma persona».
+   */
+  readonly huellaPersona?: string;
   /**
    * Firma de las APK que el PC de respaldo ya guardo en su carpeta local (ids ordenados).
    * Mientras no coincida con las APK del episodio, la identidad no se borra al alta.
@@ -445,6 +450,10 @@ export type IdEscala =
   | "FLUJO_PICO_TOS"
   | "DEGLUCION";
 
+/** Niveles de terapia fisica del RCE: 1 proteccion, 2 en cama, 3 SBC, 4 bipedestacion, 5 marcha. */
+export type NivelKtm = 1 | 2 | 3 | 4 | 5;
+export type DestinatarioEducacion = "FAMILIA" | "PACIENTE" | "CUIDADOR";
+
 export type ElementoFiltro = "TRACHCARE" | "HEPA";
 
 export type FasePveControl = "INICIAL" | "30MIN";
@@ -488,7 +497,8 @@ export type EventoClinico =
    * protocolo (sin PVE) y el motivo dice por que.
    */
   | (EventoBase & { readonly tipo: "EXTUBACION_PROGRAMADA"; readonly dispositivo: DispositivoPosterior; readonly sinPve?: MotivoExtubacionSinPve })
-  | (EventoBase & { readonly tipo: "AUTOEXTUBACION"; readonly dispositivo: DispositivoPosterior })
+  /** `accidental`: la extubo el equipo sin querer (no el paciente). Cuenta junto a las autoextubaciones. */
+  | (EventoBase & { readonly tipo: "AUTOEXTUBACION"; readonly dispositivo: DispositivoPosterior; readonly accidental?: boolean })
   | (EventoBase & { readonly tipo: "REINTUBACION"; readonly via: "TET" | "TQT"; readonly calibre: string; readonly fijacionCm: string })
   | (EventoBase & { readonly tipo: "TRAQUEOSTOMIA"; readonly calibre: string })
   /** Cambio de centimetros a la comisura. NO cuenta como intubacion. */
@@ -499,6 +509,24 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "CAMBIO_CANULA"; readonly calibre: string; readonly motivo: MotivoCambioVia })
   /** Retiro de la TQT: queda con via aerea natural. Accidental si no fue planificada. */
   | (EventoBase & { readonly tipo: "DECANULACION"; readonly dispositivo: Exclude<DispositivoPosterior, "REINTUBACION_INMEDIATA">; readonly accidental: boolean })
+  /** No se hizo la PVE en este turno: siempre con razon (las mismas 9 del RCE). No es una extubacion. */
+  | (EventoBase & { readonly tipo: "PVE_NO_REALIZADA"; readonly razon: string })
+  /**
+   * Terapia fisica (KTM) como evento: realizada con su nivel (1 a 5, los del RCE) o no realizada
+   * con su motivo. La bipedestacion (nivel 4 o mas) por primera vez en el episodio es el PTO del REM.
+   */
+  | (EventoBase & {
+      readonly tipo: "TERAPIA_FISICA";
+      readonly realizada: boolean;
+      readonly nivel: NivelKtm | null;
+      readonly ems: boolean;
+      readonly ims: Medicion;
+      readonly motivo: string | null;
+    })
+  /** Entrenamiento muscular inspiratorio: va solo al REM (102501 y terapia respiratoria). */
+  | (EventoBase & { readonly tipo: "IMT" })
+  /** Educacion al paciente, a la familia o al cuidador (REM 28, B.6 Educacion). */
+  | (EventoBase & { readonly tipo: "EDUCACION"; readonly dirigidaA: DestinatarioEducacion })
   | (EventoBase & { readonly tipo: "INICIO_PRONO" })
   | (EventoBase & { readonly tipo: "SUPINACION" })
   | (EventoBase & { readonly tipo: "INICIO_BNM"; readonly farmaco: string })

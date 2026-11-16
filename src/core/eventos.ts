@@ -87,6 +87,10 @@ export function viaAereaVigente(
       case "ASISTENCIA_PROCEDIMIENTO":
       case "TOMA_CULTIVO":
       case "TRASLADO_IMAGEN":
+      case "PVE_NO_REALIZADA":
+      case "TERAPIA_FISICA":
+      case "IMT":
+      case "EDUCACION":
         break;
       default: {
         const _exhaustivo: never = ev;

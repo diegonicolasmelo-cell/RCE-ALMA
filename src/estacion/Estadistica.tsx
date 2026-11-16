@@ -48,6 +48,8 @@ export function Estadistica({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
         <div><b>{r.totales.ktr}</b><span>KTR (controles)</span></div>
         <div><b>{r.totales.ktm}</b><span>KTM o IMT{r.totales.imt ? ` · ${r.totales.imt} con IMT` : ""}</span></div>
         <div><b>{r.totales.pve}</b><span>PVE realizadas</span></div>
+        <div><b>{r.totales.pto}</b><span>PTO (1ª bipedestación)</span></div>
+        <div><b>{r.totales.educacion}</b><span>educaciones</span></div>
         <div><b>{r.totales.eventos}</b><span>eventos</span></div>
         <div><b>{r.totales.apkCumple}/{r.totales.pacientes}</b><span>APK que cumple</span></div>
       </div>
@@ -68,7 +70,9 @@ export function Estadistica({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
                   <td className="n">{f.ktr}</td>
                   <td>
                     {f.ktm > 0 ? (
-                      <><span className="marca si">✓</span> {f.ktm > 1 ? `${f.ktm} sesiones` : "Realizada"}{f.imt ? " · IMT" : ""}{f.ims !== null ? ` · IMS ${f.ims}` : ""}</>
+                      <><span className="marca si">✓</span> {f.ktm > 1 ? `${f.ktm} sesiones` : "Realizada"}{f.nivel ? ` · nivel ${f.nivel}` : ""}{f.pto ? " · PTO" : ""}{f.imt ? " · IMT" : ""}{f.ims !== null ? ` · IMS ${f.ims}` : ""}</>
+                    ) : f.imt ? (
+                      <><span className="marca si">✓</span> IMT{f.imt > 1 ? ` ×${f.imt}` : ""}{f.ktmMotivo ? <span className="small muted"> · KTM: {f.ktmMotivo}</span> : null}</>
                     ) : f.ktmMotivo ? (
                       <><span className="marca no">✕</span> <span className="small muted">{f.ktmMotivo}</span></>
                     ) : "—"}
@@ -94,7 +98,7 @@ export function Estadistica({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
           ))}
         </div>
         <div className="card stack" style={{ gap: 8 }}>
-          <h3 style={{ margin: 0 }}>PVE no realizada · criterio que no se cumplió</h3>
+          <h3 style={{ margin: 0 }}>PVE no realizada · por qué</h3>
           {r.motivosSinPve.length === 0 ? <p className="small muted" style={{ margin: 0 }}>Sin registros.</p> : r.motivosSinPve.map((m) => (
             <div key={m.motivo} className="est-barra"><span>{m.motivo}</span><i style={{ width: `${(100 * m.n) / max(r.motivosSinPve)}%` }} /><b>{m.n}</b></div>
           ))}

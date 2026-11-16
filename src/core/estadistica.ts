@@ -14,7 +14,7 @@
  *  - Mortalidad sin ajuste por gravedad.
  */
 
-import { ETIQUETA_MODALIDAD, ETIQUETA_MOTIVO_SIN_PVE, GRUPO_MODALIDAD } from "./catalogos";
+import { ETIQUETA_MODALIDAD, ETIQUETA_MOTIVO_SIN_PVE, GRUPO_MODALIDAD, NIVEL_BIPEDESTACION } from "./catalogos";
 import { esReintubacion } from "./eventos";
 import { CRITERIOS_PVE } from "./pve";
 import { HORA_INICIO_DIA, HORA_INICIO_NOCHE, turnoDe } from "./turnos";
@@ -121,6 +121,40 @@ function diasDelEpisodio(ep: Episodio, controles: readonly Control[], ahora: Dat
   return out;
 }
 
+/** Actividades del control antiguo (antes de que la KTM fuera evento) que son bipedestacion. */
+const BIPEDESTACION_ANTIGUA = new Set(["Bipedestación asistida", "Marcha asistida en el box"]);
+
+/**
+ * La primera bipedestacion del episodio (PTO del REM 28, codigo 1010922): la primera KTM de nivel
+ * 4 o 5, o en registros antiguos, el primer control con bipedestacion o marcha. ISO o null.
+ */
+export function primeraBipedestacion(controles: readonly Control[], eventos: readonly EventoClinico[]): string | null {
+  const enEventos = eventos.filter((e) => e.tipo === "TERAPIA_FISICA" && e.realizada && (e.nivel ?? 0) >= NIVEL_BIPEDESTACION).map((e) => e.registradoEn);
+  const enControles = controles.filter((c) => c.terapiaFisica.estado === "REALIZADA" && c.terapiaFisica.actividades.some((a) => BIPEDESTACION_ANTIGUA.has(a))).map((c) => c.registradoEn);
+  const todas = [...enEventos, ...enControles].sort();
+  return todas[0] ?? null;
+}
+
+/**
+ * Minutos con valvula de fonacion dentro del periodo: desde el control que la inicia hasta el
+ * primer control en otro modo (o el egreso, o ahora si sigue con ella).
+ */
+export function minutosValvula(ep: Episodio, controles: readonly Control[], p: Periodo, ahora: Date): number {
+  const cs = [...controles].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
+  const fin = ep.egreso ? Date.parse(ep.egreso.en) : ahora.getTime();
+  let total = 0;
+  for (let i = 0; i < cs.length; i++) {
+    const c = cs[i]!;
+    if (c.ventilacion.modalidad !== "VALVULA_FONACION") continue;
+    if (i > 0 && cs[i - 1]!.ventilacion.modalidad === "VALVULA_FONACION") continue;
+    const sig = cs.slice(i + 1).find((x) => x.ventilacion.modalidad !== "VALVULA_FONACION");
+    const desde = Math.max(Date.parse(c.registradoEn), p.desde.getTime());
+    const hasta = Math.min(sig ? Date.parse(sig.registradoEn) : fin, p.hasta.getTime(), ahora.getTime());
+    if (hasta > desde) total += (hasta - desde) / 60_000;
+  }
+  return Math.round(total);
+}
+
 // ---------------------------------------------------------------------------
 // Estadistica: resumen por cama del periodo
 // ---------------------------------------------------------------------------
@@ -132,10 +166,14 @@ export interface FilaCama {
   readonly modo: string;
   /** Controles registrados = sesiones de kinesiterapia respiratoria (KTR). */
   readonly ktr: number;
-  /** Controles con terapia fisica (KTM o IMT) realizada. */
+  /** Terapia fisica (KTM) realizada: eventos KTM (y controles antiguos con terapia fisica). */
   readonly ktm: number;
-  /** De ellas, con IMT. */
+  /** Sesiones de IMT (eventos IMT y controles antiguos con IMT). */
   readonly imt: number;
+  /** Nivel mas alto de la KTM del periodo (1 a 5). */
+  readonly nivel: number | null;
+  /** En el periodo fue la primera bipedestacion del episodio (PTO). */
+  readonly pto: boolean;
   /** IMS mas alto del periodo. */
   readonly ims: number | null;
   /** Si no hubo KTM: por que (contraindicacion registrada o «no realizada»). */
@@ -158,15 +196,17 @@ export interface ResumenEstadistica {
     readonly pve: number;
     readonly eventos: number;
     readonly apkCumple: number;
+    readonly pto: number;
+    readonly educacion: number;
   };
   /** Por que no se hizo terapia fisica: motivo → veces. */
   readonly motivosSinKtm: readonly { readonly motivo: string; readonly n: number }[];
-  /** Por que no se hizo la PVE: criterio del checklist que no se cumplio → veces. */
+  /** Por que no se hizo la PVE: la razon registrada (o el criterio del checklist que fallo) → veces. */
   readonly motivosSinPve: readonly { readonly motivo: string; readonly n: number }[];
 }
 
 /** Eventos que no se listan como «hechos»: son pasos internos de un flujo. */
-const SIN_LISTAR = new Set<EventoClinico["tipo"]>(["CONTROL_PVE", "INICIO_PVE", "EVALUACION_PVE", "REEVAL_POST_EXTUB"]);
+const SIN_LISTAR = new Set<EventoClinico["tipo"]>(["CONTROL_PVE", "INICIO_PVE", "EVALUACION_PVE", "REEVAL_POST_EXTUB", "TERAPIA_FISICA", "IMT"]);
 
 /** El texto corto de un evento para la tabla. La PVE se cuenta por su termino o, si sigue, por su inicio. */
 function textoEvento(e: EventoClinico, describir: (e: EventoClinico) => string): string | null {
@@ -185,6 +225,7 @@ export function resumenPorCama(
   const sinKtm = new Map<string, number>();
   const sinPve = new Map<string, number>();
   let pve = 0;
+  let educacion = 0;
   const camas = [...d.episodios].sort((a, b) => a.cama.localeCompare(b.cama, "es", { numeric: true }));
   for (const ep of camas) {
     const deAutor = <T extends { rutAutor: string }>(x: T): boolean => autor === null || x.rutAutor === autor;
@@ -192,30 +233,41 @@ export function resumenPorCama(
     const evs = (d.eventos.get(ep.id) ?? []).filter((e) => dentro(e.registradoEn, p) && deAutor(e));
     const aps = (d.apks?.get(ep.id) ?? []).filter((a) => dentro(a.registradoEn, p) && deAutor(a));
     if (cs.length === 0 && evs.length === 0) continue;
-    const ktm = cs.filter((c) => c.terapiaFisica.estado === "REALIZADA");
-    const imt = ktm.filter((c) => c.terapiaFisica.actividades.some((a) => a.startsWith("IMT")));
+    const ktmAntigua = cs.filter((c) => c.terapiaFisica.estado === "REALIZADA");
+    const ktmEv = evs.filter((e): e is Extract<EventoClinico, { tipo: "TERAPIA_FISICA" }> => e.tipo === "TERAPIA_FISICA");
+    const hechas = ktmEv.filter((e) => e.realizada);
+    const imtN = ktmAntigua.filter((c) => c.terapiaFisica.actividades.some((a) => a.startsWith("IMT"))).length + evs.filter((e) => e.tipo === "IMT").length;
+    const ktmN = ktmAntigua.length + hechas.length;
     let ktmMotivo: string | null = null;
-    if (cs.length > 0 && ktm.length === 0) {
-      const ult = cs[cs.length - 1]!.terapiaFisica;
-      ktmMotivo = ult.estado === "CONTRAINDICADA" ? (ult.motivoContraindicacion ?? "Contraindicada") : "No realizada";
-      sinKtm.set(ktmMotivo, (sinKtm.get(ktmMotivo) ?? 0) + 1);
+    if (ktmN === 0) {
+      const no = ktmEv.filter((e) => !e.realizada).at(-1);
+      const contra = cs.filter((c) => c.terapiaFisica.estado === "CONTRAINDICADA").at(-1);
+      ktmMotivo = no ? (no.motivo || "Sin motivo") : contra ? (contra.terapiaFisica.motivoContraindicacion ?? "Contraindicada") : cs.length > 0 ? "Sin registro de KTM" : null;
+      if (ktmMotivo) sinKtm.set(ktmMotivo, (sinKtm.get(ktmMotivo) ?? 0) + 1);
     }
     for (const e of evs) {
       if (e.tipo === "INICIO_PVE") pve += 1;
+      if (e.tipo === "EDUCACION") educacion += 1;
+      if (e.tipo === "PVE_NO_REALIZADA") sinPve.set(e.razon || "Sin razón", (sinPve.get(e.razon || "Sin razón") ?? 0) + 1);
       if (e.tipo === "EVALUACION_PVE" && !e.apto) {
-        const falla = CRITERIOS_PVE.find((_, i) => !e.criterios[i]) ?? "No cumple el checklist";
+        const falla = `Checklist: ${CRITERIOS_PVE.find((_, i) => !e.criterios[i]) ?? "no cumple"}`;
         sinPve.set(falla, (sinPve.get(falla) ?? 0) + 1);
       }
     }
-    const ims = ktm.reduce<number | null>((m, c) => (c.terapiaFisica.ims !== null && (m === null || c.terapiaFisica.ims > m) ? c.terapiaFisica.ims : m), null);
+    const imsTodos = [...ktmAntigua.map((c) => c.terapiaFisica.ims), ...hechas.map((e) => e.ims)].filter((x): x is number => x !== null);
+    const ims = imsTodos.length ? Math.max(...imsTodos) : null;
+    const niveles = hechas.map((e) => e.nivel ?? 0).filter((n) => n > 0);
+    const bip = primeraBipedestacion(d.controles.get(ep.id) ?? [], d.eventos.get(ep.id) ?? []);
     const ultimo = cs[cs.length - 1];
     filas.push({
       episodioId: ep.id,
       cama: ep.cama,
       modo: ultimo ? ETIQUETA_MODALIDAD[ultimo.ventilacion.modalidad] ?? "" : "",
       ktr: cs.length,
-      ktm: ktm.length,
-      imt: imt.length,
+      ktm: ktmN,
+      imt: imtN,
+      nivel: niveles.length ? Math.max(...niveles) : null,
+      pto: bip !== null && dentro(bip, p),
       ims,
       ktmMotivo,
       apk: aps.some((a) => a.resultado === "CUMPLE") ? "CUMPLE" : aps.length > 0 ? "NO_CUMPLE" : null,
@@ -236,7 +288,9 @@ export function resumenPorCama(
       imt: filas.reduce((s, f) => s + f.imt, 0),
       pve,
       eventos: filas.reduce((s, f) => s + f.eventos.length, 0),
-      apkCumple: filas.filter((f) => f.apk === "CUMPLE").length
+      apkCumple: filas.filter((f) => f.apk === "CUMPLE").length,
+      pto: filas.filter((f) => f.pto).length,
+      educacion
     },
     motivosSinKtm: ordenar(sinKtm),
     motivosSinPve: ordenar(sinPve)
@@ -262,6 +316,8 @@ export interface Indicadores {
   readonly fracasoTardio: number;
   readonly fracasoPct: number | null;
   readonly autoextubaciones: number;
+  /** De ellas, accidentales (las extubo el equipo). */
+  readonly accidentales: number;
   readonly autoextPor100Vm: number | null;
   readonly fueraProtocolo: number;
   readonly fueraPct: number | null;
@@ -280,7 +336,19 @@ export interface Indicadores {
   readonly desvincHoras: number;
   readonly desvincMedianaHoras: number | null;
   readonly turnosValvula: number;
+  /** Minutos con valvula de fonacion: del control que la inicia al que cambia de modo. */
+  readonly minutosValvula: number;
   readonly decanulaciones: number;
+  readonly ktm: number;
+  readonly imt: number;
+  readonly educacion: number;
+  /** Primeras bipedestaciones del episodio en el periodo (REM 28, PTO 1010922). */
+  readonly pto: number;
+  /** Ingresos del periodo de una persona que ya habia estado en la unidad (por la huella del RUT). */
+  readonly reingresos: number;
+  /** Ingresos del periodo con huella (con RUT): el denominador de los reingresos. */
+  readonly ingresosConHuella: number;
+  readonly destinos: readonly { readonly destino: string; readonly n: number }[];
   readonly atenciones: number;
   readonly atencionesPorPacDia: number | null;
   readonly ocupacionProm: number | null;
@@ -306,6 +374,7 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
   let precoz = 0;
   let tardio = 0;
   let autoext = 0;
+  let accidentales = 0;
   let fuera = 0;
   const fueraPorMotivo = new Map<string, { total: number; noche: number }>();
   let pve = 0;
@@ -319,6 +388,14 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
   const durDesvinc: number[] = [];
   let decan = 0;
   const turnosValvula = new Set<string>();
+  let minValvula = 0;
+  let ktm = 0;
+  let imt = 0;
+  let educacion = 0;
+  let pto = 0;
+  let reingresos = 0;
+  let conHuella = 0;
+  const destinos = new Map<string, number>();
   let atenciones = 0;
   let egresos = 0;
   let fallecidos = 0;
@@ -335,9 +412,21 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
       ventilados += 1;
       if (vmEp.size > 7) prolongada += 1;
     }
+    minValvula += minutosValvula(ep, cs, p, ahora);
+    const bip = primeraBipedestacion(cs, evs);
+    if (bip && dentro(bip, p)) pto += 1;
+    const ingreso = ep.ingresadoEn ?? cs[0]?.registradoEn;
+    if (ep.huellaPersona && ingreso && dentro(ingreso, p)) {
+      conHuella += 1;
+      const antes = d.episodios.some((o) => o.id !== ep.id && o.huellaPersona === ep.huellaPersona && (o.ingresadoEn ?? "") < ingreso);
+      if (antes) reingresos += 1;
+    }
     for (const c of cs) {
       if (!dentro(c.registradoEn, p)) continue;
-      atenciones += 1 + (c.terapiaFisica.estado === "REALIZADA" ? 1 : 0);
+      const tf = c.terapiaFisica.estado === "REALIZADA";
+      atenciones += 1 + (tf ? 1 : 0);
+      if (tf) ktm += 1;
+      if (tf && c.terapiaFisica.actividades.some((a) => a.startsWith("IMT"))) imt += 1;
       if (c.ventilacion.modalidad === "VALVULA_FONACION") turnosValvula.add(`${ep.id}|${turnoDe(new Date(c.registradoEn)).clave}`);
     }
     evs.forEach((e, i) => {
@@ -368,6 +457,16 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
         }
         case "AUTOEXTUBACION":
           autoext += 1;
+          if (e.accidental) accidentales += 1;
+          break;
+        case "TERAPIA_FISICA":
+          if (e.realizada) { ktm += 1; atenciones += 1; }
+          break;
+        case "IMT":
+          imt += 1;
+          break;
+        case "EDUCACION":
+          educacion += 1;
           break;
         case "INICIO_PVE":
           pve += 1;
@@ -400,6 +499,8 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
     if (ep.egreso && dentro(ep.egreso.en, p)) {
       egresos += 1;
       if (ep.egreso.motivo === "FALLECIMIENTO") fallecidos += 1;
+      const dst = ep.egreso.destino ?? "Sin destino registrado";
+      destinos.set(dst, (destinos.get(dst) ?? 0) + 1);
     }
   }
   const fracaso = precoz + tardio;
@@ -413,6 +514,7 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
     fracasoTardio: tardio,
     fracasoPct: pct(fracaso, extubaciones),
     autoextubaciones: autoext,
+    accidentales,
     autoextPor100Vm: pct(autoext, diasVm),
     fueraProtocolo: fuera,
     fueraPct: pct(fuera, extubaciones),
@@ -431,6 +533,14 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
     desvincHoras: r1(durDesvinc.reduce((s, x) => s + x, 0)),
     desvincMedianaHoras: mediana(durDesvinc),
     turnosValvula: turnosValvula.size,
+    minutosValvula: minValvula,
+    ktm,
+    imt,
+    educacion,
+    pto,
+    reingresos,
+    ingresosConHuella: conHuella,
+    destinos: [...destinos].map(([destino, n]) => ({ destino, n })).sort((a, b) => b.n - a.n || a.destino.localeCompare(b.destino)),
     decanulaciones: decan,
     atenciones,
     atencionesPorPacDia: diasPaciente > 0 ? Math.round((100 * atenciones) / diasPaciente) / 100 : null,
@@ -486,7 +596,9 @@ export function archivados(d: DatosEstadistica): readonly Archivado[] {
       const hitos = [
         n("INICIO_PVE") ? `PVE ×${n("INICIO_PVE")}` : "",
         n("EXTUBACION_PROGRAMADA") ? `extubación ×${n("EXTUBACION_PROGRAMADA")}` : "",
-        n("AUTOEXTUBACION") ? "autoextubación" : "",
+        evs.some((e) => e.tipo === "AUTOEXTUBACION" && !e.accidental) ? "autoextubación" : "",
+        evs.some((e) => e.tipo === "AUTOEXTUBACION" && e.accidental) ? "extubación accidental" : "",
+        primeraBipedestacion(cs, evs) ? "PTO" : "",
         n("REINTUBACION") ? `reintubación ×${n("REINTUBACION")}` : "",
         n("TRAQUEOSTOMIA") ? "TQT" : "",
         n("DESVINCULACION") ? `desvinc. ×${n("DESVINCULACION")}` : "",

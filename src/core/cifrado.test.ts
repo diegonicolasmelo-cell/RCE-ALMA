@@ -59,3 +59,17 @@ describe("cifrado de la identidad", () => {
     await expect(descifrarJson(await clave("contraseña-de-la-unidad"), "basura")).rejects.toThrow(/formato/);
   });
 });
+
+describe("huella de la persona (reingresos)", () => {
+  it("es la misma para el mismo RUT, distinta para otro, y cambia con la clave", async () => {
+    const { huellaPersona, derivarClave } = await import("./cifrado");
+    const k1 = await derivarClave("clave-uno-larga", 1000);
+    const k2 = await derivarClave("clave-dos-larga", 1000);
+    const a = await huellaPersona(k1, "11111111-1");
+    expect(await huellaPersona(k1, "11111111-1")).toBe(a);
+    expect(await huellaPersona(k1, "22222222-2")).not.toBe(a);
+    expect(await huellaPersona(k2, "11111111-1")).not.toBe(a);
+    expect(a).toMatch(/^[0-9a-f]{32}$/);
+    expect(a).not.toContain("11111111");
+  });
+});

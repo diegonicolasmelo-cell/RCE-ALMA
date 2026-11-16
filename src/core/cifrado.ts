@@ -89,3 +89,20 @@ export async function claveCorresponde(clave: CryptoKey, verificacion: string): 
     return false;
   }
 }
+
+/**
+ * Huella de una persona a partir de su RUT, para contar reingresos sin guardar el RUT.
+ *
+ * Con la clave de la unidad: se cifra el RUT con AES-GCM usando como vector inicial los primeros
+ * 12 bytes del SHA-256 del RUT (determinista: el mismo RUT da siempre lo mismo, y RUT distintos
+ * nunca comparten vector). Sin la clave no se puede recalcular, asi que no sirve para adivinar
+ * RUT probando. Sin clave (modo demostracion, datos inventados) basta el SHA-256.
+ */
+export async function huellaPersona(clave: CryptoKey | null, rutNormalizado: string): Promise<string> {
+  const datos = enc.encode(`kaptus-persona:${rutNormalizado.trim().toUpperCase()}`);
+  const resumen = new Uint8Array(await crypto.subtle.digest("SHA-256", datos));
+  const bytes = clave
+    ? new Uint8Array(await crypto.subtle.digest("SHA-256", await crypto.subtle.encrypt({ name: "AES-GCM", iv: resumen.slice(0, 12) }, clave, datos)))
+    : resumen;
+  return [...bytes.slice(0, 16)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}

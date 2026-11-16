@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, formatearRut, normalizarRut, validarRut } from "@core/index";
+import { CAMAS_UNIDAD, nombreCama, dotacion, cifrarIdentidad, huellaPersona, formatearRut, normalizarRut, validarRut } from "@core/index";
 import { CATEGORIAS_REM, equiposDeLaCama, equiposParaVia, problemaEquipos, rangoDeEdad } from "@core/index";
 import type { CategoriaRem, EquipoEnSala, Episodio, IdentidadPaciente, OrigenTalla, Sexo, ViaAerea } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -20,12 +20,18 @@ import { useIdentidadesEnMemoria } from "./identidades";
  * Devuelve un texto de error si no se pudo guardar de forma segura, o el resultado de la subida.
  */
 export function useGuardarIdentidad(): (identidad: IdentidadPaciente) => Promise<{ readonly error: string | null; readonly subida: { ok: boolean; error?: string | undefined } | null }> {
-  const { api, db, local } = useServicios();
+  const { api, db, local, repo } = useServicios();
   const clave = useClaveUnidad();
   return async (identidad) => {
     if (!local && !clave) return { error: "Falta instalar la contraseña de la unidad en este equipo (pestaña Estado). Sin ella no se puede guardar el nombre de forma segura.", subida: null };
     if (local) await db.identidades.put(identidad);
     else useIdentidadesEnMemoria.getState().poner(identidad);
+    // Reingresos: el episodio guarda solo la huella de la persona (no el RUT).
+    if (identidad.rut) {
+      const huella = await huellaPersona(clave ?? null, identidad.rut);
+      const ep = await db.episodios.get(identidad.episodioId);
+      if (ep && ep.huellaPersona !== huella) await repo.guardarEpisodio({ ...ep, huellaPersona: huella });
+    }
     const r = local || !clave ? await api.guardarReferencias([]) : await api.guardarReferencias([await cifrarIdentidad(clave, identidad, new Date())]);
     return { error: null, subida: r };
   };

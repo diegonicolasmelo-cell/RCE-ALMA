@@ -90,11 +90,11 @@ export class Repositorio {
     });
   }
 
-  async darAlta(episodioId: string, motivo: MotivoEgreso): Promise<void> {
+  async darAlta(episodioId: string, motivo: MotivoEgreso, destino?: string): Promise<void> {
     await this.db.transaction("rw", this.tablas(), async () => {
       const ep = await this.db.episodios.get(episodioId);
       if (!ep) return;
-      await this.sync.encolar([await this.poner({ ...ep, activo: false, egreso: { motivo, en: this.ahora().toISOString() } })]);
+      await this.sync.encolar([await this.poner({ ...ep, activo: false, egreso: { motivo, en: this.ahora().toISOString(), ...(destino ? { destino } : {}) } })]);
     });
   }
 

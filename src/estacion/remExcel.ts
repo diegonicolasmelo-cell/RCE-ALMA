@@ -38,7 +38,7 @@ export const FILA_CATEGORIA: Readonly<Record<CategoriaRem, number>> = {
 export const FILA_EGRESO: Readonly<Record<MotivoEgreso, number>> = { ALTA: 42, FALLECIMIENTO: 44, OTROS: 46 };
 
 /** Filas de la hoja "REM BS" (codigos de prestacion). */
-export const FILA_BS = { evaluacionIntegral: 5, atencionIntegralUpc: 7, reeducacionMotriz: 41, permeabilizacionViaAerea: 44, asistenciaIotCanula: 46 } as const;
+export const FILA_BS = { evaluacionIntegral: 5, atencionIntegralUpc: 7, reeducacionMotriz: 41, permeabilizacionViaAerea: 44, asistenciaIotCanula: 46, reeducacionTos: 50, toleranciaOrtostatica: 53 } as const;
 
 const NOMBRE_MES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 
@@ -96,7 +96,9 @@ export function celdasRem(r: RemMensual): { readonly a: ReadonlyMap<string, numb
   filaRango(74, r.sesionesMotoras);
 
   // B.6
+  a.set("B87", r.fisioterapia);
   a.set("B89", r.ejerciciosTerapeuticos);
+  a.set("B105", r.educacion);
   a.set("B109", r.terapiaRespiratoria);
 
   // BS: una atencion por persona; todo es MAI (beneficiarios FONASA) y atencion cerrada.

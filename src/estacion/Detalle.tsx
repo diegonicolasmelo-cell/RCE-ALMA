@@ -13,13 +13,14 @@ import {
   formatearRut,
   purgaDeIdentidadLista,
   ETIQUETA_MOTIVO_EGRESO,
-  MOTIVOS_EGRESO,
+  DESTINOS_EGRESO,
+  motivoDeDestino,
   textoCategoriaRem,
   textoEdadPaciente,
   turnoAnterior,
   turnoDe
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, IdentidadPaciente, MotivoEgreso, ValidacionApk } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { Aviso } from "../celular/componentes";
@@ -46,7 +47,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
   const { repo, api, db, config } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [confirmarAlta, setConfirmarAlta] = useState(false);
-  const [motivoEgreso, setMotivoEgreso] = useState<MotivoEgreso | "">("");
+  const [destinoEgreso, setDestinoEgreso] = useState("");
 
 
 
@@ -60,8 +61,9 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
   };
 
   const darDeAlta = async (): Promise<void> => {
-    if (motivoEgreso === "") return;
-    await repo.darAlta(ep.id, motivoEgreso);
+    const motivo = motivoDeDestino(destinoEgreso);
+    if (!motivo) return;
+    await repo.darAlta(ep.id, motivo, destinoEgreso);
     if (!purgaDeIdentidadLista(ep, apks)) {
       avisar(`${ep.cama} dada de alta. La identidad se borrará cuando el PC de respaldo guarde la hoja APK final (sigue cifrada mientras tanto).`);
       return;
@@ -157,15 +159,16 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
         ) : (
           <div className="stack" style={{ gap: 8 }}>
             <div className="f">
-              <label htmlFor="motivo-egreso">Motivo de egreso (REM 28)</label>
-              <select id="motivo-egreso" value={motivoEgreso} onChange={(e) => setMotivoEgreso(e.target.value as MotivoEgreso | "")}>
+              <label htmlFor="destino-egreso">Destino del egreso</label>
+              <select id="destino-egreso" value={destinoEgreso} onChange={(e) => setDestinoEgreso(e.target.value)}>
                 <option value="">— elegir —</option>
-                {MOTIVOS_EGRESO.map((m) => <option key={m} value={m}>{ETIQUETA_MOTIVO_EGRESO[m]}</option>)}
+                {DESTINOS_EGRESO.map((g) => <optgroup key={g.grupo} label={g.grupo}>{g.destinos.map((d) => <option key={d} value={d}>{d}</option>)}</optgroup>)}
               </select>
+              {destinoEgreso && <span className="small muted">Motivo REM 28: {ETIQUETA_MOTIVO_EGRESO[motivoDeDestino(destinoEgreso) ?? "OTROS"]}</span>}
             </div>
             <div className="row">
-              <button type="button" className="btn danger sm" disabled={motivoEgreso === ""} onClick={() => void darDeAlta()}>Confirmar alta y borrar la identidad</button>
-              <button type="button" className="btn sm" onClick={() => { setConfirmarAlta(false); setMotivoEgreso(""); }}>Cancelar</button>
+              <button type="button" className="btn danger sm" disabled={destinoEgreso === ""} onClick={() => void darDeAlta()}>Confirmar alta y borrar la identidad</button>
+              <button type="button" className="btn sm" onClick={() => { setConfirmarAlta(false); setDestinoEgreso(""); }}>Cancelar</button>
             </div>
           </div>
         )}

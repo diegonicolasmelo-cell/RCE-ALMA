@@ -59,7 +59,7 @@ export function Archivados({ datos, ahora }: { datos: DatosUnidad; ahora: Date }
       <div className="card" style={{ padding: 0, overflowX: "auto" }}>
         {lista.length === 0 ? <p className="muted" style={{ padding: 16, margin: 0 }}>No hay egresos con esos filtros.</p> : (
           <table className="est-tabla" aria-label="Episodios egresados">
-            <thead><tr><th>Egreso</th><th>Cama</th><th>Edad · sexo</th><th>Diagnóstico REM</th><th className="n">Estadía</th><th className="n">Días VM</th><th>Hitos</th><th>Motivo</th><th /></tr></thead>
+            <thead><tr><th>Egreso</th><th>Cama</th><th>Edad · sexo</th><th>Diagnóstico REM</th><th className="n">Estadía</th><th className="n">Días VM</th><th>Hitos</th><th>Destino</th><th /></tr></thead>
             <tbody>
               {lista.map((a) => {
                 const ep = a.episodio;
@@ -73,7 +73,7 @@ export function Archivados({ datos, ahora }: { datos: DatosUnidad; ahora: Date }
                     <td className="n">{a.diasEstadia} d</td>
                     <td className="n">{a.diasVm}</td>
                     <td className="small">{a.hitos}</td>
-                    <td><span className={`pill ${a.motivo === "ALTA" ? "good" : ""}`}>{ETIQUETA_MOTIVO_EGRESO[a.motivo].replace(/ \(.*\)$/, "")}</span></td>
+                    <td><span className={`pill ${a.motivo === "ALTA" ? "good" : ""}`}>{ep.egreso?.destino ?? ETIQUETA_MOTIVO_EGRESO[a.motivo].replace(/ \(.*\)$/, "")}</span>{ep.huellaPersona && datos.todosEpisodios.some((o) => o.id !== ep.id && o.huellaPersona === ep.huellaPersona) ? <span className="pill warn" title="La misma persona tiene otro episodio en la unidad">reingreso</span> : null}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button type="button" className="btn sm" onClick={() => setAbierto(abierto === ep.id ? null : ep.id)}>{abierto === ep.id ? "Cerrar sábana" : "Ver sábana"}</button>{" "}
                       {puede && (confirmar === ep.id ? (

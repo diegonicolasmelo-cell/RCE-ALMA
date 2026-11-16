@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { archivados, calcularIndicadores, diaLocal, periodoDe, puedeDeshacerAlta, resumenPorCama } from "./estadistica";
+import { archivados, calcularIndicadores, diaLocal, minutosValvula, periodoDe, puedeDeshacerAlta, resumenPorCama } from "./estadistica";
 import type { Periodo } from "./estadistica";
 import { unControl, unEpisodio, unEvento, unaVentilacion } from "./fixtures";
 import type { Control, EventoClinico } from "./tipos";
@@ -100,5 +100,60 @@ describe("archivados y deshacer alta", () => {
     expect(puedeDeshacerAlta(egr, [], AHORA)).toBe(true);
     expect(puedeDeshacerAlta(egr, [unEpisodio({ id: "otro", cama: "UCI-09", activo: true })], AHORA)).toBe(false);
     expect(puedeDeshacerAlta({ ...egr, egreso: { motivo: "ALTA", en: hace(30) } }, [], AHORA)).toBe(false);
+  });
+});
+
+describe("kinesiterapia como evento, PTO, válvula, reingresos y destinos (16-nov-2026)", () => {
+  const ep = unEpisodio({ id: "ep-1", cama: "UCI-01", ingresadoEn: new Date(2026, 10, 10, 9).toISOString(), activo: true });
+  const ktm = (h: number, nivel: number, extra: Record<string, unknown> = {}): EventoClinico => ev({ episodioId: "ep-1", tipo: "TERAPIA_FISICA", realizada: true, nivel, ems: false, ims: null, motivo: null, registradoEn: hace(h), ...extra });
+
+  it("KTM con nivel, IMT y educación como eventos; el PTO es la primera bipedestación del episodio", () => {
+    const eventos = [
+      ktm(50, 3),
+      ktm(3, 4, { ems: true, ims: 4 }),
+      ktm(2, 5),
+      ev({ episodioId: "ep-1", tipo: "IMT", registradoEn: hace(2.5) }),
+      ev({ episodioId: "ep-1", tipo: "EDUCACION", dirigidaA: "FAMILIA", registradoEn: hace(1) })
+    ];
+    const d = { episodios: [ep], controles: new Map([["ep-1", [unControl({ id: "c", episodioId: "ep-1", registradoEn: hace(4), terapiaFisica: { estado: "NO", actividades: [], ims: null, motivoContraindicacion: null } })]]]), eventos: new Map([["ep-1", eventos]]) };
+    const r = resumenPorCama(d, periodoDe("TURNO", AHORA), describir);
+    const f = r.filas[0]!;
+    expect([f.ktm, f.imt, f.nivel, f.pto, f.ims]).toEqual([2, 1, 5, true, 4]);
+    expect(f.eventos.map((e) => e.texto)).toEqual(["EDUCACION"]);
+    expect([r.totales.pto, r.totales.educacion]).toEqual([1, 1]);
+    // El turno siguiente ya no es PTO: la primera bipedestación fue antes.
+    expect(resumenPorCama(d, { desde: new Date(AHORA.getTime() + 3600_000), hasta: new Date(AHORA.getTime() + 2 * 3600_000), etiqueta: "" }, describir).filas.length).toBe(0);
+    const i = calcularIndicadores(d, MES, AHORA);
+    expect([i.ktm, i.imt, i.educacion, i.pto]).toEqual([3, 1, 1, 1]);
+  });
+
+  it("KTM no realizada con motivo y PVE no realizada con su razón", () => {
+    const eventos = [
+      ev({ episodioId: "ep-1", tipo: "TERAPIA_FISICA", realizada: false, nivel: null, ems: false, ims: null, motivo: "PIC fuera de meta", registradoEn: hace(2) }),
+      ev({ episodioId: "ep-1", tipo: "PVE_NO_REALIZADA", razon: "Secreciones abundantes", registradoEn: hace(1) })
+    ];
+    const r = resumenPorCama({ episodios: [ep], controles: new Map(), eventos: new Map([["ep-1", eventos]]) }, periodoDe("TURNO", AHORA), describir);
+    expect(r.filas[0]!.ktmMotivo).toBe("PIC fuera de meta");
+    expect(r.motivosSinKtm).toEqual([{ motivo: "PIC fuera de meta", n: 1 }]);
+    expect(r.motivosSinPve).toEqual([{ motivo: "Secreciones abundantes", n: 1 }]);
+  });
+
+  it("los minutos de válvula van del control que la inicia al que cambia de modo", () => {
+    const c = (h: number, modalidad: string, id: string): Control => unControl({ id, episodioId: "ep-1", registradoEn: hace(h), viaAerea: "TQT", ventilacion: unaVentilacion({ modalidad: modalidad as never }) });
+    const cs = [c(10, "CPAP_PS", "a"), c(8, "VALVULA_FONACION", "b"), c(7, "VALVULA_FONACION", "b2"), c(6, "CNAF_TQT", "c"), c(2, "VALVULA_FONACION", "d")];
+    // 8 h a 6 h = 120 min, y de 2 h atrás a ahora = 120 min.
+    expect(minutosValvula(ep, cs, MES, AHORA)).toBe(240);
+  });
+
+  it("extubación accidental cuenta con las autoextubaciones; reingresos por huella y egresos por destino", () => {
+    const vmi = unControl({ id: "v", episodioId: "ep-1", registradoEn: hace(30), viaAerea: "TET", ventilacion: unaVentilacion({ modalidad: "ACVC" }) });
+    const eventos = [ev({ episodioId: "ep-1", tipo: "AUTOEXTUBACION", accidental: true, dispositivo: "CNAF", registradoEn: hace(20) })];
+    const antes = unEpisodio({ id: "ep-0", cama: "UCI-05", activo: false, huellaPersona: "abc", ingresadoEn: new Date(2026, 9, 1).toISOString(), egreso: { motivo: "ALTA", en: new Date(2026, 9, 5).toISOString(), destino: "Medicina" } });
+    const reing = { ...ep, huellaPersona: "abc" };
+    const otro = unEpisodio({ id: "ep-2", cama: "UCI-02", activo: false, huellaPersona: "zzz", ingresadoEn: new Date(2026, 10, 2).toISOString(), egreso: { motivo: "FALLECIMIENTO", en: hace(5), destino: "Fallecimiento (anatomía patológica)" } });
+    const i = calcularIndicadores({ episodios: [antes, reing, otro], controles: new Map([["ep-1", [vmi]]]), eventos: new Map([["ep-1", eventos]]) }, MES, AHORA);
+    expect([i.autoextubaciones, i.accidentales]).toEqual([1, 1]);
+    expect([i.reingresos, i.ingresosConHuella]).toEqual([1, 2]);
+    expect(i.destinos).toEqual([{ destino: "Fallecimiento (anatomía patológica)", n: 1 }]);
   });
 });

@@ -58,7 +58,7 @@ import { TabPve } from "./TabPve";
 const TABS: readonly (readonly [TabCelular, string])[] = [
   ["control", "Control"],
   ["kine", "Kine resp. · APK"],
-  ["motora", "Kine motora"],
+  // La terapia fisica (KTM) ya no va en el control: se registra como evento (pestaña Eventos).
   ["eventos", "Eventos"]
 ];
 

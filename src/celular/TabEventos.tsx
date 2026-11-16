@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CircleAlert, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, Ban, CircleAlert, CircleSlash, Footprints, Users, Wind, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -17,10 +17,14 @@ import {
   botonExtubacion,
   motivoSinPve,
   estadoFlujoPve,
-  MOTIVOS_EGRESO,
-  ETIQUETA_MOTIVO_EGRESO
+  DESTINOS_EGRESO,
+  motivoDeDestino,
+  ETIQUETA_MOTIVO_EGRESO,
+  NIVELES_KTM,
+  MOTIVOS_KTM_NO_REALIZADA,
+  RAZONES_PVE_NO_REALIZADA
 } from "@core/index";
-import type { DispositivoPosterior, EventoClinico, MotivoEgreso, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
+import type { DestinatarioEducacion, DispositivoPosterior, EventoClinico, NivelKtm, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
@@ -58,9 +62,9 @@ const DISPOSITIVOS: readonly Opcion[] = [
 const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ valor: x, texto: x }));
 
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
-const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "decan"];
+const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "accext", "decan"];
 /** Eventos que se registran y siguen con su control (todos menos filtros, TrachCare, cama y PVE). */
-const CON_CONTROL = ["reint", "traq", "autoext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent"];
+const CON_CONTROL = ["reint", "traq", "autoext", "accext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent"];
 
 const MOTIVOS_SIN_PVE: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => ({
   valor: k,
@@ -129,7 +133,10 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
           campos: [{ id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }, { id: "acc", etiqueta: "¿Fue planificada?", opciones: [{ valor: "no", texto: "Sí, planificada" }, { valor: "si", texto: "No: accidental" }] }],
           crear: (v, b) => ({ ...b, tipo: "DECANULACION", dispositivo: (v["disp"] ?? "CNAF") as Exclude<DispositivoPosterior, "REINTUBACION_INMEDIATA">, accidental: v["acc"] === "si" })
         },
-        { k: "autoext", texto: "Autoextubación", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) }
+        { k: "autoext", texto: "Autoextubación", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
+        // Accidental: la extubo el equipo sin querer (p. ej. en una movilizacion). Cuenta con las autoextubaciones.
+        { k: "accext", texto: "Extubación accidental", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", accidental: true, dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
+        { k: "pveNo", texto: "PVE no realizada", req: "tet", campos: [{ id: "raz", etiqueta: "¿Por qué no se realizó la PVE en este turno?", valor: "", opciones: [{ valor: "", texto: "— elegir —" }, ...lista(RAZONES_PVE_NO_REALIZADA)] }, { id: "txt", etiqueta: "Detalle (opcional)" }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "PVE_NO_REALIZADA", razon: v["raz"] ?? "" }) }
       ]
     },
     {
@@ -144,8 +151,34 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         {
           // El egreso no es un evento: cierra el episodio (lo mismo que «Dar de alta» en el PC).
           k: "egreso", texto: "Dar de alta (egreso)",
-          campos: [{ id: "mot", etiqueta: "Motivo de egreso (REM 28)", opciones: [{ valor: "", texto: "— elegir —" }, ...MOTIVOS_EGRESO.map((m) => ({ valor: m, texto: ETIQUETA_MOTIVO_EGRESO[m] }))] }],
+          campos: [{ id: "dest", etiqueta: "Destino del egreso", opciones: [{ valor: "", texto: "— elegir —" }, ...DESTINOS_EGRESO.flatMap((g) => g.destinos.map((d) => ({ valor: d, texto: g.destinos.length > 1 && g.motivo === "ALTA" ? `Sala: ${d}` : d })))] }],
           crear: () => { throw new Error("el egreso no es un evento"); }
+        }
+      ]
+    },
+    {
+      // Kinesiterapia: cada cosa es un evento que va sola a la estadistica y al REM.
+      titulo: "Kinesiterapia",
+      items: [
+        {
+          k: "ktm", texto: "Terapia física (KTM)",
+          campos: [
+            { id: "niv", etiqueta: "Nivel", valor: "", opciones: [{ valor: "", texto: "— elegir —" }, ...NIVELES_KTM.map((n) => ({ valor: String(n.nivel), texto: n.titulo }))] },
+            { id: "ems", etiqueta: "Electroestimulación (EMS)", opciones: [{ valor: "no", texto: "No" }, { valor: "si", texto: "Sí, con EMS" }] },
+            { id: "ims", etiqueta: "IMS (0 a 10, opcional)", num: true }
+          ],
+          crear: (v, b) => ({ ...b, tipo: "TERAPIA_FISICA", realizada: true, nivel: Number(v["niv"]) as NivelKtm, ems: v["ems"] === "si", ims: (v["ims"] ?? "").trim() === "" ? null : Number(v["ims"]), motivo: null })
+        },
+        {
+          k: "ktmNo", texto: "Terapia física no realizada",
+          campos: [{ id: "mot", etiqueta: "Motivo", valor: "", opciones: [{ valor: "", texto: "— elegir —" }, ...lista(MOTIVOS_KTM_NO_REALIZADA)] }],
+          crear: (v, b) => ({ ...b, tipo: "TERAPIA_FISICA", realizada: false, nivel: null, ems: false, ims: null, motivo: v["mot"] ?? "" })
+        },
+        { k: "imt", texto: "IMT (entrenamiento muscular inspiratorio)", crear: (_v, b) => ({ ...b, tipo: "IMT" }) },
+        {
+          k: "edu", texto: "Educación",
+          campos: [{ id: "a", etiqueta: "A quién", opciones: [{ valor: "FAMILIA", texto: "A la familia" }, { valor: "PACIENTE", texto: "Al paciente" }, { valor: "CUIDADOR", texto: "Al cuidador" }] }],
+          crear: (v, b) => ({ ...b, tipo: "EDUCACION", dirigidaA: (v["a"] ?? "FAMILIA") as DestinatarioEducacion })
         }
       ]
     },
@@ -209,15 +242,20 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       const destino = v["cama"] ?? "";
       if (!libres.includes(destino)) return avisar("Elige una cama libre.");
     }
+    if (it.k === "ktm" && !v["niv"]) return avisar("Elige el nivel de la terapia física.");
+    if (it.k === "ktm" && (v["ims"] ?? "").trim() !== "" && !numOk(v["ims"], 0, 10)) return avisar("El IMS va de 0 a 10.");
+    if (it.k === "ktmNo" && !v["mot"]) return avisar("Elige el motivo por el que no se hizo.");
+    if (it.k === "pveNo" && !v["raz"]) return avisar("Elige por qué no se realizó la PVE.");
     if (it.k === "egreso") {
-      const motivo = v["mot"] as MotivoEgreso | "";
-      if (!motivo) return avisar("Elige el motivo de egreso.");
-      await repo.darAlta(ep.id, motivo);
+      const destino = v["dest"] ?? "";
+      const motivo = motivoDeDestino(destino);
+      if (!motivo) return avisar("Elige el destino del egreso.");
+      await repo.darAlta(ep.id, motivo, destino);
       setAbierto(null);
       setValores({});
       useApp.getState().descartar(ep.id);
       useApp.getState().irA("camas");
-      avisar(`${nombreCama(ep.cama)} dada de alta (${ETIQUETA_MOTIVO_EGRESO[motivo].toLowerCase()}). La cama queda libre; el nombre y el RUT se borran en el PC.`);
+      avisar(`${nombreCama(ep.cama)} dada de alta (${destino}; ${ETIQUETA_MOTIVO_EGRESO[motivo].toLowerCase()}). La cama queda libre; el nombre y el RUT se borran en el PC.`);
       return;
     }
     const ahoraReal = new Date();
@@ -233,13 +271,13 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     setAbierto(null);
     setValores({});
     // Autoextubacion con reintubacion inmediata: se sigue por el mismo camino de la intubacion.
-    if (it.k === "autoext" && v["disp"] === "REINTUBACION_INMEDIATA") {
+    if ((it.k === "autoext" || it.k === "accext") && v["disp"] === "REINTUBACION_INMEDIATA") {
       const reint = todos.find((x) => x.k === "reint");
       if (reint?.campos) {
         setAbierto("reint");
         setValores(Object.fromEntries(reint.campos.map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
       }
-      avisar("Autoextubación registrada. Ahora registra la reintubación: el tubo, los cm y la hora.");
+      avisar(`${it.k === "accext" ? "Extubación accidental" : "Autoextubación"} registrada. Ahora registra la reintubación: el tubo, los cm y la hora.`);
       return;
     }
     // Extubacion fuera de protocolo: sigue en la PVE con el control inmediato post extubacion.
@@ -397,6 +435,6 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
 /** Icono de cada evento (en el diseño nuevo va sobre el nombre; en el clásico no se muestra). */
 const ICONO_EVENTO: Record<string, LucideIcon> = {
   extub: CircleAlert, pve: Timer, reint: RotateCw, traq: Scissors, ajuste: Ruler, cambioTubo: Repeat, cambioCanula: Repeat,
-  decan: CircleMinus, autoext: TriangleAlert, traslado: ArrowLeftRight, egreso: LogOut, supinar: RotateCcw, prono: RotateCw, fbc: Eye,
+  decan: CircleMinus, autoext: TriangleAlert, accext: TriangleAlert, pveNo: CircleSlash, ktm: Footprints, ktmNo: Ban, imt: Wind, edu: Users, traslado: ArrowLeftRight, egreso: LogOut, supinar: RotateCcw, prono: RotateCw, fbc: Eye,
   cult: TestTube, img: ScanLine, asist: HandHelping, hme: Filter, trach: Filter, hepa: Filter, pcr: HeartPulse, cent: ShieldAlert
 };

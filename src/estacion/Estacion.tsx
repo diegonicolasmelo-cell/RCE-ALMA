@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Logo } from "../app/Logo";
 import { useServicios } from "../app/contexto";
 import { useAhora } from "../app/hooks";
-import { descifrarIdentidad, soloEpisodios } from "@core/index";
+import { descifrarIdentidad, huellaPersona, soloEpisodios } from "@core/index";
 import { useArchivoApkLocal } from "./apkDocumento";
 import { useClaveUnidad } from "./claveUnidad";
 import { useIdentidadesEnMemoria } from "./identidades";
@@ -31,7 +31,7 @@ const GRUPOS: readonly { readonly titulo: string; readonly vistas: readonly (rea
  * cada minuto, solo en memoria. Sin la clave, no se ve ningun nombre.
  */
 function useIdentidades(): void {
-  const { api, db, local, tokenEstacion } = useServicios();
+  const { api, db, local, repo, tokenEstacion } = useServicios();
   const clave = useClaveUnidad();
   useEffect(() => {
     // En modo local la tabla ya esta sembrada y la API local no guarda nada: no se pisa.
@@ -41,12 +41,20 @@ function useIdentidades(): void {
       if (!r.ok) return;
       const leidas = await Promise.all(soloEpisodios(r.referencias).map((ref) => descifrarIdentidad(clave, ref)));
       // Solo en memoria: nada legible queda en el disco de este PC.
-      useIdentidadesEnMemoria.getState().reemplazar(leidas.filter((x): x is NonNullable<typeof x> => x !== null));
+      const validas = leidas.filter((x): x is NonNullable<typeof x> => x !== null);
+      useIdentidadesEnMemoria.getState().reemplazar(validas);
+      // Reingresos: los episodios con RUT que aun no tienen su huella la reciben aqui.
+      for (const i of validas) {
+        if (!i.rut) continue;
+        const ep = await db.episodios.get(i.episodioId);
+        if (!ep || ep.huellaPersona) continue;
+        await repo.guardarEpisodio({ ...ep, huellaPersona: await huellaPersona(clave, i.rut) });
+      }
     };
     void traer();
     const t = setInterval(() => void traer(), 60_000);
     return () => clearInterval(t);
-  }, [api, db, local, tokenEstacion, clave]);
+  }, [api, db, repo, local, tokenEstacion, clave]);
 }
 
 export function Estacion() {

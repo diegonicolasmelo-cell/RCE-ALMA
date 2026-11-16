@@ -3,7 +3,7 @@
  * Nunca se cargan cuando hay una API configurada.
  */
 
-import { construirRut, firmarApkCumple, rangoDeEdad, turnoAnterior } from "@core/index";
+import { construirRut, firmarApkCumple, huellaPersona, rangoDeEdad, turnoAnterior } from "@core/index";
 import type { CategoriaRem } from "@core/index";
 import type {
   Control,
@@ -264,9 +264,18 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
   };
   const identidades: IdentidadPaciente[] = nombres.map(([episodioId, nombre, cuerpo]) => ({ episodioId, nombre, rut: construirRut(cuerpo), ficha: null, edad: null, diagnostico: dxDemo[episodioId] ?? null }));
 
-  for (const e of episodios) await repo.guardarEpisodio(e);
+  // Reingresos: en la demo la huella sale del RUT inventado (sin clave de la unidad).
+  const huellas = new Map(await Promise.all(identidades.map(async (i) => [i.episodioId, i.rut ? await huellaPersona(null, i.rut) : ""] as const)));
+  for (const e of episodios) await repo.guardarEpisodio(huellas.get(e.id) ? { ...e, huellaPersona: huellas.get(e.id)! } : e);
   for (const k of controles) await repo.guardarControl(k);
   await repo.registrarEvento(prono);
+  // Kinesiterapia como evento: una KTM con bipedestacion (PTO), un IMT y una educacion a la familia.
+  const enDemo = (id: string, episodioId: string, haceMin: number, resto: Record<string, unknown>): EventoClinico => ({
+    id, episodioId, hora: hora(new Date(ahora.getTime() - haceMin * MIN)), registradoEn: new Date(ahora.getTime() - haceMin * MIN).toISOString(), rutAutor: DIEGO, comentario: "", ...resto
+  }) as EventoClinico;
+  await repo.registrarEvento(enDemo("ep-05-ktm1", "ep-05", 50, { tipo: "TERAPIA_FISICA", realizada: true, nivel: 4, ems: false, ims: 4, motivo: null }));
+  await repo.registrarEvento(enDemo("ep-03-imt1", "ep-03", 45, { tipo: "IMT" }));
+  await repo.registrarEvento(enDemo("ep-06-edu1", "ep-06", 40, { tipo: "EDUCACION", dirigidaA: "FAMILIA" }));
   await repo.firmarApk(apkPrevia("ep-01-apk0", "ep-01", "TET", "felipe.guerrero@demo.upc"));
   await repo.firmarApk(apkPrevia("ep-02-apk0", "ep-02", "TET", "felipe.guerrero@demo.upc"));
   await repo.firmarApk(apkPrevia("ep-03-apk0", "ep-03", "TQT", "maria.jose.vega@demo.upc"));

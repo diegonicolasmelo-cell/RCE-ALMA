@@ -686,3 +686,19 @@ Reemplaza a las «medallas» y al «museo con vitrinas». Diego aprobó la idea 
 - **Dibujos**: Diego los genera con el prompt maestro (estilo fijo + una línea por especie + el paisaje), en PNG con fondo
   transparente y sin suelo; se limpian aquí si vienen con cuadriculado o piso. Mientras tanto sirven los SVG del mockup.
 - Abierto: ¿un secreto se gana varias veces? ¿la franja muestra nombres o solo cuántos?
+
+## 20. Llenar el control con una foto del monitor y del ventilador (EN ESTUDIO, 16-nov-2026)
+
+Pedido de Diego: sacar la foto de la pantalla y que el control se llene solo, como con el dictado. La foto **no se guarda**:
+se extrae el dato, se confirma y se descarta. Las infusiones siguen manuales.
+
+- **Propuesta (opción A)**: lectura dentro del celular, sin internet. Cámara en vivo con marco guía; la imagen vive solo en
+  memoria y se borra al leerla (no galería, no caché, no nube). Un **molde por equipo** con la ubicación de cada número; el
+  del ventilador se elige solo con el equipo que la cama tiene registrado. Siempre se **confirma antes de llenar**.
+- **Descartada sin aprobación institucional (opción B)**: mandar la foto a una IA en internet. El monitor puede mostrar el
+  nombre del paciente (Ley 19.628).
+- **Equipos**: monitor **Nihon Kohden** (todos iguales; falta el modelo exacto). Ventiladores: Savina, Vela, Servo U,
+  PB 840, PB 980, Avea, Meckis y el **V60** (VNI, ya está en el catálogo de equipos).
+- **Orden**: primero el monitor (un solo molde) para medir la precisión real; después los ventiladores, uno por uno.
+- **Falta de Diego**: el modelo exacto del monitor y 5 a 10 fotos por equipo, sin nombre ni RUT a la vista (equipo en modo
+  demostración o en espera, o el nombre tapado).

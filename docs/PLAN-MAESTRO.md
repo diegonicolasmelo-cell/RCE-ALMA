@@ -737,3 +737,26 @@ igual que en BUDA); se mantienen los dos modos, **último control** y **resumen 
 - **Paso 2 PROGRAMADO (16-nov)**: `src/core/texto-evolucion.ts` (un solo motor, por bloques) reemplaza al texto viejo de
   `nota-alma.ts`; `componerNotaAlma` lo llama. El resumen es solo del turno del último control. Corrección: el «11T» del
   Glasgow con tubo era correcto (el RCE cuenta el verbal como 1T); solo sobraba el «/11T».
+
+## 22. Kaptus como captura del RCE: Manuel ya lo diseñó (hallado el 17-nov-2026)
+
+Diego propuso que Kaptus llene el modal de evolución del RCE. Manuel ya lo tenía escrito (repo
+`fuentessmanuel/rce-kine-unificado`, carpeta `docs/`, y ramas del RCE oficial), con Kaptus bajo su nombre anterior
+«UPC-Pulse»:
+- `PRD_FUSION_RCE_KINE_UPC_PULSE.md` (8-nov): **Pulse es el satélite, RCE la estación central**; «que PULSE sea la forma en
+  que llega la información a RCE». Cuatro etapas: 1 lectura · 2 controles a las hojas `CONTROLES` y `HOJA_DIA` del RCE,
+  con la evolución `#kf` prellenada (`fillFormReplica`) · 3 eventos de vía aérea y PVE como **propuestas** que se
+  confirman en el RCE · 4 corte de la planilla propia de Pulse.
+- **Etapa 1 programada** en el RCE (`v2/svc_pulse.gs`): `doPost` con token, PIN por firma de `KINESIOLOGOS`, sesión que
+  vence con el turno y acción `lectura` (camas + última evolución, sin nombre ni RUT). Interruptor `CONFIG.PULSE_ACTIVO`.
+- Hermanos: `PRD_ETAPA1_PULSE_LECTURA.md`, `PRD_VISTA_TELEFONO_CONTROL.md` (rediseño del control del teléfono),
+  `PRD_CONTROL_DE_CABECERA.md` y `PRD_PANEL_CONTROLES.md` (panel del RCE junto a ALMA).
+- **Asumido por Manuel y pendiente de que Diego lo confirme**: P02 puerta propia · P03 VNI sin interfaz · P04 ECF/Barthel
+  desde el teléfono · **P05/R8 Kaptus no calcula cifras** · **P06 la evolución la da el RCE** · **R10 se retira la
+  Estación de Kaptus** · P09 filtros · P11/R13 PIN reforzado · P12 modos de VNI del RCE. Suyos: P07 y P08.
+- **Choques con lo hecho en Kaptus del 15 al 16-nov**: Estación B (estadística, indicadores, archivados, entrega) y el
+  motor de texto para ALMA quedarían retirados por R8/R10/P06 · turnos: el PRD dice 09-21 y Kaptus usa 8-20 · la KTM, el
+  IMT y la educación como eventos tienen que mapearse a las columnas `KTM_*`/`EDU_REALIZADA` del RCE · la huella del RUT
+  para reingresos (Kaptus deja de guardar identidades, R3).
+- Manuel dejó **9 correcciones a Pulse en una rama local** (`fix/soportes-vni-o2-dias-vm-sin-rut`, commit 5757582) que no
+  están en este repo; hay una foto en `rce-kine-unificado/upc-pulse`.

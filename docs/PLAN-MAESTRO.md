@@ -760,3 +760,8 @@ Diego propuso que Kaptus llene el modal de evolución del RCE. Manuel ya lo ten�
   para reingresos (Kaptus deja de guardar identidades, R3).
 - Manuel dejó **9 correcciones a Pulse en una rama local** (`fix/soportes-vni-o2-dias-vm-sin-rut`, commit 5757582) que no
   están en este repo; hay una foto en `rce-kine-unificado/upc-pulse`.
+- **Decisiones de Diego (17-nov), tras la revisión Elephant-Goldfish** (`docs/revision-egm-fusion/`): cifras oficiales y
+  evolución para ALMA **salen del RCE**; **queda solo Kaptus móvil** (el RCE es la estación); la extubación se anota al tiro
+  en el teléfono y en el RCE se confirma con el último control; turnos de la app **8-20**; app del equipo abierta con
+  clave y solo como visualizador (por aclarar); **identidades en pausa** (funciona como el RCE hoy). Detalle en
+  `docs/revision-egm-fusion/DECISIONES_DIEGO.md`. Se dejan de desarrollar la Estación de Kaptus y su texto para ALMA.

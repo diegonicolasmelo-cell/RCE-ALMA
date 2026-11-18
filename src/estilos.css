@@ -1159,7 +1159,6 @@ body.dictando .cel-pie{visibility:hidden}
 .kv-cama{position:relative;width:31px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font:700 12px var(--font-data);cursor:pointer;color:var(--ink);padding:0}
 .kv-cama.libre{color:var(--muted);background:transparent;border-style:dashed;cursor:default}
 .kv-cama.sel{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.kv-pt{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--warn);color:#1b1b1b;font:800 10.5px/16px var(--font-ui);padding:0 3px}
 .kv-nav{display:inline-flex;gap:4px;margin-left:auto;align-items:center}
 .kv-vacio{margin:auto;color:var(--muted)}
 /* Mosaico: filas iguales que se estiran; las columnas las elige columnasMosaico() */

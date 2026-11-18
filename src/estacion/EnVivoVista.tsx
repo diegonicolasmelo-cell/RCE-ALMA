@@ -80,7 +80,6 @@ export function EnVivo({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
           return (
             <button key={c} type="button" className={cx("kv-cama", sel && "sel")} onClick={() => irCama(c)} title={`Cama ${n} · ${f.iniciales ? `${f.iniciales} · ` : ""}${f.paciente}${f.pendientesAlma ? ` · ${f.pendientesAlma} sin pasar a ALMA` : ""}`}>
               {n}
-              {f.pendientesAlma > 0 && <span className="kv-pt">{f.pendientesAlma}</span>}
             </button>
           );
         })}

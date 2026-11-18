@@ -1137,3 +1137,95 @@ body.dictando .cel-pie{visibility:hidden}
 .ent-t{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:var(--ink-2)}
 .ent-pend{display:grid;gap:4px;border:1.5px solid var(--ink);border-radius:8px;padding:6px 8px}
 .ent-pend textarea{border:0;background:transparent;font:inherit;resize:vertical;min-height:38px;color:var(--ink)}
+
+/* ---- Estacion · Kaptus en vivo: media pantalla al lado de ALMA (683 px), sin desplazar la pagina ----
+   Diseno del panel de Manuel (mosaico por cama y hoja por cama), con los colores de la estacion. Prefijo kv-
+   porque .camas, .cama, .alma y .mini ya existen en la estacion. */
+.estacion.en-vivo{height:100dvh;display:flex;flex-direction:column;overflow:hidden;padding:8px max(12px,env(safe-area-inset-left,0px)) 8px}
+.estacion.en-vivo .top{margin-bottom:4px}
+.estacion.en-vivo .brand small{display:none}
+.estacion.en-vivo .tabs{margin-bottom:6px}
+.estacion.en-vivo .tab{padding:6px 10px}
+.estacion.en-vivo>main{flex:1;min-height:0;display:flex;flex-direction:column}
+.kv{flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;font-size:13px;line-height:1.3}
+.kv-bar{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.kv-sub{color:var(--muted);font-size:11.5px}
+.kv-esp{flex:1}
+.kv-seg{display:inline-flex;gap:4px}
+.kv-seg button,.kv-btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:3px 10px;font-weight:700;font-size:12.5px;cursor:pointer;color:var(--ink)}
+.kv-seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.kv-btn:disabled{opacity:.35;cursor:default}
+.kv-camas{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kv-cama{position:relative;width:31px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font:700 12px var(--font-data);cursor:pointer;color:var(--ink);padding:0}
+.kv-cama.libre{color:var(--muted);background:transparent;border-style:dashed;cursor:default}
+.kv-cama.sel{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.kv-pt{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:var(--warn);color:#1b1b1b;font:800 10.5px/16px var(--font-ui);padding:0 3px}
+.kv-nav{display:inline-flex;gap:4px;margin-left:auto;align-items:center}
+.kv-vacio{margin:auto;color:var(--muted)}
+/* Mosaico: filas iguales que se estiran; las columnas las elige columnasMosaico() */
+.kv-mosaico{flex:1;min-height:0;display:grid;grid-auto-rows:1fr;gap:5px}
+.kv-tile{container-type:size;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:3px 4px;display:flex;flex-direction:column;gap:2px;cursor:pointer;text-align:left;font:inherit;color:var(--ink);min-width:0;min-height:0}
+.kv-tile:hover{border-color:var(--accent)}
+.kv-tile.alerta{border-color:var(--crit);box-shadow:0 0 0 1.5px var(--crit),var(--shadow)}
+.kv-tile.libre{background:transparent;border-style:dashed;box-shadow:none;cursor:default;color:var(--muted);align-items:center;justify-content:center}
+.kv-t-h{display:flex;align-items:baseline;gap:5px;min-width:0}
+.kv-n{font:800 clamp(13px,14cqw,20px) var(--font-data);color:var(--accent)}
+.kv-pac{font-weight:700;font-size:clamp(11px,11cqw,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv-t-s{line-height:1}
+.kv-pill{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:0 6px;font-size:clamp(9.5px,9cqw,11.5px);font-weight:800;line-height:16px;background:var(--panel-2);color:var(--ink-2)}
+.kv-pill.vmi{background:var(--accent-soft);color:var(--accent)}
+.kv-pill.vni{background:#ece8f8;color:#4b3d99}
+.kv-pill.pend{background:var(--warn);color:#1b1b1b}
+.kv-pill.ok{background:var(--good-soft);color:var(--good-ink)}
+.kv-va{font-size:clamp(10px,9.5cqw,12px);color:var(--ink-2);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+dl.kv-lis{flex:1;min-height:0;margin:0;display:grid;grid-template-columns:3em minmax(0,1fr);grid-template-rows:repeat(4,minmax(0,1fr)) calc(var(--kv-dva,1) * 1.15em + 6px) repeat(9,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;font-variant-numeric:tabular-nums}
+.kv-lis dt,.kv-lis dd{margin:0;padding:0 4px;border-bottom:1px solid var(--line);display:flex;align-items:center;min-width:0}
+.kv-lis dt{font:700 clamp(9px,min(10cqw,4.2cqh),12px)/1 var(--font-ui);color:var(--ink-2)}
+/* La cifra va en un span con margin-left:auto: si no cabe, desborda a la derecha (se ve el comienzo y se puede medir). */
+.kv-lis dd{text-align:right;font:800 clamp(10px,min(12.5cqw,5.2cqh),17px)/1 var(--font-ui);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.kv-lis dd>.v{margin-left:auto}
+.kv-lis dd.dv{font-size:clamp(9px,min(10cqw,3.8cqh),13px);line-height:1.15}
+.kv-lis dd.dv>.v{display:inline-block;text-align:left;white-space:nowrap}
+.kv-lis .vmx{background:var(--accent-soft)}
+.kv-lis .h{background:var(--panel-2)}
+.kv-lis .m{background:var(--warn-soft)}
+.kv-lis dd.fuera,.kv-gr td.fuera{color:var(--crit-ink)}
+.kv-t-pie{display:flex;justify-content:space-between;align-items:center;font-size:clamp(10px,10cqw,12px);color:var(--muted)}
+.kv-hora{font-family:var(--font-data)}
+.kv-hora.vieja{color:var(--crit-ink);font-weight:700}
+@container (max-width:84px){.kv-t-h{flex-wrap:wrap;gap:0 4px}.kv-t-pie .w{display:none}.kv-lis dd.dv br{display:none}.kv-lis dt,.kv-lis dd{padding:0 2px}}
+/* Hoja por cama: la carilla 1 de la hoja de kinesiologia */
+.kv-hoja{flex:1;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;padding:4px 6px;gap:2px}
+.kv-banda{display:grid;grid-template-columns:44px 62px minmax(0,1fr) 58px 40px 96px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kv-banda>div{border-right:1px solid var(--line);padding:1px 5px;text-align:center;min-width:0}
+.kv-banda>div:last-child{border-right:0;background:var(--accent-soft)}
+.kv-banda span{display:block;font:700 8.5px var(--font-ui);letter-spacing:.06em;color:var(--muted)}
+.kv-banda b{display:block;font:800 12.5px/16px var(--font-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv-banda .pac b,.kv-banda .pac span{text-align:left}
+.kv-dx{font-size:11px;display:flex;gap:6px;align-items:baseline;white-space:nowrap;overflow:hidden}
+.kv-dx b{font-size:10px;letter-spacing:.04em}
+.kv-dx .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.kv-va-h{font-weight:700;color:var(--ink-2)}
+.kv-gw{flex:1;min-height:0;display:flex;overflow:hidden}
+table.kv-gr{border-collapse:collapse;width:100%;height:100%;table-layout:fixed;font-variant-numeric:tabular-nums}
+.kv-gr col.cs{width:18px} .kv-gr col.cl{width:94px}
+.kv-gr td,.kv-gr th{border:1px solid var(--line);padding:0 4px 0 2px;text-align:right;font:700 11px/12px var(--font-data);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kv-gr tbody{border:1px solid var(--line)}
+.kv-gr tbody.mon td,.kv-gr tbody.mon th{background:var(--panel-2)}
+.kv-gr tbody.ven td,.kv-gr tbody.ven th{background:var(--warn-soft)}
+.kv-gr th.lab{font:600 11px/12px var(--font-ui);text-align:left;padding-left:4px}
+.kv-gr th.sg{font:800 9px var(--font-ui);letter-spacing:.06em;color:var(--ink-2);padding:0;writing-mode:vertical-rl;transform:rotate(180deg);text-align:center}
+.kv-gr td.sel{box-shadow:inset 2px 0 0 var(--warn),inset -2px 0 0 var(--warn)}
+.kv-gr td.dva{white-space:normal;font-size:9px;line-height:1.05}
+.kv-gr td.mo{font:600 10px var(--font-ui);text-align:center}
+.kv-gr thead th{border:0;padding:0 1px 2px;background:none}
+.kv-hb{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:1px 0;font:700 11.5px/12px var(--font-data);cursor:pointer;color:var(--ink);display:block;text-align:center}
+.kv-hb small{display:block;font:700 8.5px/9px var(--font-ui)}
+.kv-hb.pend small{color:var(--warn-ink)} .kv-hb.hecho small{color:var(--good-ink)}
+.kv-hb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.kv-hb[aria-pressed="true"] small{color:inherit}
+.kv-hb.vacia{border-style:dashed;cursor:default;background:transparent}
+.kv-h-f{display:flex;gap:4px 10px;align-items:center;flex-wrap:wrap;font-size:11.5px;padding-top:3px;border-top:1px solid var(--line)}
+.kv-h-f .ok{color:var(--good-ink);font-weight:700}
+.kv-filt{font-size:10.5px;color:var(--muted);display:flex;gap:2px 12px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end}
+.kv-filt b{color:var(--ink);font-family:var(--font-data)}

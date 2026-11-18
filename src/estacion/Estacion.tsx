@@ -9,6 +9,7 @@ import { useIdentidadesEnMemoria } from "./identidades";
 import { usePurgasPendientes } from "./purga";
 import { useDatosUnidad } from "./datos";
 import { Archivados } from "./Archivados";
+import { EnVivo } from "./EnVivoVista";
 import { Entrega } from "./Entrega";
 import { Estadistica } from "./Estadistica";
 import { Estado } from "./Estado";
@@ -17,11 +18,11 @@ import { ParaAlma } from "./ParaAlma";
 import { Rem28 } from "./Rem28";
 import { Tablero } from "./Tablero";
 
-type Vista = "tablero" | "entrega" | "alma" | "estadistica" | "indicadores" | "rem" | "archivados" | "estado";
+type Vista = "tablero" | "entrega" | "alma" | "envivo" | "estadistica" | "indicadores" | "rem" | "archivados" | "estado";
 
 /** Tres grupos: lo de cada turno adelante, las cifras al medio y lo ocasional atras. */
 const GRUPOS: readonly { readonly titulo: string; readonly vistas: readonly (readonly [Vista, string])[] }[] = [
-  { titulo: "Turno", vistas: [["tablero", "Tablero"], ["entrega", "Entrega"], ["alma", "Para ALMA"]] },
+  { titulo: "Turno", vistas: [["tablero", "Tablero"], ["entrega", "Entrega"], ["alma", "Para ALMA"], ["envivo", "Kaptus en vivo"]] },
   { titulo: "Cifras", vistas: [["estadistica", "Estadística"], ["indicadores", "Indicadores"], ["rem", "REM 28"]] },
   { titulo: "Archivo", vistas: [["archivados", "Archivados"], ["estado", "Estado"]] }
 ];
@@ -68,7 +69,7 @@ export function Estacion() {
   usePurgasPendientes(datos.pendientesPurga, datos.apks);
 
   return (
-    <div className="estacion">
+    <div className={vista === "envivo" ? "estacion en-vivo" : "estacion"}>
       <div className="top">
         <div className="brand">
           <h1 style={{ display: "flex", alignItems: "center", gap: 8 }}><Logo tam={28} variante="estacion" />Kaptus · Estación</h1>
@@ -102,6 +103,7 @@ export function Estacion() {
         {vista === "indicadores" && <Indicadores datos={datos} ahora={ahora} />}
         {vista === "archivados" && <Archivados datos={datos} ahora={ahora} />}
         {vista === "alma" && <ParaAlma datos={datos} ahora={ahora} seleccionada={seleccionada} onSeleccionar={setSeleccionada} />}
+        {vista === "envivo" && <EnVivo datos={datos} ahora={ahora} />}
         {vista === "rem" && <Rem28 datos={datos} ahora={ahora} />}
         {vista === "estado" && <Estado datos={datos} />}
       </main>

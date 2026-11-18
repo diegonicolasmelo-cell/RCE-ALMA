@@ -3,7 +3,8 @@
  * Funcion pura sobre los datos que la estacion ya tiene cargados (sin red, sin clave).
  * Solo lee: no marca nada en ALMA; eso sigue en «Para ALMA».
  *
- * Privacidad: la ficha dice sexo y rango de edad, nunca nombre ni RUT.
+ * Privacidad: la ficha dice las iniciales (solo si este PC descifro la identidad con la clave de
+ * la unidad), el sexo y el rango de edad. Nunca el nombre completo ni el RUT.
  */
 
 import {
@@ -15,12 +16,13 @@ import {
   calcularPbw,
   contarReintubaciones,
   horasDeVm,
+  inicialesDe,
   infusionesActivas,
   mecanicaBloqueadaPorAsincronia,
   textoVm,
   turnoDe
 } from "@core/index";
-import type { Control, Episodio, EventoClinico, IdInfusion, Medicion, Modalidad, ViaAerea } from "@core/index";
+import type { Control, Episodio, EventoClinico, IdInfusion, IdentidadPaciente, Medicion, Modalidad, ViaAerea } from "@core/index";
 import { iniciales } from "./util";
 
 export type Soporte = "VMI" | "VNI" | "O2";
@@ -72,6 +74,8 @@ export interface FichaEnVivo {
   readonly numero: number;
   /** «M · 60–64»: sexo y rango de edad, nunca el nombre. */
   readonly paciente: string;
+  /** «JPR»: iniciales del nombre, solo si la identidad esta descifrada en este PC; si no, null. */
+  readonly iniciales: string | null;
   readonly edad: string;
   /** «TET Nº 7,5 · 22 cm», «TQT Nº 8» o «Vía natural». */
   readonly viaAerea: string;
@@ -208,7 +212,13 @@ export function numeroCama(cama: string): number {
   return n ? Number(n) : 0;
 }
 
-export function fichaEnVivo(ep: Episodio, controles: readonly Control[], eventos: readonly EventoClinico[], ahora: Date): FichaEnVivo {
+export function fichaEnVivo(
+  ep: Episodio,
+  controles: readonly Control[],
+  eventos: readonly EventoClinico[],
+  ahora: Date,
+  identidad: Pick<IdentidadPaciente, "nombre"> | null = null
+): FichaEnVivo {
   const todos = vigentes(controles).sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   const ini = inicioHoja(ahora).getTime();
   const deHoja = todos.filter((c) => new Date(c.registradoEn).getTime() >= ini);
@@ -224,6 +234,7 @@ export function fichaEnVivo(ep: Episodio, controles: readonly Control[], eventos
     cama: ep.cama,
     numero: numeroCama(ep.cama),
     paciente: [ep.sexo, ep.rangoEdad].filter(Boolean).join(" · ") || "—",
+    iniciales: identidad?.nombre.trim() ? inicialesDe(identidad.nombre) : null,
     edad: ep.rangoEdad ?? "—",
     viaAerea: textoViaAerea(ep),
     via: ep.viaAereaActual,
@@ -249,11 +260,12 @@ export function fichasEnVivo(
   episodios: readonly Episodio[],
   controles: ReadonlyMap<string, readonly Control[]>,
   eventos: ReadonlyMap<string, readonly EventoClinico[]>,
-  ahora: Date
+  ahora: Date,
+  identidades: ReadonlyMap<string, Pick<IdentidadPaciente, "nombre">> = new Map()
 ): FichaEnVivo[] {
   return episodios
     .filter((e) => e.activo)
-    .map((e) => fichaEnVivo(e, controles.get(e.id) ?? [], eventos.get(e.id) ?? [], ahora))
+    .map((e) => fichaEnVivo(e, controles.get(e.id) ?? [], eventos.get(e.id) ?? [], ahora, identidades.get(e.id) ?? null))
     .sort((a, b) => a.numero - b.numero);
 }
 

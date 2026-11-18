@@ -1296,3 +1296,5 @@ table.kv-gr{border-collapse:collapse;width:100%;height:100%;table-layout:fixed;f
 .estacion.en-vivo .kv-h-f .ok{color:#2f6b2f}
 .estacion.en-vivo .kv-filt{color:#4a525c}
 .estacion.en-vivo .kv-filt b{color:var(--kv-fg);font-family:var(--kv-letra)}
+/* Iniciales del paciente y, al lado y mas tenue, sexo y rango de edad */
+.kv-sx{font-size:clamp(9px,8.5cqw,11px);color:var(--kv-muted,var(--muted));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}

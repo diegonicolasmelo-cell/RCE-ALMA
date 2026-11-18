@@ -56,10 +56,18 @@ describe("Kaptus en vivo · hoja y ALMA", () => {
 });
 
 describe("Kaptus en vivo · ficha", () => {
-  it("dice sexo y rango de edad, nunca el nombre ni el RUT", () => {
+  it("dice sexo y rango de edad; sin identidad descifrada no hay iniciales", () => {
     const f = fichaEnVivo(unEpisodio({ sexo: "F", rangoEdad: "45–49" }), [ctl("a", "10:00", 10)], [], AHORA);
     expect(f.paciente).toBe("F · 45–49");
+    expect(f.iniciales).toBeNull();
     expect(JSON.stringify(f)).not.toContain("@");
+  });
+
+  it("con la identidad descifrada en este PC muestra solo las iniciales, nunca el nombre", () => {
+    const ident = new Map([["ep-1", { nombre: "Paciente Ficticio Prueba" }]]);
+    const [f] = fichasEnVivo([unEpisodio()], new Map(), new Map(), AHORA, ident);
+    expect(f!.iniciales).toBe("PFP");
+    expect(JSON.stringify(f)).not.toContain("Ficticio");
   });
 
   it("los días de VM salen de la regla de Kaptus (pve.ts): horas el primer día, días después", () => {

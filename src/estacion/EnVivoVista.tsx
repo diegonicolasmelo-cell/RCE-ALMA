@@ -35,7 +35,7 @@ function useLetraManrope(): void {
  */
 export function EnVivo({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
   useLetraManrope();
-  const fichas = useMemo(() => fichasEnVivo(datos.episodios, datos.controles, datos.eventos, ahora), [datos, ahora]);
+  const fichas = useMemo(() => fichasEnVivo(datos.episodios, datos.controles, datos.eventos, ahora, datos.identidades), [datos, ahora]);
   const [vista, setVista] = useState<"general" | "hoja">("general");
   const [seg, setSeg] = useState(0);
   const [idx, setIdx] = useState(0);
@@ -94,7 +94,7 @@ export function EnVivo({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
           if (!f) return <button key={c} type="button" className="kv-cama libre" disabled title={`Cama ${n} libre`}>{n}</button>;
           const sel = enSeg.includes(c) || actual?.cama.toUpperCase() === c;
           return (
-            <button key={c} type="button" className={cx("kv-cama", sel && "sel")} onClick={() => irCama(c)} title={`Cama ${n} · ${f.paciente}${f.pendientesAlma ? ` · ${f.pendientesAlma} sin pasar a ALMA` : ""}`}>
+            <button key={c} type="button" className={cx("kv-cama", sel && "sel")} onClick={() => irCama(c)} title={`Cama ${n} · ${f.iniciales ? `${f.iniciales} · ` : ""}${f.paciente}${f.pendientesAlma ? ` · ${f.pendientesAlma} sin pasar a ALMA` : ""}`}>
               {n}
               {f.pendientesAlma > 0 && <span className="kv-pt">{f.pendientesAlma}</span>}
             </button>
@@ -156,8 +156,8 @@ function Ficha({ f, onAbrir }: { f: FichaEnVivo; onAbrir: () => void }) {
     </>
   );
   return (
-    <button type="button" className={cx("kv-tile", u?.satBaja && "alerta")} onClick={onAbrir} title={`Cama ${f.numero} · ${f.paciente} · abrir la hoja`}>
-      <div className="kv-t-h"><span className="kv-n">{f.numero}</span><span className="kv-pac">{f.paciente}</span></div>
+    <button type="button" className={cx("kv-tile", u?.satBaja && "alerta")} onClick={onAbrir} title={`Cama ${f.numero} · ${f.iniciales ? `${f.iniciales} · ` : ""}${f.paciente} · abrir la hoja`}>
+      <div className="kv-t-h"><span className="kv-n">{f.numero}</span><span className="kv-pac">{f.iniciales ?? f.paciente}</span>{f.iniciales && <span className="kv-sx">{f.paciente}</span>}</div>
       <div className="kv-t-s"><span className={cx("kv-pill", u?.soporte === "VNI" ? "vni" : u?.soporte === "VMI" ? "vmi" : "o2")}>{u ? (u.soporte === "VNI" && !u.modo.startsWith("VNI") ? `VNI ${u.modo}` : u.modo) : "Sin controles"}</span></div>
       <div className="kv-va">{f.viaAerea}</div>
       <dl className="kv-lis">
@@ -200,7 +200,7 @@ function HojaCama({ f, ahora }: { f: FichaEnVivo; ahora: Date }) {
       <div className="kv-banda">
         <div><span>CAMA</span><b>{f.numero}</b></div>
         <div><span>EDAD</span><b>{f.edad}</b></div>
-        <div className="pac"><span>PACIENTE</span><b>{f.paciente}</b></div>
+        <div className="pac"><span>PACIENTE</span><b>{f.iniciales ? `${f.iniciales} · ${f.paciente}` : f.paciente}</b></div>
         <div><span>INGRESO</span><b>{f.ingreso}</b></div>
         <div><span>DÍAS</span><b>{f.diasUci ?? "—"}</b></div>
         <div><span>HOJA</span><b>{ddmm(inicioHoja(ahora))} · {turno.tipo === "DIA" ? "Día" : "Noche"}</b></div>

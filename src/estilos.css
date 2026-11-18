@@ -1229,72 +1229,12 @@ table.kv-gr{border-collapse:collapse;width:100%;height:100%;table-layout:fixed;f
 .kv-h-f .ok{color:var(--good-ink);font-weight:700}
 .kv-filt{font-size:10.5px;color:var(--muted);display:flex;gap:2px 12px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end}
 .kv-filt b{color:var(--ink);font-family:var(--font-data)}
-/* ===== Kaptus en vivo con la estetica del panel de Manuel (13-nov-2026): vidrio esmerilado con relieve,
-   letra Manrope (si no carga, la del sistema), grafito y perla con detalle ambar. Tema claro siempre. ===== */
-.estacion.en-vivo{
-  --kv-fg:#14202a; --kv-ink2:#3a4652; --kv-muted:#5f6b75; --kv-acc:#2e3a46; --kv-ambar:#e0a000;
-  --kv-linea:rgba(46,58,70,.18); --kv-linea2:rgba(46,58,70,.08);
-  --kv-grad:linear-gradient(180deg,#3d4a57,#2e3a46); --kv-relieve:inset 0 1px 0 #fff,0 4px 12px rgba(46,58,70,.10);
-  --kv-letra:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;
-  color-scheme:light;color:var(--kv-fg);font-family:var(--kv-letra);font-variant-numeric:tabular-nums;
-  background:radial-gradient(55% 60% at 10% 12%,rgba(46,58,70,.30),transparent 70%),radial-gradient(42% 48% at 90% 8%,rgba(224,160,0,.24),transparent 70%),radial-gradient(55% 60% at 70% 100%,rgba(46,58,70,.22),transparent 70%),linear-gradient(160deg,#f3f4f6,#fff)}
-/* Cabecera de la estacion compacta en esta vista: mas alto para las fichas. */
+/* Cabecera de la estacion compacta en esta vista: mas alto para las fichas. Colores y letra de Kaptus. */
 .estacion.en-vivo .top h1{font-size:15px}
 .estacion.en-vivo .grupo-titulo{display:none}
-.estacion.en-vivo .grupos-tabs{gap:10px;border-bottom-color:var(--kv-linea)}
-.estacion.en-vivo .grupo-tabs + .grupo-tabs{padding-left:10px;border-left-color:var(--kv-linea)}
-.estacion.en-vivo .tab{padding:4px 8px;font-size:13px;color:var(--kv-ink2)}
-.estacion.en-vivo .tab[aria-selected="true"]{color:var(--kv-fg);border-bottom-color:var(--kv-ambar)}
-.estacion.en-vivo .kv{font-family:var(--kv-letra);color:var(--kv-fg)}
-.kv-titulo{font:800 14px var(--kv-letra);margin:0;letter-spacing:-.01em}
-.estacion.en-vivo .kv-sub{color:var(--kv-muted)}
-.estacion.en-vivo :is(.kv-seg button,.kv-btn,.kv-cama,.kv-hb){border:1px solid var(--kv-linea);background:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--kv-relieve);color:var(--kv-fg);font-family:var(--kv-letra);font-weight:700}
-.estacion.en-vivo .kv-seg{gap:6px}
-.estacion.en-vivo .kv-seg button,.estacion.en-vivo .kv-btn{border-radius:12px;padding:3px 10px}
-.estacion.en-vivo .kv-cama{border-radius:10px;font-weight:800}
-.estacion.en-vivo :is(.kv-seg button[aria-pressed="true"],.kv-cama.sel,.kv-hb[aria-pressed="true"]){background:var(--kv-grad);color:#fff;border-color:#2e3a46;box-shadow:0 6px 16px rgba(46,58,70,.35),inset 0 1px 0 rgba(255,255,255,.25)}
-.estacion.en-vivo .kv-cama.libre{background:transparent;box-shadow:none;border:1px dashed rgba(46,58,70,.45);color:#6f7780}
-.estacion.en-vivo .kv-pt{background:var(--kv-ambar);color:#1b1b1b;font-family:var(--kv-letra);font-weight:800}
-.estacion.en-vivo :is(.kv-tile,.kv-hoja){background:rgba(255,255,255,.34);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,.9);border-radius:18px;box-shadow:0 14px 34px rgba(46,58,70,.18),inset 0 1px 0 #fff;color:var(--kv-fg)}
-.estacion.en-vivo .kv-tile:hover{border-color:var(--kv-acc)}
-.estacion.en-vivo .kv-tile.libre{background:rgba(255,255,255,.18);border:1px dashed rgba(46,58,70,.3);box-shadow:none;color:#6f7780}
-.estacion.en-vivo .kv-tile.alerta{box-shadow:0 0 0 1.5px #c0262d,0 14px 34px rgba(46,58,70,.18)}
-.estacion.en-vivo .kv-n{color:var(--kv-acc);font-family:var(--kv-letra);font-weight:800}
-.estacion.en-vivo .kv-pill{background:rgba(46,58,70,.12);color:var(--kv-acc);font-family:var(--kv-letra);font-weight:800}
-.estacion.en-vivo .kv-pill.pend{background:var(--kv-ambar);color:#1b1b1b}
-.estacion.en-vivo .kv-pill.ok{background:rgba(47,107,47,.14);color:#2f6b2f}
-.estacion.en-vivo .kv-va{color:var(--kv-ink2)}
-.estacion.en-vivo dl.kv-lis{background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.8);border-radius:12px}
-.estacion.en-vivo :is(.kv-lis dt,.kv-lis dd){border-bottom-color:var(--kv-linea2)}
-.estacion.en-vivo .kv-lis dt{color:var(--kv-ink2);font-family:var(--kv-letra);font-weight:700}
-.estacion.en-vivo .kv-lis dd{font-family:var(--kv-letra);font-weight:800}
-.estacion.en-vivo .kv-lis .vmx{background:rgba(46,58,70,.11)}
-.estacion.en-vivo .kv-lis .h{background:rgba(46,58,70,.06)}
-.estacion.en-vivo .kv-lis .ne{background:rgba(255,255,255,.2)}
-.estacion.en-vivo .kv-lis .o{background:rgba(46,58,70,.03)}
-.estacion.en-vivo .kv-lis .m{background:rgba(224,160,0,.08)}
-.estacion.en-vivo :is(.kv-lis dd.fuera,.kv-gr td.fuera,.kv-hora.vieja){color:#c0262d}
-.estacion.en-vivo .kv-t-pie{color:var(--kv-muted)}
-.estacion.en-vivo .kv-hora{font-family:var(--kv-letra)}
-.estacion.en-vivo .kv-banda{background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.85);border-radius:12px}
-.estacion.en-vivo .kv-banda>div{border-right-color:rgba(46,58,70,.12)}
-.estacion.en-vivo .kv-banda>div:last-child{background:rgba(46,58,70,.10)}
-.estacion.en-vivo .kv-banda span{color:var(--kv-muted);font-family:var(--kv-letra)}
-.estacion.en-vivo .kv-banda b{font-family:var(--kv-letra)}
-.estacion.en-vivo .kv-gr tbody{border:1px solid rgba(46,58,70,.22)}
-.estacion.en-vivo :is(.kv-gr td,.kv-gr th){border-color:var(--kv-linea2);font-family:var(--kv-letra);font-weight:700}
-.estacion.en-vivo .kv-gr tbody.mon :is(td,th){background:rgba(46,58,70,.05)}
-.estacion.en-vivo .kv-gr tbody.ven :is(td,th){background:rgba(224,160,0,.06)}
-.estacion.en-vivo .kv-gr thead th{background:none}
-.estacion.en-vivo .kv-gr td.sel{box-shadow:inset 2px 0 0 var(--kv-ambar),inset -2px 0 0 var(--kv-ambar)}
-.estacion.en-vivo .kv-hb{border-radius:10px}
-.estacion.en-vivo .kv-hb small{color:#7a5400}
-.estacion.en-vivo .kv-hb.hecho small{color:#2f6b2f}
-.estacion.en-vivo .kv-hb[aria-pressed="true"] small{color:#ffd76a}
-.estacion.en-vivo .kv-hb.vacia{background:transparent;box-shadow:none;border:1px dashed rgba(46,58,70,.2)}
-.estacion.en-vivo .kv-h-f{border-top-color:rgba(46,58,70,.10)}
-.estacion.en-vivo .kv-h-f .ok{color:#2f6b2f}
-.estacion.en-vivo .kv-filt{color:#4a525c}
-.estacion.en-vivo .kv-filt b{color:var(--kv-fg);font-family:var(--kv-letra)}
+.estacion.en-vivo .grupos-tabs{gap:10px}
+.estacion.en-vivo .grupo-tabs + .grupo-tabs{padding-left:10px}
+.estacion.en-vivo .tab{padding:4px 8px;font-size:13px}
+.kv-titulo{font:800 14px var(--font-ui);margin:0;letter-spacing:-.01em;color:var(--ink)}
 /* Iniciales del paciente y, al lado y mas tenue, sexo y rango de edad */
 .kv-sx{font-size:clamp(9px,8.5cqw,11px);color:var(--kv-muted,var(--muted));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}

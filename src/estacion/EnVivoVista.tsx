@@ -14,10 +14,27 @@ const hhmm = (d: Date): string => d.toTimeString().slice(0, 5);
 const o = (x: string): string => x || "—";
 
 /**
+ * La letra del panel de Manuel (Manrope). Se pide solo al abrir esta vista; sin internet o si el
+ * navegador la bloquea, queda la letra del sistema y nada mas cambia.
+ */
+function useLetraManrope(): void {
+  useEffect(() => {
+    const id = "kv-manrope";
+    if (document.getElementById(id)) return;
+    const l = document.createElement("link");
+    l.id = id;
+    l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap";
+    document.head.appendChild(l);
+  }, []);
+}
+
+/**
  * Kaptus en vivo: los controles de toda la unidad para dejar en media pantalla al lado de ALMA.
  * Solo lee lo que la estacion ya tiene cargado; no pide clave ni hace otra lectura a la red.
  */
 export function EnVivo({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
+  useLetraManrope();
   const fichas = useMemo(() => fichasEnVivo(datos.episodios, datos.controles, datos.eventos, ahora), [datos, ahora]);
   const [vista, setVista] = useState<"general" | "hoja">("general");
   const [seg, setSeg] = useState(0);
@@ -60,6 +77,7 @@ export function EnVivo({ datos, ahora }: { datos: DatosUnidad; ahora: Date }) {
   return (
     <section className="kv" aria-label="Kaptus en vivo">
       <div className="kv-bar">
+        <h2 className="kv-titulo">Controles</h2>
         <span className="kv-sub">
           Hoja {ddmm(inicioHoja(ahora))} · {turno.tipo === "DIA" ? "Día" : "Noche"} · act. {hhmm(ahora)} · solo lectura
         </span>

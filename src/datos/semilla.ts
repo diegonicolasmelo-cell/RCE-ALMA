@@ -159,7 +159,7 @@ export async function sembrarSiVacia(db: BaseLocal, repo: Repositorio, ahora: Da
         cama: `UCI-${String(n).padStart(2, "0")}`, rangoEdad: rangoDeEdad(x.edad), sexo: x.sexo, tallaCm: x.talla, categoriaRem: x.cat,
         viaAereaActual: x.via, calibreVia: natural ? null : "8.0", fijacionCm: natural ? null : x.via === "TQT" ? "Collarín" : "22", diasVM: natural ? 0 : x.dias,
         rutTitular: n <= 12 ? KAREN : EDUARDO,
-        // Toda cama tiene su ventilador; con via natural queda en la sala sin uso.
+        // Estas camas tienen ventilador; con via natural queda en la sala sin uso (una sala tambien puede no tenerlo).
         equipos: [{ tipo: "VENTILADOR", modelo: i % 2 === 0 ? "Savina" : "PB 840", numero: 10 + i, enUso: !natural }]
       });
     })

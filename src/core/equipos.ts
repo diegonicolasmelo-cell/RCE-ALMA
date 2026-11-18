@@ -89,9 +89,10 @@ export function etiquetaTipoEquipo(t: TipoEquipo): string {
 // Equipos segun la via aerea (decision de Diego, 11-nov-2026)
 // ---------------------------------------------------------------------------
 //
-// El ventilador vive en la cama: toda cama tiene uno, este en uso o no. Con TET debe estar en
-// uso; con via natural queda en la sala sin uso (la VNI es el V60). CNAF (Airvo 2) y V60 se
-// ofrecen con via natural y con TQT; base calefactora y Aerogen, con cualquier via.
+// El ventilador vive en la cama, pero una sala puede no tenerlo (Diego, 18-nov-2026: «que se
+// pueda poner sin ventilador las salas»). Si lo tiene, con TET debe estar en uso; con via natural
+// queda en la sala sin uso (la VNI es el V60). CNAF (Airvo 2) y V60 se ofrecen con via natural y
+// con TQT; base calefactora y Aerogen, con cualquier via.
 
 /** Si un tipo de equipo se ofrece con esta via. */
 export function tipoSeOfrece(t: TipoEquipo, via: ViaAerea): boolean {
@@ -126,14 +127,14 @@ export function equiposParaVia(lista: readonly EquipoEnSala[], via: ViaAerea): r
 }
 
 /**
- * `null` si esta bien; si no, que falta. Toda cama tiene su ventilador. Con TET o TQT el
+ * `null` si esta bien; si no, que falta. La sala puede no tener ventilador. Con TET o TQT el
  * paciente conectado necesita un soporte en uso: el ventilador queda sin uso solo si esta
  * desvinculado (y no se ha reconectado). Al ingreso, con TET se asume conectado.
  */
 export function problemaEquipos(lista: readonly EquipoEnSala[], via: ViaAerea, conectado = via === "TET"): string | null {
   const ventiladores = lista.filter((e) => e.tipo === "VENTILADOR");
-  if (ventiladores.length === 0) return "Registra el ventilador de la sala: toda cama tiene uno, esté en uso o no.";
   if (via !== "NATURAL" && conectado && !lista.some((e) => esSoporteRespiratorio(e.tipo) && e.enUso)) {
+    if (ventiladores.length === 0) return `Con ${via} y el paciente conectado hace falta el equipo que da el soporte: agrega el ventilador.`;
     return `Con ${via} el ventilador de la sala debe quedar en uso: solo queda sin uso si el paciente está desvinculado.`;
   }
   const malUsado = lista.find((e) => e.enUso && esSoporteRespiratorio(e.tipo) && !puedeEstarEnUso(e.tipo, via));

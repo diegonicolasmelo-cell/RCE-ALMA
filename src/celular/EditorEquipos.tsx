@@ -14,7 +14,7 @@ import type { EquipoEnSala, ViaAerea } from "@core/index";
 import { casillaNumerica } from "./TecladoPropio";
 
 /**
- * Equipos de la sala, segun la via aerea: el ventilador siempre (vive en la cama), CNAF y V60
+ * Equipos de la sala, segun la via aerea: el ventilador si la sala lo tiene, CNAF y V60
  * con via natural o TQT, base calefactora y Aerogen con cualquiera. Se usa en el ingreso
  * (celular y PC) y en el control.
  */
@@ -34,7 +34,7 @@ export function EditorEquipos({ lista, via, onCambio, idBase = "eq" }: { lista: 
 
   return (
     <div className="stack editor-equipos" style={{ gap: 8 }}>
-      {lista.length === 0 && <div className="small muted">Sin equipos registrados.</div>}
+      {lista.length === 0 && <div className="small muted">Sala sin equipos{via === "TET" ? ": con TET hace falta el ventilador" : ""}.</div>}
       {lista.map((e) => (
         <div key={etiquetaEquipo(e)} className="row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
           <b>{etiquetaEquipo(e)}</b>

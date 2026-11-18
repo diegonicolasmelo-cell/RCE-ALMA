@@ -107,8 +107,12 @@ describe("equipos segun la via aerea y la cama", async () => {
     expect(modelos("NATURAL")).toEqual(expect.arrayContaining(["Airvo 2", "V60", "Savina", "Humidificador MR850", "NBZ Aerogen"]));
   });
 
-  it("toda cama tiene ventilador; con TET en uso; con via natural no puede estar en uso", () => {
-    expect(problemaEquipos([], "NATURAL")).toMatch(/ventilador de la sala/);
+  it("la sala puede no tener ventilador; si lo tiene, con TET en uso; con via natural no puede estar en uso", () => {
+    // Diego, 18-nov-2026: «que se pueda poner sin ventilador las salas».
+    expect(problemaEquipos([], "NATURAL")).toBeNull();
+    expect(problemaEquipos([], "TQT", false)).toBeNull();
+    expect(problemaEquipos([], "TET")).toMatch(/agrega el ventilador/);
+    expect(problemaEquipos([airvo(true)], "TQT", true)).toBeNull();
     expect(problemaEquipos([vent(1, false)], "TET")).toMatch(/en uso/);
     expect(problemaEquipos([vent(1, true)], "TET")).toBeNull();
     expect(problemaEquipos([vent(1, true)], "NATURAL")).toMatch(/no puede estar en uso/);

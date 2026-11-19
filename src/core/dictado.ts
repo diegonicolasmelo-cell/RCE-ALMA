@@ -493,8 +493,7 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
   // El modo dictado manda si corresponde a la via; si no, no se aplica.
   let modalidad = modalidadActual;
   let modoAmbiguo = false;
-  if (modoDictado === "AIRE") noAplica.push("Aire ambiente: todavía no es una modalidad en Kaptus");
-  else if (modoDictado) {
+  if (modoDictado) {
     let m: Modalidad | null;
     if (modoDictado === "CPAP") m = artificial ? "CPAP_PS" : "VNI_CPAP";
     else if (modoDictado === "VNI") {
@@ -502,6 +501,7 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
       else if (via === "NATURAL") { m = "VNI_ST"; modoAmbiguo = true; }
       else m = null;
     } else if (modoDictado === "CNAF" && via === "TQT") m = "CNAF_TQT";
+    else if (modoDictado === "AIRE") m = "AIRE_AMBIENTE";
     else m = modoDictado;
     if (m && MODALIDADES_POR_VIA[via].includes(m)) modalidad = m;
     else noAplica.push(`Modo ${m ? ETIQUETA_MODALIDAD[m] : "VNI"}: no corresponde a la vía aérea`);
@@ -549,7 +549,7 @@ export function interpretarDictado(texto: string, modalidadActual: Modalidad, vi
         { etiqueta: "No cambiar", campo: null, valor: "" }
       ]
     });
-  } else if (modoDictado && modoDictado !== "AIRE" && modalidad !== modalidadActual) datos.push({ campo: "modalidad", valor: modalidad, veces: 1 });
+  } else if (modoDictado && modalidad !== modalidadActual) datos.push({ campo: "modalidad", valor: modalidad, veces: 1 });
   for (const [campo, { valores, igual }] of porCampo) {
     const et = etiquetaDictado(campo, modalidad);
     const distintos = [...new Set(valores.map((x) => (x === "suspender" ? x : String(numero(x)))))];

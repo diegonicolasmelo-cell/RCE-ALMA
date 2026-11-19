@@ -49,7 +49,9 @@ export const MODALIDADES = [
   "CNAF",
   "VNI_CPAP",
   "VNI_ST",
-  "AVAPS"
+  "AVAPS",
+  /** Via natural sin O2 adicional ni soporte (p. ej. el postoperado que llega de pabellon). Diego, 19-nov-2026. */
+  "AIRE_AMBIENTE"
 ] as const;
 export type Modalidad = (typeof MODALIDADES)[number];
 

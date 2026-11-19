@@ -71,15 +71,17 @@ export const ETIQUETA_MODALIDAD: Readonly<Record<Modalidad, string>> = {
   CNAF: "CNAF",
   VNI_CPAP: "VNI · CPAP",
   VNI_ST: "BiPAP S/T",
-  AVAPS: "AVAPS"
+  AVAPS: "AVAPS",
+  AIRE_AMBIENTE: "Aire ambiente"
 };
 
-export type GrupoModalidad = "VENTILACION_MECANICA" | "DESCONEXION" | "OXIGENOTERAPIA" | "VNI";
+export type GrupoModalidad = "VENTILACION_MECANICA" | "DESCONEXION" | "OXIGENOTERAPIA" | "VNI" | "SIN_SOPORTE";
 export const ETIQUETA_GRUPO_MODALIDAD: Readonly<Record<GrupoModalidad, string>> = {
   VENTILACION_MECANICA: "Ventilación mecánica",
   DESCONEXION: "Desconexión",
   OXIGENOTERAPIA: "Oxigenoterapia",
-  VNI: "Ventilación no invasiva"
+  VNI: "Ventilación no invasiva",
+  SIN_SOPORTE: "Sin O₂ adicional"
 };
 export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
   ACVC: "VENTILACION_MECANICA",
@@ -95,7 +97,8 @@ export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
   CNAF: "OXIGENOTERAPIA",
   VNI_CPAP: "VNI",
   VNI_ST: "VNI",
-  AVAPS: "VNI"
+  AVAPS: "VNI",
+  AIRE_AMBIENTE: "SIN_SOPORTE"
 };
 
 /**
@@ -104,7 +107,7 @@ export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
  * por TQT, S/T y AVAPS (conectados a la TQT).
  */
 export const MODALIDADES_POR_VIA: Readonly<Record<ViaAerea, readonly Modalidad[]>> = {
-  NATURAL: ["O2_NARICERA", "O2_MASCARILLA", "O2_VENTURI", "O2_RESERVORIO", "CNAF", "VNI_CPAP", "VNI_ST"],
+  NATURAL: ["O2_NARICERA", "O2_MASCARILLA", "O2_VENTURI", "O2_RESERVORIO", "CNAF", "VNI_CPAP", "VNI_ST", "AIRE_AMBIENTE"],
   TET: ["ACVC", "PCV", "CPAP_PS", "TUBO_T"],
   TQT: ["ACVC", "PCV", "CPAP_PS", "TUBO_T", "VALVULA_FONACION", "CNAF_TQT", "VNI_ST", "AVAPS"]
 };
@@ -228,6 +231,8 @@ export const CAMPOS_POR_MODALIDAD: Readonly<Record<Modalidad, readonly CampoVent
   O2_MASCARILLA: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
   O2_RESERVORIO: [p("flujo", "Flujo O₂", "L/min"), o("frTotal", "FR", "rpm")],
   O2_VENTURI: [p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm")],
+  // Aire ambiente: nada programado; se observa la FR (la SpO2 va en la monitorizacion).
+  AIRE_AMBIENTE: [o("frTotal", "FR", "rpm")],
   // En VNI la presion de la interfaz: CPAP (o EPAP) va en `peep`; IPAP en `presion`.
   VNI_CPAP: [p("peep", "CPAP", "cmH₂O"), p("fio2", "FiO₂", "%"), o("frTotal", "FR", "rpm"), o("vtEspirado", "Vt espirado", "ml"), o("fuga", "Fuga", "L/min")],
   VNI_ST: [
@@ -405,19 +410,19 @@ export const OPCIONES_DEGLUCION: readonly { readonly val: import("./tipos").Degl
 
 /**
  * Modo con que parte el control despues de extubar o decanular, segun con que quedo el paciente.
- * Aire ambiente no tiene modo propio: el control parte en el primero de la via y se elige.
+ * Aire ambiente tiene modo propio desde el 19-nov-2026.
  */
 export const MODALIDAD_POR_DISPOSITIVO: Readonly<Record<import("./tipos").DispositivoPosterior, Modalidad | null>> = {
   CNAF: "CNAF",
   VMNI: "VNI_ST",
   O2_CONVENCIONAL: "O2_NARICERA",
-  AIRE_AMBIENTE: null,
+  AIRE_AMBIENTE: "AIRE_AMBIENTE",
   REINTUBACION_INMEDIATA: null
 };
 
 /** La musculatura accesoria se observa con via aerea natural (oxigeno, CNAF o VNI) y con alto flujo por TQT. */
 export function pideMusculaturaAccesoria(m: Modalidad): boolean {
-  return GRUPO_MODALIDAD[m] === "OXIGENOTERAPIA" || GRUPO_MODALIDAD[m] === "VNI" || m === "CNAF_TQT";
+  return GRUPO_MODALIDAD[m] === "OXIGENOTERAPIA" || GRUPO_MODALIDAD[m] === "VNI" || GRUPO_MODALIDAD[m] === "SIN_SOPORTE" || m === "CNAF_TQT";
 }
 
 /** Sugerencias para escribir la auscultacion (el campo es texto libre). Provisorias. */

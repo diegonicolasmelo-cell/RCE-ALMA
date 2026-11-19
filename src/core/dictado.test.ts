@@ -160,6 +160,8 @@ describe("dictado por voz: Glasgow en orden, infusiones sin cambios y modos seg�
     expect(interpretarDictado("bni", "CNAF", "NATURAL").dudas[0]?.tipo).toBe("MODO");
     // «CPAP 8» con vía natural es la presión de la interfaz.
     expect(mapa(interpretarDictado("cpap 8", "O2_NARICERA", "NATURAL"))).toEqual({ modalidad: "VNI_CPAP", peep: "8" });
-    expect(interpretarDictado("aire ambiental", "CNAF", "NATURAL").noAplica[0]).toMatch(/Aire ambiente/);
+    // Aire ambiente es modo desde el 19-nov-2026; con tubo no corresponde.
+    expect(modo("aire ambiental", "CNAF", "NATURAL")).toBe("AIRE_AMBIENTE");
+    expect(interpretarDictado("aire ambiente", "ACVC", "TET").noAplica[0]).toMatch(/Aire ambiente: no corresponde/);
   });
 });

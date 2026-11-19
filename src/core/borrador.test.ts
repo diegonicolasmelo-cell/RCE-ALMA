@@ -527,7 +527,8 @@ describe("control despues de extubar o decanular", () => {
   });
 
   it("nunca deja un modo de ventilacion mecanica con via aerea natural", () => {
-    expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular, [extub("AIRE_AMBIENTE")]).modalidad).toBe("CNAF");
+    // Quedó a aire ambiente: desde el 19-nov-2026 es un modo propio.
+    expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular, [extub("AIRE_AMBIENTE")]).modalidad).toBe("AIRE_AMBIENTE");
     expect(crearBorradorNuevoControl(natural, previo, natural.rutTitular).modalidad).toBe("CNAF");
   });
 

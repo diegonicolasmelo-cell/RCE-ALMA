@@ -3,6 +3,7 @@ import {
   NIVELES_TERAPIA_FISICA,
   apkDelTurno,
   buscarProfesional,
+  tituloProfesional,
   esViaAereaArtificial,
   ASPECTOS_SECRECIONES,
   SUGERENCIAS_AUSCULTACION,
@@ -25,7 +26,7 @@ import type { DescriptorFranja } from "./franja";
 
 const nombreProfesional = (rut: string): string => {
   const p = buscarProfesional(rut);
-  return p ? `Klgo. ${p.nombre}` : `RUT ${rut}`;
+  return p ? tituloProfesional(p) : `RUT ${rut}`;
 };
 
 export function TabKine({ ctx, paso }: { ctx: ContextoCama; paso: SegmentoId }) {

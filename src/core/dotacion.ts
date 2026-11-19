@@ -77,7 +77,8 @@ export function fijarDotacion(lista: readonly unknown[]): readonly Profesional[]
     const nombre = String(o["nombre"] ?? "").trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || !nombre) return [];
     const turno = TURNOS.includes(o["turno"] as IdTurno) ? (o["turno"] as IdTurno) : "REEMPLAZO";
-    const rol = String(o["rol"] ?? "").toUpperCase().startsWith("COORD") ? "COORDINACION" : "KINE_CLINICO";
+    const r = String(o["rol"] ?? "").toUpperCase();
+    const rol: Profesional["rol"] = r.startsWith("COORD") ? "COORDINACION" : r.startsWith("INTERN") ? "INTERNO" : "KINE_CLINICO";
     return [{ correo, nombre, turno, rol }];
   });
   indexar();
@@ -103,7 +104,12 @@ export function buscarUsuario(texto: string): Profesional | undefined {
   return parciales.length === 1 ? parciales[0] : undefined;
 }
 
-/** Tratamiento profesional para la nota clinica. */
+/** Tratamiento profesional para la nota clinica: «Klgo.», o «Int.» para el interno. */
 export function tituloProfesional(p: Profesional): string {
-  return `Klgo. ${p.nombre}`;
+  return `${p.rol === "INTERNO" ? "Int." : "Klgo."} ${p.nombre}`;
+}
+
+/** Como se nombra el rol en la cuenta. */
+export function etiquetaRol(rol: Profesional["rol"]): string {
+  return rol === "COORDINACION" ? "Kinesiólogo · Coordinación" : rol === "INTERNO" ? "Interno de kinesiología" : "Kinesiólogo clínico";
 }

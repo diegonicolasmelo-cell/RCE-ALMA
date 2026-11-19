@@ -12,7 +12,7 @@
  */
 
 import { ESCALA_SAS, ETIQUETA_DISPOSITIVO, ETIQUETA_MODALIDAD, textoEdad } from "./catalogos";
-import { buscarProfesional } from "./dotacion";
+import { buscarProfesional, tituloProfesional } from "./dotacion";
 import { describirEquipos } from "./equipos";
 import { eventosDeRiesgo } from "./eventos";
 import { describirCardiovasculares, describirInfusiones, sedoanalgesiaActiva } from "./infusiones";
@@ -94,7 +94,7 @@ export function componerInformeRiesgo(e: EntradaInforme): string {
     `Paciente: ${paciente}`,
     `Descripción inicial (celular): ${evento.comentario || "sin descripción"}`,
     ...(queda ? [`Queda en: ${queda}`] : []),
-    `Registrado por: ${autor ? `Klgo. ${autor.nombre}` : `RUT ${evento.rutAutor}`}`,
+    `Registrado por: ${autor ? tituloProfesional(autor) : `RUT ${evento.rutAutor}`}`,
     `Equipos de la sala: ${describirEquipos(episodio.equipos)}`,
     `Contexto de las horas previas (último control ${previo ? previo.hora : "--"}):`,
     `  ${previo ? resumenContexto(previo) : "sin controles previos en el turno"}`,

@@ -647,5 +647,6 @@ export interface Profesional {
   readonly correo: string;
   readonly nombre: string;
   readonly turno: IdTurno;
-  readonly rol: "KINE_CLINICO" | "COORDINACION";
+  /** INTERNO: estudiante en practica (Diego, 19-nov-2026). Firma como «Int.», no como «Klgo.». */
+  readonly rol: "KINE_CLINICO" | "COORDINACION" | "INTERNO";
 }

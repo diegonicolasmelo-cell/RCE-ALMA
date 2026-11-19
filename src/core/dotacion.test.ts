@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { CORREO_DEMO, DOTACION_DEMO, buscarProfesional, buscarUsuario, dotacion, fijarDotacion, tituloProfesional } from "./dotacion";
+import { CORREO_DEMO, DOTACION_DEMO, buscarProfesional, buscarUsuario, dotacion, etiquetaRol, fijarDotacion, tituloProfesional } from "./dotacion";
 
 afterEach(() => fijarDotacion(DOTACION_DEMO));
 
@@ -45,5 +45,14 @@ describe("dotación de la hoja", () => {
     expect(buscarUsuario("colega reemplazo")?.correo).toBe("colega@hospital.cl");
     expect(buscarProfesional("JEFA@hospital.cl")?.rol).toBe("COORDINACION");
     expect(buscarProfesional(CORREO_DEMO)).toBeUndefined();
+  });
+
+  it("el interno entra con su correo (aunque sea ficticio) y firma como «Int.»", () => {
+    // Diego, 19-nov-2026: perfil para el interno, con un correo que no existe.
+    fijarDotacion([{ correo: "InternoKine@uls.cl", nombre: "Interno Kinesiología", turno: "REEMPLAZO", rol: "interno" }]);
+    const p = buscarProfesional("internokine@uls.cl")!;
+    expect(p.rol).toBe("INTERNO");
+    expect(tituloProfesional(p)).toBe("Int. Interno Kinesiología");
+    expect(etiquetaRol(p.rol)).toBe("Interno de kinesiología");
   });
 });

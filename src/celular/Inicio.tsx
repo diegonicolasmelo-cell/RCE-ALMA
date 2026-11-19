@@ -31,7 +31,7 @@ import {
   WifiOff,
   X
 } from "lucide-react";
-import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, eventosSinMonitorizar, nombreCama, turnoDe } from "@core/index";
+import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
 import { FichaAlma } from "./FichaAlma";
@@ -40,7 +40,7 @@ import { iniciarCodigoPcr } from "./CodigoPcr";
 import { avisoVozLeido, marcarAvisoVozLeido, motivoSinVoz, vozDisponible } from "./voz";
 import bannerDia from "../app/iconos/kaptus-dia.png?inline";
 import bannerNoche from "../app/iconos/kaptus-noche.png?inline";
-import type { Tema, VistaCelular } from "../app/store";
+import type { Sesion, Tema, VistaCelular } from "../app/store";
 
 /**
  * El boton «atras» del telefono: antes de salir de la pantalla, cada ventana abierta (sabana, ingreso,
@@ -77,8 +77,8 @@ export interface EstadoSync {
   readonly sincronizar: () => void;
 }
 
-/** «Klgo. Diego Melo» -> «Diego Melo». */
-export const nombreSinTitulo = (nombre: string): string => nombre.replace(/^Klg[oa]\.?\s+/i, "");
+/** «Klgo. Diego Melo» -> «Diego Melo» (y «Int.» del interno). */
+export const nombreSinTitulo = (nombre: string): string => nombre.replace(/^(Klg[oa]|Int)\.?\s+/i, "");
 const inicial = (nombre: string): string => (nombreSinTitulo(nombre)[0] ?? "?").toUpperCase();
 
 export interface Aviso {
@@ -280,7 +280,7 @@ export function HojaMas({ accionInicial, episodios, esMia, onCerrar }: { accionI
 const TEMAS: readonly (readonly [Tema, string, typeof Sun])[] = [["auto", "Automático", SunMoon], ["dia", "Día", Sun], ["noche", "Noche", Moon]];
 
 /** Panel lateral de la cuenta: quién soy, mis camas, la apariencia, la conexión y cerrar sesión. */
-export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir }: { nombre: string; rol: string; turno: TurnoGuardia; nMias: number; sync: EstadoSync; onCerrar: () => void; onSalir: () => void }) {
+export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir }: { nombre: string; rol: Sesion["rol"]; turno: TurnoGuardia; nMias: number; sync: EstadoSync; onCerrar: () => void; onSalir: () => void }) {
   const tema = useApp((s) => s.tema);
   const setTema = useApp((s) => s.setTema);
   const acento = useApp((s) => s.acento);
@@ -325,7 +325,7 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
         <div className="pc-cabeza">
           <span className="avatar grande" aria-hidden>{inicial(nombre)}</span>
           <b>{nombreSinTitulo(nombre)}</b>
-          <span className="rol">{rol === "COORDINACION" ? "Kinesiólogo · Coordinación" : "Kinesiólogo clínico"}</span>
+          <span className="rol">{etiquetaRol(rol)}</span>
           <span className="caja">{nMias === 1 ? "1 cama a tu cargo" : `${nMias} camas a tu cargo`}</span>
         </div>
         <div className="pc-turno">{etiquetaTurno(turno)}</div>

@@ -22,7 +22,7 @@ export const ACENTOS: readonly (readonly [Acento, string])[] = [["kaptus", "Turq
 export interface Sesion {
   readonly rut: string;
   readonly nombre: string;
-  readonly rol: "KINE_CLINICO" | "COORDINACION";
+  readonly rol: "KINE_CLINICO" | "COORDINACION" | "INTERNO";
 }
 
 export interface Aviso {

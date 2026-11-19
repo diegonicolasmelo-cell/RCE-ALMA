@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CORREO_DEMO, buscarProfesional, buscarUsuario } from "@core/index";
+import { CORREO_DEMO, buscarProfesional, buscarUsuario, tituloProfesional } from "@core/index";
 import type { Profesional } from "@core/index";
 import { PIN_DEMO } from "../datos/api";
 import { guardarMeta, leerMeta } from "../datos/db";
@@ -53,7 +53,7 @@ export function Login() {
   /** Abre la sesion de esta persona (despues de la contrasena o de la huella). */
   const abrirSesion = async (prof: Profesional): Promise<void> => {
     await guardarMeta(db, CLAVE_SESION, { rut: prof.correo, desde: Date.now() } satisfies SesionGuardada);
-    setSesion({ rut: prof.correo, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
+    setSesion({ rut: prof.correo, nombre: tituloProfesional(prof), rol: prof.rol });
     // Cada ingreso pregunta cuales son hoy tus camas.
     useApp.setState({ vista: "elegir" });
   };

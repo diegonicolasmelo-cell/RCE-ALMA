@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useFavicon } from "./Logo";
-import { buscarProfesional } from "@core/index";
+import { buscarProfesional, tituloProfesional } from "@core/index";
 import { Login, CLAVE_SESION, sesionVigente } from "../celular/Login";
 import type { SesionGuardada } from "../celular/Login";
 import { Celular } from "../celular/Celular";
@@ -74,7 +74,7 @@ export function App() {
     void (async () => {
       const guardada = sesionVigente(await leerMeta<SesionGuardada>(servicios.db, CLAVE_SESION));
       const prof = guardada ? buscarProfesional(guardada.rut) : undefined;
-      if (prof) setSesion({ rut: prof.correo, nombre: `Klgo. ${prof.nombre}`, rol: prof.rol });
+      if (prof) setSesion({ rut: prof.correo, nombre: tituloProfesional(prof), rol: prof.rol });
       await restaurarBorradores(servicios.db);
       setLista(true);
     })();

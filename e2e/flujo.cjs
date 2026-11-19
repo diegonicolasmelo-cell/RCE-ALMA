@@ -328,6 +328,34 @@ async function esperarServidor() {
       await cel.click('button[aria-label="Suspender Propofol"]');
     });
 
+    await prueba("en un iPhone pequeño (SE) el botón «Agregar» del panel de drogas queda a la vista", async () => {
+      // Diego, 19-nov-2026: «en iPhone no se ve la parte de agregar drogas».
+      const chico = await navegador.newContext({ viewport: { width: 320, height: 460 }, isMobile: true, hasTouch: true });
+      const m = await chico.newPage();
+      vigilar(m);
+      await m.goto(URL + "#celular");
+      await m.fill("#rut", "diego.melo@demo.upc");
+      await m.fill("#pin", "kine");
+      await m.tap("button[type=submit]");
+      await m.waitForSelector("text=¿Cuáles son tus camas hoy?");
+      await m.tap('.chip:text-is("01–06")');
+      await m.tap('#btn-ver-camas');
+      await m.tap('article[aria-label="Cama UCI-03"] button:has-text("Monitorización")');
+      await m.waitForSelector(".hoja-simple");
+      await m.locator(".agregar-inf").scrollIntoViewIfNeeded();
+      await m.tap(".agregar-inf");
+      await m.waitForSelector(".elegir-inf");
+      await m.waitForTimeout(300);
+      const caja = await m.locator(".elegir-inf .pie-inf .btn.primary").boundingBox();
+      const primera = await m.locator(".elegir-inf .marcas button").first().boundingBox();
+      assert.ok(caja && caja.y + caja.height <= 460 * 0.6, `el botón Agregar queda en la mitad de arriba (${caja && Math.round(caja.y)} px)`);
+      assert.ok(primera.y > caja.y, "los botones van sobre la lista de drogas");
+      await m.tap('.elegir-inf button[data-id="fentanilo"]');
+      await m.tap('.pie-inf button:has-text("Agregar (")');
+      await m.waitForSelector(".elegir-inf", { state: "detached" });
+      await chico.close();
+    });
+
     await prueba("en el celular, el teclado propio del registro simple: Sig. avanza, la fila queda marcada y la cabecera se oculta", async () => {
       const movil = await navegador.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const m = await movil.newPage();

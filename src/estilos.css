@@ -455,6 +455,20 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 @keyframes sube-panel{from{transform:translateY(100%)}to{transform:none}}
 @keyframes aparece-fondo{from{background:rgba(15,26,36,0)}}
 @media (prefers-reduced-motion:no-preference){.panel-flotante{animation:sube-panel .2s ease-out}.fondo-flotante{animation:aparece-fondo .2s ease-out}}
+/* iPhone (Diego, 19-nov-2026: «en iPhone no se ve la parte de agregar drogas»). En Safari el «vh»
+   cuenta la franja que tapa su barra de abajo; «dvh» es la altura que de verdad se ve. */
+@supports (height:100dvh){
+  .panel-flotante{max-height:82dvh}
+  .fondo-flotante.centrado .panel-flotante{max-height:92dvh}
+  body:has(.kb:not([hidden])) .fondo-flotante .panel-flotante{max-height:calc(100dvh - 262px)}
+}
+/* En pantallas bajas (iPhone SE, mini, y cualquiera con la barra de Safari abierta) los botones
+   Cancelar / Agregar van ARRIBA, bajo el titulo: quedan a la vista aunque el borde de abajo se corte. */
+@media (max-height:760px){
+  .fondo-flotante:not(.centrado) .panel-flotante .pf-cabeza{order:-2}
+  .fondo-flotante:not(.centrado) .panel-flotante .pie-inf{order:-1;border-top:0;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .fondo-flotante:not(.centrado) .panel-flotante .pf-cuerpo{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+}
 /* Lo de adentro no se encoge: si no cabe, el cuerpo se desplaza. */
 .pf-cuerpo>*{flex-shrink:0}
 .pf-cuerpo.escribiendo{padding-bottom:30vh}

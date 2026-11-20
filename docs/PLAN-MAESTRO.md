@@ -783,3 +783,11 @@ Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
   en líneas separadas o una sola línea, y si además llena la GSA de la evolución. Antes de programar: página de prueba en
   el PC del hospital (que el lector de texto se descargue y cuánto tarda). Ojo: el «PO2 / FIO2» de cobas viene 100 veces
   más chico (divide por FiO₂ en %): la PaFi se calcula, no se copia.
+- **Sugerencia de un colega (Álvaro, 19-nov-2026), por WhatsApp a Diego** — anotada, sin programar:
+  · **Visor en el teléfono «como Kaironda»** (Kaironda es un gestor de turnos con visor de equipo e individual): poder
+    ver **el global de la unidad o el de cada funcionario**.
+    · **Al menos los controles de MI turno, por paciente.** Hoy se ven todos mezclados y no sirve para la entrega.
+    · Su motivo: no tiene la hoja a mano ni hay PC disponible, y quiere ir comentando la evolución del turno desde el
+      teléfono. No hace falta las 24 h: basta el turno.
+    · Al retomarlo: la sábana del RCE (pestaña del Historial, v7.11) ya ordena por paciente y por turno; en Kaptus
+      existe `SabanaVista` (rango 24 h). Lo que pide es un filtro «mi turno / mis camas» y una vista por funcionario.

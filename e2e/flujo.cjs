@@ -509,6 +509,10 @@ async function esperarServidor() {
       await m.tap('.kb [data-kb="sig"]');
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false, "en la ultima casilla, Sig. cierra el teclado");
+      // El evento se abre en una ventana encima (Diego, 20-nov-2026): se ve sin buscarlo y se cierra con Cancelar.
+      assert.ok(await m.locator('[role=dialog][aria-label="Ajustar posición del tubo"]').isVisible(), "el evento se abre en una ventana a la vista");
+      await m.tap('[role=dialog][aria-label="Ajustar posición del tubo"] button:text-is("Cancelar")');
+      await m.waitForSelector('[role=dialog][aria-label="Ajustar posición del tubo"]', { state: "detached" });
       // Ingreso de una cama libre: talla, calibre y cm con el teclado propio; Sig. recorre las tres.
       const est = await movil.newPage();
       await est.goto(URL + "#estacion");
@@ -742,7 +746,7 @@ async function esperarServidor() {
       await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');
       await cel.waitForSelector("#evf-cal");
       assert.match(await aviso(), /Ahora registra la reintubación/);
-      assert.match(await cel.textContent(".card:has(#evf-cal)"), /Reintubación/);
+      assert.match(await cel.textContent("[role=dialog]:has(#evf-cal)"), /Reintubación/);
       await cel.fill("#evf-cal", "8");
       await cel.fill("#evf-fij", "23");
       await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');

@@ -468,6 +468,9 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
   .fondo-flotante:not(.centrado) .panel-flotante .pf-cabeza{order:-2}
   .fondo-flotante:not(.centrado) .panel-flotante .pie-inf{order:-1;border-top:0;border-bottom:1px solid var(--line);padding-bottom:10px}
   .fondo-flotante:not(.centrado) .panel-flotante .pf-cuerpo{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  /* Los eventos son formularios cortos: primero se llena el campo y despues se registra. */
+  .fondo-flotante:not(.centrado) .panel-flotante.ev-panel .pie-inf{order:0;border-top:1px solid var(--line);border-bottom:0;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .fondo-flotante:not(.centrado) .panel-flotante.ev-panel .pf-cuerpo{padding-bottom:12px}
 }
 /* Lo de adentro no se encoge: si no cabe, el cuerpo se desplaza. */
 .pf-cuerpo>*{flex-shrink:0}

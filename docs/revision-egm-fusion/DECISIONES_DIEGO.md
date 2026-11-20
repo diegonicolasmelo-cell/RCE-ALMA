@@ -17,3 +17,9 @@ Respuesta a las cinco decisiones previas de la revisión Elephant-Goldfish (`con
 - Se adopta la dirección del PRD de Manuel (Kaptus satélite, RCE estación) con el **camino simple** de la revisión: lectura (etapa 1, ya programada) → borrador del turno desde Kaptus → «Traer de Kaptus» en la evolución del RCE → guardar es confirmar.
 - **Se dejan de desarrollar en Kaptus**: Estación B (estadística, indicadores, REM, archivados, entrega), el texto para ALMA y la huella del RUT. No se borran todavía: quedan hasta que el puente funcione en el piloto.
 - Pendiente de aclarar: cómo convive el turno 8-20 de la app con el turno 9-21 del RCE (a qué evolución del RCE va un control de las 08:30 o de las 20:30), y qué significa exactamente «solo como visualizador».
+
+## 20-nov-2026 · Cambio de decisión: Kaptus es la fuente oficial de los eventos
+
+Reemplaza la decisión 1 (cifras oficiales del RCE). Kaptus registra controles y eventos en el momento y alimenta la
+estadística interna y el REM; el RCE visualiza, saca la evolución y completa lo que faltó. Detalle en
+`docs/PLAN-MAESTRO.md` §24.

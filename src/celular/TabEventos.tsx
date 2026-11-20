@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Ban, CircleAlert, CircleSlash, Footprints, Users, Wind, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
+import { X, ArrowLeftRight, Ban, CircleAlert, CircleSlash, Footprints, Users, Wind, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -363,39 +363,47 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       )}
 
       {item && (item.campos || CON_CONTROL.includes(item.k)) && (
-        <div className="card stack" style={{ padding: 12, gap: 8, borderColor: item.peligro ? "var(--crit)" : undefined }}>
-          <b>{item.texto}</b>
-          {(item.campos ?? []).map((c) => (
-            <div className="f" key={c.id}>
-              <label htmlFor={`evf-${c.id}`}>{c.etiqueta}</label>
-              {c.opciones ? (
-                <select id={`evf-${c.id}`} value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))}>
-                  {c.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
-                </select>
-              ) : (
-                <input id={`evf-${c.id}`} {...(c.num ? { ...casillaNumerica(), enterKeyHint: "next" as const } : {})} value={valores[c.id] ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} autoComplete="off" onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
-              )}
+        // Ventana que sube desde abajo (Diego, 20-nov-2026): antes la tarjeta se abria ARRIBA de la
+        // pantalla y quien tocaba un evento abajo no la veia, creia que no se habia registrado.
+        <div className="fondo-flotante" onClick={() => setAbierto(null)}>
+          <div className="panel-flotante ev-panel" role="dialog" aria-modal="true" aria-label={item.texto} onClick={(e) => e.stopPropagation()}>
+            <header className="pf-cabeza" style={item.peligro ? { color: "var(--crit-ink)" } : undefined}>
+              <b>{item.texto}</b>
+              <button type="button" className="pf-cerrar" aria-label="Cerrar sin registrar" onClick={() => setAbierto(null)}><X size={20} aria-hidden /></button>
+            </header>
+            <div className="pf-cuerpo">
+              {(item.campos ?? []).map((c) => (
+                <div className="f" key={c.id}>
+                  <label htmlFor={`evf-${c.id}`}>{c.etiqueta}</label>
+                  {c.opciones ? (
+                    <select id={`evf-${c.id}`} value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))}>
+                      {c.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
+                    </select>
+                  ) : (
+                    <input id={`evf-${c.id}`} {...(c.num ? { ...casillaNumerica(), enterKeyHint: "next" as const } : {})} value={valores[c.id] ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} autoComplete="off" onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
+                  )}
+                </div>
+              ))}
+              {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
+              {item.k === "egreso" && <p className="small muted">El paciente sale de la lista y la cama queda libre. Lo clínico se conserva para las estadísticas; el nombre y el RUT se borran en el PC.</p>}
             </div>
-          ))}
-          {CON_CONTROL.includes(item.k) ? (
-            <div className="stack" style={{ gap: 8 }}>
-              <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar y monitorizar ›</button>
-              <div className="row">
-                <button type="button" className="btn" style={{ flex: 1 }} onClick={() => void registrar(item, valores, false)}>Registrar sin control</button>
-                <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
+            {CON_CONTROL.includes(item.k) ? (
+              <div className="pie-inf" style={{ flexDirection: "column" }}>
+                <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar y monitorizar ›</button>
+                <div className="row" style={{ gap: 8 }}>
+                  <button type="button" className="btn" style={{ flex: 1 }} onClick={() => void registrar(item, valores, false)}>Registrar sin control</button>
+                  <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="row">
-              <button type="button" className={item.peligro || item.k === "egreso" ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>{item.k === "egreso" ? "Confirmar egreso" : "Registrar"}</button>
-              <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
-            </div>
-          )}
-          {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
-          {item.k === "egreso" && <p className="small muted">El paciente sale de la lista y la cama queda libre. Lo clínico se conserva para las estadísticas; el nombre y el RUT se borran en el PC.</p>}
+            ) : (
+              <div className="pie-inf">
+                <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
+                <button type="button" className={item.peligro || item.k === "egreso" ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>{item.k === "egreso" ? "Confirmar egreso" : "Registrar"}</button>
+              </div>
+            )}
+          </div>
         </div>
       )}
-
 
       {grupos.filter((g) => g.items.some(aplica)).map((g) => (
         <section key={g.titulo}>

@@ -812,3 +812,25 @@ Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
     hoja impresa (Hb < 7, plaquetas < 100.000, K⁺ < 3,5 o > 5,5…).
   · **La naricera (NRC) no muestra la FiO₂ teórica** al anotar los L/min. Al retomarlo: mostrarla calculada (regla
     habitual ≈ 21 % + 4 % por litro, con tope) como referencia, sin guardarla como medida.
+
+## 24. 🔴 Kaptus es la fuente oficial de los eventos (decisión de Diego, 20-nov-2026)
+
+**Reemplaza** la decisión del 17-nov («cifras oficiales del RCE»). Textual: «desde Kaptus hay que tratar de que sea lo
+oficial… todas las opciones que se marquen en Kaptus deberían ser las que se reflejan en el RCE… controlo a través de
+Kaptus, anoto los eventos, si algo cambió… ahí quedan registrados para la estadística y para el REM… y luego, cuando
+voy al RCE, es para rescatar la evolución o registrar algo que me faltó». Lo que busca: **estadística en tiempo real**
+(una extubación, un cultivo o un escáner se ven al tiro).
+
+- **Kaptus registra**: controles y eventos, en el momento, desde el teléfono. Alimenta la estadística interna y el REM.
+- **El RCE visualiza**: la sábana, la evolución para ALMA y lo que faltó anotar. No es donde «se registra» la extubación.
+- **Por eso el registro de eventos en el teléfono tiene que ser muy bueno.** Primer arreglo (20-nov): el formulario de
+  cada evento se abre en una ventana que sube desde abajo (antes salía arriba de la pantalla y quien tocaba un evento
+  abajo creía que no se había registrado).
+- **Consecuencias para el enlace con el RCE** (rama `enlace-kaptus`, v7.11): la subida de controles queda igual, pero
+  además hay que **subir los eventos como oficiales**, y el RCE tiene que contarlos en sus cifras sin pedir que alguien
+  los vuelva a marcar en el formulario. Hay que diseñar cómo conviven con los colegas que todavía no usan Kaptus (ellos
+  siguen marcando en el RCE): regla para no contar dos veces el mismo evento. Necesita PRD antes de programar.
+- **Caso real que lo motivó (Sergio, 20-nov)**: un paciente extubado el día anterior por alguien que no usaba Kaptus;
+  para Kaptus seguía con tubo. Salida inmediata: «Extubación fuera de protocolo» con motivo «Otro» y comentario.
+  Pendiente: un «la vía aérea cambió fuera de Kaptus» (cambiar TOT → natural con hora aproximada, sin PVE, marcado como
+  registro tardío) y una pregunta al abrir una cama que lleva muchas horas sin controles: «¿cambió algo?».

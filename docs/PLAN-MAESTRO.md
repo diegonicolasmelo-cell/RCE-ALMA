@@ -798,3 +798,10 @@ Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
   desplegable lo del ventilatorio, cama, etc.». Cada grupo (Monitorización, Terapia ventilatoria, Kinesiología…) se abre
   y se cierra. Vale para la sábana de Kaptus (`SabanaVista`) y para la del RCE (v7.11): al retomarlo, que las dos usen los
   mismos grupos y que se recuerde qué dejó abierto cada uno.
+- **Más sugerencias de Álvaro (20-nov-2026, por WhatsApp a Diego)** — anotadas, sin programar:
+  · **Los cm del TOT visibles en Monitorización.** «Se me olvidó como 3 veces en pacientes y me devolvía.» Hoy la
+    fijación (cm) no está a la vista donde se anota el control.
+  · **APK digital: separar lo fijo de lo opcional.** Lo que va sí o sí, a la vista y sin tocar; lo que puede ser «NA»
+    (p. ej. detención de la alimentación, uso de O₂), escondido y seleccionable solo si hace falta.
+  · **Aviso al llegar al tope de la hoja imprimible**: antes de seguir anotando, que avise «imprime primero» para no
+    perder lo que ya no cabe en la hoja.

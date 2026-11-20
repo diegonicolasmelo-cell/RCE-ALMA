@@ -805,3 +805,10 @@ Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
     (p. ej. detención de la alimentación, uso de O₂), escondido y seleccionable solo si hace falta.
   · **Aviso al llegar al tope de la hoja imprimible**: antes de seguir anotando, que avise «imprime primero» para no
     perder lo que ya no cabe en la hoja.
+- **Y otras de Álvaro (19-nov-2026, por WhatsApp a Diego)** — anotadas, sin programar:
+  · **Si se elimina la hoja de papel: un segmento de Laboratorio** en la app, con aviso para los **valores de riesgo**,
+    «como ALMA, que sale un símbolo chiquito», pensado para decidir la **motora o la PVE** (p. ej. Hb baja, K⁺
+    alterado). Conecta con el capturador de exámenes del RCE (mockup «Pegar examen») y con los cortes ya acordados para la
+    hoja impresa (Hb < 7, plaquetas < 100.000, K⁺ < 3,5 o > 5,5…).
+  · **La naricera (NRC) no muestra la FiO₂ teórica** al anotar los L/min. Al retomarlo: mostrarla calculada (regla
+    habitual ≈ 21 % + 4 % por litro, con tope) como referencia, sin guardarla como medida.

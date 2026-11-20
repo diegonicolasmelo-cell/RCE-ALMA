@@ -826,6 +826,7 @@ voy al RCE, es para rescatar la evolución o registrar algo que me faltó». Lo 
 - **Por eso el registro de eventos en el teléfono tiene que ser muy bueno.** Primer arreglo (20-nov): el formulario de
   cada evento se abre en una ventana que sube desde abajo (antes salía arriba de la pantalla y quien tocaba un evento
   abajo creía que no se había registrado).
+- **PRD escrito (20-nov, sin programar):** `docs/prd/PRD_EVENTOS_OFICIALES_KAPTUS.md` · https://claude.ai/artifact/HaP31MxvseLQKbjK1zrQGk
 - **Consecuencias para el enlace con el RCE** (rama `enlace-kaptus`, v7.11): la subida de controles queda igual, pero
   además hay que **subir los eventos como oficiales**, y el RCE tiene que contarlos en sus cifras sin pedir que alguien
   los vuelva a marcar en el formulario. Hay que diseñar cómo conviven con los colegas que todavía no usan Kaptus (ellos

@@ -765,3 +765,21 @@ Diego propuso que Kaptus llene el modal de evolución del RCE. Manuel ya lo ten�
   en el teléfono y en el RCE se confirma con el último control; turnos de la app **8-20**; app del equipo abierta con
   clave y solo como visualizador (por aclarar); **identidades en pausa** (funciona como el RCE hoy). Detalle en
   `docs/revision-egm-fusion/DECISIONES_DIEGO.md`. Se dejan de desarrollar la Estación de Kaptus y su texto para ALMA.
+
+## 23. Pendientes anotados por Diego (GUARDADO para después, 20-nov-2026)
+
+Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
+
+- **Editar un control ya guardado** cuando uno se equivoca. Hoy no hay forma cómoda de corregirlo. Al retomarlo: definir
+  hasta cuándo se puede editar, quién (el autor, coordinación) y que quede constancia del cambio (no pisar en silencio:
+  misma regla del RCE, «nada pisa lo guardado sin que se vea»).
+- **Rangos fisiológicos por variable** para cazar el dato anotado en la casilla equivocada. Sus ejemplos, textuales:
+  anotar la presión arterial en la frecuencia respiratoria («FR 122»), la FR en la saturación («SpO₂ 21»), o la FiO₂ en la
+  saturación. Variables nombradas: FC, presión arterial, FR, SpO₂, FiO₂. Al retomarlo: definir con Diego los rangos de
+  cada una, y si fuera de rango **avisa** (pide confirmar) o **bloquea**; ojo con que algunos rangos dependen del modo
+  (FiO₂ 21-100 %, flujo de CNAF en L/min, etc.). Revisar primero qué valida hoy `src/core/validez.ts` para no duplicar.
+- **Capturador de exámenes** (mockup «Pegar examen», 19-nov: https://claude.ai/artifact/58mrLMwvLQZxusGuFxBxuC) — es del
+  RCE, no de Kaptus. Formato ya decidido: dato + número + unidad, sin rangos de referencia ni flechas. Abiertas: grupos
+  en líneas separadas o una sola línea, y si además llena la GSA de la evolución. Antes de programar: página de prueba en
+  el PC del hospital (que el lector de texto se descargue y cuánto tarda). Ojo: el «PO2 / FIO2» de cobas viene 100 veces
+  más chico (divide por FiO₂ en %): la PaFi se calcula, no se copia.

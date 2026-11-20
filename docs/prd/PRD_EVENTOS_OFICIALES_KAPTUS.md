@@ -1,6 +1,6 @@
 # PRD · Los eventos de Kaptus son los oficiales
 
-**Estado:** borrador para revisar con Diego (y Manuel). **No programado.**
+**Estado:** decisiones de Diego tomadas el 20-nov (§9). **No programado** («prepara todo, pero no programes nada aún»).
 **Dueño:** Diego Melo (coordinación de kinesiología UPC Adulto).
 **Fecha:** 20-nov-2026. Reemplaza la decisión 1 de la revisión del 17-nov («cifras oficiales del RCE»).
 **Alcance:** Kaptus (teléfono) y RCE-KINE (estación). Toca las cifras oficiales de los dos: por eso va con PRD.
@@ -88,19 +88,26 @@ nivel KTM…) y `registroTardio` (verdadero para O5). Entra por la misma puerta 
 - Además, un **hito en `TIMELINE`** con `DATOS_JSON` (columna que ya existe desde la rama episodio/turno): así la línea
   de tiempo y el traslado de cama (`_reetiquetarEpisodioACama`) lo ven sin código nuevo.
 
-### 5.3 Tabla de traducción (primera tanda)
+### 5.3 Tabla de traducción (primera tanda, cerrada por Diego el 20-nov)
 
-| Kaptus | RCE (lo que cuenta) | Para |
-|---|---|---|
-| `EXTUBACION_PROGRAMADA` (con o sin PVE) | extubación, `EXT_TIPO` programada / fuera de protocolo | REM, indicadores, tiempo extubado, cierre del tramo de VM |
-| `AUTOEXTUBACION` (y accidental) | autoextubación / extubación accidental | indicadores, REM |
-| `REINTUBACION`, `FALLA_POST_EXTUB` | reintubación, fracaso | indicadores de fracaso |
-| `INICIO_PVE`/`FIN_PVE`, `PVE_NO_REALIZADA`, `PVE_SIN_EXTUBAR` | PVE y su resultado | estadística de destete |
-| `TRAQUEOSTOMIA`, `DECANULACION` | TQT, decanulación | REM, indicadores |
-| `TOMA_CULTIVO`, `TRASLADO_IMAGEN` | cultivo, traslado a imagen | estadística interna |
-| `TERAPIA_FISICA`, `IMT`, `EDUCACION` | KTM con nivel, IMT, educación | REM (códigos ya mapeados en Kaptus) |
+| Grupo | Kaptus | RCE (lo que cuenta) | Para |
+|---|---|---|---|
+| Vía aérea | `EXTUBACION_PROGRAMADA` (con PVE o fuera de protocolo) | extubación y su tipo | REM, indicadores, tiempo extubado, cierre del tramo de VM |
+| Vía aérea | `AUTOEXTUBACION` (y accidental) | autoextubación / extubación accidental | indicadores, REM |
+| Vía aérea | `REINTUBACION`, `FALLA_POST_EXTUB` | reintubación, fracaso | indicadores de fracaso |
+| Vía aérea | `DECANULACION` | decanulación | REM, indicadores |
+| Vía aérea | `DESVINCULACION` (y reconexión) | desvinculación del ventilador | destete |
+| Vía aérea | `CAMBIO_TUBO`, `CAMBIO_CANULA`, `AJUSTE_TUBO` | recambio / ajuste | constancia (no suma a la estadística de extubaciones) |
+| PVE | `INICIO_PVE`/`FIN_PVE`, `PVE_NO_REALIZADA`, `PVE_SIN_EXTUBAR` | PVE y su resultado | estadística de destete |
+| TQT | `TRAQUEOSTOMIA` | TQT | REM, indicadores |
+| Procedimientos | `TOMA_CULTIVO`, `TRASLADO_IMAGEN` | cultivo, traslado a imagen | estadística interna |
+| Procedimientos | `ASISTENCIA_PROCEDIMIENTO`, `ASISTENCIA_FBC` | asistencia a procedimiento médico | estadística interna |
+| Terapia física | `TERAPIA_FISICA` con **nivel 1 a 5** | KTM y su nivel | REM (códigos ya mapeados en Kaptus) |
+| Terapia física | `IMT`, `EDUCACION` | IMT, educación a la familia | REM |
+| Terapia física | `EVALUACION_PUNTUAL` (todas las evaluaciones de terapia física: MRC-ss, FSS-ICU, CPAx, Pimáx…) | evaluación con su fecha y firma | serie fechada del episodio (hoja EVALUACIONES) |
 
 Lo que no está en la tabla **no cuenta en el RCE** y se queda en Kaptus (regla por defecto de la revisión EGM).
+Todo lo de vía aérea se sigue registrando **a mano**, por decisión clínica: la app solo detecta olvidos.
 
 ### 5.4 Inventario de consumidores (dónde vive hoy la regla «hubo extubación»)
 
@@ -113,8 +120,8 @@ cierre del tramo de VM · ④ el resto. Cada tanda reemplaza su lectura directa 
 
 ### 5.5 El candado que evita contar dos veces
 
-Un evento del RCE y uno de Kaptus son **el mismo** si: mismo `PATIENT_ID` · mismo tipo traducido · mismo turno lógico
-(o, si los dos tienen hora, a menos de 3 horas uno del otro). En ese caso cuenta una vez, con la hora de Kaptus.
+Un evento del RCE y uno de Kaptus son **el mismo** si: mismo `PATIENT_ID` · mismo tipo traducido · **mismo turno
+lógico** (decidido por Diego el 20-nov). En ese caso cuenta una vez, con la hora de Kaptus.
 
 ### 5.6 Interruptores
 
@@ -136,6 +143,8 @@ CUANDO alguien pide cifras (REM, indicadores, estadística) de un rango
   eventos = casillas de EVOLUCIONES del rango
           + (si KAPTUS_EVENTOS_OFICIALES) KAPTUS_EVENTOS vigentes del rango
   juntar los que son «el mismo» (5.5) → uno, con la hora de Kaptus
+  si el teléfono y la evolución se contradicen (Kaptus: extubado · RCE: sigue con tubo) → manda Kaptus
+     y el RCE muestra un aviso en esa evolución para que se corrija
   contar
 
 CUANDO el colega abre la evolución en el PC
@@ -158,8 +167,8 @@ CUANDO en el teléfono se corrige «la vía aérea cambió fuera de Kaptus»
   vigila con una auditoría de solo lectura (eventos «casi iguales» que no se unieron).
 - **Teléfono sin señal:** el evento cuenta cuando llega, con su hora real. Una cifra mirada antes de que llegue sale
   baja; la de fin de mes, no.
-- **Un evento anotado por error en el teléfono:** hay que poder anularlo (queda en ESTADO anulado). Falta decidir desde
-  dónde (pregunta 4).
+- **Un evento anotado por error en el teléfono:** se anula (queda en ESTADO anulado, no se borra). Lo puede anular su
+  autor en el teléfono o coordinación en el RCE (decidido el 20-nov).
 
 ## 8. Alternativas consideradas
 
@@ -167,11 +176,27 @@ CUANDO en el teléfono se corrige «la vía aérea cambió fuera de Kaptus»
   fabricaría una evolución que nadie escribió y chocaría con el guardado del colega.
 - **Que el RCE deje de registrar eventos**: descartada por ahora (N1): parte del equipo todavía no usa Kaptus.
 
-## 9. Preguntas para Diego
+## 9. Decisiones de Diego (20-nov-2026)
 
-1. **¿Cuándo dos registros son el mismo evento?** ¿Mismo turno, o a menos de N horas? (Propuesta: mismo turno, o 3 h.)
-2. **Si el teléfono y el PC no están de acuerdo** (Kaptus dice extubado y la evolución del RCE sigue con tubo), ¿quién
-   manda? (Propuesta: manda el evento de Kaptus y el RCE muestra un aviso para revisar la evolución.)
-3. **¿Qué eventos van en la primera tanda?** (Propuesta: la tabla 5.3.)
-4. **Un evento mal anotado en el teléfono**, ¿lo anula su autor en el teléfono, coordinación en el RCE, o los dos?
-5. **¿Con qué camas se prueba** antes de encender `KAPTUS_EVENTOS_OFICIALES`?
+1. **El mismo evento = mismo paciente, mismo tipo, mismo turno.**
+2. **Manda el teléfono**, «porque es el que va a controlar». El RCE avisa en la evolución para que se corrija.
+3. **Primera tanda:** vía aérea (extubaciones con y sin protocolo, autoextubación, reintubación, decanulación,
+   desvinculación), PVE, TQT, cultivo, imagen, KTM con sus niveles 1 a 5, IMT, educación, las evaluaciones de terapia
+   física y la asistencia a procedimientos médicos (tabla 5.3).
+4. **Un evento mal anotado lo anulan los dos:** su autor en el teléfono o coordinación en el RCE.
+5. **Prueba con camas de prueba.** El RCE ya tiene la rutina (`mantenimiento.gs`, `_esCamaPrueba`): se agregan camas de
+   ensayo sin tocar a los pacientes reales y se retiran sin dejar rastro en la estadística. Falta que Kaptus las vea y
+   decidir cuántas (propuesta: 2).
+
+## 10. Lo que pidió junto con esto: la sábana en el teléfono para la entrega
+
+Textual: «necesito ver los controles de las 24 horas o la sábana en el teléfono, independiente de si haya realizado o
+no un control… en controles para ALMA, los que son mis controles del día de hoy, y la sábana poder elegirla para verla
+desde el celular y así participar en la entrega».
+
+- **Hoy:** la sábana del teléfono solo se abre desde «Mis controles», o sea solo de las camas donde **yo** registré un
+  control en este turno. Sin control propio, no hay cómo verla.
+- **Después:** «Mis controles» (para pasar a ALMA) queda igual: mis controles de hoy. Y la sábana se abre desde la
+  tarjeta de **cualquier cama**, con 24 h por defecto y las flechas para pasar de cama en cama, como en el RCE (v7.11).
+- Es la misma sugerencia de Álvaro (19-nov, «como Kaironda»): ver mi turno por paciente para la entrega.
+- **No depende del resto de este PRD** (no cambia ninguna cifra): se puede programar aparte, antes.

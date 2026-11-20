@@ -794,3 +794,7 @@ Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
 - **Eventos con texto libre** (Diego, 20-nov-2026): en Eventos debe haber también una opción de texto libre para consignar
   algo puntual que no calza en el catálogo. Al retomarlo: ver si basta el comentario que ya llevan los eventos o si va
   como evento propio «Otro / nota», y que no cuente para ninguna cifra (como las «Anotaciones del turno» del RCE, v5.97).
+- **Sábana más corta, por bloques desplegables** (Diego, 20-nov-2026): «para que la sábana no sea tan extensa, que sea
+  desplegable lo del ventilatorio, cama, etc.». Cada grupo (Monitorización, Terapia ventilatoria, Kinesiología…) se abre
+  y se cierra. Vale para la sábana de Kaptus (`SabanaVista`) y para la del RCE (v7.11): al retomarlo, que las dos usen los
+  mismos grupos y que se recuerde qué dejó abierto cada uno.

@@ -31,7 +31,7 @@ import {
   WifiOff,
   X
 } from "lucide-react";
-import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe } from "@core/index";
+import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
 import { FichaAlma } from "./FichaAlma";
@@ -421,18 +421,20 @@ export function MisControles({ resumen, rut, ahora }: { resumen: readonly Resume
   const [abierto, setAbierto] = useState<{ episodioId: string; controlId: string } | null>(null);
   const sab = abierto ? resumen.find((r) => r.ep.id === abierto.episodioId) : undefined;
   useAtras(abierto !== null, () => setAbierto(null));
-  // Solo el turno en curso: al empezar el siguiente la lista parte vacia. De cada cama, el ultimo.
+  // El turno en curso y, durante 4 h despues de terminar, el anterior (Diego, 20-nov-2026: el colega que
+  // se atrasa pasando a ALMA no se queda sin apunte). De cada cama, el ultimo.
   const turno = turnoDe(ahora);
+  const visibles = turnosVisiblesMisControles(ahora).map((t) => t.clave);
   const mios = resumen
     .flatMap((r) => {
-      const delTurno = r.controles.filter((c) => c.rutAutor === rut && turnoDe(new Date(c.registradoEn)).clave === turno.clave);
+      const delTurno = r.controles.filter((c) => c.rutAutor === rut && visibles.includes(turnoDe(new Date(c.registradoEn)).clave));
       const ultimo = delTurno.reduce<typeof delTurno[number] | null>((m, c) => (m === null || c.registradoEn > m.registradoEn ? c : m), null);
       return ultimo ? [{ c: ultimo, r }] : [];
     })
     .sort((a, b) => (a.c.registradoEn < b.c.registradoEn ? 1 : -1));
   return (
     <div className="cel-cuerpo" aria-label="Mis controles">
-      <p className="small muted" style={{ margin: 0 }}>Tu {etiquetaTurno(turno).toLowerCase()}: el último control que registraste en cada cama. En tu próximo turno la lista parte de cero.</p>
+      <p className="small muted" style={{ margin: 0 }}>Tu {etiquetaTurno(turno).toLowerCase()}: el último control que registraste en cada cama. Los del turno que terminó se siguen viendo {HORAS_GRACIA_MIS_CONTROLES} horas más (el día hasta las 24:00, la noche hasta las 12:00).</p>
       {mios.length === 0 && <p className="muted">Aún no registras controles en este turno.</p>}
       {mios.map(({ c, r }) => {
         const evento = c.eventoId ? r.eventos.find((e) => e.id === c.eventoId) : undefined;

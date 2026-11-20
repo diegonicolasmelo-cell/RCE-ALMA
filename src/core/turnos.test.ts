@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { turnoAnterior, turnoDe } from "./turnos";
+import { turnoAnterior, turnoDe, turnosVisiblesMisControles } from "./turnos";
 
 /** Fechas con componentes locales: el turno depende de la hora local. */
 const f = (y: number, m: number, d: number, h: number, min = 0) => new Date(y, m - 1, d, h, min);
@@ -46,5 +46,21 @@ describe("turnoAnterior", () => {
   });
   it("el anterior a la madrugada (Noche iniciada ayer) es el Día de ayer", () => {
     expect(turnoAnterior(f(2026, 11, 5, 3)).clave).toBe("2026-11-04:DIA");
+  });
+});
+
+describe("turnosVisiblesMisControles", () => {
+  // Diego, 20-nov-2026: «Mis controles» sigue mostrando el turno que termino durante 4 horas.
+  const claves = (d: Date): string => turnosVisiblesMisControles(d).map((t) => t.clave).join(" + ");
+  it("el turno dia se sigue viendo hasta las 24:00", () => {
+    expect(claves(new Date(2026, 10, 20, 15, 0))).toBe("2026-11-20:DIA");
+    expect(claves(new Date(2026, 10, 20, 21, 30))).toBe("2026-11-20:NOCHE + 2026-11-20:DIA");
+    expect(claves(new Date(2026, 10, 20, 23, 59))).toBe("2026-11-20:NOCHE + 2026-11-20:DIA");
+    expect(claves(new Date(2026, 10, 21, 0, 0))).toBe("2026-11-20:NOCHE");
+  });
+  it("el turno noche se sigue viendo hasta las 12:00", () => {
+    expect(claves(new Date(2026, 10, 21, 9, 0))).toBe("2026-11-21:DIA + 2026-11-20:NOCHE");
+    expect(claves(new Date(2026, 10, 21, 11, 59))).toBe("2026-11-21:DIA + 2026-11-20:NOCHE");
+    expect(claves(new Date(2026, 10, 21, 12, 0))).toBe("2026-11-21:DIA");
   });
 });

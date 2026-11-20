@@ -59,3 +59,19 @@ export function turnoAnterior(ahora: Date): TurnoGuardia {
   }
   return turnoDe(new Date(y, m - 1, d, HORA_INICIO_DIA, 0));
 }
+
+/**
+ * Cuantas horas despues de terminar un turno siguen visibles sus controles en «Mis controles»
+ * (Diego, 20-nov-2026): un colega que se atrasa pasando a ALMA despues de las 20:00 no se queda
+ * sin apunte. Con turnos de 8 y 20, el dia se ve hasta las 24:00 y la noche hasta las 12:00.
+ */
+export const HORAS_GRACIA_MIS_CONTROLES = 4;
+
+/** Turnos cuyos controles muestra «Mis controles»: el actual y, en sus primeras horas, el que acaba de terminar. */
+export function turnosVisiblesMisControles(ahora: Date): readonly TurnoGuardia[] {
+  const actual = turnoDe(ahora);
+  const [y, m, d] = actual.fecha.split("-").map(Number) as [number, number, number];
+  const inicio = new Date(y, m - 1, d, actual.tipo === "DIA" ? HORA_INICIO_DIA : HORA_INICIO_NOCHE, 0);
+  const horas = (ahora.getTime() - inicio.getTime()) / 3_600_000;
+  return horas < HORAS_GRACIA_MIS_CONTROLES ? [actual, turnoAnterior(ahora)] : [actual];
+}

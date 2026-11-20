@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva } from "@core/index";
+import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva, turnoDe } from "@core/index";
 import type { Control, Episodio, EventoClinico } from "@core/index";
 import { SabanaVista } from "../estacion/SabanaVista";
 import { ventilacionDeLaHoja } from "../estacion/sabana";
@@ -51,12 +51,18 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
   const [idx, setIdx] = useState(() => Math.max(0, camas.findIndex((p) => p.ep.id === inicial.episodioId)));
   const [hechos, setHechos] = useState<ReadonlySet<number>>(new Set());
   const [vista, setVista] = useState<"control" | "sabana" | "evaluaciones">("control");
+  // Control elegido a mano en la fila «C1 · C2 · C3…» (sugerencia de Alvaro, 20-nov-2026); al cambiar de cama se suelta.
+  const [ctlElegido, setCtlElegido] = useState<string | null>(null);
   const pac = camas[idx];
   if (!pac) return null;
   const { ep, controles, eventos } = pac;
   const ordenados = [...controles].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   // En la cama que se toco, el control tocado; en las demas, el ultimo.
-  const c = (ep.id === inicial.episodioId ? ordenados.find((x) => x.id === inicial.controlId) : undefined) ?? ordenados.find((x) => x.id === pac.elegido) ?? ordenados[ordenados.length - 1]!;
+  const base = (ep.id === inicial.episodioId ? ordenados.find((x) => x.id === inicial.controlId) : undefined) ?? ordenados.find((x) => x.id === pac.elegido) ?? ordenados[ordenados.length - 1]!;
+  // Los controles del dia de ese paciente hechos por quien hizo el control tocado, en su mismo turno.
+  const turnoBase = turnoDe(new Date(base.registradoEn)).clave;
+  const delDia = ordenados.filter((x) => x.rutAutor === base.rutAutor && turnoDe(new Date(x.registradoEn)).clave === turnoBase);
+  const c = (ctlElegido ? delDia.find((x) => x.id === ctlElegido) : undefined) ?? base;
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const clase = claseModoAlma(c.ventilacion.modalidad);
   // Fuera de VM (CNAF, VNI, O2) el formulario de ALMA no aplica: se muestra solo lo anotado.
@@ -66,6 +72,7 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
   const ir = (d: number): void => {
     setIdx((i) => Math.min(camas.length - 1, Math.max(0, i + d)));
     setHechos(new Set());
+    setCtlElegido(null);
   };
   const tachar = (i: number): void => setHechos((h) => { const x = new Set(h); if (x.has(i)) x.delete(i); else x.add(i); return x; });
   const anterior = camas[idx - 1];
@@ -74,7 +81,7 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
 
   const pestanas = (
     <div className="fa-pestanas" role="tablist" aria-label="Qué ver">
-      <button type="button" role="tab" aria-selected={vista === "control"} onClick={() => setVista("control")}>Último control</button>
+      <button type="button" role="tab" aria-selected={vista === "control"} onClick={() => setVista("control")}>Control</button>
       <button type="button" role="tab" aria-selected={vista === "sabana"} onClick={() => setVista("sabana")}>Sábana</button>
       <button type="button" role="tab" aria-selected={vista === "evaluaciones"} onClick={() => setVista("evaluaciones")}>Evaluaciones</button>
     </div>
@@ -98,7 +105,7 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
 
   const densidad = campos.length > 15 ? "compacta" : campos.length > 10 ? "media" : "grande";
   return capa(
-    <div className={`sabana-cel fa-capa ficha-alma ${densidad}`} role="dialog" aria-label={`Control · ${nombreCama(ep.cama)} · ${c.hora}`}>
+    <div className={`sabana-cel fa-capa ficha-alma ${densidad}${delDia.length > 1 ? " con-controles" : ""}`} role="dialog" aria-label={`Control · ${nombreCama(ep.cama)} · ${c.hora}`}>
       <div className="fa-cab">
         <button type="button" className="fa-flecha fa-cerrar" aria-label="Volver" onClick={onCerrar}><X size={18} aria-hidden /></button>
         <div className="fa-tit">
@@ -108,6 +115,15 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
         <span className="fa-flecha fa-hueco" aria-hidden />
       </div>
       {pestanas}
+      {delDia.length > 1 && (
+        <div className="fa-controles" role="group" aria-label="Controles del turno de este paciente">
+          {delDia.map((x, i) => (
+            <button key={x.id} type="button" aria-pressed={x.id === c.id} onClick={() => { setCtlElegido(x.id); setHechos(new Set()); }}>
+              <b>C{i + 1}</b> {x.hora}
+            </button>
+          ))}
+        </div>
+      )}
       {evento && <div className="fa-evento">⚑ {describirEvento(evento, eventos)} · {evento.hora}</div>}
       <div className="fa-signos" aria-label="Signos vitales">
         {signosAlma(c, pbw).map((s) => (

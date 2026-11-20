@@ -971,6 +971,14 @@ async function esperarServidor() {
       await hoja.waitFor();
       assert.match(await hoja.locator(".fa-tit b").textContent(), new RegExp(`${cama} · ${hora}`));
       assert.equal(await hoja.evaluate((d) => d.closest(".cel-cuerpo") === null && d.parentElement.classList.contains("app-cel")), true, "la ficha cuelga de .app-cel, no de la lista");
+      // Fila de acceso rapido a los controles del turno de ese paciente (sugerencia de Alvaro, 20-nov-2026).
+      const chips = hoja.locator(".fa-controles button");
+      if ((await chips.count()) > 1) {
+        await chips.first().click();
+        assert.equal(await chips.first().getAttribute("aria-pressed"), "true", "C1 queda marcado");
+        assert.match(await hoja.locator(".fa-tit b").textContent(), new RegExp(`${cama} · ${(await chips.first().textContent()).replace(/^C1\s*/, "")}`), "la ficha muestra el C1");
+        await chips.last().click();
+      }
       const signos = await hoja.locator(".fa-signos .fa-dato span").allTextContents();
       for (const e of ["FC", "PA", "Glasgow", "SpO₂", "FiO₂"]) assert.ok(signos.some((t) => t.startsWith(e)), "falta " + e + ": " + signos.join("|"));
       const filas = await hoja.locator(".fa-campos li span").allTextContents();
@@ -1001,7 +1009,7 @@ async function esperarServidor() {
       const ancho = await cel.evaluate(() => document.documentElement.scrollWidth);
       const culpables = await cel.evaluate(() => [...document.querySelectorAll(".sabana-cel *")].filter((e) => e.getBoundingClientRect().right > 392 && !e.closest(".scroll-x")).slice(0, 5).map((e) => e.tagName + "." + e.className + " " + Math.round(e.getBoundingClientRect().right)).join(" | ") + " · padre " + (document.querySelector(".sabana-cel").offsetParent?.className) + " " + Math.round(document.querySelector(".sabana-cel").offsetParent?.getBoundingClientRect().width) + " · body " + document.body.scrollWidth + " app " + Math.round(document.querySelector(".app-cel").getBoundingClientRect().width));
       assert.ok(ancho <= 391, `la sabana no desborda la pantalla (${ancho}px): ${culpables}`);
-      await sab.locator('[role=tab]:has-text("Último control")').click();
+      await sab.locator('[role=tab]:text-is("Control")').click();
       await hoja.waitFor();
       await hoja.locator('button[aria-label="Volver"]').click();
       await hoja.waitFor({ state: "detached" });

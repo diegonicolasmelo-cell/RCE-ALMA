@@ -784,6 +784,15 @@ body.teclado-propio .barra-inf{display:none}
 .ficha-alma.compacta .fa-dato b{font-size:22px}
 .ficha-alma.compacta .fa-campos button span{font-size:13px}.ficha-alma.compacta .fa-campos button b{font-size:16px}
 .ficha-alma.grande .fa-campos button b{font-size:24px}
+/* Con la fila «C1 · C2…» arriba, el modo compacto cede esos pixeles en los signos (peor caso: 360 x 640). */
+.ficha-alma.compacta.con-controles .fa-dato{padding:4px 8px 3px}.ficha-alma.compacta.con-controles .fa-dato b{font-size:20px}
+@media (max-height:700px){
+  .ficha-alma.con-controles .fa-t{display:none}
+  .ficha-alma.con-controles .fa-controles{padding:2px 12px}
+  .ficha-alma.con-controles .fa-controles button{min-height:26px}
+  .ficha-alma.con-controles .fa-pestanas button{padding:6px 4px}
+  .ficha-alma.compacta.con-controles .fa-dato b{font-size:19px}
+}
 .fa-pestanas{display:flex;margin:0 10px;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:0 0 auto}
 .fa-pestanas button{flex:1;min-width:0;border:0;background:var(--panel);color:var(--ink-2);font:inherit;font-size:13.5px;padding:8px 4px}
 .fa-pestanas button[aria-selected="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
@@ -797,6 +806,19 @@ body.teclado-propio .barra-inf{display:none}
 .sabana-cel table.sab-plana tr.sv-grupo td span{position:sticky;left:8px}
 .sabana-cel .sabana-vista{border:0;border-radius:0;box-shadow:none;margin-top:0}
 .sabana-cel table.sab-plana td.v{min-width:7.4em;max-width:9em;white-space:normal}
+/* Ficha del control: fila de acceso rapido a los controles del turno de ese paciente («C1 09:10 · C2 11:00…»). */
+.fa-controles{display:flex;gap:6px;overflow-x:auto;padding:5px 12px;border-bottom:1px solid var(--line);scrollbar-width:none}
+.fa-controles::-webkit-scrollbar{display:none}
+.fa-controles button{flex:none;min-height:30px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:500 13px var(--font-ui);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fa-controles button b{font-weight:800;margin-right:2px}
+.fa-controles button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+/* Sabana del PC compacta (Diego, 20-nov-2026): a 100 % de zoom se ve tanto como a 80 % (filas mas bajas y
+   columnas del ancho de esa vista), pero con la letra del 100 %. El celular (.sabana-cel) tiene sus propias reglas. */
+table.sab-plana th,table.sab-plana td{padding:3px 8px;line-height:1.3}
+table.sab-plana tbody td:first-child,table.sab-plana thead tr:first-child th:first-child{width:176px}
+table.sab-plana td.v{min-width:48px;max-width:112px;line-height:1.3}
+table.sab-plana tr.sv-grupo td{padding:3px 8px}
+table.sab-plana .sv-evento{max-height:140px;font-size:11.5px}
 table.sab-plana th.sel,table.sab-plana td.sel{background:var(--accent-soft)}
 .sabana-cel{overflow:hidden}
 .sabana-cel-cuerpo,.sabana-cel .sabana-vista,.sabana-cel .scroll-x{min-width:0;max-width:100%}

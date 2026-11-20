@@ -791,3 +791,6 @@ Diego pidió solo dejarlo en memoria, sin programar ni discutirlo todavía.
       teléfono. No hace falta las 24 h: basta el turno.
     · Al retomarlo: la sábana del RCE (pestaña del Historial, v7.11) ya ordena por paciente y por turno; en Kaptus
       existe `SabanaVista` (rango 24 h). Lo que pide es un filtro «mi turno / mis camas» y una vista por funcionario.
+- **Eventos con texto libre** (Diego, 20-nov-2026): en Eventos debe haber también una opción de texto libre para consignar
+  algo puntual que no calza en el catálogo. Al retomarlo: ver si basta el comentario que ya llevan los eventos o si va
+  como evento propio «Otro / nota», y que no cuente para ninguna cifra (como las «Anotaciones del turno» del RCE, v5.97).

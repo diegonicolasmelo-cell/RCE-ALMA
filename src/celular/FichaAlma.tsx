@@ -59,9 +59,9 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
   const ordenados = [...controles].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   // En la cama que se toco, el control tocado; en las demas, el ultimo.
   const base = (ep.id === inicial.episodioId ? ordenados.find((x) => x.id === inicial.controlId) : undefined) ?? ordenados.find((x) => x.id === pac.elegido) ?? ordenados[ordenados.length - 1]!;
-  // Los controles del dia de ese paciente hechos por quien hizo el control tocado, en su mismo turno.
+  // Todos los controles de ese paciente en el turno del control tocado, de cualquier colega (Diego, 21-nov-2026).
   const turnoBase = turnoDe(new Date(base.registradoEn)).clave;
-  const delDia = ordenados.filter((x) => x.rutAutor === base.rutAutor && turnoDe(new Date(x.registradoEn)).clave === turnoBase);
+  const delDia = ordenados.filter((x) => turnoDe(new Date(x.registradoEn)).clave === turnoBase);
   const c = (ctlElegido ? delDia.find((x) => x.id === ctlElegido) : undefined) ?? base;
   const pbw = calcularPbw(ep.tallaCm, ep.sexo);
   const clase = claseModoAlma(c.ventilacion.modalidad);

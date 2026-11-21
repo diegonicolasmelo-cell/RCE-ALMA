@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnasSabana, dvaCorta, filasSabana, otrosEventos, sedacionCorta, ventilacionDeLaHoja } from "./sabana";
+import { columnasSabana, dvaCorta, bnmCorta, filasSabana, otrosEventos, sedacionCorta, ventilacionDeLaHoja } from "./sabana";
 import { unControl, unEvento, unaVentilacion } from "@core/fixtures";
 
 const SIN_MONITOREO = { capnografia: false, pic: false, dve: false };
@@ -115,12 +115,15 @@ describe("columnas por control y eventos aparte", () => {
 
 describe("sedación y DVA en la sábana, cortas", () => {
   it("sedación: solo el escalón de cada droga", () => {
-    expect(sedacionCorta(unControl({ infusiones: { fentanilo: { dosis: 1.2, escalon: 2 } } }))).toBe("Fentanilo esc. 2");
+    expect(sedacionCorta(unControl({ infusiones: { fentanilo: { dosis: 1.2, escalon: 2 } } }))).toBe("Fentanilo E2");
     expect(sedacionCorta(unControl({ infusiones: {} }))).toBe("—");
   });
   it("DVA: solo el número, sin la unidad", () => {
     const c = unControl({ infusiones: { noradrenalina: { dosis: 0.08, escalon: null } } });
-    expect(dvaCorta(c)).toBe("Noradrenalina 0.08");
+    expect(dvaCorta(c)).toBe("NAD 0.08");
+    // Abreviaturas de la unidad (Diego, 21-nov-2026).
+    expect(dvaCorta(unControl({ infusiones: { adrenalina: { dosis: 0.1, escalon: null }, vasopresina: { dosis: 0.03, escalon: null } } }))).toBe("AD 0.1 · VSP 0.03");
+    expect(bnmCorta(unControl({ infusiones: { rocuronio: { dosis: 0.6, escalon: null } } }))).toBe("R 0.6");
     expect(dvaCorta(unControl({ infusiones: {} }))).toBe("—");
   });
 });

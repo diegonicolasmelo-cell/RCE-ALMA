@@ -10,7 +10,6 @@ import {
   ETIQUETA_MODALIDAD,
   calcularDerivados,
   calcularGlasgow,
-  describirInfusiones,
   infusionesActivas,
   textoEscalon,
   esModalidadControlada,
@@ -40,18 +39,33 @@ const t = (texto: string): Celda => ({ texto });
 /** Porcentaje: «96 %»; sin dato, «--». */
 const pct = (v: number | null | undefined): string => (v === null || v === undefined ? "--" : `${v} %`);
 
-/** Sedacion en la sabana: solo el escalon de cada droga («Fentanilo esc. 2»); sin escalera, el numero. */
+/**
+ * Abreviaturas de la unidad para la sabana (Diego, 21-nov-2026): NAD, AD, VSP, y el bloqueo
+ * neuromuscular R, V, A. Lo que no esta aqui sale con su nombre. El texto de la evolucion no cambia.
+ */
+export const ABREVIATURA_INFUSION: Readonly<Partial<Record<string, string>>> = {
+  noradrenalina: "NAD", adrenalina: "AD", vasopresina: "VSP", rocuronio: "R", vecuronio: "V", atracurio: "A"
+};
+const corto = (a: { id: string; nombre: string }): string => ABREVIATURA_INFUSION[a.id] ?? a.nombre;
+
+/** Sedacion en la sabana: solo el escalon de cada droga, «E» por escalon («Fentanilo E2»); sin escalera, el numero. */
 export function sedacionCorta(c: Control): string {
   const l = infusionesActivas(c.infusiones, "SEDANTE").map((a) => {
-    const esc = a.escalon !== null ? `esc. ${a.escalon}` : textoEscalon(a.id, a.dosis).replace(/escalón/g, "esc.");
-    return esc ? `${a.nombre} ${esc}` : `${a.nombre} ${a.dosis ?? ""}`.trim();
+    const esc = a.escalon !== null ? `E${a.escalon}` : textoEscalon(a.id, a.dosis).replace(/escalón\s*/g, "E");
+    return esc ? `${corto(a)} ${esc}` : `${corto(a)} ${a.dosis ?? ""}`.trim();
   });
   return l.length > 0 ? l.join(" · ") : "—";
 }
 
-/** DVA e inotropicos en la sabana: solo el numero de la dosis, sin la unidad («Noradrenalina 0.08»). */
+/** DVA e inotropicos en la sabana: solo el numero de la dosis, sin la unidad («NAD 0.08»). */
 export function dvaCorta(c: Control): string {
-  const l = [...infusionesActivas(c.infusiones, "DVA"), ...infusionesActivas(c.infusiones, "INOTROPO")].map((a) => `${a.nombre} ${a.dosis ?? ""}`.trim());
+  const l = [...infusionesActivas(c.infusiones, "DVA"), ...infusionesActivas(c.infusiones, "INOTROPO")].map((a) => `${corto(a)} ${a.dosis ?? ""}`.trim());
+  return l.length > 0 ? l.join(" · ") : "—";
+}
+
+/** Bloqueo neuromuscular en la sabana: abreviado y con su dosis («R 0.6»). */
+export function bnmCorta(c: Control): string {
+  const l = infusionesActivas(c.infusiones, "BNM").map((a) => `${corto(a)} ${a.dosis ?? ""}`.trim());
   return l.length > 0 ? l.join(" · ") : "—";
 }
 
@@ -87,7 +101,7 @@ export function filasSabana(pbw: number, monitoreo: MonitoreoEpisodio): readonly
     { grupo: M, etiqueta: "SAS / vigilia", celda: (c) => t(sedoanalgesiaActiva(c.infusiones) ? `SAS ${n(c.sas)}` : c.vigilia ? c.vigilia.toLowerCase().replace("_", " ") : "--") },
     { grupo: M, etiqueta: "Sedación", celda: (c) => t(sedacionCorta(c)) },
     { grupo: M, etiqueta: "DVA / inotrópicos", celda: (c) => t(dvaCorta(c)) },
-    { grupo: M, etiqueta: "Bloqueo neuromuscular", celda: (c) => t(describirInfusiones(c.infusiones, "BNM") || "—") }
+    { grupo: M, etiqueta: "Bloqueo neuromuscular", celda: (c) => t(bnmCorta(c)) }
   );
   if (monitoreo.capnografia) filas.push({ grupo: M, etiqueta: "EtCO₂", celda: (c) => t(n(c.neuro?.etco2)) });
   if (monitoreo.dve) filas.push({ grupo: M, etiqueta: "DVE", celda: dve });

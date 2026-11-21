@@ -955,6 +955,26 @@ async function esperarServidor() {
       assert.match(await aviso(), /temperatura de la CNAF/);
     });
 
+    await prueba("la sábana se abre desde la tarjeta de cualquier cama, en 24 h, y pasa de cama en cama", async () => {
+      // Diego, 21-nov-2026: para la entrega, aunque yo no haya controlado esa cama.
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      const boton = cel.locator('article[aria-label^="Cama"] button[aria-label^="Sábana · "]').first();
+      await boton.waitFor();
+      const cama = (await boton.getAttribute("aria-label")).replace("Sábana · ", "");
+      await boton.click();
+      const capa = cel.locator(".sabana-cel[role=dialog]");
+      await capa.waitFor();
+      assert.equal(await capa.locator(".sabana-cel-cab h2").textContent(), `Sábana · ${cama}`);
+      assert.equal(await capa.locator('[role=tab][aria-selected="true"]').textContent(), "Sábana");
+      const sig = capa.locator('button[aria-label^="Cama siguiente"]');
+      if (await sig.isEnabled()) {
+        await sig.click();
+        assert.notEqual(await capa.locator(".sabana-cel-cab h2").textContent(), `Sábana · ${cama}`, "la flecha pasa a otra cama");
+      }
+      await capa.locator('button[aria-label="Volver"]').click();
+      await capa.waitFor({ state: "detached" });
+    });
+
     await prueba("Controles: tocar una tarjeta abre el control en grande, avanza de cama y abre la sabana con ese control destacado; el panel se cierra deslizando a la derecha", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');

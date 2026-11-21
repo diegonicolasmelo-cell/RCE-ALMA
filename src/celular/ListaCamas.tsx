@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ClipboardList, Stethoscope, Timer, Zap } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Sheet, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import {
   CAMAS_UNIDAD,
@@ -23,6 +23,8 @@ import { Pildora } from "./componentes";
 import { CompletarRem, IngresoRapido } from "./IngresoRapido";
 import { TrasladoCama } from "./TrasladoCama";
 import { useAtras } from "./Inicio";
+import { FichaAlma } from "./FichaAlma";
+import type { PacienteFicha } from "./FichaAlma";
 
 interface Fila {
   readonly ep: Episodio;
@@ -46,7 +48,18 @@ export function ListaCamas() {
   /** Paciente al que se le completan la edad y el diagnostico REM. */
   const [remDe, setRemDe] = useState<Episodio | null>(null);
   const pedirEvento = useApp((s) => s.pedirEvento);
-  useAtras(ingresando !== null || trasladando !== null || remDe !== null, () => { setIngresando(null); setTrasladando(null); setRemDe(null); });
+  /** Sabana abierta desde la tarjeta de una cama (Diego, 21-nov-2026: la de CUALQUIER cama, para la entrega). */
+  const [sabana, setSabana] = useState<{ pacientes: readonly PacienteFicha[]; episodioId: string; controlId: string } | null>(null);
+  useAtras(ingresando !== null || trasladando !== null || remDe !== null || sabana !== null, () => { setIngresando(null); setTrasladando(null); setRemDe(null); setSabana(null); });
+  const abrirSabana = async (ep: Episodio): Promise<void> => {
+    const episodios = await repo.episodiosActivos();
+    const pacientes = (await Promise.all(episodios.map(async (e) => ({ ep: e, controles: await repo.controlesDe(e.id), eventos: await repo.eventosDe(e.id) }))))
+      .sort((a, b) => a.ep.cama.localeCompare(b.ep.cama, "es", { numeric: true }));
+    const propio = pacientes.find((p) => p.ep.id === ep.id);
+    const ultimo = propio?.controles.at(-1);
+    if (!ultimo) return;
+    setSabana({ pacientes, episodioId: ep.id, controlId: ultimo.id });
+  };
   // Pedidos del «+» de la barra: ingresar en una cama libre o cambiar a un paciente de cama.
   const ingresoPedido = useApp((s) => s.ingresoPedido);
   const trasladoPedido = useApp((s) => s.trasladoPedido);
@@ -182,6 +195,11 @@ export function ListaCamas() {
                   {minutos !== null && minutos >= 60 && <span className="hace"> · hace {haceTexto(minutos)}</span>}
                 </b>
               ) : <b className="muted">sin controles</b>}
+              {ultimo && (
+                <button type="button" className="linkbtn ver-sabana-cama" aria-label={`Sábana · ${nombreCama(ep.cama)}`} onClick={() => void abrirSabana(ep)}>
+                  <Sheet size={14} aria-hidden /> Sábana
+                </button>
+              )}
             </div>
             <div className="botones-cama">
               <button type="button" className="btn primary" onClick={() => irA("cama", ep.id)}>
@@ -208,6 +226,9 @@ export function ListaCamas() {
           </Fragment>
         );
       })}
+      {sabana && (
+        <FichaAlma pacientes={sabana.pacientes} inicial={{ episodioId: sabana.episodioId, controlId: sabana.controlId }} ahora={ahora} vistaInicial="sabana" onCerrar={() => setSabana(null)} />
+      )}
     </div>
   );
 }

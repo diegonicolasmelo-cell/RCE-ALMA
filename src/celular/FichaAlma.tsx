@@ -45,12 +45,12 @@ export interface PacienteFicha {
  * siguiente. Se monta FUERA de la lista con scroll (en .app-cel): dentro de ella el iPhone
  * instalado la dejaba pegada (ver docs/PLAN-MAESTRO.md, seccion 17).
  */
-export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: readonly PacienteFicha[]; inicial: { readonly episodioId: string; readonly controlId: string }; ahora: Date; onCerrar: () => void }) {
+export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = "control" }: { pacientes: readonly PacienteFicha[]; inicial: { readonly episodioId: string; readonly controlId: string }; ahora: Date; onCerrar: () => void; vistaInicial?: "control" | "sabana" | "evaluaciones" }) {
   // Solo las camas con algun control, en el orden de las camas.
   const camas = pacientes.filter((p) => p.controles.length > 0);
   const [idx, setIdx] = useState(() => Math.max(0, camas.findIndex((p) => p.ep.id === inicial.episodioId)));
   const [hechos, setHechos] = useState<ReadonlySet<number>>(new Set());
-  const [vista, setVista] = useState<"control" | "sabana" | "evaluaciones">("control");
+  const [vista, setVista] = useState<"control" | "sabana" | "evaluaciones">(vistaInicial);
   // Control elegido a mano en la fila «C1 · C2 · C3…» (sugerencia de Alvaro, 20-nov-2026); al cambiar de cama se suelta.
   const [ctlElegido, setCtlElegido] = useState<string | null>(null);
   const pac = camas[idx];
@@ -79,6 +79,13 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
   const siguiente = camas[idx + 1];
   const capa = (nodo: JSX.Element): JSX.Element => createPortal(nodo, document.querySelector(".app-cel") ?? document.body);
 
+  const pieCamas = (
+    <div className="fa-pie">
+      <button type="button" className="btn sm" aria-label={anterior ? `Cama anterior · ${nombreCama(anterior.ep.cama)}` : "Cama anterior"} disabled={!anterior} onClick={() => ir(-1)}>{anterior ? `‹ ${nombreCama(anterior.ep.cama)}` : "Primera cama"}</button>
+      <button type="button" className="btn sm primary" aria-label={siguiente ? `Cama siguiente · ${nombreCama(siguiente.ep.cama)}` : "Cama siguiente"} disabled={!siguiente} onClick={() => ir(1)}>{siguiente ? `Siguiente: ${nombreCama(siguiente.ep.cama)} ›` : "Última cama"}</button>
+    </div>
+  );
+
   const pestanas = (
     <div className="fa-pestanas" role="tablist" aria-label="Qué ver">
       <button type="button" role="tab" aria-selected={vista === "control"} onClick={() => setVista("control")}>Control</button>
@@ -99,6 +106,8 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
         <div className="sabana-cel-cuerpo">
           <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} resaltar={c.id} fija={vista} />
         </div>
+        {/* Tambien aqui se pasa de cama en cama (Diego, 21-nov-2026: la sabana de cualquier cama, para la entrega). */}
+        {camas.length > 1 && pieCamas}
       </div>
     );
   }
@@ -144,11 +153,8 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar }: { pacientes: 
           </li>
         ))}
       </ul>
-      <div className="fa-pie">
-        {/* Un solo lugar para moverse entre camas (abajo, a la mano); la sabana esta en las pestañas. */}
-        <button type="button" className="btn sm" aria-label={anterior ? `Cama anterior · ${nombreCama(anterior.ep.cama)}` : "Cama anterior"} disabled={!anterior} onClick={() => ir(-1)}>{anterior ? `‹ ${nombreCama(anterior.ep.cama)}` : "Primera cama"}</button>
-        <button type="button" className="btn sm primary" aria-label={siguiente ? `Cama siguiente · ${nombreCama(siguiente.ep.cama)}` : "Cama siguiente"} disabled={!siguiente} onClick={() => ir(1)}>{siguiente ? `Siguiente: ${nombreCama(siguiente.ep.cama)} ›` : "Última cama"}</button>
-      </div>
+      {/* Un solo lugar para moverse entre camas (abajo, a la mano); la sabana esta en las pestañas. */}
+      {pieCamas}
     </div>
   );
 }

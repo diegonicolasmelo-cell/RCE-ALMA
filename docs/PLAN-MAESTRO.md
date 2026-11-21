@@ -835,3 +835,25 @@ voy al RCE, es para rescatar la evolución o registrar algo que me faltó». Lo 
   para Kaptus seguía con tubo. Salida inmediata: «Extubación fuera de protocolo» con motivo «Otro» y comentario.
   Pendiente: un «la vía aérea cambió fuera de Kaptus» (cambiar TOT → natural con hora aproximada, sin PVE, marcado como
   registro tardío) y una pregunta al abrir una cama que lleva muchas horas sin controles: «¿cambió algo?».
+
+## 25. Viabilidad de las sugerencias pendientes (21-nov-2026)
+
+Ya hechas: aire ambiente (19-nov) · salas sin ventilador · perfil de interno · eventos en ventana · «Mis controles»
+4 h más · fila C1·C2·C3 con todos los controles del paciente · sábana del PC compacta · abreviaturas en la sábana ·
+sábana desde la tarjeta de cualquier cama (21-nov).
+
+| Sugerencia | De | Tamaño | Lo que falta decidir |
+|---|---|---|---|
+| FiO₂ teórica de la naricera (21 % + 4 % por litro) | Álvaro | chico | tope (¿44 % a 6 L?) y si se muestra solo como referencia |
+| Eventos con texto libre («Nota») | Diego | chico | si cuenta como evento o solo como constancia (propuesta: constancia, no cuenta) |
+| Sábana por bloques desplegables | Diego | chico | qué bloques parten abiertos |
+| Pregunta «¿cambió algo?» al abrir una cama con muchas horas sin controles | Sergio | chico | cuántas horas (propuesta: 8) |
+| cm del TOT a la vista al anotar el control | Álvaro | chico | hoy salen en la cabecera, pero se esconde al escribir: llevarlos a una fila fija de Monitorización |
+| Rangos fisiológicos por variable | Diego | mediano | los rangos de cada variable y si avisa o bloquea (propuesta: avisa y pide confirmar) |
+| APK: lo fijo a la vista, lo que puede ser NA escondido | Álvaro | mediano | la lista de qué ítems son fijos y cuáles opcionales |
+| Aviso «imprime primero» al llenarse la hoja | Álvaro | mediano | qué hoja y cuántas columnas tiene |
+| Visor por funcionario (como Kaironda) | Álvaro | mediano | si basta un filtro «de este colega» sobre la lista de camas y la sábana |
+| Cambio de vía aérea fuera de Kaptus (sin PVE, registro tardío) | Sergio | mediano | va en el PRD de eventos oficiales |
+| Editar un control guardado | Diego | mediano-grande | hasta cuándo, quién, y que quede constancia del cambio |
+| Segmento de laboratorio con aviso de riesgo | Álvaro | grande | depende de cómo entren los exámenes (capturador del RCE); no antes |
+| Eventos oficiales al RCE | Diego | grande | PRD listo (`docs/prd/PRD_EVENTOS_OFICIALES_KAPTUS.md`); falta Manuel y las camas de prueba |

@@ -261,6 +261,7 @@ async function esperarServidor() {
       assert.ok(et.some((t) => t.startsWith("I:E")), "en ACPC se anota la I:E: " + et.join(" | "));
       await cel.selectOption("#in-modo", "ACVC");
       assert.equal(await cel.locator("#in-vent-ie").count(), 1, "en ACVC se anota la I:E");
+      assert.equal(await cel.locator('.fila:has(.calc):has-text("Relación I:E")').count(), 1, "sin anotarla, la I:E calculada se ve en Calculado (pedido de Álvaro)");
       assert.equal(await cel.locator("#in-vent-compliance").count(), 1, "la compliance estática se anota en su casilla");
       assert.equal(await cel.locator('.fila:has(.calc):has-text("Compliance")').count(), 0, "ya no se calcula");
     });

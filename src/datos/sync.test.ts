@@ -14,7 +14,9 @@ const nuevaDb = () => new BaseLocal(`test-${++n}-${Math.random()}`);
 
 /** API de mentira con un "servidor" que deduplica por id, como Apps Script. */
 function servidorFalso() {
-  const guardado: Record<keyof LoteSync, Map<string, Record<string, unknown>>> = {
+  type Tabla = Exclude<keyof LoteSync, "paraRce">;
+  const paraRce: unknown[] = [];
+  const guardado: Record<Tabla, Map<string, Record<string, unknown>>> = {
     episodios: new Map(),
     controles: new Map(),
     eventos: new Map(),
@@ -27,7 +29,8 @@ function servidorFalso() {
     async sincronizar(lote): Promise<RespuestaSync> {
       estado.llamadas += 1;
       if (estado.falla) return { ok: false, error: estado.falla, ...(estado.llaves.length ? { llaves: estado.llaves } : {}) };
-      for (const k of Object.keys(guardado) as (keyof LoteSync)[]) {
+      if (lote.paraRce) paraRce.push(...lote.paraRce);
+      for (const k of Object.keys(guardado) as Tabla[]) {
         for (const fila of lote[k]) if (!guardado[k].has(String(fila["id"]))) guardado[k].set(String(fila["id"]), fila);
       }
       return { ok: true, servidorEn: new Date(2026, 10, 4, 12, 0).toISOString() };
@@ -45,7 +48,7 @@ function servidorFalso() {
       return { ok: true, datos };
     }
   };
-  return { api, guardado, estado };
+  return { api, guardado, estado, paraRce };
 }
 
 describe("esperaReintentoMs", () => {
@@ -82,6 +85,18 @@ describe("cola de subida", () => {
     expect(r.enviados).toBe(1);
     expect(r.pendientes).toBe(0);
     expect(guardado.controles.has("ct-1")).toBe(true);
+  });
+
+  it("RCE by Kaptus: el lote lleva el control ya traducido para el RCE, con la cama y sin nombre", async () => {
+    const { api, paraRce } = servidorFalso();
+    const sync = new Sincronizador(db, api, () => reloj);
+    const ep = unEpisodio({ cama: "UCI-05" });
+    await db.episodios.put(ep);
+    await new Repositorio(db, sync).guardarControl(unControl({ episodioId: ep.id, fc: 90 }));
+    await sync.empujar();
+    expect(paraRce).toHaveLength(1);
+    expect(paraRce[0]).toMatchObject({ tipo: "CONTROL", cama: 5, datos: { KAP_FC: 90 } });
+    expect(JSON.stringify(paraRce)).not.toMatch(/nombre|rut"/i);
   });
 
   it("sin conexión conserva todo y reintenta más tarde con espera creciente", async () => {

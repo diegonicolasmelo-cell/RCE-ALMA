@@ -35,3 +35,4 @@ export * from "./respaldo";
 export * from "./codigo-pcr";
 export * from "./dictado";
 export * from "./logros";
+export * from "./para-rce";

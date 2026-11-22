@@ -36,7 +36,8 @@ var HOJAS = {
   APK: "apk",
   USUARIOS: "usuarios",
   REFERENCIA: "referencia",
-  AUDITORIA: "auditoria"
+  AUDITORIA: "auditoria",
+  PENDIENTES_RCE: "pendientes_rce"
 };
 
 /**
@@ -445,7 +446,8 @@ function sincronizar(cuerpo) {
     episodios: cuerpo.episodios,
     controles: cuerpo.controles,
     eventos: cuerpo.eventos,
-    apk: cuerpo.apk
+    apk: cuerpo.apk,
+    paraRce: cuerpo.paraRce
   });
 
   if (hallazgos.length > 0) {
@@ -453,12 +455,13 @@ function sincronizar(cuerpo) {
     return { ok: false, error: "PAYLOAD_CON_IDENTIDAD", llaves: hallazgos };
   }
 
+  var resultado;
   var lock = LockService.getScriptLock();
   // Con 18 profesionales puede haber contencion: se espera en vez de fallar.
   if (!lock.tryLock(30000)) return { ok: false, error: "OCUPADO_REINTENTAR" };
 
   try {
-    var resultado = {
+    resultado = {
       ok: true,
       episodios: agregarRegistros(HOJAS.EPISODIOS, cuerpo.episodios),
       controles: agregarRegistros(HOJAS.CONTROLES, cuerpo.controles),
@@ -466,10 +469,139 @@ function sincronizar(cuerpo) {
       apk: agregarRegistros(HOJAS.APK, cuerpo.apk),
       servidorEn: new Date().toISOString()
     };
-    return resultado;
   } finally {
     lock.releaseLock();
   }
+  // RCE by Kaptus: lo recien guardado sigue al tiro al RCE. Despues de soltar el candado (la
+  // llamada tarda) y sin poner en riesgo el guardado: si el RCE no responde, queda en espera.
+  try {
+    resultado.rce = reenviarAlRce_(cuerpo.paraRce || []);
+  } catch (err) {
+    resultado.rce = { estado: "error", detalle: String(err && err.message || err) };
+  }
+  return resultado;
+}
+
+// ---------------------------------------------------------------------------
+// RCE by Kaptus: reenvio inmediato al RCE (22-nov-2026)
+// ---------------------------------------------------------------------------
+// El telefono ya tradujo cada control y evento al idioma del RCE (src/core/para-rce.ts); aqui solo
+// se reenvia. La direccion y la llave del RCE viven en las Propiedades del script (RCE_URL y
+// RCE_TOKEN), nunca en el codigo: el repositorio es publico. Sin ellas, el enlace esta apagado.
+// Lo que no se pudo entregar espera en la hoja pendientes_rce y sale con la siguiente sincronia.
+
+/** Cuanto se insiste con un item antes de darlo por perdido (queda en la auditoria). */
+var RCE_MAX_DIAS_PENDIENTE = 7;
+var RCE_MAX_POR_ENVIO = 200;
+
+function enlaceRce_() {
+  var props = PropertiesService.getScriptProperties();
+  var url = props.getProperty("RCE_URL");
+  var token = props.getProperty("RCE_TOKEN");
+  return url && token ? { url: url, token: token } : null;
+}
+
+/** Los items en espera: [{fila, item, creado}]. */
+function pendientesRce_() {
+  var hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJAS.PENDIENTES_RCE);
+  if (!hoja || hoja.getLastRow() < 2) return [];
+  var v = hoja.getRange(2, 1, hoja.getLastRow() - 1, 3).getValues();
+  var out = [];
+  for (var i = 0; i < v.length; i++) {
+    try { out.push({ fila: i + 2, item: JSON.parse(v[i][2]), creado: String(v[i][1]) }); } catch (e) {}
+  }
+  return out;
+}
+
+/** Una llamada al RCE. Devuelve la respuesta o null si no hubo respuesta valida. */
+function llamarRce_(enlace, items) {
+  var r = UrlFetchApp.fetch(enlace.url, {
+    method: "post",
+    contentType: "text/plain;charset=utf-8",
+    payload: JSON.stringify({ accion: "desdeKaptus", token: enlace.token, items: items }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  if (r.getResponseCode() !== 200) return null;
+  try { return JSON.parse(r.getContentText()); } catch (e) { return null; }
+}
+
+/**
+ * Manda al RCE lo nuevo mas lo que estaba esperando. El RCE deduplica por id, asi que reenviar
+ * es seguro. Un item que el RCE RECHAZA (cama vacia, por ejemplo) no se reintenta: se anota.
+ */
+function reenviarAlRce_(nuevos) {
+  var enlace = enlaceRce_();
+  if (!enlace) return { estado: "apagado" };
+  var libro = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = libro.getSheetByName(HOJAS.PENDIENTES_RCE);
+  if (!hoja) { hoja = libro.insertSheet(HOJAS.PENDIENTES_RCE); hoja.appendRow(["id", "creado", "json"]); hoja.setFrozenRows(1); }
+  var espera = pendientesRce_();
+  var vistos = {};
+  var items = [];
+  for (var i = 0; i < nuevos.length; i++) {
+    if (nuevos[i] && nuevos[i].id && !vistos[nuevos[i].id]) { vistos[nuevos[i].id] = true; items.push(nuevos[i]); }
+  }
+  for (var j = 0; j < espera.length && items.length < RCE_MAX_POR_ENVIO; j++) {
+    var it = espera[j].item;
+    if (it && it.id && !vistos[it.id]) { vistos[it.id] = true; items.push(it); }
+  }
+  if (!items.length) return { estado: "nada" };
+
+  var resp = null;
+  try { resp = llamarRce_(enlace, items); } catch (e) { resp = null; }
+  var entregado = resp && resp.ok === true;
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { estado: entregado ? "entregado" : "en_espera" };
+  try {
+    // Se relee bajo el candado: otra sincronia pudo mover las filas mientras se llamaba al RCE.
+    espera = pendientesRce_();
+    if (entregado) {
+      // Todo lo enviado se recibio: se sacan de la espera.
+      var filas = [];
+      for (var k = 0; k < espera.length; k++) if (vistos[espera[k].item && espera[k].item.id]) filas.push(espera[k].fila);
+      borrarFilas_(hoja, filas);
+      var rech = resp.rechazados || [];
+      if (rech.length) registrarAuditoria("", "rce_rechazo", JSON.stringify(rech).slice(0, 4000));
+      return { estado: "entregado", enviados: items.length, rechazados: rech.length };
+    }
+    // Sin respuesta: los nuevos pasan a la espera; los viejos demasiado antiguos se sueltan.
+    var ahora = new Date();
+    var limite = ahora.getTime() - RCE_MAX_DIAS_PENDIENTE * 86400000;
+    var enEspera = {};
+    var viejas = [];
+    for (var m = 0; m < espera.length; m++) {
+      if (espera[m].item && espera[m].item.id) enEspera[espera[m].item.id] = true;
+      if (new Date(espera[m].creado).getTime() < limite) viejas.push(espera[m].fila);
+    }
+    var filasNuevas = [];
+    for (var n = 0; n < nuevos.length; n++) {
+      var x = nuevos[n];
+      if (x && x.id && !enEspera[x.id]) filasNuevas.push([x.id, ahora.toISOString(), JSON.stringify(x)]);
+    }
+    if (filasNuevas.length) hoja.getRange(hoja.getLastRow() + 1, 1, filasNuevas.length, 3).setValues(filasNuevas);
+    if (viejas.length) {
+      registrarAuditoria("", "rce_perdido", viejas.length + " items con mas de " + RCE_MAX_DIAS_PENDIENTE + " dias sin entregarse");
+      borrarFilas_(hoja, viejas);
+    }
+    return { estado: "en_espera", pendientes: espera.length - viejas.length + filasNuevas.length };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Desde el editor: prueba el enlace con el RCE sin mandar ningun dato. */
+function probarEnlaceRce() {
+  var enlace = enlaceRce_();
+  if (!enlace) { Logger.log("Enlace APAGADO: faltan RCE_URL y/o RCE_TOKEN en Propiedades del script."); return; }
+  var resp = llamarRce_(enlace, []);
+  Logger.log(resp ? "El RCE respondio: " + JSON.stringify(resp) : "El RCE NO respondio bien. Revisa la URL (/exec) y que el enlace este encendido en el RCE.");
+}
+
+/** Desde el editor: reintenta lo que esta en espera sin esperar a que alguien sincronice. */
+function reenviarPendientesRce() {
+  Logger.log(JSON.stringify(reenviarAlRce_([])));
 }
 
 // ---------------------------------------------------------------------------
@@ -630,6 +762,7 @@ function inicializarLibro() {
   esquema[HOJAS.REFERENCIA] = ["id", "episodioId", "registradoEn", "dato"];
   esquema[HOJAS.USUARIOS] = COLUMNAS_USUARIOS;
   esquema[HOJAS.AUDITORIA] = ["registradoEn", "usuario", "accion", "detalle"];
+  esquema[HOJAS.PENDIENTES_RCE] = ["id", "creado", "json"];
 
   for (var nombre in esquema) {
     if (!Object.prototype.hasOwnProperty.call(esquema, nombre)) continue;

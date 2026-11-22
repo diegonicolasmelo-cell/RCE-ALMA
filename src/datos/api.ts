@@ -1,3 +1,4 @@
+import type { ItemParaRce } from "@core/index";
 /**
  * Cliente de la API (Google Apps Script sobre Sheets).
  *
@@ -16,6 +17,8 @@ export interface LoteSync {
   controles: Record<string, unknown>[];
   eventos: Record<string, unknown>[];
   apk: Record<string, unknown>[];
+  /** RCE by Kaptus: los mismos controles y eventos ya traducidos al idioma del RCE; el servidor los reenvia al tiro. */
+  paraRce?: readonly ItemParaRce[];
 }
 
 export type RespuestaSync =

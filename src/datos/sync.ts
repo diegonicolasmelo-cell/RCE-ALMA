@@ -12,6 +12,8 @@
 import { borrarMeta, leerMeta, guardarMeta } from "./db";
 import type { BaseLocal, EntradaCola } from "./db";
 import type { ClienteApi, LoteSync } from "./api";
+import { controlParaRce, eventoParaRce, normalizarControl } from "@core/index";
+import type { ItemParaRce } from "@core/index";
 import {
   apkDeNube,
   controlDeNube,
@@ -120,6 +122,30 @@ export class Sincronizador {
     for (const e of lista) {
       const destino = e.tipo === "episodio" ? lote.episodios : e.tipo === "control" ? lote.controles : e.tipo === "evento" ? lote.eventos : lote.apk;
       destino.push(e.payload);
+    }
+
+    // RCE by Kaptus (22-nov-2026): con el lote va la traduccion al idioma del RCE. Si algo falla al
+    // traducir, el lote sube igual: el RCE es un destino mas, nunca un freno para guardar.
+    try {
+      const paraRce: ItemParaRce[] = [];
+      for (const e of lista) {
+        if (e.tipo !== "control" && e.tipo !== "evento") continue;
+        if (e.tipo === "control") {
+          const c = await this.db.controles.get(e.registroId);
+          const ep = c ? await this.db.episodios.get(c.episodioId) : undefined;
+          const evs = ep ? await this.db.eventos.where("episodioId").equals(ep.id).toArray() : [];
+          const it = c && ep ? controlParaRce(normalizarControl(c), ep, evs) : null;
+          if (it) paraRce.push(it);
+        } else {
+          const ev = await this.db.eventos.get(e.registroId);
+          const ep = ev ? await this.db.episodios.get(ev.episodioId) : undefined;
+          const it = ev && ep ? eventoParaRce(ev, ep) : null;
+          if (it) paraRce.push(it);
+        }
+      }
+      if (paraRce.length) lote.paraRce = paraRce;
+    } catch {
+      /* sin traduccion: el RCE lo recibira en el siguiente envio */
     }
 
     const r = await this.api.sincronizar(lote);

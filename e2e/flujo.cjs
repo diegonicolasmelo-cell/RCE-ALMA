@@ -955,6 +955,21 @@ async function esperarServidor() {
       assert.match(await aviso(), /temperatura de la CNAF/);
     });
 
+    await prueba("mi paisaje: se abre desde la cuenta, muestra los personajes descubiertos y no revela los secretos que faltan", async () => {
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.locator(".avatar").first().click();
+      await cel.click('button:has-text("Mi paisaje")');
+      await cel.waitForSelector(".pk-svg");
+      assert.match(await cel.textContent(".paisaje-cel > p"), /\d+ de 15 personajes/);
+      const hueco = cel.locator('.pk-pj.hueco').first();
+      if (await hueco.count()) {
+        await hueco.click();
+        assert.match(await cel.textContent(".pk-ficha"), /Por descubrir/);
+        assert.doesNotMatch(await cel.textContent(".pk-ficha"), /controles|traslado|registrad/i, "un hueco no cuenta el secreto");
+      }
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
+    });
+
     await prueba("la sábana se abre desde la tarjeta de cualquier cama, en 24 h, y pasa de cama en cama", async () => {
       // Diego, 21-nov-2026: para la entrega, aunque yo no haya controlado esa cama.
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');

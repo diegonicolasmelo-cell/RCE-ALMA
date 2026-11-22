@@ -162,6 +162,7 @@ describe("dictado por voz: Glasgow en orden, infusiones sin cambios y modos seg√
     expect(mapa(interpretarDictado("cpap 8", "O2_NARICERA", "NATURAL"))).toEqual({ modalidad: "VNI_CPAP", peep: "8" });
     // Aire ambiente es modo desde el 19-nov-2026; con tubo no corresponde.
     expect(modo("aire ambiental", "CNAF", "NATURAL")).toBe("AIRE_AMBIENTE");
+    expect(modo("aire ambiente", "TUBO_T", "TQT")).toBe("AIRE_AMBIENTE");
     expect(interpretarDictado("aire ambiente", "ACVC", "TET").noAplica[0]).toMatch(/Aire ambiente: no corresponde/);
   });
 });

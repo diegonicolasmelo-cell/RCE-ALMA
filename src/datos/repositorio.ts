@@ -128,4 +128,14 @@ export class Repositorio {
   async apkDe(episodioId: string): Promise<readonly ValidacionApk[]> {
     return this.db.apk.where("episodioId").equals(episodioId).toArray();
   }
+
+  /** Todo lo que registro una persona (controles, eventos y APK), para su paisaje de logros. */
+  async registrosDe(autor: string): Promise<{ controles: readonly Control[]; eventos: readonly EventoClinico[]; apks: readonly ValidacionApk[] }> {
+    const [controles, eventos, apks] = await Promise.all([
+      this.db.controles.filter((c) => c.rutAutor === autor).toArray(),
+      this.db.eventos.filter((e) => e.rutAutor === autor).toArray(),
+      this.db.apk.filter((a) => a.rutAutor === autor).toArray()
+    ]);
+    return { controles, eventos, apks };
+  }
 }

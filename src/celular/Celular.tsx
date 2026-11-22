@@ -34,6 +34,7 @@ import { temaEfectivo, useApp } from "../app/store";
 import { AZUL_MARINO, CabeceraMarca, PaisajeCoquimbo, FONDO_DIA, FONDO_NOCHE, useColorBarras } from "../app/Marca";
 import { Ayuda, EVENTO_ATRAS, BarraInferior, CabeceraInicio, HojaMas, MisControles, PanelAvisos, PanelCuenta, TituloVista, avisosDe, useBarraOculta } from "./Inicio";
 import type { AccionMas, EstadoSync, ResumenCama } from "./Inicio";
+import { Paisaje } from "./Paisaje";
 import type { TabCelular } from "../app/store";
 import { horaDe, nuevoId } from "../app/util";
 import { baseEvento } from "./eventos-ui";
@@ -124,7 +125,7 @@ export function Celular() {
 
   // --- Inicio: resumen de las camas (avisos y «Controles»), apariencia y paneles ---
   // Solo se calcula en las vistas del inicio: dentro de un paciente no se muestra y no debe competir con su registro.
-  const enInicio = vista === "camas" || vista === "controles" || vista === "ayuda";
+  const enInicio = vista === "camas" || vista === "controles" || vista === "ayuda" || vista === "paisaje";
   const resumen = useConsulta<readonly ResumenCama[]>(
     async () => (enInicio ? Promise.all((await repo.episodiosActivos()).map(async (e) => ({ ep: e, controles: await repo.controlesDe(e.id), eventos: await repo.eventosDe(e.id) }))) : []),
     [repo, enInicio],
@@ -349,7 +350,9 @@ export function Celular() {
     ? <><TituloVista>Controles</TituloVista><MisControles resumen={resumen} rut={sesion.rut} ahora={ahora} /></>
     : vista === "ayuda"
       ? <><TituloVista>Ayuda</TituloVista><Ayuda sync={estadoSync} /></>
-      : null;
+      : vista === "paisaje"
+        ? <><TituloVista>Mi paisaje</TituloVista><Paisaje autor={sesion.rut} /></>
+        : null;
 
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
   // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.

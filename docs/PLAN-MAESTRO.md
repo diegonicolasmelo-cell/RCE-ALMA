@@ -664,7 +664,7 @@ Un solo motor (`src/core/estadistica.ts`) para Estadística, Indicadores y Archi
 - **Válvula de fonación**: modo nuevo solo con TQT, O₂ adicional en L/min; cuenta turnos con válvula. **Sin cuff** (decisión de Diego).
 - **RUT fuera del repositorio**: pendiente de confirmación de Diego para reescribir el historial.
 
-## 19. Paisaje Kaptus con logros secretos (GUARDADO para después, 16-nov-2026)
+## 19. Paisaje Kaptus con logros secretos (PROGRAMADO el 22-nov-2026, primera versión personal)
 
 Reemplaza a las «medallas» y al «museo con vitrinas». Diego aprobó la idea y pidió dejarla para programarla después.
 
@@ -857,3 +857,17 @@ sábana desde la tarjeta de cualquier cama (21-nov).
 | Editar un control guardado | Diego | mediano-grande | hasta cuándo, quién, y que quede constancia del cambio |
 | Segmento de laboratorio con aviso de riesgo | Álvaro | grande | depende de cómo entren los exámenes (capturador del RCE); no antes |
 | Eventos oficiales al RCE | Diego | grande | PRD listo (`docs/prd/PRD_EVENTOS_OFICIALES_KAPTUS.md`); falta Manuel y las camas de prueba |
+
+## 26. Decisiones del 22-nov-2026
+
+- **APK**: con TOT o TQT, todas las casillas; con vía aérea natural, la alimentación y lo invasivo quedan sin marcar
+  (N/A). **Ya funcionaba así** (`marcasPorDefecto`, prueba en `apk.test.ts`): no hubo que cambiar nada.
+- **Aire ambiente con TQT**: programado. Sin O₂ adicional ni soporte ventilatorio.
+- **El interno se liga a un perfil de turno**: la columna `turno` de la hoja «usuarios» (T1-T4). Con una sola cuenta
+  genérica, el interno queda en un solo turno; si rota por varios, una cuenta por turno.
+- **Mi paisaje (logros secretos), primera versión**: personal, calculado en el teléfono con lo que registró cada uno
+  (`src/core/logros.ts`). Entra desde la cuenta («Mi paisaje»). Secretos de Diego: **chuncho** = 50 controles registrados
+  en vivo entre las 4 y las 5; **guanaco** («10.000 pasos») = 3 traslados. Los otros 13 son propuesta para que los
+  ajuste (tabla en `logros.ts`). El desierto florece al tener los 15.
+  · **Falta**: regalar repetidos a un colega con mensaje y la franja de la unidad («chuncho · 2 personas»). Necesitan
+    servidor: van después.

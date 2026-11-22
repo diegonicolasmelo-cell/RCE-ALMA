@@ -29,8 +29,7 @@ import {
   UserPlus,
   Wifi,
   WifiOff,
-  X
-} from "lucide-react";
+  X, Mountain } from "lucide-react";
 import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
@@ -332,6 +331,9 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
         <div className="pc-lista">
           <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("elegir"); }}>
             <BedDouble size={22} aria-hidden /><span>Mis camas de hoy</span><ChevronRight size={18} aria-hidden />
+          </button>
+          <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("paisaje"); }}>
+            <Mountain size={22} aria-hidden /><span>Mi paisaje<small>Personajes de la región que se descubren con secretos</small></span><ChevronRight size={18} aria-hidden />
           </button>
           <div className="pc-fila bloque">
             <Mic size={22} aria-hidden />

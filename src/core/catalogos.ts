@@ -109,7 +109,8 @@ export const GRUPO_MODALIDAD: Readonly<Record<Modalidad, GrupoModalidad>> = {
 export const MODALIDADES_POR_VIA: Readonly<Record<ViaAerea, readonly Modalidad[]>> = {
   NATURAL: ["O2_NARICERA", "O2_MASCARILLA", "O2_VENTURI", "O2_RESERVORIO", "CNAF", "VNI_CPAP", "VNI_ST", "AIRE_AMBIENTE"],
   TET: ["ACVC", "PCV", "CPAP_PS", "TUBO_T"],
-  TQT: ["ACVC", "PCV", "CPAP_PS", "TUBO_T", "VALVULA_FONACION", "CNAF_TQT", "VNI_ST", "AVAPS"]
+  // Aire ambiente con TQT (Diego, 22-nov-2026): sin O2 adicional ni soporte ventilatorio.
+  TQT: ["ACVC", "PCV", "CPAP_PS", "TUBO_T", "VALVULA_FONACION", "CNAF_TQT", "VNI_ST", "AVAPS", "AIRE_AMBIENTE"]
 };
 
 export function modalidadPermitida(m: Modalidad, via: ViaAerea): boolean {

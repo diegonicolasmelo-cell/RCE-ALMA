@@ -5,8 +5,9 @@
  *
  * Indicadores con las definiciones del tablero del RCE (svc_indicadores, alineadas con el
  * analisis de M. Fuentes):
- *  - Fracaso de extubacion = reintubacion <= 48 h tras una extubacion programada (con o sin
- *    PVE); precoz < 24 h, tardio 24-48 h. La autoextubacion va aparte.
+ *  - Fracaso de extubacion OFICIAL = reintubacion <= 24 h tras una extubacion programada (con o
+ *    sin PVE): es el plazo con que la unidad considera egresar (Diego, 22-nov-2026). A 48 h se
+ *    cuenta aparte, de forma interna. La autoextubacion va aparte.
  *  - Autoextubaciones por 100 dias-VM (meta 1-2).
  *  - Fuera de protocolo = extubaciones programadas sin PVE (meta < 25 %).
  *  - PVE por 100 dias-paciente.
@@ -311,10 +312,16 @@ export interface Indicadores {
   readonly diasPaciente: number;
   readonly diasVm: number;
   readonly extubaciones: number;
+  /** Fracaso oficial: reintubacion dentro de 24 h. */
   readonly fracaso: number;
+  /** Reintubacion antes de 24 h (= fracaso oficial). */
   readonly fracasoPrecoz: number;
+  /** Reintubacion entre 24 y 48 h (solo cuenta en el indicador interno a 48 h). */
   readonly fracasoTardio: number;
   readonly fracasoPct: number | null;
+  /** Indicador interno: reintubacion dentro de 48 h. */
+  readonly fracaso48: number;
+  readonly fracaso48Pct: number | null;
   readonly autoextubaciones: number;
   /** De ellas, accidentales (las extubo el equipo). */
   readonly accidentales: number;
@@ -503,7 +510,8 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
       destinos.set(dst, (destinos.get(dst) ?? 0) + 1);
     }
   }
-  const fracaso = precoz + tardio;
+  const fracaso = precoz;
+  const fracaso48 = precoz + tardio;
   return {
     diasRango: dias.size,
     diasPaciente,
@@ -513,6 +521,8 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
     fracasoPrecoz: precoz,
     fracasoTardio: tardio,
     fracasoPct: pct(fracaso, extubaciones),
+    fracaso48,
+    fracaso48Pct: pct(fracaso48, extubaciones),
     autoextubaciones: autoext,
     accidentales,
     autoextPor100Vm: pct(autoext, diasVm),

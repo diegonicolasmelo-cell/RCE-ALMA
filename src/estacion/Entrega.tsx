@@ -65,13 +65,14 @@ export function fichaDe(ep: Episodio, controles: readonly Control[], eventos: re
   const flujo = estadoFlujoPve(eventos, ahora);
   if (flujo.bloque) {
     const hechos = flujo.bloque.momentos.filter((m) => m.registrado).map((m) => (m.id === "EXTUB" ? "inmediato" : m.etiqueta));
-    evs.push(`Post extubación: ${hechos.length ? hechos.join(" · ") + " ✓" : "sin controles aún"}`);
+    const desiertos = flujo.bloque.momentos.filter((m) => m.estado === "DESIERTO").map((m) => (m.id === "EXTUB" ? "inmediato" : m.etiqueta));
+    evs.push(`Post extubación: ${hechos.length ? hechos.join(" · ") + " ✓" : "sin controles aún"}${desiertos.length ? ` · desierto: ${desiertos.join(" · ")}` : ""}`);
   }
   if (evs.length === 0) evs.push("Sin eventos en el turno");
 
   const atencion: string[] = [];
   if (flujo.bloque) {
-    for (const m of flujo.bloque.momentos.filter((x) => !x.registrado)) {
+    for (const m of flujo.bloque.momentos.filter((x) => x.estado === "TOCA" || x.estado === "PROXIMO")) {
       const t = new Date(m.venceEn);
       atencion.push(`Control post extub. ${m.id === "EXTUB" ? "inmediato" : m.etiqueta}: ${m.minutosFaltantes <= 0 ? "pendiente" : `${ddmm(m.venceEn)} ${p2(t.getHours())}:${p2(t.getMinutes())}`}`);
     }

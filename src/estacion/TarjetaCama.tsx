@@ -55,7 +55,7 @@ export function TarjetaCama({ ep, controles, eventos, apks, identidad, ahora, se
   const soporte = u ? usaSoporteCardiovascular(u.infusiones) : false;
   const prono = estadoProno(eventos, ahora);
   const pve = estadoPve(eventos, ahora);
-  const pendientes = estadoFlujoPve(eventos, ahora).bloque?.momentos.filter((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H") ?? [];
+  const pendientes = estadoFlujoPve(eventos, ahora).bloque?.momentos.filter((m) => m.estado === "TOCA") ?? [];
   const apk = apkVigente(apks, ep.id, ahora);
   const equipo = equipoEnUso(ep.equipos);
   const minutos = u ? Math.max(0, Math.round((ahora.getTime() - Date.parse(u.registradoEn)) / 60000)) : null;

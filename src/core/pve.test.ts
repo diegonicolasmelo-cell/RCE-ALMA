@@ -90,16 +90,38 @@ describe("PVE en curso: control inicial, cronómetro y 30 min", () => {
   });
 });
 
-describe("post extubación: 0, 30, 60, 120 min y 48 h", () => {
+describe("post extubación: 0, 30, 60 y 120 min, con plazos", () => {
   const evs = [checklist(t(9)), ...inicio(t(10)), { ...base(t(10, 35), "fin"), tipo: "FIN_PVE", exitosa: true } as EventoClinico, extub(t(11))];
 
-  it("tras extubar la fase es post extubación con las cinco horas calculadas", () => {
+  it("tras extubar la fase es post extubación con las cuatro horas calculadas (sin control de 48 h)", () => {
     const e = estadoFlujoPve(evs, t(11, 10));
     expect(e.fase).toBe("POST_EXTUBACION");
     const m = e.bloque!.momentos;
-    expect(m.map((x) => x.id)).toEqual(["EXTUB", "30MIN", "60MIN", "120MIN", "48H"]);
-    expect(m.map((x) => x.minutosFaltantes)).toEqual([-10, 20, 50, 110, 48 * 60 - 10]);
+    expect(m.map((x) => x.id)).toEqual(["EXTUB", "30MIN", "60MIN", "120MIN"]);
+    expect(m.map((x) => x.minutosFaltantes)).toEqual([-10, 20, 50, 110]);
     expect(m.every((x) => !x.registrado)).toBe(true);
+    expect(m.map((x) => x.estado)).toEqual(["TOCA", "PROXIMO", "PROXIMO", "PROXIMO"]);
+  });
+
+  it("cada control tiene su plazo: pasado, queda desierto y deja de pedirse (Diego, 22-nov-2026)", () => {
+    // 30 min toca desde las 11:25 hasta las 12:00; el de 120 min, hasta las 17:00 (6 h).
+    expect(estadoFlujoPve(evs, t(11, 26)).bloque!.momentos.find((x) => x.id === "30MIN")!.estado).toBe("TOCA");
+    const a12 = estadoFlujoPve(evs, t(12, 1)).bloque!.momentos;
+    expect(a12.find((x) => x.id === "EXTUB")!.estado).toBe("DESIERTO");
+    expect(a12.find((x) => x.id === "30MIN")!.estado).toBe("DESIERTO");
+    expect(a12.find((x) => x.id === "60MIN")!.estado).toBe("TOCA");
+    expect(estadoFlujoPve(evs, t(16, 59)).bloque!.momentos.find((x) => x.id === "120MIN")!.estado).toBe("TOCA");
+    expect(estadoFlujoPve(evs, t(17, 0)).bloque!.momentos.every((x) => x.estado === "DESIERTO")).toBe(true);
+    // Sin nada que anotar, la tarjeta ya no ofrece «Post extubación: registrar».
+    expect(accesoPve("NATURAL", null, evs, t(17, 0))?.texto ?? "").not.toMatch(/Post extubación/);
+  });
+
+  it("la vigilancia se cierra al terminar el turno en que se cumplen las 48 h", () => {
+    // Extubado el 4 a las 11:00: las 48 h son el 6 a las 11:00, turno día que termina a las 20:00.
+    expect(estadoFlujoPve(evs, t(19, 59, 6)).fase).toBe("POST_EXTUBACION");
+    const e = estadoFlujoPve(evs, t(20, 0, 6));
+    expect(e.bloque).toBeNull();
+    expect(e.fase).toBe("CERRADA");
   });
 
   it("marca lo ya registrado", () => {

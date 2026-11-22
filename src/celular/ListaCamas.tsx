@@ -141,7 +141,7 @@ export function ListaCamas() {
         const prono = estadoProno(eventos, ahora);
         // Con via aerea natural no hay filtros ni TrachCare que cambiar.
         const cambios = esViaAereaArtificial(ep.viaAereaActual) ? filtrosPorCambiar(eventos, ahora) : [];
-        const duePost = flujo.bloque?.momentos.find((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H");
+        const duePost = flujo.bloque?.momentos.find((m) => m.estado === "TOCA");
         const propia = esMiaCama(cama);
         // Un solo boton de extubacion: fuera de protocolo antes de las 24 h de VM, PVE despues.
         const boton = botonExtubacion(ep, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, null, ahora);

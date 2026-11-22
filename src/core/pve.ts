@@ -12,7 +12,7 @@
  * Todo se deriva del log de eventos (append-only): la fase nunca se guarda.
  */
 
-import { turnoDe } from "./turnos";
+import { HORA_INICIO_DIA, HORA_INICIO_NOCHE, turnoDe } from "./turnos";
 import type { Episodio, EventoClinico, LecturasPve, Modalidad, MomentoPostExtub, TurnoClave, ViaAerea } from "./tipos";
 import { estadoPve } from "./eventos";
 import type { EstadoPve } from "./eventos";
@@ -29,13 +29,31 @@ export const CRITERIOS_PVE: readonly string[] = [
   "Hb ≥ 7"
 ];
 
-export const MOMENTOS_POST_EXTUB: readonly { readonly id: MomentoPostExtub; readonly etiqueta: string; readonly minutos: number }[] = [
-  { id: "EXTUB", etiqueta: "Extubación", minutos: 0 },
-  { id: "30MIN", etiqueta: "30 min", minutos: 30 },
-  { id: "60MIN", etiqueta: "60 min", minutos: 60 },
-  { id: "120MIN", etiqueta: "120 min", minutos: 120 },
-  { id: "48H", etiqueta: "48 h", minutos: 48 * 60 }
+/**
+ * Controles post extubacion y su plazo para anotarlos (Diego, 22-nov-2026): cada uno se anota desde
+ * su hora (con 5 min de anticipacion) hasta la hora del siguiente; el de 120 min, hasta las 6 h. Pasado
+ * el plazo queda DESIERTO: deja de pedirse y no se puede anotar despues (nada retroactivo). El control
+ * de 48 h se elimino: el fracaso a 24 h (oficial) y a 48 h (interno) se cuenta solo, con la reintubacion.
+ */
+export const MOMENTOS_POST_EXTUB: readonly { readonly id: MomentoPostExtub; readonly etiqueta: string; readonly minutos: number; readonly hastaMin: number }[] = [
+  { id: "EXTUB", etiqueta: "Extubación", minutos: 0, hastaMin: 30 },
+  { id: "30MIN", etiqueta: "30 min", minutos: 30, hastaMin: 60 },
+  { id: "60MIN", etiqueta: "60 min", minutos: 60, hastaMin: 120 },
+  { id: "120MIN", etiqueta: "120 min", minutos: 120, hastaMin: 6 * 60 }
 ];
+
+/** Minutos antes de su hora en que un control post extubacion ya se puede anotar. */
+export const ANTICIPO_POST_EXTUB_MIN = 5;
+
+/** Horas tras la extubacion que se vigila la falla; el bloque se cierra al terminar ese turno. */
+export const HORAS_VIGILANCIA_POST_EXTUB = 48;
+
+/** Fin del turno que contiene un instante (turnos de 8 y 20). */
+function finDeTurno(t: Date): Date {
+  const tr = turnoDe(t);
+  const [y, m, d] = tr.fecha.split("-").map(Number) as [number, number, number];
+  return tr.tipo === "DIA" ? new Date(y, m - 1, d, HORA_INICIO_NOCHE, 0) : new Date(y, m - 1, d + 1, HORA_INICIO_DIA, 0);
+}
 
 export const etiquetaMomentoPostExtub = (m: MomentoPostExtub): string =>
   MOMENTOS_POST_EXTUB.find((x) => x.id === m)?.etiqueta ?? m;
@@ -78,14 +96,20 @@ export type FasePve =
   | "CERRADA"
   | "POST_EXTUBACION";
 
+/** HECHO · TOCA (se puede anotar ahora) · PROXIMO (aun no) · DESIERTO (paso el plazo sin anotarse). */
+export type EstadoMomento = "HECHO" | "TOCA" | "PROXIMO" | "DESIERTO";
+
 export interface MomentoPendiente {
   readonly id: MomentoPostExtub;
   readonly etiqueta: string;
   /** Hora ISO en que corresponde. */
   readonly venceEn: string;
+  /** Hora ISO hasta la que se puede anotar. */
+  readonly hastaEn: string;
   readonly registrado: boolean;
   /** Minutos que faltan (<0 si ya paso la hora). */
   readonly minutosFaltantes: number;
+  readonly estado: EstadoMomento;
 }
 
 export interface BloquePostExtub {
@@ -95,6 +119,8 @@ export interface BloquePostExtub {
   readonly falla: Evento<"FALLA_POST_EXTUB"> | null;
   /** Hubo reintubacion despues: el bloque queda cerrado. */
   readonly reintubado: boolean;
+  /** Fin de la vigilancia: el termino del turno en que se cumplen las 48 h. */
+  readonly cierraEn: string;
 }
 
 export interface EstadoFlujoPve {
@@ -141,16 +167,23 @@ export function bloquesPostExtub(eventos: readonly EventoClinico[], ahora: Date)
       horaExtubacion: ev.hora,
       momentos: MOMENTOS_POST_EXTUB.map((m) => {
         const vence = base + m.minutos * 60_000;
+        const hasta = base + m.hastaMin * 60_000;
+        const registrado = reevals.some((r) => r.momento === m.id);
+        const t = ahora.getTime();
+        const estado: EstadoMomento = registrado ? "HECHO" : t >= hasta ? "DESIERTO" : t >= vence - ANTICIPO_POST_EXTUB_MIN * 60_000 ? "TOCA" : "PROXIMO";
         return {
           id: m.id,
           etiqueta: m.etiqueta,
           venceEn: new Date(vence).toISOString(),
-          registrado: reevals.some((r) => r.momento === m.id),
-          minutosFaltantes: Math.ceil((vence - ahora.getTime()) / 60_000)
+          hastaEn: new Date(hasta).toISOString(),
+          registrado,
+          minutosFaltantes: Math.ceil((vence - t) / 60_000),
+          estado
         };
       }),
       falla: fallas[fallas.length - 1] ?? null,
-      reintubado: siguiente?.tipo === "REINTUBACION"
+      reintubado: siguiente?.tipo === "REINTUBACION",
+      cierraEn: finDeTurno(new Date(base + HORAS_VIGILANCIA_POST_EXTUB * 3600_000)).toISOString()
     });
   });
   return bloques;
@@ -163,7 +196,9 @@ export function estadoFlujoPve(eventos: readonly EventoClinico[], ahora: Date): 
   const checklist = checklistDelTurno(lista, turnoDe(ahora).clave);
   const bloques = bloquesPostExtub(lista, ahora);
   const ultimoBloque = bloques[bloques.length - 1] ?? null;
-  const bloqueVigente = ultimoBloque && !ultimoBloque.reintubado ? ultimoBloque : null;
+  // La vigilancia termina con la reintubacion o al cerrar el turno de las 48 h (Diego, 22-nov-2026).
+  const bloqueVigente = ultimoBloque && !ultimoBloque.reintubado && ahora.getTime() < Date.parse(ultimoBloque.cierraEn) ? ultimoBloque : null;
+  const bloqueCerrado = ultimoBloque !== null && !ultimoBloque.reintubado && bloqueVigente === null;
 
   // Controles de la PVE en curso o la ultima: los posteriores al ultimo INICIO_PVE.
   const idxInicio = lista.map((e) => e.tipo).lastIndexOf("INICIO_PVE");
@@ -175,6 +210,8 @@ export function estadoFlujoPve(eventos: readonly EventoClinico[], ahora: Date): 
   let fase: FasePve;
   if (pve.activa) fase = "EN_CURSO";
   else if (bloqueVigente) fase = "POST_EXTUBACION";
+  // Extubado y ya cerrada la vigilancia: no queda nada de esa PVE por hacer.
+  else if (bloqueCerrado && idxInicio >= 0 && lista[idxInicio]!.registradoEn <= ultimoBloque!.extubadoEn) fase = "CERRADA";
   else if (
     idxInicio >= 0 &&
     desde.some((e) => e.tipo === "FIN_PVE") &&
@@ -321,7 +358,7 @@ export function motivoSinPve(via: ViaAerea, ultimo: UltimoControlPve | null, eve
 export function accesoPve(via: ViaAerea, ultimo: UltimoControlPve | null, eventos: readonly EventoClinico[], ahora: Date): AccesoPve | null {
   const f = estadoFlujoPve(eventos, ahora);
   // Lo mas urgente primero: un control post extubacion que ya toca.
-  if (f.bloque && f.bloque.momentos.some((m) => !m.registrado && m.minutosFaltantes <= 0 && m.id !== "48H")) {
+  if (f.bloque && f.bloque.momentos.some((m) => m.estado === "TOCA")) {
     return { texto: "Post extubación: registrar", destacado: true };
   }
   if (f.fase === "EN_CURSO") return { texto: "Continuar PVE", destacado: true };

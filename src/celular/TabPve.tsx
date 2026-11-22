@@ -3,7 +3,7 @@
  *
  *   checklist (8 criterios) -> control de inicio (parte la PVE) -> control de termino
  *   contrastado con el inicio -> tolerada / no tolerada -> extubacion programada (queda
- *   con...) o superada sin extubar -> controles post extubacion (30, 60, 120 min, 48 h) ->
+ *   con...) o superada sin extubar -> controles post extubacion (30, 60 y 120 min, cada uno con su plazo) ->
  *   cierre: falla post extubacion -> reintubacion.
  *
  * Filas con la etiqueta a la izquierda y la casilla a la derecha, el teclado numerico propio
@@ -202,7 +202,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     useApp.getState().descartar(ep.id);
     limpiar();
     setReeval("EXTUB");
-    avisar(`Extubación registrada a las ${hora}. Registra el control inmediato; después tocan 30, 60 y 120 min y 48 h.`);
+    avisar(`Extubación registrada a las ${hora}. Registra el control inmediato; después tocan 30, 60 y 120 min, cada uno con su plazo.`);
   };
   /** No corresponde PVE (AET, ventilacion domiciliaria, agitacion…): extubacion fuera de protocolo. */
   const extubarSinPve = async (): Promise<void> => {
@@ -232,6 +232,9 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
       irAFalla();
       return;
     }
+    // Fuera de plazo no se anota (nada retroactivo): el control queda desierto.
+    const mom = flujo.bloque?.momentos.find((m) => m.id === reeval);
+    if (mom && mom.estado !== "TOCA") return setMsg(mom.estado === "DESIERTO" ? "Pasó el plazo de este control: quedó desierto y no se puede anotar después." : "Este control todavía no toca.");
     if (["fc", "fr", "spo2"].some((k) => num(f[k]) === null)) return setMsg("Falta: FC, FR y SpO₂.");
     if (!(await ev({
       tipo: "REEVAL_POST_EXTUB", momento: reeval, fc: num(f["fc"]), pam: num(f["pam"]), gcs: null, glasgow: gcsTexto(f["gcsO"], f["gcsV"], f["gcsM"], false) || undefined,
@@ -437,8 +440,11 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
           <section aria-label="Controles post extubación">
             <h2>Controles post extubación</h2>
             {flujo.bloque.momentos.map((m) => (
-              <Fila key={m.id} etiqueta={m.id === "EXTUB" ? "Inmediato" : m.etiqueta} ayuda={m.registrado ? "registrado" : m.id === "EXTUB" ? "al extubar" : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
-                {m.registrado ? <span className="pill good">Hecho</span> : <button type="button" className={m.minutosFaltantes <= 0 ? "btn primary sm" : "btn sm"} onClick={() => { limpiar(); setReeval(m.id); }}>Registrar</button>}
+              <Fila key={m.id} etiqueta={m.id === "EXTUB" ? "Inmediato" : m.etiqueta} ayuda={m.estado === "HECHO" ? "registrado" : m.estado === "DESIERTO" ? `no se anotó a tiempo (plazo hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)})` : m.id === "EXTUB" ? `al extubar · hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)}` : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)} · hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
+                {/* Plazos (Diego, 22-nov-2026): solo se anota dentro de su plazo; pasado, queda desierto y no se anota retroactivo. */}
+                {m.estado === "HECHO" ? <span className="pill good">Hecho</span>
+                  : m.estado === "DESIERTO" ? <span className="pill">Desierto</span>
+                  : <button type="button" className={m.estado === "TOCA" ? "btn primary sm" : "btn sm"} disabled={m.estado !== "TOCA"} onClick={() => { limpiar(); setReeval(m.id); }}>Registrar</button>}
               </Fila>
             ))}
           </section>

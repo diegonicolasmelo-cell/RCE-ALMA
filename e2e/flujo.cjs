@@ -802,7 +802,9 @@ async function esperarServidor() {
       await cel.click('button:has-text("Registrar extubación programada")');
       await cel.waitForSelector('section[aria-label="Controles post extubación"]');
       const lista = await cel.textContent('section[aria-label="Controles post extubación"]');
-      for (const m of ["Inmediato", "30 min", "60 min", "120 min", "48 h"]) assert.ok(lista.includes(m), "falta " + m);
+      for (const m of ["Inmediato", "30 min", "60 min", "120 min"]) assert.ok(lista.includes(m), "falta " + m);
+      assert.ok(!lista.includes("48 h"), "el control de 48 h se eliminó (Diego, 22-nov-2026)");
+      assert.match(lista, /hasta \d\d:\d\d/, "cada control muestra su plazo");
       // Se abre el control inmediato; con falla al tiro se pasa directo a la reintubacion.
       await cel.waitForSelector('section[aria-label="Control post extubación"] h2:has-text("Inmediato")');
       await cel.click('button:has-text("Hubo falla: se reintuba")');
@@ -1684,7 +1686,7 @@ async function esperarServidor() {
       // Indicadores: los cuatro principales con su meta.
       await pc.click('[role=tab]:text-is("Indicadores")');
       const kpis = await pc.locator(".ind-kpi .t").allTextContents();
-      assert.deepEqual(kpis, ["Fracaso de extubación (≤ 48 h)", "Autoextubaciones y accidentales", "Extubación fuera de protocolo", "PVE realizadas"]);
+      assert.deepEqual(kpis, ["Fracaso de extubación (≤ 24 h)", "Autoextubaciones y accidentales", "Extubación fuera de protocolo", "PVE realizadas"]);
       assert.match(await pc.textContent(".ind-kpis"), /meta < 15 %/);
       assert.match(await pc.textContent('[aria-label="Indicadores"]'), /Egresos por destino[\s\S]*Medicina/);
       await foto("indicadores");

@@ -34,8 +34,19 @@ describe("indicadores con las definiciones del RCE", () => {
     const i = calcularIndicadores({ episodios: [ep], controles: new Map([["ep-1", controles]]), eventos: new Map([["ep-1", eventos]]) }, MES, AHORA);
     expect(i.extubaciones).toBe(1);
     expect([i.fracaso, i.fracasoPrecoz, i.fracasoTardio, i.fracasoPct]).toEqual([1, 1, 0, 100]);
+    expect([i.fracaso48, i.fracaso48Pct]).toEqual([1, 100]);
     expect(i.diasVm).toBe(3);
     expect(i.ventilados).toBe(1);
+  });
+
+  it("reintubación a las 30 h: no es fracaso oficial (24 h) pero sí el interno a 48 h (Diego, 22-nov-2026)", () => {
+    const eventos = [
+      ev({ episodioId: "ep-1", tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", registradoEn: hace(60) }),
+      ev({ episodioId: "ep-1", tipo: "REINTUBACION", via: "TET", calibre: "8", fijacionCm: "22", registradoEn: hace(30) })
+    ];
+    const i = calcularIndicadores({ episodios: [ep], controles: new Map([["ep-1", controles]]), eventos: new Map([["ep-1", eventos]]) }, MES, AHORA);
+    expect([i.fracaso, i.fracasoPct]).toEqual([0, 0]);
+    expect([i.fracaso48, i.fracaso48Pct]).toEqual([1, 100]);
   });
 
   it("una reintubación a las 49 h no es fracaso; fuera de protocolo y su motivo", () => {

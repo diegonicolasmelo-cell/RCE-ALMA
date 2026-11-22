@@ -41,8 +41,8 @@ export function Indicadores({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
 
   const kpis: { t: string; v: string; u?: string; f: string; meta: string; estado: Estado }[] = [
     {
-      t: "Fracaso de extubación (≤ 48 h)", v: num(i.fracasoPct), u: "%",
-      f: `${i.fracaso} de ${i.extubaciones} extubaciones programadas · precoz ${i.fracasoPrecoz} · tardío ${i.fracasoTardio}`,
+      t: "Fracaso de extubación (≤ 24 h)", v: num(i.fracasoPct), u: "%",
+      f: `${i.fracaso} de ${i.extubaciones} extubaciones programadas · a 48 h (interno): ${i.fracaso48}${i.fracaso48Pct !== null ? ` (${num(i.fracaso48Pct)} %)` : ""}`,
       meta: `meta < ${META_FRACASO_PCT} %`, estado: i.fracasoPct === null ? "neu" : i.fracasoPct < META_FRACASO_PCT ? "ok" : "mal"
     },
     {
@@ -154,7 +154,7 @@ export function Indicadores({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
           ))}
         </div>
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Definiciones del tablero del RCE: fracaso = reintubación dentro de 48 h de una extubación programada (con o sin PVE); la autoextubación va aparte. Día-VM = día con al menos un control en ventilación mecánica invasiva. Mortalidad sin ajuste por gravedad.</p>
+      <p className="small muted" style={{ margin: 0 }}>Fracaso de extubación oficial = reintubación dentro de 24 h de una extubación programada (con o sin PVE), el plazo con que se considera egresar; a 48 h se cuenta aparte, de forma interna. La autoextubación va aparte. Día-VM = día con al menos un control en ventilación mecánica invasiva. Mortalidad sin ajuste por gravedad.</p>
     </section>
   );
 }

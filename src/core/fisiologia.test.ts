@@ -3,6 +3,7 @@ import {
   bandaProteccion,
   calcularDerivados,
   calcularGlasgow,
+  relacionIEPorFlujo,
   calcularPam,
   calcularPbw,
   calcularPpc,
@@ -302,5 +303,15 @@ describe("I:E anotada en el formulario", () => {
   it("en CPAP+PS no hay I:E", () => {
     const c = unControl({ ventilacion: unaVentilacion({ modalidad: "CPAP_PS", ie: 2 }) });
     expect(calcularDerivados(c, 67.8).relacionIE).toBeNull();
+  });
+});
+
+describe("I:E por flujo en ACVC (pedido de Álvaro)", () => {
+  it("sin TI, sale aproximada desde Vt y flujo: 450 ml a 50 L/min y FR 20 da TI 0,54 s ⇒ ≈ 1:4.6", () => {
+    expect(relacionIEPorFlujo({ modalidad: "ACVC", vtProgramado: 450, flujo: 50, frTotal: 20, frProgramada: 18 })).toBe("≈ 1:4.6");
+  });
+  it("sin flujo, o fuera de ACVC, no se inventa", () => {
+    expect(relacionIEPorFlujo({ modalidad: "ACVC", vtProgramado: 450, flujo: null, frTotal: 20, frProgramada: 18 })).toBeNull();
+    expect(relacionIEPorFlujo({ modalidad: "PCV", vtProgramado: 450, flujo: 50, frTotal: 20, frProgramada: 18 })).toBeNull();
   });
 });

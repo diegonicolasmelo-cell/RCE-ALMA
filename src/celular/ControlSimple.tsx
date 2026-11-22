@@ -409,7 +409,7 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         {controlada && (medicionDe(b.vent.autoPeep) ?? 0) > 0 && <Fila etiqueta="PEEP total" unidad="cmH₂O" ayuda="PEEP + auto-PEEP"><div className="calc">{textoNum(d.peepTotal)}</div></Fila>}
         {controlada && <Fila etiqueta="P. distensión" unidad="cmH₂O"><div className="calc">{textoNum(d.drivingPressure)}</div></Fila>}
         {/* I:E (pedido de Álvaro, 22-nov-2026): calculada con TI y FR total; si se anotó la del ventilador, ya se ve en su casilla. */}
-        {controlada && medicionDe(b.vent.ie) === null && <Fila etiqueta="Relación I:E" ayuda="Con TI y FR total"><div className="calc">{d.relacionIE ?? "—"}</div></Fila>}
+        {controlada && medicionDe(b.vent.ie) === null && <Fila etiqueta="Relación I:E" ayuda="Con TI y FR, o con Vt y flujo (≈)"><div className="calc">{d.relacionIE ?? "—"}</div></Fila>}
         {b.modalidad === "CPAP_PS" && <Fila etiqueta="Índice de Tobin"><div className="calc">{textoNum(d.tobin)}</div></Fila>}
         {d.rox !== null && <Fila etiqueta="Índice ROX"><div className="calc">{textoNum(d.rox)}</div></Fila>}
         {d.vtEspiradoPorKg !== null && (

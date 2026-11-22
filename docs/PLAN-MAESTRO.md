@@ -865,9 +865,12 @@ sábana desde la tarjeta de cualquier cama (21-nov).
 - **Aire ambiente con TQT**: programado. Sin O₂ adicional ni soporte ventilatorio.
 - **El interno se liga a un perfil de turno**: la columna `turno` de la hoja «usuarios» (T1-T4). Con una sola cuenta
   genérica, el interno queda en un solo turno; si rota por varios, una cuenta por turno.
-- **Mi paisaje (logros secretos), primera versión**: personal, calculado en el teléfono con lo que registró cada uno
+- **Museo (logros secretos), primera versión** (se llamaba «Mi paisaje»): personal, calculado en el teléfono con lo que registró cada uno
   (`src/core/logros.ts`). Entra desde la cuenta («Mi paisaje»). Secretos de Diego: **chuncho** = 50 controles registrados
   en vivo entre las 4 y las 5; **guanaco** («10.000 pasos») = 3 traslados. Los otros 13 son propuesta para que los
   ajuste (tabla en `logros.ts`). El desierto florece al tener los 15.
   · **Falta**: regalar repetidos a un colega con mensaje y la franja de la unidad («chuncho · 2 personas»). Necesitan
     servidor: van después.
+- **Museo, ajustes de Diego (22-nov)**: se llama **Museo**; se entra **tocando el nombre** en «Hola, …» del inicio; por
+  ahora **solo lo ve Diego**: columna G `museo` de la hoja «usuarios» (TRUE en su fila). El correo no va en el código
+  (repositorio público). Para abrirlo al equipo: TRUE en las demás filas, sin publicar nada.

@@ -31,7 +31,7 @@ export const DOTACION_DEMO: readonly Profesional[] = [
   demo("Maria Jose Vega", "T2"),
   demo("Alvaro Wilson", "T2"),
   demo("Eduardo Gonzalez", "T3"),
-  demo("Diego Melo", "T3"),
+  { ...demo("Diego Melo", "T3"), museo: true },
   demo("Karen Gonzalez", "T3"),
   demo("Carlos Morales", "T4"),
   demo("Andres Angel", "T4"),
@@ -79,7 +79,8 @@ export function fijarDotacion(lista: readonly unknown[]): readonly Profesional[]
     const turno = TURNOS.includes(o["turno"] as IdTurno) ? (o["turno"] as IdTurno) : "REEMPLAZO";
     const r = String(o["rol"] ?? "").toUpperCase();
     const rol: Profesional["rol"] = r.startsWith("COORD") ? "COORDINACION" : r.startsWith("INTERN") ? "INTERNO" : "KINE_CLINICO";
-    return [{ correo, nombre, turno, rol }];
+    const museo = /^(TRUE|SI|SÍ|1)$/i.test(String(o["museo"] ?? "").trim()) || o["museo"] === true;
+    return [{ correo, nombre, turno, rol, ...(museo ? { museo: true } : {}) }];
   });
   indexar();
   return actual;

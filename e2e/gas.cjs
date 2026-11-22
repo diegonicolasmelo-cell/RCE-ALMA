@@ -186,7 +186,7 @@ const pagina = () =>
       assert.equal(await p.locator("text=No hay camas activas").count(), 0);
       // El servidor guardo un hash, nunca la clave.
       const usuarios = gas.hojas.get("usuarios").filas;
-      assert.deepEqual(usuarios[0], ["correo", "sal", "hashPin", "nombre", "turno", "rol"], "la hoja usuarios es por correo, sin RUT");
+      assert.deepEqual(usuarios[0], ["correo", "sal", "hashPin", "nombre", "turno", "rol", "museo"], "la hoja usuarios es por correo, sin RUT");
       const fila = usuarios.find((f) => f[0] === "diegonicolas.melo@gmail.com");
       assert.ok(fila[2] && fila[2] !== "kine" && !usuarios.flat().includes("kine"));
       assert.ok(!usuarios.flat().some((v) => /\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]/.test(String(v))), "ningun RUT en la hoja usuarios");

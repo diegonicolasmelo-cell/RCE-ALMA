@@ -21,7 +21,8 @@ import {
   turnoDe,
   validarBorrador,
   horasDeVm,
-  textoVm
+  textoVm,
+  buscarProfesional
 } from "@core/index";
 import type { BorradorControl, Episodio } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -328,7 +329,8 @@ export function Celular() {
         </button>
       </div>
   );
-  const cabeceraInicio = <CabeceraInicio nombre={sesion.nombre} sync={estadoSync} nAvisos={avisos.length} onAvisos={() => setPanel("avisos")} onCuenta={() => setPanel("cuenta")} />;
+  const conMuseo = buscarProfesional(sesion.rut)?.museo === true;
+  const cabeceraInicio = <CabeceraInicio nombre={sesion.nombre} sync={estadoSync} nAvisos={avisos.length} onAvisos={() => setPanel("avisos")} onCuenta={() => setPanel("cuenta")} {...(conMuseo ? { onMuseo: () => irA("paisaje") } : {})} />;
   /** Las vistas del inicio: saludo arriba, barra abajo, y encima la hoja del «+» y los paneles. */
   const marcoInicio = (contenido: JSX.Element, v: typeof vista = vista): JSX.Element => (
     <div
@@ -350,8 +352,8 @@ export function Celular() {
     ? <><TituloVista>Controles</TituloVista><MisControles resumen={resumen} rut={sesion.rut} ahora={ahora} /></>
     : vista === "ayuda"
       ? <><TituloVista>Ayuda</TituloVista><Ayuda sync={estadoSync} /></>
-      : vista === "paisaje"
-        ? <><TituloVista>Mi paisaje</TituloVista><Paisaje autor={sesion.rut} /></>
+      : vista === "paisaje" && conMuseo
+        ? <><TituloVista>Museo</TituloVista><Paisaje autor={sesion.rut} /></>
         : null;
 
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las

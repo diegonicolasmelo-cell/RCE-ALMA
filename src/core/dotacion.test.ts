@@ -55,4 +55,13 @@ describe("dotación de la hoja", () => {
     expect(tituloProfesional(p)).toBe("Int. Interno Kinesiología");
     expect(etiquetaRol(p.rol)).toBe("Interno de kinesiología");
   });
+
+  it("el Museo solo para quien tiene «museo» marcado en la hoja (Diego, 22-nov-2026)", () => {
+    fijarDotacion([
+      { correo: "a@hospital.cl", nombre: "Con Museo", turno: "T1", rol: "", museo: "TRUE" },
+      { correo: "b@hospital.cl", nombre: "Sin Museo", turno: "T1", rol: "" }
+    ]);
+    expect(buscarProfesional("a@hospital.cl")?.museo).toBe(true);
+    expect(buscarProfesional("b@hospital.cl")?.museo).toBeUndefined();
+  });
 });

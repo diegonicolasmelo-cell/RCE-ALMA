@@ -29,7 +29,7 @@ import {
   UserPlus,
   Wifi,
   WifiOff,
-  X, Mountain } from "lucide-react";
+  X } from "lucide-react";
 import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
@@ -103,11 +103,14 @@ export function avisosDe(resumen: readonly ResumenCama[], sync: EstadoSync): Avi
 }
 
 /** Franja de arriba: «Hola, Diego Melo», el estado de la conexión, la campana y la cuenta. */
-export function CabeceraInicio({ nombre, sync, nAvisos, onAvisos, onCuenta }: { nombre: string; sync: EstadoSync; nAvisos: number; onAvisos: () => void; onCuenta: () => void }) {
+export function CabeceraInicio({ nombre, sync, nAvisos, onAvisos, onCuenta, onMuseo }: { nombre: string; sync: EstadoSync; nAvisos: number; onAvisos: () => void; onCuenta: () => void; onMuseo?: () => void }) {
   const textoSync = `${sync.online ? "" : "Sin señal"}${sync.pendientes > 0 ? `${sync.online ? "" : " · "}${sync.pendientes} por subir` : ""}${sync.noSube ? " · no sube" : ""}`;
   return (
     <div className="cel-top inicio-top">
-      <span className="hola">Hola, <b>{nombreSinTitulo(nombre)}</b></span>
+      {/* Tocar el nombre abre el Museo (solo para quien lo tiene habilitado en la hoja «usuarios»). */}
+      {onMuseo
+        ? <button type="button" className="hola hola-museo" aria-label="Museo" onClick={onMuseo}>Hola, <b>{nombreSinTitulo(nombre)}</b></button>
+        : <span className="hola">Hola, <b>{nombreSinTitulo(nombre)}</b></span>}
       <button type="button" className={`chip-sync${sync.noSube ? " mal" : ""}`} onClick={sync.sincronizar} aria-label="Sincronizar ahora">
         {sync.online ? <Wifi size={15} aria-hidden /> : <WifiOff size={15} aria-hidden />}
         {textoSync && <span>{textoSync}</span>}
@@ -331,9 +334,6 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
         <div className="pc-lista">
           <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("elegir"); }}>
             <BedDouble size={22} aria-hidden /><span>Mis camas de hoy</span><ChevronRight size={18} aria-hidden />
-          </button>
-          <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("paisaje"); }}>
-            <Mountain size={22} aria-hidden /><span>Mi paisaje<small>Personajes de la región que se descubren con secretos</small></span><ChevronRight size={18} aria-hidden />
           </button>
           <div className="pc-fila bloque">
             <Mic size={22} aria-hidden />

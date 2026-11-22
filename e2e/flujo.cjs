@@ -181,7 +181,8 @@ async function esperarServidor() {
       // La barra se esconde al deslizar hacia abajo y vuelve al tocar la pantalla.
       await cel.evaluate(() => { document.querySelector(".cel-cuerpo").scrollTop = 500; });
       await cel.waitForSelector("nav.barra-inf.oculta");
-      await cel.click(".cel-top .hola");
+      // (Se toca el borde de la lista: el saludo ahora abre el Museo de quien lo tiene habilitado.)
+      await cel.click(".cel-cuerpo", { position: { x: 3, y: 3 } });
       await cel.waitForSelector("nav.barra-inf:not(.oculta)");
       await cel.evaluate(() => { document.querySelector(".cel-cuerpo").scrollTop = 0; });
       // Panel de la cuenta: dia, noche o automatico (noche en el turno noche).
@@ -955,10 +956,10 @@ async function esperarServidor() {
       assert.match(await aviso(), /temperatura de la CNAF/);
     });
 
-    await prueba("mi paisaje: se abre desde la cuenta, muestra los personajes descubiertos y no revela los secretos que faltan", async () => {
+    await prueba("museo: se abre tocando el nombre, muestra los personajes descubiertos y no revela los secretos que faltan", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
-      await cel.locator(".avatar").first().click();
-      await cel.click('button:has-text("Mi paisaje")');
+      // Se entra tocando el nombre del inicio; por ahora solo quien tiene «museo» en la hoja (en la demo, Diego).
+      await cel.click('button.hola-museo');
       await cel.waitForSelector(".pk-svg");
       assert.match(await cel.textContent(".paisaje-cel > p"), /\d+ de 15 personajes/);
       const hueco = cel.locator('.pk-pj.hueco').first();

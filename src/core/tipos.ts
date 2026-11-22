@@ -649,4 +649,6 @@ export interface Profesional {
   readonly turno: IdTurno;
   /** INTERNO: estudiante en practica (Diego, 19-nov-2026). Firma como «Int.», no como «Klgo.». */
   readonly rol: "KINE_CLINICO" | "COORDINACION" | "INTERNO";
+  /** Ve el Museo mientras esta en prueba (columna «museo» de la hoja «usuarios»). */
+  readonly museo?: boolean;
 }

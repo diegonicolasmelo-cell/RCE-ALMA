@@ -52,7 +52,7 @@ export function Paisaje({ autor }: { autor: string }) {
   const sel = elegido ? estados.find((e) => e.id === elegido) : undefined;
 
   return (
-    <div className="cel-cuerpo paisaje-cel" aria-label="Mi paisaje">
+    <div className="cel-cuerpo paisaje-cel" aria-label="Museo">
       <p className="small muted" style={{ margin: 0 }}>
         {ganados} de {estados.length} personajes de la Región de Coquimbo. Cada uno se gana con un secreto: nadie sabe cómo hasta que lo descubre. Toca uno para ver su historia.
       </p>

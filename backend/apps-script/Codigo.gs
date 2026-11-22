@@ -302,7 +302,8 @@ function leerDotacion() {
     var correo = normalizarCorreo(datos[i][0]);
     var nombre = String(datos[i][3] || "").trim();
     if (correo.indexOf("@") < 0 || !nombre) continue;
-    lista.push({ correo: correo, nombre: nombre, turno: String(datos[i][4] || "").trim().toUpperCase(), rol: String(datos[i][5] || "").trim().toUpperCase() });
+    var museo = String(datos[i][6] === undefined ? "" : datos[i][6]).trim().toUpperCase();
+    lista.push({ correo: correo, nombre: nombre, turno: String(datos[i][4] || "").trim().toUpperCase(), rol: String(datos[i][5] || "").trim().toUpperCase(), museo: museo === "TRUE" || museo === "SI" || museo === "SÍ" || museo === "1" });
   }
   return lista;
 }
@@ -651,7 +652,8 @@ function inicializarLibro() {
   }
 }
 
-var COLUMNAS_USUARIOS = ["correo", "sal", "hashPin", "nombre", "turno", "rol"];
+// «museo» (TRUE/vacio): quien ve el Museo mientras esta en prueba (Diego, 22-nov-2026). Al final: no mueve las demas.
+var COLUMNAS_USUARIOS = ["correo", "sal", "hashPin", "nombre", "turno", "rol", "museo"];
 
 // ---------------------------------------------------------------------------
 // Empezar de cero (ejecutar a mano desde el editor; SIMULACRO primero, siempre)

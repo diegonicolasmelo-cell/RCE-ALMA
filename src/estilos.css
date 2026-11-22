@@ -1178,7 +1178,8 @@ body.dictando .cel-pie{visibility:hidden}
 .ent-pend{display:grid;gap:4px;border:1.5px solid var(--ink);border-radius:8px;padding:6px 8px}
 .ent-pend textarea{border:0;background:transparent;font:inherit;resize:vertical;min-height:38px;color:var(--ink)}
 
-/* Mi paisaje (logros secretos, 22-nov-2026). */
+/* Museo (logros secretos, 22-nov-2026). El nombre del inicio abre el Museo a quien lo tiene habilitado. */
+.hola-museo{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .paisaje-cel{display:flex;flex-direction:column;gap:12px}
 .pk-nuevo{background:#fff4e0;border:1px solid #f2d6a6;color:#5e3a00;border-radius:12px;padding:10px 12px;font-weight:600}
 .pk-lienzo{overflow-x:auto;border-radius:16px;border:1px solid var(--line);-webkit-overflow-scrolling:touch}

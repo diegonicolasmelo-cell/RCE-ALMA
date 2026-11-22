@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  ClipboardCheck,
   ClipboardList,
   Flag,
   Droplet,
@@ -164,7 +165,8 @@ const PESTANAS: readonly (readonly [VistaCelular, string, typeof BedDouble])[] =
 ];
 const PESTANAS_2: readonly (readonly [VistaCelular | "evaluar", string, typeof BedDouble])[] = [
   ["evaluar", "Evaluaciones", ClipboardList],
-  ["ayuda", "Ayuda", CircleHelp]
+  // «Entrega» reemplaza a «Ayuda» en la barra (Diego, 22-nov-2026); la ayuda vive en el panel de la cuenta.
+  ["entrega", "Entrega", ClipboardCheck]
 ];
 
 export function BarraInferior({ vista, oculta, onIr, onMas, onEvaluar }: { vista: VistaCelular; oculta: boolean; onIr: (v: VistaCelular) => void; onMas: () => void; onEvaluar: () => void }) {
@@ -334,6 +336,9 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
         <div className="pc-lista">
           <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("elegir"); }}>
             <BedDouble size={22} aria-hidden /><span>Mis camas de hoy</span><ChevronRight size={18} aria-hidden />
+          </button>
+          <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("ayuda"); }}>
+            <CircleHelp size={22} aria-hidden /><span>Ayuda y tutorial</span><ChevronRight size={18} aria-hidden />
           </button>
           <div className="pc-fila bloque">
             <Mic size={22} aria-hidden />

@@ -1238,3 +1238,26 @@ body.dictando .cel-pie{visibility:hidden}
 /* Boton «Dar de alta» en la esquina de cada tarjeta de cama (22-nov-2026). */
 .btn-egresar{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink-2);font:600 13px var(--font-ui);cursor:pointer;flex:none}
 .btn-egresar:hover,.btn-egresar:focus-visible{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+/* Entrega en el celular (22-nov-2026): tarjetas que se dan vuelta. Las dos caras comparten la misma
+   celda de la grilla: la tarjeta toma la altura de la cara más larga y no salta al girar. */
+.entrega-cel{display:flex;flex-direction:column;gap:12px}
+.ent-tarjeta{perspective:1200px;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:14px}
+.ent-tarjeta:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ent-in{display:grid;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.32,.72,0,1)}
+.ent-tarjeta.vuelta .ent-in{transform:rotateY(180deg)}
+@media (prefers-reduced-motion:reduce){.ent-in{transition:none}}
+.ent-cara{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:var(--shadow);min-width:0}
+.ent-atras{transform:rotateY(180deg);background:var(--panel-2)}
+.ent-cab{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.ent-cab b{font-size:17px}
+.ent-fase{font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.ent-sec{margin-top:6px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ent-linea{font-size:14px}
+.ent-pend{margin-top:6px;display:flex;flex-direction:column;gap:2px;padding:7px 10px;border-radius:10px;background:var(--warn-soft);color:var(--warn-ink);font-size:14px}
+.ent-pend b{font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+.ent-giro{margin-top:8px;align-self:flex-end;font-size:13px;font-weight:700;color:var(--accent)}
+.ent-historia{margin:2px 0 0;font-size:14px;white-space:pre-line;overflow-wrap:anywhere}
+.ent-hitos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:14px}
+.ent-hitos li{display:grid;grid-template-columns:92px 1fr;gap:6px}
+.ent-hitos li span{font-family:var(--font-data);font-size:12.5px;color:var(--ink-2)}

@@ -138,6 +138,8 @@ function procesarPost(cuerpo) {
       return registrarLlaves(null, cuerpo.huella);
     case "sincronizar":
       return sincronizar(cuerpo);
+    case "historias":
+      return historiasDesdeRce(cuerpo.camas);
     default:
       return { ok: false, error: "ACCION_DESCONOCIDA" };
   }
@@ -589,6 +591,46 @@ function reenviarAlRce_(nuevos) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Historias de la entrega (Diego, 22-nov-2026): el telefono las pide al abrir la Entrega; se le
+ * piden al RCE en ese momento y se devuelven SIN guardarlas aqui. El RCE ya las entrega sin nombre
+ * ni RUT; igual se descarta cualquier texto con forma de RUT antes de mandarlo al telefono.
+ */
+function historiasDesdeRce(camas) {
+  var enlace = enlaceRce_();
+  if (!enlace) return { ok: true, historias: [], estado: "apagado" };
+  var lista = [];
+  if (Object.prototype.toString.call(camas) === "[object Array]") {
+    for (var i = 0; i < camas.length && lista.length < 18; i++) {
+      var n = parseInt(camas[i], 10);
+      if (n >= 1 && n <= 40) lista.push(n);
+    }
+  }
+  if (!lista.length) return { ok: true, historias: [] };
+  var r = UrlFetchApp.fetch(enlace.url, {
+    method: "post",
+    contentType: "text/plain;charset=utf-8",
+    payload: JSON.stringify({ accion: "historiasEntrega", token: enlace.token, camas: lista }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  var resp = null;
+  if (r.getResponseCode() === 200) {
+    try { resp = JSON.parse(r.getContentText()); } catch (e) { resp = null; }
+  }
+  if (!resp || resp.ok !== true) return { ok: false, error: "RCE_SIN_RESPUESTA" };
+  var rut = /\b\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]\b/;
+  var out = [];
+  var hs = resp.historias || [];
+  for (var j = 0; j < hs.length; j++) {
+    var h = hs[j] || {};
+    var texto = String(h.texto || "").slice(0, 600);
+    if (!texto || rut.test(texto)) continue;
+    out.push({ cama: Number(h.cama), texto: texto, firma: String(h.firma || ""), fecha: String(h.fecha || "") });
+  }
+  return { ok: true, historias: out };
 }
 
 /** Desde el editor: prueba el enlace con el RCE sin mandar ningun dato. */

@@ -1676,8 +1676,9 @@ async function esperarServidor() {
 
     await prueba("dar de alta desde el celular: pide el motivo, confirma aparte y la cama queda libre", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
-      await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');
-      await cel.click('.evgrid button:has-text("Dar de alta")');
+      // El egreso se abre desde la esquina de la tarjeta (22-nov-2026), en cualquier cama.
+      await cel.click('article[aria-label="Cama UCI-09"] button.btn-egresar');
+      await cel.waitForSelector('[role=dialog][aria-label="Dar de alta (egreso)"]');
       await cel.waitForSelector("#evf-dest");
       assert.equal(await cel.inputValue("#evf-dest"), "", "el destino no viene elegido");
       await cel.click('button:text-is("Confirmar egreso")');

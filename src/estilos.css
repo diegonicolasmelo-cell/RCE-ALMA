@@ -1234,3 +1234,7 @@ body.dictando .cel-pie{visibility:hidden}
   .ev-capa.sale .ev-pantalla{animation:ev-sale .22s ease-in forwards}
 }
 @supports (height:100dvh){.ev-capa{height:100dvh}}
+
+/* Boton «Dar de alta» en la esquina de cada tarjeta de cama (22-nov-2026). */
+.btn-egresar{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink-2);font:600 13px var(--font-ui);cursor:pointer;flex:none}
+.btn-egresar:hover,.btn-egresar:focus-visible{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}

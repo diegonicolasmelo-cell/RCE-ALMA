@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ClipboardList, Sheet, Stethoscope, Timer, Zap } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, LogOut, Sheet, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import {
   CAMAS_UNIDAD,
@@ -142,7 +142,6 @@ export function ListaCamas() {
         // Con via aerea natural no hay filtros ni TrachCare que cambiar.
         const cambios = esViaAereaArtificial(ep.viaAereaActual) ? filtrosPorCambiar(eventos, ahora) : [];
         const duePost = flujo.bloque?.momentos.find((m) => m.estado === "TOCA");
-        const propia = esMiaCama(cama);
         // Un solo boton de extubacion: fuera de protocolo antes de las 24 h de VM, PVE despues.
         const boton = botonExtubacion(ep, ultimo ? { modalidad: ultimo.ventilacion.modalidad, registradoEn: ultimo.registradoEn } : null, eventos, null, ahora);
         const pve = boton?.tipo === "PVE" ? boton.acceso : null;
@@ -165,7 +164,11 @@ export function ListaCamas() {
                   <ArrowLeftRight size={17} aria-hidden />
                 </button>
               </span>
-              <span className="small muted" style={{ textAlign: "right" }}>{!propia && "de otro colega"}</span>
+              {/* Egreso rapido (Diego, 22-nov-2026): en todas las tarjetas, mias y de otros colegas. Abre el
+                  egreso de Eventos, que pide el destino y la confirmacion: un toque no da de alta a nadie. */}
+              <button type="button" className="btn-egresar" aria-label={`Dar de alta · ${nombreCama(ep.cama)}`} onClick={() => { pedirEvento("egreso"); irA("eventos", ep.id); }}>
+                <LogOut size={15} aria-hidden /> Dar de alta
+              </button>
             </header>
             <div className="small ink2">
               {textoViaCama(ep, h)}

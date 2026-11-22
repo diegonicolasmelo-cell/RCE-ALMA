@@ -882,3 +882,52 @@ sábana desde la tarjeta de cualquier cama (21-nov).
   · Ajuste del mismo día: en pantalla **no se marca «desierto» ni «no se anotó»**: el control vencido simplemente deja de
     mostrarse. Cuenta solo en la estadística interna («controles post extub. a tiempo: X de Y», en Indicadores).
   · Para el RCE: el tablero debe mostrar el fracaso a **24 h y a 48 h** (los dos).
+
+## 27. Pautas a pie de cama y ronda de ventiladores (GUARDADO para después de la Entrega, 22-nov-2026)
+
+Diego lo dejó «en paréntesis, solo para la memoria»: se desarrolla **después de terminar el módulo
+de Entrega**. Nada programado.
+
+### 27.1 Pautas digitalizadas «copia fiel»
+- **Cuáles**: la pauta de **prevención de NAVM** (paquete de ventilación mecánica, varios puntos) y la
+  de **aspiración de secreciones**. Diego va a conseguir las pautas originales.
+- **Qué quiere**: aplicarlas en el celular recorriendo cama por cama (como la APK), y que el
+  formulario genere un documento **idéntico al papel**: mismo formato, distancias, letra, tamaño y
+  logos. Reemplaza la carpeta a pie de cama.
+- **Perfiles**: por ahora **liberadas para todos**. Más adelante, la de NAVM debería quedar solo para
+  algunas personas (como el interruptor «museo» de la hoja usuarios); la de aspiración, para todos.
+- **Feedback dado (22-nov)**:
+  - Separar la **captura** (pantalla pensada para el teléfono, ítem por ítem) del **documento**
+    (la hoja calcada, que se ve o imprime en el PC). Un A4 calcado no se lee en un teléfono.
+  - Prellenar lo que Kaptus ya sabe (fechas de HME/TrachCare/HEPA, vía aérea, días de VM,
+    controles) para preguntar solo lo que falta. Revisar cada ítem contra los datos existentes.
+  - Hay que confirmar con IAAS o con calidad que la versión digital vale como el formulario oficial.
+  - El cumplimiento por ítem sirve como indicador mensual sin nombres de colegas.
+  - Si la hoja oficial lleva nombre o RUT, ese documento se arma en el PC (donde vive la identidad),
+    nunca en el celular ni en la nube de Kaptus.
+- **Falta**: las pautas originales (PDF o escaneo), los logos en buena resolución y saber si cada
+  pauta se aplica por cama y turno, por día o por episodio.
+
+### 27.2 Ronda de ventiladores y de invasivos
+- **Hoy**: un libro donde, sala por sala, se anota qué ventilador hay, qué está en uso y qué hay que
+  cambiar. La hace quien toma las salas de atrás. El RCE ya tiene un «modo Ronda» (v7.05/7.06:
+  lista por cama, check por turno, fechas editables con la regla «manda la última edición»).
+- **Lo que pide Diego**:
+  - Que cada colega se haga cargo de anotar qué ventilador tiene su sala; si se saca, queda una nota.
+  - Igual hace falta una **supervisión**: a quien toma las salas de atrás le aparece «Hacer la ronda».
+  - En la misma pasada se revisan las **fechas de filtros, TrachCare, HME y HEPA**.
+  - Si algo está vencido, se le **manda un mensaje al colega de esa cama**, que le aparece en su
+    campana con lo que tiene que cambiar.
+  - Además, los cambios por vencer deberían aparecer solos en la campana.
+- **El problema que resuelve**: en el RCE el apartado de invasivos se omite y quedan fechas muy
+  antiguas aunque el filtro sí se haya cambiado. En Kaptus pasaría lo mismo si nadie registra el
+  evento de cambio. La ronda **confirma la fecha de la etiqueta que se ve en la cama**, y esa
+  confirmación pasa a ser el dato vigente.
+- **Feedback dado (22-nov)**:
+  - Mostrar en cada cama cuándo fue la última ronda; si pasan más de 24 h sin ronda, avisar a quien le toca.
+  - El mensaje entre colegas necesita un buzón en el servidor (hoy la campana de Kaptus solo
+    calcula avisos en el propio celular).
+  - Para saber a quién avisar se usa la selección «Mis camas» de cada colega.
+  - Reutilizar la lógica de la ronda del RCE, no inventar otra.
+- **Orden sugerido**: 1) ronda de ventiladores (más impacto en la calidad del dato, y los datos ya
+  existen), 2) pauta de aspiración, 3) pauta NAVM (depende del documento original).

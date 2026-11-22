@@ -237,7 +237,7 @@ export function ListaCamas() {
 }
 
 /** «TET 7.5 · 23 cm · TOT 4 d», «TQT 8.0 · TQT 12 d» o «Vía aérea natural», como en el registro simple. */
-function textoViaCama(ep: Episodio, h: HorasVm | null): string {
+export function textoViaCama(ep: Episodio, h: HorasVm | null): string {
   if (ep.viaAereaActual === "NATURAL") return "Vía aérea natural";
   const via = ep.viaAereaActual === "TET"
     ? [`TET ${ep.calibreVia ?? ""}`.trim(), ep.fijacionCm ? `${ep.fijacionCm}${/\d$/.test(ep.fijacionCm) ? " cm" : ""}` : null]

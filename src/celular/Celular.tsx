@@ -50,6 +50,7 @@ import type { SegmentoId, TabControl as TabDeControl } from "./pasos";
 import { TabConciencia } from "./TabConciencia";
 import { TabControl } from "./TabControl";
 import { TabEventos } from "./TabEventos";
+import { EntregaCel } from "./EntregaCel";
 import { ElegirCamas, claveMisCamas } from "./ElegirCamas";
 import { Evaluaciones } from "./Evaluaciones";
 import { ListaCamas } from "./ListaCamas";
@@ -126,7 +127,7 @@ export function Celular() {
 
   // --- Inicio: resumen de las camas (avisos y «Controles»), apariencia y paneles ---
   // Solo se calcula en las vistas del inicio: dentro de un paciente no se muestra y no debe competir con su registro.
-  const enInicio = vista === "camas" || vista === "controles" || vista === "ayuda" || vista === "paisaje";
+  const enInicio = vista === "camas" || vista === "controles" || vista === "ayuda" || vista === "entrega" || vista === "paisaje";
   const resumen = useConsulta<readonly ResumenCama[]>(
     async () => (enInicio ? Promise.all((await repo.episodiosActivos()).map(async (e) => ({ ep: e, controles: await repo.controlesDe(e.id), eventos: await repo.eventosDe(e.id) }))) : []),
     [repo, enInicio],
@@ -352,6 +353,8 @@ export function Celular() {
     ? <><TituloVista>Controles</TituloVista><MisControles resumen={resumen} rut={sesion.rut} ahora={ahora} /></>
     : vista === "ayuda"
       ? <><TituloVista>Ayuda</TituloVista><Ayuda sync={estadoSync} /></>
+      : vista === "entrega"
+        ? <><TituloVista>Entrega</TituloVista><EntregaCel resumen={resumen.filter((r) => esMia(r.ep))} ahora={ahora} /></>
       : vista === "paisaje" && conMuseo
         ? <><TituloVista>Museo</TituloVista><Paisaje autor={sesion.rut} /></>
         : null;

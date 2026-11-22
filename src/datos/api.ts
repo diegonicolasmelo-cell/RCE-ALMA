@@ -1,4 +1,4 @@
-import type { ItemParaRce } from "@core/index";
+import type { HistoriaEntrega, ItemParaRce } from "@core/index";
 /**
  * Cliente de la API (Google Apps Script sobre Sheets).
  *
@@ -62,6 +62,11 @@ export interface ClienteApi {
   purgarReferencias(episodioIds: readonly string[]): Promise<{ ok: boolean; error?: string }>;
   /** Registra las huellas de las llaves que creo este PC (con el registro abierto en el editor). */
   registrarLlaves(huellas: HuellasLlaves): Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Historias de la entrega de estas camas: el servidor de Kaptus se las pide al RCE en el momento
+   * y no las guarda. El celular tampoco: viven solo en la pantalla abierta (Diego, 22-nov-2026).
+   */
+  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[] }>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -195,6 +200,18 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       };
     },
 
+    async leerHistorias(camas) {
+      const r = await post({ token: cfg.appToken, accion: "historias", camas });
+      if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
+      const lista = Array.isArray(r["historias"]) ? (r["historias"] as Record<string, unknown>[]) : [];
+      return {
+        ok: true,
+        historias: lista
+          .filter((h) => typeof h["texto"] === "string" && Number.isFinite(Number(h["cama"])))
+          .map((h) => ({ cama: Number(h["cama"]), texto: String(h["texto"]).slice(0, 600), firma: String(h["firma"] ?? ""), fecha: String(h["fecha"] ?? "") }))
+      };
+    },
+
     async leerReferencias() {
       if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
       const r = await get({ recurso: "referencia", token: cfg.stationToken });
@@ -251,6 +268,10 @@ export function crearApiLocal(): ClienteApi {
     },
     async leer() {
       return { ok: true, datos: { episodios: [], controles: [], eventos: [], apk: [], servidorEn: new Date().toISOString() } };
+    },
+    async leerHistorias() {
+      // Sin servidor no hay RCE al que pedirle historias.
+      return { ok: true, historias: [] };
     },
     async leerReferencias() {
       return { ok: true, referencias: [...referencias.values()] };

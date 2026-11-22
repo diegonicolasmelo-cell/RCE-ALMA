@@ -32,7 +32,7 @@ function servidorKaptus(props: Record<string, string>, rce: (cuerpo: Record<stri
     Logger: { log: () => {} }, Utilities: {}, ContentService: {}, HtmlService: {}
   };
   const codigo = readFileSync("backend/apps-script/Codigo.gs", "utf8");
-  const fn = new Function(...Object.keys(g), `${codigo}\nreturn { sincronizar };`) as (...a: unknown[]) => { sincronizar: (c: unknown) => Record<string, unknown> };
+  const fn = new Function(...Object.keys(g), `${codigo}\nreturn { sincronizar, historiasDesdeRce };`) as (...a: unknown[]) => { sincronizar: (c: unknown) => Record<string, unknown>; historiasDesdeRce: (c: unknown) => Record<string, unknown> };
   return { ...fn(...Object.values(g)), hojas, llamadas };
 }
 
@@ -68,5 +68,24 @@ describe("RCE by Kaptus: el servidor de Kaptus reenvía al RCE al tiro", () => {
     const malo = { ...lote([]), paraRce: [{ ...item("x"), datos: { nombre: "X" } }] };
     expect(s.sincronizar(malo)).toMatchObject({ ok: false, error: "PAYLOAD_CON_IDENTIDAD" });
     expect(s.llamadas).toHaveLength(0);
+  });
+});
+
+describe("historias de la entrega: se piden al RCE y no se guardan", () => {
+  it("sin enlace no se llama a nadie", () => {
+    const s = servidorKaptus({}, () => ({ code: 200 }));
+    expect(s.historiasDesdeRce([3])).toEqual({ ok: true, historias: [], estado: "apagado" });
+    expect(s.llamadas).toHaveLength(0);
+  });
+  it("pide las camas al RCE, devuelve las historias y descarta un texto con RUT; no escribe ninguna hoja", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, historias: [
+      { cama: 3, texto: "Paciente de 64 años, neumonía grave.", firma: "MCC", fecha: "2026-11-17" },
+      { cama: 4, texto: "RUT 12.345.678-9 colado", firma: "DMV", fecha: "2026-11-18" }
+    ] } }));
+    const antes = JSON.stringify(s.hojas);
+    const r = s.historiasDesdeRce([3, 4, "x", 99]);
+    expect(s.llamadas[0]).toMatchObject({ accion: "historiasEntrega", token: "LLAVE", camas: [3, 4] });
+    expect(r).toEqual({ ok: true, historias: [{ cama: 3, texto: "Paciente de 64 años, neumonía grave.", firma: "MCC", fecha: "2026-11-17" }] });
+    expect(JSON.stringify(s.hojas)).toBe(antes);
   });
 });

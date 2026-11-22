@@ -174,8 +174,23 @@ async function esperarServidor() {
       assert.equal(await cel.locator(".hoja-mas").count(), 0);
       await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Controles")');
-      await cel.click('nav[aria-label="Navegación"] button:has-text("Ayuda")');
+      // La ayuda vive en el panel de la cuenta (22-nov-2026); su lugar en la barra es la Entrega.
+      await cel.click('button.avatar[aria-label="Mi cuenta"]');
+      await cel.click('aside[aria-label="Mi cuenta"] button:has-text("Ayuda y tutorial")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Ayuda")');
+      // Entrega: una tarjeta por cada una de mis camas; al tocarla se da vuelta y muestra la historia y los hitos.
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Entrega")');
+      await cel.waitForSelector('.ctl-cabeza h1:text-is("Entrega")');
+      const tarjetasEntrega = cel.locator(".ent-tarjeta");
+      assert.ok((await tarjetasEntrega.count()) >= 1, "hay tarjetas de entrega de mis camas");
+      const primera = tarjetasEntrega.first();
+      assert.match(await primera.locator(".ent-cara").first().textContent(), /Cómo está[\s\S]*Hoy/);
+      await primera.click();
+      assert.equal(await primera.getAttribute("aria-pressed"), "true", "se da vuelta");
+      assert.match(await primera.locator(".ent-atras").textContent(), /Hitos del episodio/);
+      assert.match(await primera.locator(".ent-atras").textContent(), /Nadie ha guardado la historia|La historia se ve con conexión/, "sin RCE, lo dice");
+      await primera.click();
+      assert.equal(await primera.getAttribute("aria-pressed"), "false", "vuelve a la cara de hoy");
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
       // La barra se esconde al deslizar hacia abajo y vuelve al tocar la pantalla.

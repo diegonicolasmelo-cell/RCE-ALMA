@@ -551,6 +551,7 @@ export const ETIQUETA_MOTIVO_SIN_PVE: Readonly<Record<MotivoExtubacionSinPve, st
   AET: "adecuación del esfuerzo terapéutico",
   VENTILACION_DOMICILIARIA: "ventilación mecánica domiciliaria",
   AGITACION_PSICOMOTORA: "agitación psicomotora",
+  CRITERIO_CLINICO: "criterio clínico / indicación médica",
   OTRO: "otro motivo"
 };
 

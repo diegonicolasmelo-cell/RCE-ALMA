@@ -181,6 +181,8 @@ export function hitoCorto(ev: EventoClinico, eventos: readonly EventoClinico[]):
       return "PCR";
     case "EVENTO_CENTINELA":
       return "Evento adverso";
+    case "EVENTO_LIBRE":
+      return ev.descripcion;
     default:
       return "";
   }

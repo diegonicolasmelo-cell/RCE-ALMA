@@ -480,7 +480,7 @@ input.casilla{width:3.9em;min-height:42px;text-align:center;font:600 16px var(--
 .fondo-flotante.centrado .panel-flotante{max-width:760px;max-height:92vh;border-radius:16px;box-shadow:0 12px 40px rgba(15,26,36,.3)}
 .fondo-flotante.centrado .pf-cuerpo>.card{border:0;box-shadow:none;background:none;padding:0}
 /* Con una ventana abierta, el teclado propio va encima y la ventana se acomoda sobre el. */
-body:has(.fondo-flotante) .kb{z-index:60}
+body:has(.fondo-flotante) .kb,body:has(.ev-capa) .kb{z-index:60}
 body:has(.kb:not([hidden])) .fondo-flotante{padding-bottom:250px}
 body:has(.kb:not([hidden])) .fondo-flotante .panel-flotante{max-height:calc(100vh - 262px)}
 /* La fila recien agregada se resalta y se desvanece: el ojo la encuentra sin mover la hoja. */
@@ -1193,3 +1193,44 @@ body.dictando .cel-pie{visibility:hidden}
 .pk-mini{width:56px;height:56px;flex:none}
 .pk-tit{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--accent)}
 .pk-florido{margin:0;font-weight:700;color:var(--accent)}
+
+/* Eventos en lista (Diego, 22-nov-2026): un renglon por evento, busqueda arriba y el detalle a
+   pantalla completa que entra deslizandose desde la derecha y sale igual. */
+.ev-buscar{display:flex;align-items:center;gap:8px;margin:2px 0 6px;padding:0 12px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);color:var(--muted)}
+.ev-buscar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ev-buscar input{flex:1;min-width:0;border:0;background:none;font:16px var(--font-ui);color:var(--ink);outline:none;padding:0}
+.ev-grupo h3{margin:12px 0 2px}
+.evgrid.ev-lista{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.ev-fila{-webkit-tap-highlight-color:transparent;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;width:100%;min-height:50px;padding:10px 34px 10px 14px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:500 15px var(--font-ui);text-align:left;cursor:pointer;position:relative}
+.ev-lista .ev-fila:first-child{border-top:0}
+.ev-fila::after{content:"\203A";position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:22px;color:var(--muted)}
+.ev-fila:active{background:var(--accent-soft)}
+.ev-fila:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.ev-fila:disabled{opacity:.55;cursor:default}
+.ev-fila > .small{flex-basis:100%;padding-left:30px}
+.ev-lista .ev-fila .ev-ico{display:block;margin:0;color:var(--accent);flex:0 0 18px}
+.ev-lista .ev-fila.crit,.ev-lista .ev-fila.crit .ev-ico{color:var(--crit-ink)}
+.ev-fila.pve-ev{font-weight:700}
+.ev-sin{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.ev-sin .btn{display:flex;align-items:center;gap:8px;justify-content:center;min-height:46px}
+.ev-capa{position:fixed;inset:0;z-index:50;display:flex;justify-content:center;background:rgba(15,26,36,.18)}
+.ev-pantalla{width:100%;max-width:520px;height:100%;display:flex;flex-direction:column;background:var(--panel);box-shadow:-8px 0 24px rgba(15,26,36,.12)}
+.ev-cabeza{display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) 8px max(6px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);font-size:16px}
+.ev-cabeza b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-volver{display:flex;align-items:center;gap:0;min-height:44px;padding:0 8px 0 2px;border:0;border-radius:10px;background:none;color:var(--accent);font:600 15px var(--font-ui);cursor:pointer;flex-shrink:0}
+.ev-volver:focus-visible{outline:2px solid var(--accent)}
+.ev-pantalla .pie-inf{display:flex;gap:8px;padding:10px max(14px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));border-top:1px solid var(--line);background:var(--panel)}
+.ev-pantalla .pie-inf .btn{min-height:48px;font-size:15px;flex:1}
+.ev-pantalla textarea{width:100%;font:16px var(--font-ui);padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);resize:vertical}
+.ev-hora{font:600 18px var(--font-data);max-width:140px}
+@keyframes ev-entra{from{transform:translateX(100%)}to{transform:none}}
+@keyframes ev-sale{from{transform:none}to{transform:translateX(100%)}}
+@keyframes ev-fondo-entra{from{background:rgba(15,26,36,0)}}
+@keyframes ev-fondo-sale{to{background:rgba(15,26,36,0)}}
+@media (prefers-reduced-motion:no-preference){
+  .ev-capa{animation:ev-fondo-entra .26s ease-out}
+  .ev-pantalla{animation:ev-entra .28s cubic-bezier(.32,.72,0,1)}
+  .ev-capa.sale{animation:ev-fondo-sale .22s ease-in forwards}
+  .ev-capa.sale .ev-pantalla{animation:ev-sale .22s ease-in forwards}
+}
+@supports (height:100dvh){.ev-capa{height:100dvh}}

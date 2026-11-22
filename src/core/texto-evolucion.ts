@@ -462,6 +462,9 @@ export function narrarEventos(eventosPeriodo: readonly EventoClinico[], todosEve
       case "EVENTO_CENTINELA":
         out.push(oracion(`Evento adverso ${hrs(e)}: ${e.descripcion}`));
         break;
+      case "EVENTO_LIBRE":
+        out.push(oracion(`${e.descripcion} ${hrs(e)}`));
+        break;
       case "ASISTENCIA_FBC":
         out.push(oracion(`Se asiste fibrobroncoscopía ${hrs(e)}`));
         break;

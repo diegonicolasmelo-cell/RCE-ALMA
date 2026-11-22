@@ -145,6 +145,8 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "ASISTENCIA_PROCEDIMIENTO":
     case "ASISTENCIA_FBC": return "ASISTENCIA";
     case "EVALUACION_PUNTUAL": return "EVALUACION";
+    // Evento escrito a mano (22-nov-2026): llega al RCE como nota con su texto y su hora.
+    case "EVENTO_LIBRE": return "NOTA";
     default: return null;
   }
 }
@@ -164,7 +166,7 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     hora: e.hora, dispositivo: simple("dispositivo"), sinPve: simple("sinPve"), accidental: simple("accidental"),
     exitosa: simple("exitosa"), realizada: simple("realizada"), nivel: simple("nivel"), muestra: simple("muestra"),
     destino: simple("destino"), escala: simple("escala"), total: simple("total"), razon: simple("razon"), motivo: simple("motivo"),
-    desde: simple("desde"), hasta: simple("hasta")
+    desde: simple("desde"), hasta: simple("hasta"), descripcion: simple("descripcion")
   });
   return { id: e.id, tipo: "EVENTO", cama, horaToma: horaLocal(real), autor: e.rutAutor, evento, datos };
 }

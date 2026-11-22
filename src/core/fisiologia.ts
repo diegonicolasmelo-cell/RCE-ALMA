@@ -129,6 +129,17 @@ export function relacionIE(ti: Medicion, frTotal: Medicion): string | null {
   return espiracion > 0 ? `1:${redondear(espiracion / ti, 1)}` : null;
 }
 
+/**
+ * I:E aproximada en ACVC cuando no se anotó el TI: TI = Vt / flujo (flujo cuadrado), p. ej. «≈ 1:2.3».
+ * Con flujo desacelerado el TI real es mayor: por eso lleva «≈» (pedido de Álvaro, 22-nov-2026).
+ */
+export function relacionIEPorFlujo(v: { modalidad: string; vtProgramado: Medicion; flujo: Medicion; frTotal: Medicion; frProgramada: Medicion }): string | null {
+  if (v.modalidad !== "ACVC" || v.vtProgramado === null || v.flujo === null || v.vtProgramado <= 0 || v.flujo <= 0) return null;
+  const ti = v.vtProgramado / 1000 / (v.flujo / 60);
+  const r = relacionIE(ti, v.frTotal ?? v.frProgramada);
+  return r ? `≈ ${r}` : null;
+}
+
 /** Indice de Tobin (RSBI) = FR / Vt en litros. SOLO modalidades espontaneas. */
 export function indiceTobin(frTotal: Medicion, vtEspirado: Medicion): number | null {
   if (frTotal === null || vtEspirado === null || frTotal <= 0 || vtEspirado <= 0) return null;
@@ -239,7 +250,7 @@ export function calcularDerivados(control: Control, pbw: number): DerivadosContr
     // Se anota el volumen minuto espirado que muestra el ventilador; no se calcula.
     volumenMinuto: esVMI ? v.volMinuto : null,
     // Manda la I:E anotada (la que muestra el ventilador); si no se anoto, se calcula con TI y FR.
-    relacionIE: controlada ? (v.ie !== undefined && v.ie !== null && v.ie > 0 ? `1:${v.ie}` : relacionIE(v.ti, v.frTotal)) : null,
+    relacionIE: controlada ? (v.ie !== undefined && v.ie !== null && v.ie > 0 ? `1:${v.ie}` : relacionIE(v.ti, v.frTotal) ?? relacionIEPorFlujo(v)) : null,
     peepTotal,
     drivingPressure,
     origenDriving,

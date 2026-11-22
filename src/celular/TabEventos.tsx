@@ -51,6 +51,8 @@ interface Item {
   /** Por que esta deshabilitado (se muestra bajo el boton). */
   ayuda?: string;
   campos?: readonly CampoForm[];
+  /** No va en la lista: se llega desde «Extubación» o buscandolo. */
+  oculto?: boolean;
   /** El texto libre "Qué pasó" va como comentario del evento. */
   comentarioDe?: string;
   crear: (v: Record<string, string>, base: Base) => EventoClinico;
@@ -71,8 +73,9 @@ const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "accext", "decan"];
  * «cta» o «traqueo» lo encuentra aunque el boton diga otra cosa. Sin tildes ni mayusculas.
  */
 const SINONIMOS: Readonly<Record<string, string>> = {
-  extub: "extubar extubacion pve prueba ventilacion espontanea destete weaning",
-  pve: "pve prueba ventilacion espontanea extubar extubacion destete weaning",
+  extubar: "extubar extubacion retiro del tubo protocolo pve autoextubacion accidental",
+  extub: "extubar extubacion fuera de protocolo sin pve criterio clinico indicacion medica",
+  pve: "pve prueba ventilacion espontanea destete weaning con protocolo",
   reint: "intubar intubacion reintubar tot tubo",
   traq: "tqt traqueo traqueostomia",
   ajuste: "ajuste fijacion cm arcada tubo desplazamiento",
@@ -166,18 +169,21 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     {
       titulo: "Vía aérea",
       items: [
-        // Un solo boton de extubacion: fuera de protocolo antes de las 24 h de VM, PVE despues.
-        boton?.tipo === "FUERA_PROTOCOLO"
-          ? {
-              k: "extub", texto: "Extubación fuera de protocolo", req: "tet",
-              campos: [
-                { id: "mot", etiqueta: "Por qué sin PVE", valor: "MENOS_24H_VM", opciones: MOTIVOS_SIN_PVE },
-                { id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }
-              ],
-              crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior, sinPve: (v["mot"] ?? "OTRO") as MotivoExtubacionSinPve })
-            }
-          // Sin PVE posible igual se abre: ahi se ve por que y se puede extubar fuera de protocolo.
-          : { k: "pve", texto: pve ? pve.texto : "PVE", req: "tet", ...(pve ? {} : { ayuda: `${motivoSinPve(ep.viaAereaActual, ultimoPve, eventos) ?? ""} Si no corresponde PVE, ábrela para extubar fuera de protocolo.`.trim() }), crear: (_v, b) => b as never },
+        // Extubacion (Diego, 22-nov-2026): una puerta con las cuatro vias del retiro del tubo: con
+        // protocolo (abre la PVE), fuera de protocolo (con su motivo), autoextubacion y accidental.
+        // «Weaning» no se usa: destetar del ventilador incluye tambien la TQT.
+        { k: "extubar", texto: "Extubación", req: "tet", crear: (_v, b) => b as never },
+        {
+          k: "extub", texto: "Extubación fuera de protocolo", req: "tet", oculto: true,
+          campos: [
+            // Antes de 24 h de VM el motivo viene marcado; despues se elige (no se asume nada).
+            { id: "mot", etiqueta: "¿Por qué fuera de protocolo (sin PVE)?", valor: boton?.tipo === "FUERA_PROTOCOLO" ? "MENOS_24H_VM" : "", opciones: [{ valor: "", texto: "— elegir —" }, ...MOTIVOS_SIN_PVE] },
+            { id: "disp", etiqueta: "Queda en", opciones: DISPOSITIVOS }
+          ],
+          crear: (v, b) => ({ ...b, tipo: "EXTUBACION_PROGRAMADA", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior, sinPve: (v["mot"] || "OTRO") as MotivoExtubacionSinPve })
+        },
+        // La PVE de cada dia, aunque no se extube. Sin PVE posible igual se abre: ahi se ve por que.
+        { k: "pve", texto: pve ? pve.texto : "PVE", req: "tet", ...(pve ? {} : { ayuda: `${motivoSinPve(ep.viaAereaActual, ultimoPve, eventos) ?? ""} Si no corresponde PVE, ábrela para extubar fuera de protocolo.`.trim() }), crear: (_v, b) => b as never },
         { k: "reint", texto: yaRetiradaVia ? "Reintubación" : "Intubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "" }) },
         { k: "traq", texto: "Traqueostomía", req: "tet", campos: [{ id: "cal", etiqueta: "Calibre", num: true }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
         { k: "ajuste", texto: "Ajustar posición del tubo", req: "tet", campos: [{ id: "cm", etiqueta: "Centímetros en la arcada dental", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: [{ valor: "DESPLAZAMIENTO_SUPERFICIAL", texto: "Desplazamiento superficial" }, { valor: "CONTROL_RADIOLOGICO", texto: "Control radiológico" }] }], crear: (v, b) => ({ ...b, tipo: "AJUSTE_TUBO", fijacionCm: v["cm"] ?? "", motivo: (v["mot"] ?? "DESPLAZAMIENTO_SUPERFICIAL") as MotivoAjusteTubo }) },
@@ -324,6 +330,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     if (it.k === "ktm" && (v["ims"] ?? "").trim() !== "" && !numOk(v["ims"], 0, 10)) return avisar("El IMS va de 0 a 10.");
     if (it.k === "ktmNo" && !v["mot"]) return avisar("Elige el motivo por el que no se hizo.");
     if (it.k === "pveNo" && !v["raz"]) return avisar("Elige por qué no se realizó la PVE.");
+    if (it.k === "extub" && !v["mot"]) return avisar("Elige por qué fue fuera de protocolo.");
     if (it.k === "libre") {
       const txt = (v["txt"] ?? "").trim();
       if (txt.length < 3) return avisar("Escribe qué pasó.");
@@ -414,7 +421,14 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       return;
     }
     if (it.k === "pve") {
+      setAbierto(null);
       irA("pve", ep.id);
+      return;
+    }
+    if (it.k === "extubar") {
+      clearTimeout(salida.current);
+      setSaliendo(false);
+      setAbierto("extubar");
       return;
     }
     // Con campos, o si puede llevar control (se elige con o sin control), se abre su tarjeta.
@@ -451,7 +465,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </div>
       )}
 
-      {item && (item.campos || CON_CONTROL.includes(item.k)) && createPortal(
+      {item && (item.campos || CON_CONTROL.includes(item.k) || item.k === "extubar") && createPortal(
         // Pantalla completa que entra deslizandose desde la derecha y sale igual (Diego, 22-nov-2026:
         // «que no aparezca de golpe, se ve duro»). «‹ Eventos» y el boton atras del telefono vuelven.
         <div className={`ev-capa${saliendo ? " sale" : ""}`}>
@@ -460,6 +474,24 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
               <button type="button" className="ev-volver" aria-label="Volver a eventos" onClick={cerrar}><ChevronLeft size={22} aria-hidden />Eventos</button>
               <b style={item.peligro ? { color: "var(--crit-ink)" } : undefined}>{item.texto}</b>
             </header>
+            {item.k === "extubar" ? (
+              <div className="pf-cuerpo">
+                <p className="small muted">¿Cómo se retiró el tubo?</p>
+                <div className="evgrid ev-lista">
+                  {[
+                    { k: "pve", t: "Extubación con protocolo", d: "Abre la PVE: si la supera, se extuba desde ahí." },
+                    { k: "extub", t: "Extubación fuera de protocolo", d: "Sin PVE: se anota el motivo." },
+                    { k: "autoext", t: "Autoextubación", d: "Qué pasó, con qué queda y aviso al PC.", crit: true },
+                    { k: "accext", t: "Extubación accidental", d: "Qué pasó, con qué queda y aviso al PC.", crit: true }
+                  ].map((x) => (
+                    <button key={x.k} type="button" className={`ev-fila${x.crit ? " crit" : ""}`} onClick={() => { const it = todos.find((y) => y.k === x.k); if (it) clic(it); }}>
+                      {x.t}
+                      <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{x.d}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
             <div className="pf-cuerpo">
               {(item.campos ?? []).map((c) => (
                 <div className="f" key={c.id}>
@@ -481,7 +513,8 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
               {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
               {item.k === "egreso" && <p className="small muted">El paciente sale de la lista y la cama queda libre. Lo clínico se conserva para las estadísticas; el nombre y el RUT se borran en el PC.</p>}
             </div>
-            {CON_CONTROL.includes(item.k) ? (
+            )}
+            {item.k === "extubar" ? null : CON_CONTROL.includes(item.k) ? (
               <div className="pie-inf" style={{ flexDirection: "column" }}>
                 <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar y monitorizar ›</button>
                 <button type="button" className="btn" onClick={() => void registrar(item, valores, false)}>{item.k === "libre" ? "Registrar solo con la hora" : "Registrar sin control"}</button>
@@ -505,7 +538,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       {(() => {
         const q = sinTilde(busca);
         const coincide = (it: Item): boolean => !q || sinTilde(`${it.texto} ${SINONIMOS[it.k] ?? ""} ${it.ayuda ?? ""}`).includes(q);
-        const visibles = grupos.map((g) => ({ ...g, items: g.items.filter((it) => aplica(it) && (it.k !== "libre" || !q) && coincide(it)) })).filter((g) => g.items.length);
+        const visibles = grupos.map((g) => ({ ...g, items: g.items.filter((it) => aplica(it) && (it.k !== "libre" || !q) && (!it.oculto || q) && coincide(it)) })).filter((g) => g.items.length);
         return (
           <>
             {visibles.map((g) => (

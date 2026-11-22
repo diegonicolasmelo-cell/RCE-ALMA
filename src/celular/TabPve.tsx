@@ -46,7 +46,7 @@ const SECRECIONES = ["Escasas", "Moderadas", "Abundantes"];
 const MANEJO = ["Maneja", "No maneja"];
 const QUEDA: readonly DispositivoPosterior[] = ["CNAF", "VMNI", "O2_CONVENCIONAL", "AIRE_AMBIENTE"];
 /** Con mas de 24 h de VM: los motivos para no hacer PVE (el de «menos de 24 h» va desde la cama). */
-const MOTIVOS_SIN_PVE: readonly MotivoExtubacionSinPve[] = ["AET", "VENTILACION_DOMICILIARIA", "AGITACION_PSICOMOTORA", "OTRO"];
+const MOTIVOS_SIN_PVE: readonly MotivoExtubacionSinPve[] = ["AET", "VENTILACION_DOMICILIARIA", "AGITACION_PSICOMOTORA", "CRITERIO_CLINICO", "OTRO"];
 
 /** "Se guarda: hoy 09:55 (10-11)". */
 function cuando(hora: string): string {

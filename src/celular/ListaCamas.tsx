@@ -172,7 +172,7 @@ export function ListaCamas() {
             </header>
             <div className="small ink2">
               {textoViaCama(ep, h)}
-              {ep.viaAereaActual === "TET" && h && h.horas >= 48 && <> · <b style={{ color: "var(--crit-ink)" }}>NAVM ≥ 48 h</b></>}
+              {/* Sin etiqueta NAVM (Diego, 22-nov-2026): marcaba a todo ventilado > 48 h y confundía; la NAVM es un diagnóstico, no un tiempo. */}
             </div>
             {/* La edad y el diagnostico REM son para la estadistica: no se muestran, solo se avisa si faltan. */}
             {(ep.rangoEdad === null || ep.categoriaRem === null) && (

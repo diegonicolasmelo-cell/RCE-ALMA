@@ -49,6 +49,14 @@ describe("indicadores con las definiciones del RCE", () => {
     expect([i.fracaso48, i.fracaso48Pct]).toEqual([1, 100]);
   });
 
+  it("interno: controles post extubación anotados a tiempo de los que ya vencieron (Diego, 22-nov-2026)", () => {
+    const extub = ev({ episodioId: "ep-1", tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", registradoEn: hace(20) });
+    const r = (momento: string, h: number) => ev({ episodioId: "ep-1", tipo: "REEVAL_POST_EXTUB", momento, fc: 80, pam: 80, gcs: 15, fr: 18, fio2: 30, spo2: 96, trabajoResp: "", manejoSecreciones: "", registradoEn: hace(h) } as never);
+    const eventos = [extub, r("EXTUB", 19.9), r("30MIN", 19.4)];
+    const i = calcularIndicadores({ episodios: [ep], controles: new Map([["ep-1", controles]]), eventos: new Map([["ep-1", eventos]]) }, MES, AHORA);
+    expect([i.postExtubATiempo, i.postExtubEsperados]).toEqual([2, 4]);
+  });
+
   it("una reintubación a las 49 h no es fracaso; fuera de protocolo y su motivo", () => {
     const eventos = [
       ev({ episodioId: "ep-1", tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", sinPve: "MENOS_24H_VM", registradoEn: hace(100) }),

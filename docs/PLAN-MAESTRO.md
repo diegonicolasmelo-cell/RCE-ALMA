@@ -875,7 +875,10 @@ sábana desde la tarjeta de cualquier cama (21-nov).
   ahora **solo lo ve Diego**: columna G `museo` de la hoja «usuarios» (TRUE en su fila). El correo no va en el código
   (repositorio público). Para abrirlo al equipo: TRUE en las demás filas, sin publicar nada.
 - **Post extubación (22-nov-2026)**: cada control con su plazo (inmediato hasta los 30 min; 30 hasta 60; 60 hasta 120;
-  120 hasta las 6 h; se puede anotar desde 5 min antes). Pasado el plazo queda **desierto**: deja de pedirse y no se anota
+  120 hasta las 6 h; se puede anotar desde 5 min antes). Pasado el plazo deja de pedirse y no se anota
   retroactivo. **Se eliminó el control de 48 h.** La vigilancia se cierra al terminar el turno en que se cumplen las 48 h.
   **Fracaso de extubación oficial = reintubación ≤ 24 h** («24 es la oficial para considerar egresar»); a 48 h se cuenta
   aparte, interno. 🔴 El tablero del RCE (`svc_indicadores.gs`) sigue con 48 h: hay que alinearlo cuando se integren cifras.
+  · Ajuste del mismo día: en pantalla **no se marca «desierto» ni «no se anotó»**: el control vencido simplemente deja de
+    mostrarse. Cuenta solo en la estadística interna («controles post extub. a tiempo: X de Y», en Indicadores).
+  · Para el RCE: el tablero debe mostrar el fracaso a **24 h y a 48 h** (los dos).

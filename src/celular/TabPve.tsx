@@ -232,9 +232,9 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
       irAFalla();
       return;
     }
-    // Fuera de plazo no se anota (nada retroactivo): el control queda desierto.
+    // Fuera de plazo no se anota (nada retroactivo).
     const mom = flujo.bloque?.momentos.find((m) => m.id === reeval);
-    if (mom && mom.estado !== "TOCA") return setMsg(mom.estado === "DESIERTO" ? "Pasó el plazo de este control: quedó desierto y no se puede anotar después." : "Este control todavía no toca.");
+    if (mom && mom.estado !== "TOCA") return setMsg(mom.estado === "PROXIMO" ? "Este control todavía no toca." : "Ya pasó la hora de este control.");
     if (["fc", "fr", "spo2"].some((k) => num(f[k]) === null)) return setMsg("Falta: FC, FR y SpO₂.");
     if (!(await ev({
       tipo: "REEVAL_POST_EXTUB", momento: reeval, fc: num(f["fc"]), pam: num(f["pam"]), gcs: null, glasgow: gcsTexto(f["gcsO"], f["gcsV"], f["gcsM"], false) || undefined,
@@ -439,11 +439,11 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
           <div className="crono">Extubado a las <b>{flujo.bloque.horaExtubacion}</b></div>
           <section aria-label="Controles post extubación">
             <h2>Controles post extubación</h2>
-            {flujo.bloque.momentos.map((m) => (
-              <Fila key={m.id} etiqueta={m.id === "EXTUB" ? "Inmediato" : m.etiqueta} ayuda={m.estado === "HECHO" ? "registrado" : m.estado === "DESIERTO" ? `no se anotó a tiempo (plazo hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)})` : m.id === "EXTUB" ? `al extubar · hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)}` : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)} · hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
-                {/* Plazos (Diego, 22-nov-2026): solo se anota dentro de su plazo; pasado, queda desierto y no se anota retroactivo. */}
+            {/* Plazos (Diego, 22-nov-2026): cada control se anota solo dentro de su plazo. El que no se anoto a
+                tiempo no se muestra aqui (Diego: «no pongas desierto»): queda solo en la estadistica interna. */}
+            {flujo.bloque.momentos.filter((m) => m.estado !== "DESIERTO").map((m) => (
+              <Fila key={m.id} etiqueta={m.id === "EXTUB" ? "Inmediato" : m.etiqueta} ayuda={m.estado === "HECHO" ? "registrado" : m.id === "EXTUB" ? `al extubar · hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)}` : `toca ${new Date(m.venceEn).toTimeString().slice(0, 5)} · hasta ${new Date(m.hastaEn).toTimeString().slice(0, 5)}${m.minutosFaltantes > 0 ? ` (en ${m.minutosFaltantes >= 120 ? `${Math.round(m.minutosFaltantes / 60)} h` : `${m.minutosFaltantes} min`})` : ""}`}>
                 {m.estado === "HECHO" ? <span className="pill good">Hecho</span>
-                  : m.estado === "DESIERTO" ? <span className="pill">Desierto</span>
                   : <button type="button" className={m.estado === "TOCA" ? "btn primary sm" : "btn sm"} disabled={m.estado !== "TOCA"} onClick={() => { limpiar(); setReeval(m.id); }}>Registrar</button>}
               </Fila>
             ))}

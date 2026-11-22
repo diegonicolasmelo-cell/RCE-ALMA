@@ -65,8 +65,7 @@ export function fichaDe(ep: Episodio, controles: readonly Control[], eventos: re
   const flujo = estadoFlujoPve(eventos, ahora);
   if (flujo.bloque) {
     const hechos = flujo.bloque.momentos.filter((m) => m.registrado).map((m) => (m.id === "EXTUB" ? "inmediato" : m.etiqueta));
-    const desiertos = flujo.bloque.momentos.filter((m) => m.estado === "DESIERTO").map((m) => (m.id === "EXTUB" ? "inmediato" : m.etiqueta));
-    evs.push(`Post extubación: ${hechos.length ? hechos.join(" · ") + " ✓" : "sin controles aún"}${desiertos.length ? ` · desierto: ${desiertos.join(" · ")}` : ""}`);
+    evs.push(`Post extubación: ${hechos.length ? hechos.join(" · ") + " ✓" : "sin controles aún"}`);
   }
   if (evs.length === 0) evs.push("Sin eventos en el turno");
 

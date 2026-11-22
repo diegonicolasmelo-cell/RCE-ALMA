@@ -42,7 +42,7 @@ export function Indicadores({ datos, ahora }: { datos: DatosUnidad; ahora: Date 
   const kpis: { t: string; v: string; u?: string; f: string; meta: string; estado: Estado }[] = [
     {
       t: "Fracaso de extubación (≤ 24 h)", v: num(i.fracasoPct), u: "%",
-      f: `${i.fracaso} de ${i.extubaciones} extubaciones programadas · a 48 h (interno): ${i.fracaso48}${i.fracaso48Pct !== null ? ` (${num(i.fracaso48Pct)} %)` : ""}`,
+      f: `${i.fracaso} de ${i.extubaciones} extubaciones programadas · a 48 h (interno): ${i.fracaso48}${i.fracaso48Pct !== null ? ` (${num(i.fracaso48Pct)} %)` : ""}${i.postExtubEsperados ? ` · controles post extub. a tiempo: ${i.postExtubATiempo} de ${i.postExtubEsperados}` : ""}`,
       meta: `meta < ${META_FRACASO_PCT} %`, estado: i.fracasoPct === null ? "neu" : i.fracasoPct < META_FRACASO_PCT ? "ok" : "mal"
     },
     {

@@ -17,7 +17,7 @@
 
 import { ETIQUETA_MODALIDAD, ETIQUETA_MOTIVO_SIN_PVE, GRUPO_MODALIDAD, NIVEL_BIPEDESTACION } from "./catalogos";
 import { esReintubacion } from "./eventos";
-import { CRITERIOS_PVE } from "./pve";
+import { CRITERIOS_PVE, bloquesPostExtub } from "./pve";
 import { HORA_INICIO_DIA, HORA_INICIO_NOCHE, turnoDe } from "./turnos";
 import type { MotivoEgreso } from "./catalogos";
 import type { Control, Episodio, EventoClinico, ValidacionApk } from "./tipos";
@@ -322,6 +322,9 @@ export interface Indicadores {
   /** Indicador interno: reintubacion dentro de 48 h. */
   readonly fracaso48: number;
   readonly fracaso48Pct: number | null;
+  /** Interno: controles post extubacion cuyo plazo ya paso, y cuantos se anotaron a tiempo. */
+  readonly postExtubEsperados: number;
+  readonly postExtubATiempo: number;
   readonly autoextubaciones: number;
   /** De ellas, accidentales (las extubo el equipo). */
   readonly accidentales: number;
@@ -510,6 +513,17 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
       destinos.set(dst, (destinos.get(dst) ?? 0) + 1);
     }
   }
+  // Controles post extubacion a tiempo (interno; en pantalla no se marca lo que falto, Diego 22-nov-2026).
+  let postEsp = 0, postOk = 0;
+  for (const ep of d.episodios) {
+    for (const b of bloquesPostExtub(d.eventos.get(ep.id) ?? [], ahora)) {
+      if (!dentro(b.extubadoEn, p) || b.reintubado) continue;
+      for (const m of b.momentos) {
+        if (m.estado === "HECHO" || m.estado === "DESIERTO") postEsp += 1;
+        if (m.estado === "HECHO") postOk += 1;
+      }
+    }
+  }
   const fracaso = precoz;
   const fracaso48 = precoz + tardio;
   return {
@@ -523,6 +537,8 @@ export function calcularIndicadores(d: DatosEstadistica, p: Periodo, ahora: Date
     fracasoPct: pct(fracaso, extubaciones),
     fracaso48,
     fracaso48Pct: pct(fracaso48, extubaciones),
+    postExtubEsperados: postEsp,
+    postExtubATiempo: postOk,
     autoextubaciones: autoext,
     accidentales,
     autoextPor100Vm: pct(autoext, diasVm),

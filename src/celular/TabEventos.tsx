@@ -1,6 +1,7 @@
-import { X, ArrowLeftRight, Ban, CircleAlert, CircleSlash, Footprints, Users, Wind, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
+import { ChevronLeft, PenLine, Search, ArrowLeftRight, Ban, CircleAlert, CircleSlash, Footprints, Users, Wind, LogOut, CircleMinus, Eye, Filter, HandHelping, HeartPulse, Repeat, RotateCcw, RotateCw, Ruler, ScanLine, Scissors, ShieldAlert, TestTube, Timer, TriangleAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   DESTINOS_IMAGEN,
   MUESTRAS_CULTIVO,
@@ -31,13 +32,15 @@ import { useConsulta } from "../app/hooks";
 import { Pildora } from "./componentes";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
+import { horaDe } from "../app/util";
 import { casillaNumerica } from "./TecladoPropio";
 import { CorregirVia } from "./CorregirVia";
+import { useAtras } from "./Inicio";
 import { iniciarCodigoPcr } from "./CodigoPcr";
 
 type Base = ReturnType<typeof baseEvento>;
 interface Opcion { valor: string; texto: string }
-interface CampoForm { id: string; etiqueta: string; opciones?: readonly Opcion[]; valor?: string; /** Casilla numerica: usa el teclado propio. */ num?: boolean }
+interface CampoForm { id: string; etiqueta: string; opciones?: readonly Opcion[]; valor?: string; /** Casilla numerica: usa el teclado propio. */ num?: boolean; /** Hora HH:MM (el reloj del telefono). */ hora?: boolean; /** Texto largo (varias lineas). */ largo?: boolean }
 interface Item {
   k: string;
   texto: string;
@@ -63,8 +66,54 @@ const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ val
 
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
 const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "accext", "decan"];
+/**
+ * Como se dice cada evento en la unidad, para la busqueda (Diego, 22-nov-2026): quien escribe «prono»,
+ * «cta» o «traqueo» lo encuentra aunque el boton diga otra cosa. Sin tildes ni mayusculas.
+ */
+const SINONIMOS: Readonly<Record<string, string>> = {
+  extub: "extubar extubacion pve prueba ventilacion espontanea destete weaning",
+  pve: "pve prueba ventilacion espontanea extubar extubacion destete weaning",
+  reint: "intubar intubacion reintubar tot tubo",
+  traq: "tqt traqueo traqueostomia",
+  ajuste: "ajuste fijacion cm arcada tubo desplazamiento",
+  cambioTubo: "recambio tot tubo cuff fuga",
+  cambioCanula: "recambio tqt canula cuff",
+  decan: "decanular decanulacion canula tqt",
+  autoext: "autoextubacion autoext se extubo",
+  accext: "extubacion accidental",
+  pveNo: "pve no realizada sin pve",
+  traslado: "traslado cambio de cama mover",
+  egreso: "alta egreso salida fallece",
+  ktm: "ktm terapia fisica motora movilizacion sedestacion bipedestacion marcha ems",
+  ktmNo: "ktm no realizada terapia fisica",
+  imt: "imt threshold entrenamiento inspiratorio",
+  edu: "educacion familia cuidador",
+  prono: "prono pronar pronacion decubito prono",
+  supinar: "supino supinar supinacion",
+  fbc: "fbc fibrobroncoscopia broncoscopia lavado",
+  cult: "cultivo cta aspirado traqueal hemocultivo urocultivo muestra",
+  img: "imagen scanner tac resonancia rx traslado",
+  asist: "asistencia procedimiento cvc linea arterial pleurostomia",
+  hme: "hme filtro nariz artificial",
+  trach: "trachcare trach care succion cerrada",
+  hepa: "hepa filtro",
+  pcr: "paro pcr rcp reanimacion",
+  cent: "centinela adverso caida error"
+};
+const sinTilde = (t: string): string => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+/** Un RUT en el texto libre no se guarda: el evento viaja sin identidad. */
+const PARECE_RUT = /\b\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]\b/;
+/** «HH:MM» → ese momento de hoy; si todavia no llega, de ayer (se anota despues de que paso). */
+function momentoDeHora(hhmm: string, ahora: Date): Date | null {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hhmm);
+  if (!m) return null;
+  const d = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), Number(m[1]), Number(m[2]));
+  if (d.getTime() > ahora.getTime() + 60_000) d.setDate(d.getDate() - 1);
+  return d;
+}
+
 /** Eventos que se registran y siguen con su control (todos menos filtros, TrachCare, cama y PVE). */
-const CON_CONTROL = ["reint", "traq", "autoext", "accext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent"];
+const CON_CONTROL = ["reint", "traq", "autoext", "accext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent", "libre"];
 
 const MOTIVOS_SIN_PVE: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => ({
   valor: k,
@@ -86,6 +135,20 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState<string | null>(null);
   const [valores, setValores] = useState<Record<string, string>>({});
+  const [busca, setBusca] = useState("");
+  const [saliendo, setSaliendo] = useState(false);
+  const salida = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Cierra la pantalla del evento deslizandola hacia la derecha (sin animacion si el telefono la reduce). */
+  const cerrar = (): void => {
+    const k = abierto;
+    if (!k) return;
+    const sinMovimiento = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setSaliendo(true);
+    clearTimeout(salida.current);
+    salida.current = setTimeout(() => { setAbierto((a) => (a === k ? null : a)); setSaliendo(false); }, sinMovimiento ? 0 : 220);
+  };
+  useEffect(() => () => clearTimeout(salida.current), []);
+  useAtras(abierto !== null, cerrar);
 
   const prono = estadoProno(eventos, ahora);
   const irA = useApp((s) => s.irA);
@@ -203,6 +266,21 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       ]
     },
     {
+      // Lo que no esta en la lista (Diego, 22-nov-2026): «Electroencefalograma», «Desplazamiento de
+      // canula»… Con su hora; se registra solo o con su control. No suma a ninguna cifra.
+      titulo: "Otro",
+      items: [
+        {
+          k: "libre", texto: "Otro evento (escribirlo)",
+          campos: [{ id: "txt", etiqueta: "Qué pasó", largo: true }, { id: "hora", etiqueta: "Hora en que ocurrió", hora: true, valor: horaDe(ahora) }],
+          crear: (v, b) => {
+            const d = momentoDeHora(v["hora"] ?? "", new Date(b.registradoEn)) ?? new Date(b.registradoEn);
+            return { ...b, tipo: "EVENTO_LIBRE", descripcion: (v["txt"] ?? "").trim(), hora: horaDe(d), realizadaEn: d.toISOString() };
+          }
+        }
+      ]
+    },
+    {
       titulo: "Críticos",
       items: [
         { k: "pcr", texto: "Paro cardiorrespiratorio", peligro: true, campos: [{ id: "min", etiqueta: "Duración de la reanimación (min)", num: true }, { id: "txt", etiqueta: "Qué pasó (breve)" }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "PCR", duracionReanimacionMin: Number(v["min"]?.replace(",", ".")) || 0 }) },
@@ -246,6 +324,13 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     if (it.k === "ktm" && (v["ims"] ?? "").trim() !== "" && !numOk(v["ims"], 0, 10)) return avisar("El IMS va de 0 a 10.");
     if (it.k === "ktmNo" && !v["mot"]) return avisar("Elige el motivo por el que no se hizo.");
     if (it.k === "pveNo" && !v["raz"]) return avisar("Elige por qué no se realizó la PVE.");
+    if (it.k === "libre") {
+      const txt = (v["txt"] ?? "").trim();
+      if (txt.length < 3) return avisar("Escribe qué pasó.");
+      if (txt.length > 140) return avisar("Que sea breve: hasta 140 letras.");
+      if (PARECE_RUT.test(txt)) return avisar("Sin RUT ni nombres en el evento: quítalo y vuelve a registrar.");
+      if (!momentoDeHora(v["hora"] ?? "", new Date())) return avisar("Revisa la hora (HH:MM).");
+    }
     if (it.k === "egreso") {
       const destino = v["dest"] ?? "";
       const motivo = motivoDeDestino(destino);
@@ -268,12 +353,14 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     const creado = it.crear(v, baseEvento(ep, rutAutor, ahoraReal, comentario));
     const ev = (conControl || !CON_CONTROL.includes(it.k) ? creado : { ...creado, sinControl: true }) as EventoClinico;
     await repo.registrarEvento(ev);
-    setAbierto(null);
-    setValores({});
+    cerrar();
+    setBusca("");
     // Autoextubacion con reintubacion inmediata: se sigue por el mismo camino de la intubacion.
     if ((it.k === "autoext" || it.k === "accext") && v["disp"] === "REINTUBACION_INMEDIATA") {
       const reint = todos.find((x) => x.k === "reint");
       if (reint?.campos) {
+        clearTimeout(salida.current);
+        setSaliendo(false);
         setAbierto("reint");
         setValores(Object.fromEntries(reint.campos.map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
       }
@@ -332,6 +419,8 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     }
     // Con campos, o si puede llevar control (se elige con o sin control), se abre su tarjeta.
     if (it.campos || CON_CONTROL.includes(it.k)) {
+      clearTimeout(salida.current);
+      setSaliendo(false);
       setAbierto(it.k);
       setValores(Object.fromEntries((it.campos ?? []).map((c) => [c.id, c.valor ?? c.opciones?.[0]?.valor ?? ""])));
     } else {
@@ -362,14 +451,14 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         </div>
       )}
 
-      {item && (item.campos || CON_CONTROL.includes(item.k)) && (
-        // Ventana que sube desde abajo (Diego, 20-nov-2026): antes la tarjeta se abria ARRIBA de la
-        // pantalla y quien tocaba un evento abajo no la veia, creia que no se habia registrado.
-        <div className="fondo-flotante" onClick={() => setAbierto(null)}>
-          <div className="panel-flotante ev-panel" role="dialog" aria-modal="true" aria-label={item.texto} onClick={(e) => e.stopPropagation()}>
-            <header className="pf-cabeza" style={item.peligro ? { color: "var(--crit-ink)" } : undefined}>
-              <b>{item.texto}</b>
-              <button type="button" className="pf-cerrar" aria-label="Cerrar sin registrar" onClick={() => setAbierto(null)}><X size={20} aria-hidden /></button>
+      {item && (item.campos || CON_CONTROL.includes(item.k)) && createPortal(
+        // Pantalla completa que entra deslizandose desde la derecha y sale igual (Diego, 22-nov-2026:
+        // «que no aparezca de golpe, se ve duro»). «‹ Eventos» y el boton atras del telefono vuelven.
+        <div className={`ev-capa${saliendo ? " sale" : ""}`}>
+          <div className="ev-pantalla" role="dialog" aria-modal="true" aria-label={item.texto}>
+            <header className="ev-cabeza">
+              <button type="button" className="ev-volver" aria-label="Volver a eventos" onClick={cerrar}><ChevronLeft size={22} aria-hidden />Eventos</button>
+              <b style={item.peligro ? { color: "var(--crit-ink)" } : undefined}>{item.texto}</b>
             </header>
             <div className="pf-cuerpo">
               {(item.campos ?? []).map((c) => (
@@ -379,51 +468,75 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
                     <select id={`evf-${c.id}`} value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))}>
                       {c.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                     </select>
+                  ) : c.hora ? (
+                    <input id={`evf-${c.id}`} type="time" className="ev-hora" value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
+                  ) : c.largo ? (
+                    <textarea id={`evf-${c.id}`} rows={3} maxLength={140} value={valores[c.id] ?? ""} placeholder="Ej.: electroencefalograma · desplazamiento de cánula" onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
                   ) : (
                     <input id={`evf-${c.id}`} {...(c.num ? { ...casillaNumerica(), enterKeyHint: "next" as const } : {})} value={valores[c.id] ?? ""} style={{ textAlign: "left", fontFamily: "var(--font-ui)" }} autoComplete="off" onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
                   )}
                 </div>
               ))}
+              {item.k === "libre" && <p className="small muted">Queda en la línea de tiempo y en la evolución con su hora. No suma a las estadísticas. Sin nombres ni RUT.</p>}
               {item.peligro && <p className="small muted">Se genera una alerta en el PC con el informe de riesgo ya pre-llenado.</p>}
               {item.k === "egreso" && <p className="small muted">El paciente sale de la lista y la cama queda libre. Lo clínico se conserva para las estadísticas; el nombre y el RUT se borran en el PC.</p>}
             </div>
             {CON_CONTROL.includes(item.k) ? (
               <div className="pie-inf" style={{ flexDirection: "column" }}>
                 <button type="button" className={item.peligro ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>Registrar y monitorizar ›</button>
-                <div className="row" style={{ gap: 8 }}>
-                  <button type="button" className="btn" style={{ flex: 1 }} onClick={() => void registrar(item, valores, false)}>Registrar sin control</button>
-                  <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
-                </div>
+                <button type="button" className="btn" onClick={() => void registrar(item, valores, false)}>{item.k === "libre" ? "Registrar solo con la hora" : "Registrar sin control"}</button>
               </div>
             ) : (
               <div className="pie-inf">
-                <button type="button" className="btn" onClick={() => setAbierto(null)}>Cancelar</button>
                 <button type="button" className={item.peligro || item.k === "egreso" ? "btn danger" : "btn primary"} onClick={() => void registrar(item, valores)}>{item.k === "egreso" ? "Confirmar egreso" : "Registrar"}</button>
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.querySelector(".app-cel") ?? document.body
       )}
 
-      {grupos.filter((g) => g.items.some(aplica)).map((g) => (
-        <section key={g.titulo}>
-          <h3>{g.titulo}</h3>
-          <div className="evgrid">
-            {/* Lo del tubo y la TQT (extubar, TQT, ajustar el tubo, autoextubacion, filtros, TrachCare y
-                prono) no se ofrece con via aerea natural: ni se muestra. Con via artificial, no se ofrece intubar. */}
-            {g.items.filter(aplica).map((it) => {
-              const off = it.deshabilitado;
-              return (
-                <button key={it.k} type="button" className={it.peligro ? "btn danger-o" : it.k === "pve" && !it.ayuda ? "btn pve-ev" : "btn"} disabled={off} title={it.ayuda} onClick={() => clic(it)}>
-                  {(() => { const Icono = ICONO_EVENTO[it.k]; return Icono ? <Icono className="ev-ico" size={20} strokeWidth={1.7} aria-hidden /> : null; })()}
-                  {it.texto}
-                  {it.ayuda && <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{it.ayuda}</span>}
+      {/* Lista con busqueda (Diego, 22-nov-2026): un renglon por evento, como un menu; escribir
+          «prono» o «cta» lo encuentra aunque este abajo. Si no esta, se escribe como evento libre. */}
+      <label className="ev-buscar">
+        <Search size={18} aria-hidden />
+        <input id="ev-buscar" type="search" placeholder="Buscar evento" autoComplete="off" enterKeyHint="search" aria-label="Buscar evento" value={busca} onChange={(e) => setBusca(e.target.value)} />
+      </label>
+      {(() => {
+        const q = sinTilde(busca);
+        const coincide = (it: Item): boolean => !q || sinTilde(`${it.texto} ${SINONIMOS[it.k] ?? ""} ${it.ayuda ?? ""}`).includes(q);
+        const visibles = grupos.map((g) => ({ ...g, items: g.items.filter((it) => aplica(it) && (it.k !== "libre" || !q) && coincide(it)) })).filter((g) => g.items.length);
+        return (
+          <>
+            {visibles.map((g) => (
+              <section key={g.titulo} className="ev-grupo">
+                {!q && <h3>{g.titulo}</h3>}
+                <div className="evgrid ev-lista">
+                  {/* Lo del tubo y la TQT no se ofrece con via aerea natural: ni se muestra. Con via artificial, no se ofrece intubar. */}
+                  {g.items.map((it) => {
+                    const Icono = it.k === "libre" ? PenLine : ICONO_EVENTO[it.k];
+                    return (
+                      <button key={it.k} type="button" className={`ev-fila${it.peligro ? " crit" : ""}${it.k === "pve" && !it.ayuda ? " pve-ev" : ""}`} disabled={it.deshabilitado} title={it.ayuda} onClick={() => clic(it)}>
+                        {Icono ? <Icono className="ev-ico" size={18} strokeWidth={1.8} aria-hidden /> : null}
+                        {it.texto}
+                        {it.ayuda && <span className="small muted" style={{ display: "block", fontWeight: 400 }}>{it.ayuda}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+            {q && (
+              <div className="ev-sin">
+                {!visibles.length && <p className="muted small">No hay un evento que diga «{busca.trim()}».</p>}
+                <button type="button" className="btn" onClick={() => { const libre = todos.find((x) => x.k === "libre"); if (libre) { clic(libre); setValores((x) => ({ ...x, txt: busca.trim() })); } }}>
+                  <PenLine size={16} aria-hidden /> Anotar «{busca.trim()}» como evento libre
                 </button>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {linea.length > 0 && (
         <section aria-label="Línea de tiempo">

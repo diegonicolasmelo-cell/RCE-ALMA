@@ -93,6 +93,8 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return `Paro cardiorrespiratorio, reanimación ${ev.duracionReanimacionMin} min${ev.rosc === true ? ", con ROSC" : ev.rosc === false ? ", sin ROSC" : ""}${ev.choques ? `, ${ev.choques} ${ev.choques === 1 ? "choque" : "choques"}` : ""}`;
     case "EVENTO_CENTINELA":
       return `Evento centinela: ${ev.descripcion}`;
+    case "EVENTO_LIBRE":
+      return ev.descripcion;
     case "ASISTENCIA_FBC":
       return "Asistencia en fibrobroncoscopía";
     case "ASISTENCIA_PROCEDIMIENTO":

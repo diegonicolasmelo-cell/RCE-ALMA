@@ -9,6 +9,9 @@ import {
   aplicarEventoAEpisodio
 } from "./eventos";
 import { unEpisodio, unEvento } from "./fixtures";
+import { pideControl } from "./eventos";
+import { describirEvento } from "./nota-alma";
+import { narrarEventos } from "./texto-evolucion";
 import type { EventoClinico } from "./tipos";
 
 const EN = (iso: string) => ({ registradoEn: iso });
@@ -271,5 +274,17 @@ describe("eventos que se monitorizan con un control", async () => {
   });
   it("la extubacion fuera de protocolo tampoco: se sigue con los controles post extubacion", () => {
     expect(eventosSinMonitorizar([unEvento({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", sinPve: "MENOS_24H_VM", registradoEn: "2026-11-13T11:00:00.000Z" } as never)], [previo])).toEqual([]);
+  });
+});
+
+describe("evento libre (Diego, 22-nov-2026)", () => {
+  const libre = (extra: object = {}) => unEvento<EventoClinico>({ tipo: "EVENTO_LIBRE", descripcion: "Desplazamiento de cánula", hora: "08:15", realizadaEn: new Date(2026, 10, 22, 8, 15).toISOString(), ...extra } as never);
+  it("pide control salvo que se registre solo con la hora", () => {
+    expect(pideControl(libre())).toBe(true);
+    expect(pideControl(libre({ sinControl: true }))).toBe(false);
+  });
+  it("la línea de tiempo y la evolución lo nombran con su hora real", () => {
+    expect(describirEvento(libre())).toBe("Desplazamiento de cánula");
+    expect(narrarEventos([libre()], [libre()], [], 60).join(" ")).toMatch(/Desplazamiento de cánula a las 08:15 hrs/);
   });
 });

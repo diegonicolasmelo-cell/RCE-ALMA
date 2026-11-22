@@ -511,10 +511,25 @@ async function esperarServidor() {
       await m.tap('.kb [data-kb="sig"]');
       await m.waitForTimeout(200);
       assert.equal(await m.locator(".kb").isVisible(), false, "en la ultima casilla, Sig. cierra el teclado");
-      // El evento se abre en una ventana encima (Diego, 20-nov-2026): se ve sin buscarlo y se cierra con Cancelar.
-      assert.ok(await m.locator('[role=dialog][aria-label="Ajustar posición del tubo"]').isVisible(), "el evento se abre en una ventana a la vista");
-      await m.tap('[role=dialog][aria-label="Ajustar posición del tubo"] button:text-is("Cancelar")');
+      // El evento se abre a pantalla completa (Diego, 22-nov-2026) y «‹ Eventos» vuelve a la lista.
+      assert.ok(await m.locator('[role=dialog][aria-label="Ajustar posición del tubo"]').isVisible(), "el evento se abre a la vista");
+      await m.tap('[role=dialog][aria-label="Ajustar posición del tubo"] button[aria-label="Volver a eventos"]');
       await m.waitForSelector('[role=dialog][aria-label="Ajustar posición del tubo"]', { state: "detached" });
+      // La busqueda encuentra por como se dice en la unidad: «cta» es la toma de cultivo.
+      await m.fill("#ev-buscar", "cta");
+      assert.equal(await m.locator(".ev-fila").count(), 1, "con «cta» queda solo el cultivo");
+      assert.match(await m.textContent(".ev-fila"), /Toma de cultivo/);
+      // Lo que no esta en la lista se anota como evento libre, con su hora, solo o con control.
+      await m.fill("#ev-buscar", "electroencefalograma");
+      assert.equal(await m.locator(".ev-fila").count(), 0);
+      await m.tap('.ev-sin button:has-text("como evento libre")');
+      await m.waitForSelector('[role=dialog][aria-label="Otro evento (escribirlo)"]');
+      assert.equal(await m.inputValue("#evf-txt"), "electroencefalograma", "trae lo que se buscó");
+      await m.fill("#evf-hora", "00:01");
+      await m.tap('button:text-is("Registrar solo con la hora")');
+      await m.waitForSelector('[role=dialog][aria-label="Otro evento (escribirlo)"]', { state: "detached" });
+      assert.ok((await m.locator('.linea-tiempo li:has-text("electroencefalograma")').count()) >= 1, "queda en la línea de tiempo");
+      assert.equal(await m.inputValue("#ev-buscar"), "", "la búsqueda se limpia al registrar");
       // Ingreso de una cama libre: talla, calibre y cm con el teclado propio; Sig. recorre las tres.
       const est = await movil.newPage();
       await est.goto(URL + "#estacion");
@@ -709,7 +724,7 @@ async function esperarServidor() {
       assert.equal(await cel.inputValue("#evf-mot"), "MENOS_24H_VM", "el motivo viene marcado");
       const motivos = await cel.locator("#evf-mot option").allTextContents();
       assert.ok(motivos.includes("Agitación psicomotora"), motivos.join(" | "));
-      await cel.click('button:text-is("Cancelar")');
+      await cel.click('button[aria-label="Volver a eventos"]');
       // UCI-09 (mas de 24 h, en ACVC, ventilacion domiciliaria): la PVE no se puede, pero desde ahi se extuba.
       await cel.click('button:has-text("‹ Pacientes")');
       await cel.click('article[aria-label="Cama UCI-09"] button:has-text("Eventos")');

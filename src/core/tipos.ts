@@ -545,6 +545,12 @@ export type EventoClinico =
       readonly bitacora?: readonly EntradaBitacoraPcr[];
     })
   | (EventoBase & { readonly tipo: "EVENTO_CENTINELA"; readonly descripcion: string })
+  /**
+   * Evento escrito a mano cuando no está en la lista (Diego, 22-nov-2026): «Electroencefalograma»,
+   * «Desplazamiento de cánula»… Queda en la línea de tiempo y en la evolución con su hora; no suma
+   * a ninguna cifra. `hora`/`realizadaEn` son la hora en que ocurrió, que puede ser antes de anotarlo.
+   */
+  | (EventoBase & { readonly tipo: "EVENTO_LIBRE"; readonly descripcion: string; readonly realizadaEn?: string })
   | (EventoBase & { readonly tipo: "ASISTENCIA_FBC" })
   | (EventoBase & { readonly tipo: "ASISTENCIA_PROCEDIMIENTO"; readonly procedimiento: string })
   | (EventoBase & { readonly tipo: "TOMA_CULTIVO"; readonly muestra: string })

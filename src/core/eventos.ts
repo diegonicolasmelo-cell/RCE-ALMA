@@ -76,6 +76,7 @@ export function viaAereaVigente(
       case "FIN_BNM":
       case "PCR":
       case "EVENTO_CENTINELA":
+      case "EVENTO_LIBRE":
       case "ASISTENCIA_FBC":
       case "CAMBIO_HMEF":
       case "CAMBIO_FILTRO":
@@ -323,7 +324,7 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
 export const TIPOS_CON_CONTROL: ReadonlySet<TipoEvento> = new Set<TipoEvento>([
   "REINTUBACION", "EXTUBACION_PROGRAMADA", "AUTOEXTUBACION", "DECANULACION", "TRAQUEOSTOMIA",
   "CAMBIO_TUBO", "CAMBIO_CANULA", "AJUSTE_TUBO", "INICIO_PRONO", "SUPINACION", "ASISTENCIA_FBC",
-  "ASISTENCIA_PROCEDIMIENTO", "TOMA_CULTIVO", "TRASLADO_IMAGEN", "PCR", "EVENTO_CENTINELA"
+  "ASISTENCIA_PROCEDIMIENTO", "TOMA_CULTIVO", "TRASLADO_IMAGEN", "PCR", "EVENTO_CENTINELA", "EVENTO_LIBRE"
 ]);
 
 export const pideControl = (ev: EventoClinico): boolean =>

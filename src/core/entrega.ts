@@ -16,6 +16,10 @@ export interface HistoriaEntrega {
   readonly firma: string;
   /** «yyyy-MM-dd» de la última edición. */
   readonly fecha: string;
+  /** Pendientes de la última evolución del RCE («Para el que llega»), uno por línea (v7.15). */
+  readonly pendientes?: readonly string[];
+  /** Plan kinésico de la última evolución del RCE (v7.15). */
+  readonly plan?: string;
 }
 
 export interface Hito {

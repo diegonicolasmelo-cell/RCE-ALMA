@@ -627,8 +627,14 @@ function historiasDesdeRce(camas) {
   for (var j = 0; j < hs.length; j++) {
     var h = hs[j] || {};
     var texto = String(h.texto || "").slice(0, 600);
-    if (!texto || rut.test(texto)) continue;
-    out.push({ cama: Number(h.cama), texto: texto, firma: String(h.firma || ""), fecha: String(h.fecha || "") });
+    if (rut.test(texto)) texto = "";
+    var pend = [];
+    var ps = h.pendientes || [];
+    for (var k = 0; k < ps.length && pend.length < 8; k++) { var t = String(ps[k] || "").slice(0, 140); if (t && !rut.test(t)) pend.push(t); }
+    var plan = String(h.plan || "").slice(0, 400);
+    if (rut.test(plan)) plan = "";
+    if (!texto && !pend.length && !plan) continue;
+    out.push({ cama: Number(h.cama), texto: texto, firma: String(h.firma || ""), fecha: String(h.fecha || ""), pendientes: pend, plan: plan });
   }
   return { ok: true, historias: out };
 }

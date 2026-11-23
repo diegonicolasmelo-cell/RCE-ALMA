@@ -50,6 +50,12 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
     expect(eventoParaRce(libre, ep)).toMatchObject({ evento: "NOTA", horaToma: "2026-11-22 08:15", datos: { descripcion: "Electroencefalograma", hora: "08:15" } });
   });
 
+  it("el cambio de cama viaja como TRASLADO con la cama de origen y la de destino", () => {
+    const ep = unEpisodio({ cama: "UCI-05" });
+    const tr = unEvento<EventoClinico>({ tipo: "TRASLADO_CAMA", desde: "UCI-03", hasta: "UCI-05" } as never);
+    expect(eventoParaRce(tr, ep)).toMatchObject({ evento: "TRASLADO", cama: 5, datos: { desde: "UCI-03", hasta: "UCI-05" } });
+  });
+
   it("la hora va en hora local", () => {
     expect(horaLocal(new Date(2026, 0, 5, 4, 7).toISOString())).toBe("2026-01-05 04:07");
   });

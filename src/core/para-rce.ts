@@ -147,6 +147,8 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "EVALUACION_PUNTUAL": return "EVALUACION";
     // Evento escrito a mano (22-nov-2026): llega al RCE como nota con su texto y su hora.
     case "EVENTO_LIBRE": return "NOTA";
+    // Cambio de cama (23-nov-2026): el RCE mueve al paciente igual que «mover a cama vacía».
+    case "TRASLADO_CAMA": return "TRASLADO";
     default: return null;
   }
 }

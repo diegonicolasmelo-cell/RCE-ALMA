@@ -11,7 +11,21 @@ const p2 = (n: number): string => String(n).padStart(2, "0");
 const fechaHora = (iso: string): string => { const d = new Date(iso); return `${p2(d.getDate())}-${p2(d.getMonth() + 1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
 const ddmm = (yyyymmdd: string): string => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(yyyymmdd); return m ? `${m[3]}-${m[2]}` : yyyymmdd; };
 
-type EstadoHistorias = "cargando" | "sin-conexion" | ReadonlyMap<number, HistoriaEntrega>;
+type EstadoHistorias = "cargando" | { readonly error: string } | ReadonlyMap<number, HistoriaEntrega>;
+
+/** Qué decir cuando la historia no llega: cada eslabón tiene su arreglo (Diego, 23-nov-2026). */
+function textoSinHistoria(error: string): string {
+  switch (error) {
+    case "SIN_CONEXION": return "La historia se ve con conexión.";
+    case "APAGADO": return "Falta configurar el enlace con el RCE en el servidor de Kaptus (RCE_URL y RCE_TOKEN).";
+    case "ACCION_DESCONOCIDA": return "El servidor de Kaptus tiene una versión anterior: falta pegar el Codigo.gs nuevo y publicar.";
+    case "RCE_ENLACE_APAGADO": return "El enlace está apagado en el RCE: CONFIG.KAPTUS_ENLACE_ACTIVO tiene que estar en TRUE.";
+    case "RCE_TOKEN_INVALIDO": return "La llave del enlace no coincide entre Kaptus y el RCE.";
+    case "RCE_ACCION_DESCONOCIDA": case "RCE_PUERTA_CERRADA": return "El RCE publicado es una versión anterior a la 7.13: falta pegarlo y publicar una versión nueva.";
+    case "RCE_SIN_RESPUESTA": return "El RCE no respondió. Revisa que la implementación esté publicada para «Cualquier persona».";
+    default: return `No llegó la historia (${error}).`;
+  }
+}
 
 /**
  * Entrega de turno en el celular (Diego, 22-nov-2026): solo mis camas. Cada tarjeta tiene dos caras:
@@ -30,8 +44,13 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
     let vivo = true;
     setHistorias("cargando");
     api.leerHistorias(camas)
-      .then((r) => { if (vivo) setHistorias(r.ok ? new Map(r.historias.map((h) => [h.cama, h])) : "sin-conexion"); })
-      .catch(() => { if (vivo) setHistorias("sin-conexion"); });
+      .then((r) => {
+        if (!vivo) return;
+        if (!r.ok) setHistorias({ error: r.error });
+        else if (r.estado === "apagado") setHistorias({ error: "APAGADO" });
+        else setHistorias(new Map(r.historias.map((h) => [h.cama, h])));
+      })
+      .catch(() => { if (vivo) setHistorias({ error: "SIN_CONEXION" }); });
     return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, clave]);
@@ -53,7 +72,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
       {orden.map(({ ep, controles, eventos }) => {
         const f = fichaDe(ep, controles, eventos, undefined, ahora);
         const n = camaRce(ep.cama);
-        const h = typeof historias === "string" || n === null ? null : historias.get(n) ?? null;
+        const h = historias instanceof Map && n !== null ? historias.get(n) ?? null : null;
         const hitos = hitosDelEpisodio(ep, eventos);
         const vuelta = vueltas.has(ep.id);
         // «Para el que llega»: lo escrito en el RCE (pendiente y plan de la última evolución, v7.15),
@@ -85,7 +104,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
               <section className="ent-cara ent-atras" aria-hidden={!vuelta}>
                 <header className="ent-cab"><b>{nombreCama(ep.cama)} · historia</b>{h && <span className="small muted">{h.firma} · {ddmm(h.fecha)}</span>}</header>
                 {historias === "cargando" ? <p className="small muted">Buscando la historia…</p>
-                  : historias === "sin-conexion" ? <p className="small muted">La historia se ve con conexión.</p>
+                  : "error" in historias ? <p className="small muted">{textoSinHistoria((historias as { error: string }).error)}</p>
                     : h ? <p className="ent-historia">{h.texto}</p>
                       : <p className="small muted">Nadie ha guardado la historia de este paciente. Se agrega desde el RCE, en el PC.</p>}
                 <span className="ent-sec">Hitos del episodio</span>

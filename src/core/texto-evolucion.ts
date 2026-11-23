@@ -456,6 +456,9 @@ export function narrarEventos(eventosPeriodo: readonly EventoClinico[], todosEve
       case "FIN_BNM":
         out.push(oracion(`Se suspende el bloqueo neuromuscular ${hrs(e)}`));
         break;
+      case "SUSPENSION_SEDACION":
+        out.push(oracion(`Se suspende la sedación${e.farmacos.length ? ` (${enumerar(e.farmacos.map((f) => f.toLowerCase()))})` : ""} ${hrs(e)}`));
+        break;
       case "PCR":
         out.push(oracion(`Paro cardiorrespiratorio ${hrs(e)}: reanimación de ${e.duracionReanimacionMin} min${e.rosc === true ? ", con ROSC" : e.rosc === false ? ", sin ROSC" : ""}${e.choques ? `, ${e.choques} ${e.choques === 1 ? "choque" : "choques"}` : ""}`));
         break;

@@ -409,7 +409,7 @@ export function Celular() {
     const pendiente = useApp.getState().eventoMonitorizar;
     const ligado = pendiente?.episodioId === ep.id ? pendiente : null;
     const control = { ...materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: realControl, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo }), ...(ligado ? { eventoId: ligado.eventoId } : {}) };
-    await repo.guardarControl(control);
+    const automaticos = await repo.guardarControl(control);
     // Cambio de soporte (p. ej. CPAP+PS a tubo T / HME): desvinculacion o reconexion, con su hora real.
     const tr = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
     if (tr) {
@@ -424,7 +424,8 @@ export function Celular() {
     const destino = ir === "siguiente" ? siguientePaciente : ir === "anterior" ? anteriorPaciente : null;
     if (destino) irA("cama", destino.id);
     else irA("camas");
-    const conEvento = tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "";
+    const conEvento = (tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "") +
+      (automaticos.length ? ` Registrado solo: ${automaticos.map((e) => (e.tipo === "FIN_BNM" ? "suspensión de BNM" : "suspensión de sedación")).join(" y ")}.` : "");
     const sigue = destino ? ` Sigue ${nombreCama(destino.cama)}.` : "";
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue}` : `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue} Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();

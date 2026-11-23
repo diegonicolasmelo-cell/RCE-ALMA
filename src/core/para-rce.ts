@@ -160,6 +160,9 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "ASISTENCIA_PROCEDIMIENTO":
     case "ASISTENCIA_FBC": return "ASISTENCIA";
     case "EVALUACION_PUNTUAL": return "EVALUACION";
+    // Automáticos al guardar el control (23-nov-2026): sedantes o BNM que se apagan.
+    case "SUSPENSION_SEDACION": return "SUSPENSION_SEDACION";
+    case "FIN_BNM": return "FIN_BNM";
     // Evento escrito a mano (22-nov-2026): llega al RCE como nota con su texto y su hora.
     case "EVENTO_LIBRE": return "NOTA";
     // Cambio de cama (23-nov-2026): el RCE mueve al paciente igual que «mover a cama vacía».
@@ -192,6 +195,7 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     destino: simple("destino"), escala: simple("escala"), total: simple("total"), razon: simple("razon"), motivo: simple("motivo"),
     desde: simple("desde"), hasta: simple("hasta"), descripcion: simple("descripcion")
   });
+  if (e.tipo === "SUSPENSION_SEDACION") Object.assign(datos, { farmacos: e.farmacos.join(", ").slice(0, 200) });
   if (e.tipo === "RONDA_EQUIPOS") Object.assign(datos, { hallazgos: e.hallazgos.map((h) => h.texto).join("; ").slice(0, 300) });
   if (e.tipo === "CAMBIO_HMEF" || e.tipo === "CAMBIO_FILTRO") {
     const k = e.tipo === "CAMBIO_HMEF" ? "hme" : e.elemento === "TRACHCARE" ? "tc" : "hepa";

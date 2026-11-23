@@ -14,7 +14,8 @@ import { calcularDerivados, calcularGlasgow } from "./fisiologia";
 import { infusionesActivas } from "./infusiones";
 import { calcularPbw } from "./fisiologia";
 import { ASPECTOS_SECRECIONES } from "./catalogos";
-import type { Control, Episodio, EventoClinico, Modalidad, ViaAerea } from "./tipos";
+import { etiquetaEquipo } from "./equipos";
+import type { Control, Episodio, EquipoEnSala, EventoClinico, Modalidad, ViaAerea } from "./tipos";
 
 /** Un control o un evento listo para el RCE. */
 export interface ItemParaRce {
@@ -32,7 +33,16 @@ export interface ItemParaRce {
   readonly datos: Readonly<Record<string, string | number | boolean>>;
   /** Solo controles: el evento que monitoriza, para marcar su columna en la sábana. */
   readonly eventos?: readonly { readonly tipo: string; readonly hora: string }[];
+  /**
+   * Los equipos de la sala con su nombre («Savina 2», «Meckis 12») y cuál está en uso (23-nov-2026):
+   * el RCE pone esos ventiladores en la cama. Kaptus alimenta, el RCE muestra.
+   */
+  readonly equipos?: readonly { readonly equipo: string; readonly enUso: boolean }[];
 }
+
+// Ojo: la llave es «equipo», nunca «nombre» (el servidor de Kaptus rechaza todo lote que traiga «nombre»).
+const equiposRce = (l: readonly EquipoEnSala[] | undefined): { equipo: string; enUso: boolean }[] =>
+  (l ?? []).map((e) => ({ equipo: etiquetaEquipo(e), enUso: e.enUso }));
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 /** «yyyy-MM-dd HH:mm» en hora local. */
@@ -112,7 +122,7 @@ export function controlParaRce(c: Control, ep: Episodio, eventos: readonly Event
   const ev = c.eventoId ? eventos.find((e) => e.id === c.eventoId) : undefined;
   const cod = ev ? eventoRceDe(ev) : null;
   return {
-    id: c.id, tipo: "CONTROL", cama, horaToma: horaLocal(c.registradoEn), autor: c.rutAutor, datos,
+    id: c.id, tipo: "CONTROL", cama, horaToma: horaLocal(c.registradoEn), autor: c.rutAutor, datos, equipos: equiposRce(ep.equipos),
     ...(cod ? { eventos: [{ tipo: cod, hora: ev!.hora }] } : {})
   };
 }
@@ -149,6 +159,8 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "EVENTO_LIBRE": return "NOTA";
     // Cambio de cama (23-nov-2026): el RCE mueve al paciente igual que «mover a cama vacía».
     case "TRASLADO_CAMA": return "TRASLADO";
+    // Cambio de ventilador u otro equipo de la sala (23-nov-2026): el RCE lo pone en la cama.
+    case "CAMBIO_EQUIPOS": return "EQUIPOS";
     default: return null;
   }
 }
@@ -170,5 +182,6 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     destino: simple("destino"), escala: simple("escala"), total: simple("total"), razon: simple("razon"), motivo: simple("motivo"),
     desde: simple("desde"), hasta: simple("hasta"), descripcion: simple("descripcion")
   });
-  return { id: e.id, tipo: "EVENTO", cama, horaToma: horaLocal(real), autor: e.rutAutor, evento, datos };
+  const equipos = e.tipo === "CAMBIO_EQUIPOS" ? { equipos: equiposRce(e.equipos) } : e.tipo === "TRASLADO_CAMA" ? { equipos: equiposRce(ep.equipos) } : {};
+  return { id: e.id, tipo: "EVENTO", cama, horaToma: horaLocal(real), autor: e.rutAutor, evento, datos, ...equipos };
 }

@@ -425,7 +425,7 @@ export function Celular() {
     if (destino) irA("cama", destino.id);
     else irA("camas");
     const conEvento = (tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "") +
-      (automaticos.length ? ` Registrado solo: ${automaticos.map((e) => (e.tipo === "FIN_BNM" ? "suspensión de BNM" : "suspensión de sedación")).join(" y ")}.` : "");
+      (automaticos.length ? ` Registrado solo: ${automaticos.map((e) => (e.tipo === "FIN_BNM" ? "suspensión de BNM" : e.tipo === "SUSPENSION_DVA" ? "suspensión de DVA" : "suspensión de sedación")).join(" y ")}.` : "");
     const sigue = destino ? ` Sigue ${nombreCama(destino.cama)}.` : "";
     avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue}` : `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue} Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();

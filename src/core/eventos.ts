@@ -75,6 +75,7 @@ export function viaAereaVigente(
       case "INICIO_BNM":
       case "FIN_BNM":
       case "SUSPENSION_SEDACION":
+      case "SUSPENSION_DVA":
       case "PCR":
       case "EVENTO_CENTINELA":
       case "EVENTO_LIBRE":

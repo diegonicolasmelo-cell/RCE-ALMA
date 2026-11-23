@@ -543,6 +543,8 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "FIN_BNM" })
   /** Automático al guardar un control (23-nov-2026): el anterior tenía sedantes y este ya no. */
   | (EventoBase & { readonly tipo: "SUSPENSION_SEDACION"; readonly farmacos: readonly string[] })
+  /** Igual, con las drogas vasoactivas (vasopresores e inótropos): antes había alguna y ahora ninguna. */
+  | (EventoBase & { readonly tipo: "SUSPENSION_DVA"; readonly farmacos: readonly string[] })
   | (EventoBase & {
       readonly tipo: "PCR";
       readonly duracionReanimacionMin: number;

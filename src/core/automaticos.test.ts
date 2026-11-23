@@ -31,6 +31,12 @@ describe("suspensión de sedación y de BNM, automática al guardar el control",
     expect(eventosAutomaticosDelControl(ctl("c2", 30, {}), [antes]).map((e) => e.tipo)).toEqual(["SUSPENSION_SEDACION", "FIN_BNM"]);
   });
 
+  it("DVA: vasopresor o inótropo antes y ninguno ahora; bajar la dosis no cuenta", () => {
+    const antes = ctl("c1", 0, { noradrenalina: { dosis: 0.1 }, dobutamina: { dosis: 5 } });
+    expect(eventosAutomaticosDelControl(ctl("c2", 30, {}), [antes])[0]).toMatchObject({ tipo: "SUSPENSION_DVA", id: "c2-dva", farmacos: ["Noradrenalina", "Dobutamina"] });
+    expect(eventosAutomaticosDelControl(ctl("c3", 30, { dobutamina: { dosis: 2.5 } }), [antes])).toEqual([]);
+  });
+
   it("el primer control del episodio y una corrección no generan nada", () => {
     expect(eventosAutomaticosDelControl(ctl("c1", 0, {}), [])).toEqual([]);
     const antes = ctl("c1", 0, { fentanilo: { dosis: 1.2 } });

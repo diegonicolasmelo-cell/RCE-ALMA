@@ -91,6 +91,8 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return "Suspensión de bloqueo neuromuscular";
     case "SUSPENSION_SEDACION":
       return "Suspensión de sedación";
+    case "SUSPENSION_DVA":
+      return "Suspensión de DVA";
     case "PCR":
       return `Paro cardiorrespiratorio, reanimación ${ev.duracionReanimacionMin} min${ev.rosc === true ? ", con ROSC" : ev.rosc === false ? ", sin ROSC" : ""}${ev.choques ? `, ${ev.choques} ${ev.choques === 1 ? "choque" : "choques"}` : ""}`;
     case "EVENTO_CENTINELA":

@@ -620,7 +620,10 @@ function historiasDesdeRce(camas) {
   if (r.getResponseCode() === 200) {
     try { resp = JSON.parse(r.getContentText()); } catch (e) { resp = null; }
   }
-  if (!resp || resp.ok !== true) return { ok: false, error: "RCE_SIN_RESPUESTA" };
+  // El motivo del RCE viaja tal cual (ENLACE_APAGADO, TOKEN_INVALIDO, ACCION_DESCONOCIDA…): así el
+  // teléfono dice qué falta, en vez de un «sin respuesta» que no ayuda (Diego, 23-nov-2026).
+  if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA", http: r.getResponseCode() };
+  if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
   var rut = /\b\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]\b/;
   var out = [];
   var hs = resp.historias || [];
@@ -637,6 +640,19 @@ function historiasDesdeRce(camas) {
     out.push({ cama: Number(h.cama), texto: texto, firma: String(h.firma || ""), fecha: String(h.fecha || ""), pendientes: pend, plan: plan });
   }
   return { ok: true, historias: out };
+}
+
+/** Desde el editor: pide al RCE las historias de las camas 1 a 20 y muestra que contesta. */
+function probarHistoriasRce() {
+  var enlace = enlaceRce_();
+  if (!enlace) { Logger.log("Enlace APAGADO en Kaptus: faltan RCE_URL y/o RCE_TOKEN en Propiedades del script."); return; }
+  var camas = [];
+  for (var i = 1; i <= 20; i++) camas.push(i);
+  var r = historiasDesdeRce(camas);
+  if (r.ok !== true) { Logger.log("El RCE no entrego historias: " + r.error + (r.http ? " (HTTP " + r.http + ")" : "") + ". Si dice RCE_ACCION_DESCONOCIDA o RCE_PUERTA_CERRADA, el /exec del RCE es una version anterior a la 7.13."); return; }
+  Logger.log("El RCE entrego " + r.historias.length + " historia(s): " + r.historias.map(function (h) {
+    return "cama " + h.cama + " (" + (h.texto ? h.texto.length + " letras" : "sin historia") + ", " + h.pendientes.length + " pendientes" + (h.plan ? ", con plan" : "") + ")";
+  }).join(" · "));
 }
 
 /** Desde el editor: prueba el enlace con el RCE sin mandar ningun dato. */

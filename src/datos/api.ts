@@ -66,7 +66,7 @@ export interface ClienteApi {
    * Historias de la entrega de estas camas: el servidor de Kaptus se las pide al RCE en el momento
    * y no las guarda. El celular tampoco: viven solo en la pantalla abierta (Diego, 22-nov-2026).
    */
-  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[] }>>;
+  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string }>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +206,7 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       const lista = Array.isArray(r["historias"]) ? (r["historias"] as Record<string, unknown>[]) : [];
       return {
         ok: true,
+        ...(typeof r["estado"] === "string" ? { estado: r["estado"] } : {}),
         historias: lista
           .filter((h) => typeof h["texto"] === "string" && Number.isFinite(Number(h["cama"])))
           .map((h) => ({

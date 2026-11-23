@@ -72,6 +72,10 @@ describe("RCE by Kaptus: el servidor de Kaptus reenvía al RCE al tiro", () => {
 });
 
 describe("historias de la entrega: se piden al RCE y no se guardan", () => {
+  it("si el RCE contesta con un error, el motivo llega al teléfono (no un «sin respuesta» genérico)", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: false, error: "ENLACE_APAGADO" } }));
+    expect(s.historiasDesdeRce([3])).toEqual({ ok: false, error: "RCE_ENLACE_APAGADO" });
+  });
   it("el pendiente y el plan del RCE viajan aunque no haya historia escrita", () => {
     const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, historias: [
       { cama: 5, texto: "", firma: "", fecha: "", pendientes: ["Rx control 18:00"], plan: "Progresar PS" }

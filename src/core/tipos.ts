@@ -541,6 +541,8 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "SUPINACION" })
   | (EventoBase & { readonly tipo: "INICIO_BNM"; readonly farmaco: string })
   | (EventoBase & { readonly tipo: "FIN_BNM" })
+  /** Automático al guardar un control (23-nov-2026): el anterior tenía sedantes y este ya no. */
+  | (EventoBase & { readonly tipo: "SUSPENSION_SEDACION"; readonly farmacos: readonly string[] })
   | (EventoBase & {
       readonly tipo: "PCR";
       readonly duracionReanimacionMin: number;

@@ -5,7 +5,7 @@
  * modo que nunca queda un dato guardado sin su subida pendiente (ni al reves).
  */
 
-import { aplicarEventoAEpisodio, equiposDeLaCama, equiposDelTraslado } from "@core/index";
+import { aplicarEventoAEpisodio, equiposDeLaCama, equiposDelTraslado, eventosAutomaticosDelControl } from "@core/index";
 import { camasPruebaVisibles, esCamaPrueba, normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, MotivoEgreso, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
@@ -38,10 +38,22 @@ export class Repositorio {
     });
   }
 
-  async guardarControl(c: Control): Promise<void> {
-    await this.db.transaction("rw", this.tablas(), async () => {
+  /** Devuelve los eventos que se registraron solos con el control (suspensión de sedación o BNM). */
+  async guardarControl(c: Control): Promise<readonly EventoClinico[]> {
+    return this.db.transaction("rw", this.tablas(), async () => {
+      const auto: EventoClinico[] = [];
       await this.db.controles.add(c);
-      await this.sync.encolar([filaDeControl(c)]);
+      const filas: FilaNube[] = [filaDeControl(c)];
+      // Suspensión de sedación y de BNM: se registran solas al guardar el control (23-nov-2026).
+      const previos = (await this.db.controles.where("episodioId").equals(c.episodioId).toArray()).map(normalizarControl);
+      for (const ev of eventosAutomaticosDelControl(normalizarControl(c), previos)) {
+        if (await this.db.eventos.get(ev.id)) continue;
+        await this.db.eventos.add(ev);
+        filas.push(filaDeEvento(ev));
+        auto.push(ev);
+      }
+      await this.sync.encolar(filas);
+      return auto;
     });
   }
 

@@ -374,3 +374,17 @@ describe("RCE by Kaptus: relleno de lo registrado antes del enlace", () => {
     expect(await sync.rellenarRce()).toBe(1);
   });
 });
+
+describe("suspensión automática al guardar el control", () => {
+  it("guardar un control sin sedantes, después de uno con sedantes, deja el evento y lo sube con el control", async () => {
+    const { api } = servidorFalso();
+    const db = nuevaDb();
+    const sync = new Sincronizador(db, api, () => 1);
+    const repo = new Repositorio(db, sync);
+    await repo.guardarControl(unControl({ id: "ct-a", registradoEn: "2026-11-23T10:00:00.000Z", infusiones: { fentanilo: { dosis: 1.2, escalon: 2 } } }));
+    await repo.guardarControl(unControl({ id: "ct-b", registradoEn: "2026-11-23T11:00:00.000Z", infusiones: {} }));
+    const evs = await db.eventos.toArray();
+    expect(evs.map((e) => e.tipo)).toEqual(["SUSPENSION_SEDACION"]);
+    expect((await db.cola.toArray()).filter((e) => e.tipo === "evento")).toHaveLength(1);
+  });
+});

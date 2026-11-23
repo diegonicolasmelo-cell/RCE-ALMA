@@ -89,6 +89,8 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return `Inicio de bloqueo neuromuscular (${ev.farmaco})`;
     case "FIN_BNM":
       return "Suspensión de bloqueo neuromuscular";
+    case "SUSPENSION_SEDACION":
+      return "Suspensión de sedación";
     case "PCR":
       return `Paro cardiorrespiratorio, reanimación ${ev.duracionReanimacionMin} min${ev.rosc === true ? ", con ROSC" : ev.rosc === false ? ", sin ROSC" : ""}${ev.choques ? `, ${ev.choques} ${ev.choques === 1 ? "choque" : "choques"}` : ""}`;
     case "EVENTO_CENTINELA":

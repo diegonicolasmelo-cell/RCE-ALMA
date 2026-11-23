@@ -101,14 +101,16 @@ async function esperarServidor() {
       if (process.env.FOTO_PANEL) await cel.screenshot({ path: process.env.FOTO_PANEL + "-acceso.png" });
       await entrar("diego.melo@demo.upc", "kine");
       await cel.waitForSelector("text=¿Cuáles son tus camas hoy?");
-      assert.equal(await cel.locator('[aria-label="Camas"] .chip').count(), 18);
+      // Diego ve también las 2 camas de prueba (columna «museo»: lo que está en prueba, 23-nov-2026).
+      assert.equal(await cel.locator('[aria-label="Camas"] .chip').count(), 20);
       await cel.click('button:has-text("Ninguna")');
       await cel.click('.chip:text-is("07–12")');
       await cel.click('.chip:text-is("01–06")');
       await cel.click('#btn-ver-camas');
       await cel.waitForSelector('article[aria-label^="Cama"]');
       const camas = await cel.locator('article[aria-label^="Cama"]').evaluateAll((l) => l.map((x) => x.getAttribute("aria-label")));
-      assert.equal(camas.length, 18, "todas las tarjetas son visibles");
+      assert.equal(camas.length, 20, "todas las tarjetas son visibles (18 + 2 de prueba para Diego)");
+      assert.deepEqual(camas.slice(-2), ["Cama UCI-19", "Cama UCI-20"], "las de prueba van al final");
       assert.deepEqual(camas.slice(0, 12), Array.from({ length: 12 }, (_, i) => `Cama UCI-${String(i + 1).padStart(2, "0")}`), "las mias (01-12) van primero, en orden");
       assert.match(await cel.textContent(".app-cel"), /Mis camas \(12\)/);
       assert.match(await cel.textContent(".app-cel"), /Otras camas/);
@@ -124,7 +126,7 @@ async function esperarServidor() {
       await cel.click('#btn-ver-camas');
       await cel.waitForSelector("text=Mis camas (6)");
       const orden = (await cel.locator('article[aria-label^="Cama"]').evaluateAll((l) => l.map((x) => x.getAttribute("aria-label").slice(-2))));
-      assert.deepEqual(orden, ["07", "08", "09", "10", "11", "12", "01", "02", "03", "04", "05", "06", "13", "14", "15", "16", "17", "18"]);
+      assert.deepEqual(orden, ["07", "08", "09", "10", "11", "12", "01", "02", "03", "04", "05", "06", "13", "14", "15", "16", "17", "18", "19", "20"]);
       // dejar solo 01-06 como "mias" para el resto del recorrido
       await cel.click('button:has-text("Cambiar mis camas")');
       await cel.click('.chip:text-is("07–12")');
@@ -1449,8 +1451,10 @@ async function esperarServidor() {
       await cel.reload();
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.waitForSelector("article.cama-sin");
-      assert.equal(await cel.locator("article.cama-sin").count(), 1, "una cama libre, en su lugar de la lista");
-      assert.match(await cel.textContent('article.cama-sin'), /Cama 18[\s\S]*Sin ingreso/);
+      // Libres: la 18 y, para Diego, las 2 camas de prueba (23-nov-2026).
+      assert.equal(await cel.locator("article.cama-sin").count(), 3, "la cama libre y las 2 de prueba, en su lugar de la lista");
+      assert.match(await cel.textContent('article.cama-sin >> nth=0'), /Cama 18[\s\S]*Sin ingreso/);
+      assert.match(await cel.textContent('article.cama-sin >> nth=1'), /Cama de prueba 1/);
       await cel.click('button[aria-label="Ingresar Cama 18"]');
       assert.equal(await cel.locator('.fondo-flotante form[role=dialog][aria-label="Ingreso Cama 18"]').count(), 1, "el ingreso abre en una ventana flotante");
       assert.equal(await cel.locator('article.cama-sin form').count(), 0, "el ingreso no se abre dentro de la lista de camas");

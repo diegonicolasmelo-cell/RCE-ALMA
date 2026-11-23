@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import { CAMAS_UNIDAD, nombreCama } from "@core/index";
+import { CAMAS_UNIDAD, esCamaPrueba, nombreCama } from "@core/index";
 import type { Episodio, EventoClinico } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
@@ -15,7 +15,8 @@ export function TrasladoCama({ ep, ocupadas, onCerrar }: { ep: Episodio; ocupada
   const avisar = useApp((s) => s.avisar);
   const [destino, setDestino] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
-  const libres = CAMAS_UNIDAD.filter((c) => !ocupadas.has(c));
+  // Un paciente real solo va a camas reales; uno de prueba, solo a camas de prueba (23-nov-2026).
+  const libres = CAMAS_UNIDAD.filter((c) => !ocupadas.has(c) && esCamaPrueba(c) === esCamaPrueba(ep.cama));
 
   const confirmar = async (): Promise<void> => {
     if (!destino || guardando) return;
@@ -56,7 +57,7 @@ export function TrasladoCama({ ep, ocupadas, onCerrar }: { ep: Episodio; ocupada
               <div className="camas-destino" role="group" aria-label="Camas libres">
                 {libres.map((c) => (
                   <button key={c} type="button" data-cama={c} aria-pressed={destino === c} onClick={() => setDestino(c)}>
-                    {c.slice(-2)}
+                    {esCamaPrueba(c) ? nombreCama(c).replace("Cama de prueba ", "P") : c.slice(-2)}
                   </button>
                 ))}
               </div>

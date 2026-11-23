@@ -14,6 +14,7 @@ import {
   ETIQUETA_MOTIVO_CAMBIO,
   ETIQUETA_MOTIVO_SIN_PVE,
   CAMAS_UNIDAD,
+  esCamaPrueba,
   nombreCama,
   botonExtubacion,
   motivoSinPve,
@@ -159,7 +160,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   const ultimoPve = ctx.ultimo ? { modalidad: ctx.ultimo.ventilacion.modalidad, registradoEn: ctx.ultimo.registradoEn } : null;
   // Camas libres: el traslado solo va a una de ellas (la que se deja necesita aseo terminal).
   const activas = useConsulta(() => repo.episodiosActivos(), [repo], null);
-  const libres = CAMAS_UNIDAD.filter((c) => !(activas ?? []).some((e) => e.cama === c));
+  const libres = CAMAS_UNIDAD.filter((c) => !(activas ?? []).some((e) => e.cama === c) && esCamaPrueba(c) === esCamaPrueba(ep.cama));
   const boton = botonExtubacion(ep, ultimoPve, eventos, ctx.controles[0]?.registradoEn ?? null, ahora);
   const pve = boton?.tipo === "PVE" ? boton.acceso : null;
   // Si ya se retiro la via aerea en este episodio, la proxima intubacion es REintubacion.

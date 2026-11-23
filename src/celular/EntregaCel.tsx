@@ -56,7 +56,9 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
         const h = typeof historias === "string" || n === null ? null : historias.get(n) ?? null;
         const hitos = hitosDelEpisodio(ep, eventos);
         const vuelta = vueltas.has(ep.id);
-        const pendientes = [ep.pendienteEntrega.trim(), ...f.atencion.filter((a) => a !== "Nada pendiente registrado")].filter(Boolean);
+        // «Para el que llega»: lo escrito en el RCE (pendiente y plan de la última evolución, v7.15),
+        // lo anotado en la Estación y lo que la app sabe que toca (post extubación, filtros…).
+        const pendientes = [...(h?.pendientes ?? []), h?.plan ? `Plan: ${h.plan}` : "", ep.pendienteEntrega.trim(), ...f.atencion.filter((a) => a !== "Nada pendiente registrado")].filter(Boolean);
         return (
           <div
             key={ep.id}

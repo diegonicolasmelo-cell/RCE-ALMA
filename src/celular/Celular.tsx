@@ -22,7 +22,8 @@ import {
   validarBorrador,
   horasDeVm,
   textoVm,
-  buscarProfesional
+  buscarProfesional,
+  mostrarCamasPrueba
 } from "@core/index";
 import type { BorradorControl, Episodio } from "@core/index";
 import { useServicios } from "../app/contexto";
@@ -87,6 +88,8 @@ export function Celular() {
   const online = useOnline();
   const ahora = useAhora(1000);
 
+  // Camas de prueba (23-nov-2026): solo para quien ve lo que está en prueba (columna «museo»).
+  mostrarCamasPrueba(buscarProfesional(sesion.rut)?.museo === true);
   const episodios = useConsulta(() => repo.episodiosActivos(), [repo], []);
   const esMia = (e: { cama: string; rutTitular: string }): boolean => (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
   const mias = episodios.filter(esMia);

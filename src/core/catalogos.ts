@@ -578,10 +578,29 @@ export const ETIQUETA_DISPOSITIVO: Readonly<Record<DispositivoPosterior, string>
 // ---------------------------------------------------------------------------
 
 /** Las 18 camas de la UCI. Una cama sin episodio activo esta libre: se puede ingresar desde el celular. */
-export const CAMAS_UNIDAD: readonly string[] = Array.from({ length: 18 }, (_, i) => `UCI-${String(i + 1).padStart(2, "0")}`);
+const CAMAS_REALES: readonly string[] = Array.from({ length: 18 }, (_, i) => `UCI-${String(i + 1).padStart(2, "0")}`);
+/**
+ * Camas de prueba (Diego, 23-nov-2026): las mismas del RCE, que las crea a continuación de las 18
+ * reales (19 y 20). Se muestran como «Cama de prueba 1/2» y solo las ve quien tiene acceso a lo que
+ * está en prueba (columna «museo» de la hoja usuarios).
+ */
+export const CAMAS_PRUEBA: readonly string[] = ["UCI-19", "UCI-20"];
+const _camas: string[] = [...CAMAS_REALES];
+/** Las camas que ve esta sesión: las 18 reales y, si corresponde, las de prueba. */
+export const CAMAS_UNIDAD: readonly string[] = _camas;
+let _conPrueba = false;
+export function mostrarCamasPrueba(si: boolean): void {
+  _conPrueba = si;
+  _camas.length = 0;
+  _camas.push(...CAMAS_REALES, ...(si ? CAMAS_PRUEBA : []));
+}
+export const camasPruebaVisibles = (): boolean => _conPrueba;
+export const esCamaPrueba = (cama: string): boolean => CAMAS_PRUEBA.includes(cama);
 
 /** "UCI-02" -> "Cama 2": como se nombra la cama en voz alta. */
 export function nombreCama(cama: string): string {
+  const i = CAMAS_PRUEBA.indexOf(cama);
+  if (i !== -1) return `Cama de prueba ${i + 1}`;
   const n = /(\d+)\s*$/.exec(cama)?.[1];
   return n ? `Cama ${Number(n)}` : cama;
 }

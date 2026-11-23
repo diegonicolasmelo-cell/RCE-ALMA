@@ -72,6 +72,12 @@ describe("RCE by Kaptus: el servidor de Kaptus reenvía al RCE al tiro", () => {
 });
 
 describe("historias de la entrega: se piden al RCE y no se guardan", () => {
+  it("el pendiente y el plan del RCE viajan aunque no haya historia escrita", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, historias: [
+      { cama: 5, texto: "", firma: "", fecha: "", pendientes: ["Rx control 18:00"], plan: "Progresar PS" }
+    ] } }));
+    expect(s.historiasDesdeRce([5])).toEqual({ ok: true, historias: [{ cama: 5, texto: "", firma: "", fecha: "", pendientes: ["Rx control 18:00"], plan: "Progresar PS" }] });
+  });
   it("sin enlace no se llama a nadie", () => {
     const s = servidorKaptus({}, () => ({ code: 200 }));
     expect(s.historiasDesdeRce([3])).toEqual({ ok: true, historias: [], estado: "apagado" });
@@ -85,7 +91,7 @@ describe("historias de la entrega: se piden al RCE y no se guardan", () => {
     const antes = JSON.stringify(s.hojas);
     const r = s.historiasDesdeRce([3, 4, "x", 99]);
     expect(s.llamadas[0]).toMatchObject({ accion: "historiasEntrega", token: "LLAVE", camas: [3, 4] });
-    expect(r).toEqual({ ok: true, historias: [{ cama: 3, texto: "Paciente de 64 años, neumonía grave.", firma: "MCC", fecha: "2026-11-17" }] });
+    expect(r).toEqual({ ok: true, historias: [{ cama: 3, texto: "Paciente de 64 años, neumonía grave.", firma: "MCC", fecha: "2026-11-17", pendientes: [], plan: "" }] });
     expect(JSON.stringify(s.hojas)).toBe(antes);
   });
 });

@@ -6,7 +6,7 @@
  */
 
 import { aplicarEventoAEpisodio, equiposDeLaCama, equiposDelTraslado } from "@core/index";
-import { normalizarControl } from "@core/index";
+import { camasPruebaVisibles, esCamaPrueba, normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, MotivoEgreso, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
 import { filaDeApk, filaDeControl, filaDeEpisodio, filaDeEvento } from "./nube";
@@ -112,7 +112,8 @@ export class Repositorio {
 
   async episodiosActivos(): Promise<readonly Episodio[]> {
     const todos = await this.db.episodios.toArray();
-    return todos.filter((e) => e.activo).sort((a, b) => a.cama.localeCompare(b.cama, "es", { numeric: true }));
+    // Las camas de prueba solo existen para quien las ve (Diego, 23-nov-2026).
+    return todos.filter((e) => e.activo && (camasPruebaVisibles() || !esCamaPrueba(e.cama))).sort((a, b) => a.cama.localeCompare(b.cama, "es", { numeric: true }));
   }
 
   async controlesDe(episodioId: string): Promise<readonly Control[]> {

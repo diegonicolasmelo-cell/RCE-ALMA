@@ -44,3 +44,18 @@ describe("modos por vía aérea", () => {
     expect(transicionSoporte("O2_NARICERA", "ACVC", "TET")).toBeNull();
   });
 });
+
+describe("camas de prueba (23-nov-2026)", () => {
+  it("se llaman «Cama de prueba 1/2» y solo aparecen para quien las ve", async () => {
+    const m = await import("./catalogos");
+    expect(m.nombreCama("UCI-19")).toBe("Cama de prueba 1");
+    expect(m.nombreCama("UCI-20")).toBe("Cama de prueba 2");
+    expect(m.nombreCama("UCI-03")).toBe("Cama 3");
+    m.mostrarCamasPrueba(false);
+    expect(m.CAMAS_UNIDAD).toHaveLength(18);
+    m.mostrarCamasPrueba(true);
+    expect(m.CAMAS_UNIDAD.slice(-2)).toEqual(["UCI-19", "UCI-20"]);
+    m.mostrarCamasPrueba(false);
+    expect(m.CAMAS_UNIDAD).toHaveLength(18);
+  });
+});

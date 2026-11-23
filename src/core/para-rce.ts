@@ -27,6 +27,11 @@ export interface ItemParaRce {
   readonly horaToma: string;
   /** Correo de quien lo anotó: el RCE saca la firma de KINESIOLOGOS.EMAIL. */
   readonly autor: string;
+  /**
+   * Relleno de lo registrado antes de encender el enlace (23-nov-2026): el RCE lo GUARDA para la
+   * sábana pero no lo aplica (no mueve camas, equipos ni filtros con datos viejos).
+   */
+  readonly relleno?: boolean;
   /** Solo eventos: el código del RCE (EXTUBACION, PVE, KTM…). */
   readonly evento?: string;
   /** Valores simples con los nombres del RCE. */

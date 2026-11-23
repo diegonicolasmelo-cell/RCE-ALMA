@@ -75,6 +75,10 @@ const CLAVE_ULTIMA_LECTURA = "ultimaLectura";
 const prefijoVersion = (episodioId: string): string => `verEpisodio:${episodioId}`;
 const CLAVE_EPOCA = "epocaDatos";
 const CLAVE_BORRADOS = "borradosAplicados";
+/** Una vez por equipo: el relleno de lo anterior al enlace ya se mandó al RCE. */
+export const CLAVE_RELLENO_RCE = "rellenoRce:v1";
+const CLAVE_RELLENO_INTENTO = "rellenoRce:intento";
+const RELLENO_POR_ENVIO = 150;
 
 export class Sincronizador {
   constructor(
@@ -278,11 +282,51 @@ export class Sincronizador {
     await guardarMeta(this.db, prefijoVersion(episodioId), registradoEn);
   }
 
+  /**
+   * RCE by Kaptus (23-nov-2026, Diego: «no veo datos aportados por Kaptus, solo los del RCE»). El
+   * enlace reenvía solo lo que se sube DESPUÉS de encenderlo; lo registrado antes nunca llegó a la
+   * sábana del RCE. Una vez por equipo se manda todo lo de los pacientes en cama, marcado como
+   * relleno: el RCE lo guarda por id (repetirlo no duplica) y no lo aplica. Traslados, equipos,
+   * filtros y rondas viejos no van: ya ocurrieron y en el RCE se ven de otra forma.
+   * Devuelve cuántos se mandaron; si el enlace está apagado o algo falla, se reintenta otro día.
+   */
+  async rellenarRce(): Promise<number> {
+    if (this.api.local || (await leerMeta<number>(this.db, CLAVE_RELLENO_RCE))) return 0;
+    // Con el enlace apagado no se insiste en cada sincronía: se vuelve a probar a las 6 horas.
+    const intento = await leerMeta<number>(this.db, CLAVE_RELLENO_INTENTO);
+    if (intento && this.ahora() - intento < 6 * 3600 * 1000) return 0;
+    await guardarMeta(this.db, CLAVE_RELLENO_INTENTO, this.ahora());
+    const SIN_RELLENO = new Set(["TRASLADO", "EQUIPOS", "FILTRO", "RONDA"]);
+    const items: ItemParaRce[] = [];
+    for (const ep of (await this.db.episodios.toArray()).filter((e) => e.activo)) {
+      const evs = await this.db.eventos.where("episodioId").equals(ep.id).toArray();
+      const ctls = await this.db.controles.where("episodioId").equals(ep.id).toArray();
+      for (const c of ctls) {
+        const it = controlParaRce(normalizarControl(c), ep, evs);
+        if (it) { const { equipos: _sinEquipos, ...resto } = it; void _sinEquipos; items.push({ ...resto, relleno: true }); }
+      }
+      for (const ev of evs) {
+        const it = eventoParaRce(ev, ep);
+        if (it && !SIN_RELLENO.has(String(it.evento ?? ""))) { const { equipos: _sinEquipos, ...resto } = it; void _sinEquipos; items.push({ ...resto, relleno: true }); }
+      }
+    }
+    for (let i = 0; i < items.length; i += RELLENO_POR_ENVIO) {
+      const r = await this.api.sincronizar({ episodios: [], controles: [], eventos: [], apk: [], paraRce: items.slice(i, i + RELLENO_POR_ENVIO) });
+      const rce = r.ok ? r.rce : undefined;
+      // «en_espera»: el RCE no respondió, pero el servidor de Kaptus lo guardó y lo reintenta solo.
+      if (!r.ok || !rce || (rce.estado !== "entregado" && rce.estado !== "en_espera")) return 0;
+    }
+    await guardarMeta(this.db, CLAVE_RELLENO_RCE, this.ahora());
+    return items.length;
+  }
+
   /** Un ciclo completo: subir y luego traer. */
   async ciclo(opciones: { forzar?: boolean } = {}): Promise<{ empuje: ResultadoEmpuje; lectura: ResultadoTraer }> {
     const empuje = await this.empujar(opciones);
     const lectura = await this.traer();
     const error = empuje.error ?? lectura.error;
+    // Con la base al día (traer), una sola vez: lo anterior al enlace también al RCE.
+    if (!error) { try { await this.rellenarRce(); } catch { /* se reintenta en el próximo ciclo */ } }
     if (error) await guardarMeta(this.db, CLAVE_ERROR_SYNC, { error, en: this.ahora() } satisfies ErrorSync);
     // Mientras queden registros esperando su reintento, el motivo sigue a la vista.
     else if (empuje.enviados > 0 || empuje.pendientes === 0) await borrarMeta(this.db, CLAVE_ERROR_SYNC);

@@ -56,6 +56,14 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
     expect(eventoParaRce(tr, ep)).toMatchObject({ evento: "TRASLADO", cama: 5, datos: { desde: "UCI-03", hasta: "UCI-05" } });
   });
 
+  it("los equipos de la sala viajan con su nombre y cuál está en uso, en cada control y en el cambio de equipo", () => {
+    const ep = unEpisodio({ cama: "UCI-07", equipos: [{ tipo: "VENTILADOR", modelo: "Savina", numero: 2, enUso: true }, { tipo: "VMNI", modelo: "V60", numero: 1, enUso: false }] } as never);
+    const c = unControl({ viaAerea: "TET", ventilacion: unaVentilacion({ modalidad: "ACVC" }) });
+    expect(controlParaRce(c, ep)?.equipos).toEqual([{ equipo: "Savina 2", enUso: true }, { equipo: "V60 1", enUso: false }]);
+    const cambio = unEvento<EventoClinico>({ tipo: "CAMBIO_EQUIPOS", equipos: [{ tipo: "VENTILADOR", modelo: "Meckis", numero: 12, enUso: true }] } as never);
+    expect(eventoParaRce(cambio, ep)).toMatchObject({ evento: "EQUIPOS", equipos: [{ equipo: "Meckis 12", enUso: true }] });
+  });
+
   it("la hora va en hora local", () => {
     expect(horaLocal(new Date(2026, 0, 5, 4, 7).toISOString())).toBe("2026-01-05 04:07");
   });

@@ -83,6 +83,7 @@ export function viaAereaVigente(
       case "EVALUACION_PUNTUAL":
       case "TRASLADO_CAMA":
       case "CAMBIO_EQUIPOS":
+      case "RONDA_EQUIPOS":
       case "DESVINCULACION":
       case "RECONEXION":
       case "ASISTENCIA_PROCEDIMIENTO":

@@ -163,7 +163,7 @@ async function esperarServidor() {
       // El «+» abre la hoja con iconos; elegir «Control» pide la cama y abre su control.
       await cel.click('nav[aria-label="Navegación"] button[aria-label="Registrar"]');
       const hoja = cel.locator('[role=dialog][aria-label="¿Qué quieres registrar?"]');
-      assert.deepEqual(await hoja.locator(".tile").allTextContents(), ["Código PCR", "Ingresar", "Control", "Cambio de cama", "Evento", "PVE", "Evaluación"]);
+      assert.deepEqual(await hoja.locator(".tile").allTextContents(), ["Código PCR", "Ingresar", "Control", "Cambio de cama", "Evento", "PVE", "Evaluación", "Ronda de equipos"]);
       await hoja.locator('.tile:has-text("Control")').click();
       await cel.click('[role=dialog][aria-label="¿De qué paciente es el control?"] .fila-cama:has-text("Cama 3")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
@@ -178,6 +178,7 @@ async function esperarServidor() {
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Controles")');
       // La ayuda vive en el panel de la cuenta (22-nov-2026); su lugar en la barra es la Entrega.
       await cel.click('button.avatar[aria-label="Mi cuenta"]');
+      assert.equal(await cel.locator('aside[aria-label="Mi cuenta"] button:has-text("Ayuda")').count(), 1, "una sola ayuda en el panel");
       await cel.click('aside[aria-label="Mi cuenta"] button:has-text("Ayuda y tutorial")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Ayuda")');
       // Entrega: una tarjeta por cada una de mis camas; al tocarla se da vuelta y muestra la historia y los hitos.
@@ -190,6 +191,10 @@ async function esperarServidor() {
       await primera.click();
       assert.equal(await primera.getAttribute("aria-pressed"), "true", "se da vuelta");
       assert.match(await primera.locator(".ent-atras").textContent(), /Hitos del episodio/);
+      assert.equal(await primera.locator(".ent-hitos-pl").getAttribute("open"), null, "los hitos parten plegados");
+      await cel.waitForTimeout(600); // lo que dura el giro
+      await primera.locator(".ent-hitos-pl summary").click();
+      assert.equal(await primera.getAttribute("aria-pressed"), "true", "abrir los hitos no da vuelta la tarjeta");
       assert.match(await primera.locator(".ent-atras").textContent(), /Nadie ha guardado la historia|La historia se ve con conexión/, "sin RCE, lo dice");
       await primera.click();
       assert.equal(await primera.getAttribute("aria-pressed"), "false", "vuelve a la cara de hoy");
@@ -1691,6 +1696,30 @@ async function esperarServidor() {
       await cel.click('button:text-is("Registrar")');
       await cel.waitForSelector('.linea-tiempo:has-text("PVE no realizada: Secreciones abundantes")');
       await cel.click('button:has-text("‹ Pacientes")');
+    });
+
+    await prueba("ronda de equipos: cama por cama, la fecha de la etiqueta manda y el hallazgo le llega al colega a cargo", async () => {
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.click('nav[aria-label="Navegación"] button.mas');
+      await cel.click('.tile:has-text("Ronda de equipos")');
+      await cel.waitForSelector(".ronda-cel");
+      await cel.click('.ronda-fila:has-text("Cama 2")');
+      const dlg = cel.locator('[role=dialog][aria-label="Ronda · Cama 2"]');
+      await dlg.waitFor();
+      // La etiqueta del HME dice hace 4 días: está vencido aunque lo anotado diga otra cosa.
+      const hace4 = await cel.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 4); return d.toISOString().slice(0, 10); });
+      await dlg.locator('input[aria-label="Fecha de la etiqueta del Filtro HME"]').fill(hace4);
+      await dlg.locator('.ronda-hall:has-text("Filtro HME vencido")').waitFor();
+      await dlg.locator('button:has-text("Revisada y volver")').click();
+      await dlg.waitFor({ state: "detached" });
+      assert.match(await cel.textContent('.ronda-fila:has-text("Cama 2")'), /1 hallazgo/);
+      // Cama 2 es de Diego (01–06): la campana le avisa.
+      await cel.click('button.bt-cab[aria-label^="Avisos"]');
+      await cel.waitForSelector('[role=dialog][aria-label="Avisos"]');
+      assert.match(await cel.textContent('[role=dialog][aria-label="Avisos"]'), /Cama 2 · Ronda[\s\S]*Filtro HME vencido/);
+      await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
+      await cel.waitForSelector('article[aria-label^="Cama"]');
     });
 
     await prueba("dar de alta desde el celular: pide el motivo, confirma aparte y la cama queda libre", async () => {

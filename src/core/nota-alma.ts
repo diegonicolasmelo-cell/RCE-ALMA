@@ -109,6 +109,8 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return `Evaluación ${resumenEvaluacion(ev.escala, ev.valores, ev.total, ev.comentario)}`;
     case "CAMBIO_FILTRO":
       return ev.elemento === "TRACHCARE" ? "Cambio de TrachCare" : "Cambio de filtro HEPA";
+    case "RONDA_EQUIPOS":
+      return ev.hallazgos.length ? `Ronda de equipos: ${ev.hallazgos.map((h) => h.texto).join("; ")}` : "Ronda de equipos: todo en orden";
     case "CAMBIO_EQUIPOS":
       return `Cambio de equipos: ${describirEquipos(ev.equipos)}${ev.motivo ? ` (${ETIQUETA_MOTIVO_CAMBIO_EQUIPO[ev.motivo].toLowerCase()})` : ""}`;
     case "TRASLADO_CAMA":

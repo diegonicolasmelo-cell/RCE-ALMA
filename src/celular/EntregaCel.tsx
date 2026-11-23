@@ -102,14 +102,18 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
                 <span className="ent-giro">Historia ⟲</span>
               </section>
               <section className="ent-cara ent-atras" aria-hidden={!vuelta}>
-                <header className="ent-cab"><b>{nombreCama(ep.cama)} · historia</b>{h && <span className="small muted">{h.firma} · {ddmm(h.fecha)}</span>}</header>
+                <header className="ent-cab"><b>{nombreCama(ep.cama)} · historia</b></header>
                 {historias === "cargando" ? <p className="small muted">Buscando la historia…</p>
                   : "error" in historias ? <p className="small muted">{textoSinHistoria((historias as { error: string }).error)}</p>
-                    : h ? <p className="ent-historia">{h.texto}</p>
+                    : h ? <blockquote className="ent-historia"><b>Historia escrita en el RCE</b>{h.texto}<small>{h.firma} · {ddmm(h.fecha)}</small></blockquote>
                       : <p className="small muted">Nadie ha guardado la historia de este paciente. Se agrega desde el RCE, en el PC.</p>}
-                <span className="ent-sec">Hitos del episodio</span>
-                {hitos.length === 0 ? <span className="small muted">Sin hitos registrados</span>
-                  : <ol className="ent-hitos">{hitos.map((x) => <li key={`${x.en}-${x.texto}`}><span>{fechaHora(x.en)}</span>{x.texto}</li>)}</ol>}
+                {/* Los hitos van plegados: lo que se lee primero es la historia (Diego, 23-nov-2026).
+                    Abrirlos no da vuelta la tarjeta. */}
+                <details className="ent-hitos-pl" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                  <summary>Hitos del episodio{hitos.length ? ` (${hitos.length})` : ""}</summary>
+                  {hitos.length === 0 ? <span className="small muted">Sin hitos registrados</span>
+                    : <ol className="ent-hitos">{hitos.map((x) => <li key={`${x.en}-${x.texto}`}><span>{fechaHora(x.en)}</span>{x.texto}</li>)}</ol>}
+                </details>
                 <span className="ent-giro">Hoy ⟲</span>
               </section>
             </div>

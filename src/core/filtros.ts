@@ -32,6 +32,12 @@ const diaUtc = (s: string): number => {
   return Date.UTC(a, m - 1, d);
 };
 
+/** La fecha de la etiqueta: la que se anotó en la ronda o, si no, el día en que se registró el cambio. */
+function fechaEtiquetaDe(e: EventoClinico): string {
+  if ((e.tipo === "CAMBIO_HMEF" || e.tipo === "CAMBIO_FILTRO") && e.fechaEtiqueta && /^\d{4}-\d{2}-\d{2}$/.test(e.fechaEtiqueta)) return e.fechaEtiqueta;
+  return ymd(new Date(e.registradoEn));
+}
+
 function elementoDe(e: EventoClinico): ElementoCircuito | null {
   if (e.tipo === "CAMBIO_HMEF") return "HME";
   if (e.tipo === "CAMBIO_FILTRO") return e.elemento;
@@ -46,7 +52,8 @@ export function vigenciaFiltros(eventos: readonly EventoClinico[], ahora: Date):
       .sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
     const ultimo = cambios[cambios.length - 1];
     if (!ultimo) return { elemento, cambiadoEn: null, venceFecha: null, diasRestantes: null, estado: "SIN_REGISTRO" };
-    const fecha = ymd(new Date(ultimo.registradoEn));
+    // Manda la ÚLTIMA anotación (como en el RCE): si la ronda corrige la etiqueta a un día anterior, vale esa.
+    const fecha = fechaEtiquetaDe(ultimo);
     const vence = new Date(diaUtc(fecha) + VIDA_UTIL_DIAS[elemento] * 86_400_000);
     const venceFecha = vence.toISOString().slice(0, 10);
     const restantes = Math.round((diaUtc(venceFecha) - diaUtc(hoy)) / 86_400_000);
@@ -63,4 +70,9 @@ export function vigenciaFiltros(eventos: readonly EventoClinico[], ahora: Date):
 /** Elementos que requieren atencion hoy (vencidos o que vencen hoy). */
 export function filtrosPorCambiar(eventos: readonly EventoClinico[], ahora: Date): readonly VigenciaFiltro[] {
   return vigenciaFiltros(eventos, ahora).filter((v) => v.estado === "VENCIDO" || v.estado === "VENCE_HOY");
+}
+
+/** Elemento de circuito de un evento de cambio (para la ronda y el RCE). */
+export function elementoDeCambio(e: EventoClinico): ElementoCircuito | null {
+  return elementoDe(e);
 }

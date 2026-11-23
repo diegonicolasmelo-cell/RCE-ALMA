@@ -37,3 +37,4 @@ export * from "./dictado";
 export * from "./logros";
 export * from "./para-rce";
 export * from "./entrega";
+export * from "./ronda";

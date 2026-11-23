@@ -22,7 +22,7 @@ export interface LoteSync {
 }
 
 export type RespuestaSync =
-  | { readonly ok: true; readonly servidorEn: string }
+  | { readonly ok: true; readonly servidorEn: string; readonly rce?: { readonly estado: string } }
   | { readonly ok: false; readonly error: string; readonly llaves?: readonly string[] };
 
 export interface DatosNube {
@@ -177,7 +177,10 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
 
     async sincronizar(lote) {
       const r = await post({ token: cfg.appToken, accion: "sincronizar", ...lote });
-      if (r["ok"] === true) return { ok: true, servidorEn: String(r["servidorEn"] ?? "") };
+      if (r["ok"] === true) {
+        const rce = r["rce"] as { estado?: unknown } | undefined;
+        return { ok: true, servidorEn: String(r["servidorEn"] ?? ""), ...(rce && typeof rce.estado === "string" ? { rce: { estado: rce.estado } } : {}) };
+      }
       const llaves = Array.isArray(r["llaves"]) ? (r["llaves"] as string[]) : undefined;
       return llaves ? { ok: false, error: errorDe(r), llaves } : { ok: false, error: errorDe(r) };
     },

@@ -22,7 +22,7 @@ function servidorFalso() {
     eventos: new Map(),
     apk: new Map()
   };
-  const estado = { falla: null as string | null, llamadas: 0, llaves: [] as string[], epoca: "", borrados: [] as string[] };
+  const estado = { falla: null as string | null, llamadas: 0, llaves: [] as string[], epoca: "", borrados: [] as string[], rce: null as string | null };
   const api: ClienteApi = {
     ...crearApiLocal(),
     local: false,
@@ -33,7 +33,7 @@ function servidorFalso() {
       for (const k of Object.keys(guardado) as Tabla[]) {
         for (const fila of lote[k]) if (!guardado[k].has(String(fila["id"]))) guardado[k].set(String(fila["id"]), fila);
       }
-      return { ok: true, servidorEn: new Date(2026, 10, 4, 12, 0).toISOString() };
+      return { ok: true, servidorEn: new Date(2026, 10, 4, 12, 0).toISOString(), ...(estado.rce ? { rce: { estado: estado.rce } } : {}) };
     },
     async leer() {
       const datos: DatosNube = {
@@ -332,5 +332,45 @@ describe("eventos que mutan la vía aérea", () => {
     await sync.empujar();
     await repo.registrarEvento(unEvento<Extract<EventoClinico, { tipo: "CAMBIO_HMEF" }>>({ tipo: "CAMBIO_HMEF" }));
     expect(await sync.pendientes()).toBe(1);
+  });
+});
+
+describe("RCE by Kaptus: relleno de lo registrado antes del enlace", () => {
+  it("una vez por equipo manda los controles y eventos de los pacientes en cama, marcados como relleno y sin equipos", async () => {
+    const { api, paraRce, estado } = servidorFalso();
+    estado.rce = "entregado";
+    let reloj = 1_000_000;
+    const db = nuevaDb();
+    const sync = new Sincronizador(db, api, () => reloj);
+    const ep = unEpisodio({ cama: "UCI-04" });
+    const alta = unEpisodio({ id: "ep-alta", cama: "UCI-06", activo: false });
+    await db.episodios.bulkPut([ep, alta]);
+    await db.controles.bulkPut([unControl({ id: "c-1", episodioId: ep.id, fc: 88 }), unControl({ id: "c-2", episodioId: alta.id, fc: 70 })]);
+    expect(await sync.rellenarRce()).toBe(1);
+    expect(paraRce).toHaveLength(1);
+    expect(paraRce[0]).toMatchObject({ id: "c-1", cama: 4, relleno: true });
+    expect(paraRce[0]).not.toHaveProperty("equipos");
+    reloj += 10 * 3600 * 1000;
+    expect(await sync.rellenarRce()).toBe(0);
+    expect(paraRce).toHaveLength(1);
+  });
+
+  it("con el enlace apagado no se da por hecho, y no se insiste antes de 6 horas", async () => {
+    const { api, estado } = servidorFalso();
+    estado.rce = "apagado";
+    let reloj = 1_000_000;
+    const db = nuevaDb();
+    const sync = new Sincronizador(db, api, () => reloj);
+    const ep = unEpisodio({ cama: "UCI-04" });
+    await db.episodios.put(ep);
+    await db.controles.put(unControl({ id: "c-1", episodioId: ep.id }));
+    expect(await sync.rellenarRce()).toBe(0);
+    const llamadas = estado.llamadas;
+    reloj += 3600 * 1000;
+    expect(await sync.rellenarRce()).toBe(0);
+    expect(estado.llamadas).toBe(llamadas);
+    estado.rce = "entregado";
+    reloj += 6 * 3600 * 1000;
+    expect(await sync.rellenarRce()).toBe(1);
   });
 });

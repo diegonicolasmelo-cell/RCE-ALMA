@@ -40,8 +40,11 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
     expect(r.datos).toMatchObject({ dispositivo: "CNAF", hora: "10:40" });
     const ktm = unEvento<EventoClinico>({ tipo: "TERAPIA_FISICA", realizada: true, nivel: 3, ems: false } as never);
     expect(eventoParaRce(ktm, ep)).toMatchObject({ evento: "KTM", datos: { nivel: 3, realizada: true } });
-    const filtro = unEvento<EventoClinico>({ tipo: "CAMBIO_FILTRO" } as never);
-    expect(eventoParaRce(filtro, ep)).toBeNull();
+    // Desde el 23-nov los cambios de filtro sí viajan (la ronda corrige la fecha de etiqueta en el RCE).
+    const filtro = unEvento<EventoClinico>({ tipo: "CAMBIO_FILTRO", elemento: "TRACHCARE", fechaEtiqueta: "2026-11-21" } as never);
+    expect(eventoParaRce(filtro, ep)).toMatchObject({ evento: "FILTRO", datos: { k: "tc", fecha: "2026-11-21" } });
+    const ronda = unEvento<EventoClinico>({ tipo: "RONDA_EQUIPOS", hallazgos: [{ elemento: "HME", texto: "Filtro HME vencido" }] } as never);
+    expect(eventoParaRce(ronda, ep)).toMatchObject({ evento: "RONDA", datos: { hallazgos: "Filtro HME vencido" } });
   });
 
   it("un evento libre viaja como NOTA, con su texto y la hora en que ocurrió (no la de anotarlo)", () => {

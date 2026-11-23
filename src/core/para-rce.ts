@@ -161,6 +161,11 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "TRASLADO_CAMA": return "TRASLADO";
     // Cambio de ventilador u otro equipo de la sala (23-nov-2026): el RCE lo pone en la cama.
     case "CAMBIO_EQUIPOS": return "EQUIPOS";
+    // Ronda de equipos (23-nov-2026): el RCE la marca como revisada (check de la cama en el turno).
+    case "RONDA_EQUIPOS": return "RONDA";
+    // Cambio de filtro: el RCE escribe la fecha de etiqueta en la cama (manda la última edición).
+    case "CAMBIO_HMEF":
+    case "CAMBIO_FILTRO": return "FILTRO";
     default: return null;
   }
 }
@@ -176,12 +181,18 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     const val = x[k];
     return typeof val === "string" || typeof val === "number" || typeof val === "boolean" ? val : null;
   };
-  const datos = limpio({
+  const datos: Record<string, string | number | boolean> = limpio({
     hora: e.hora, dispositivo: simple("dispositivo"), sinPve: simple("sinPve"), accidental: simple("accidental"),
     exitosa: simple("exitosa"), realizada: simple("realizada"), nivel: simple("nivel"), muestra: simple("muestra"),
     destino: simple("destino"), escala: simple("escala"), total: simple("total"), razon: simple("razon"), motivo: simple("motivo"),
     desde: simple("desde"), hasta: simple("hasta"), descripcion: simple("descripcion")
   });
+  if (e.tipo === "RONDA_EQUIPOS") Object.assign(datos, { hallazgos: e.hallazgos.map((h) => h.texto).join("; ").slice(0, 300) });
+  if (e.tipo === "CAMBIO_HMEF" || e.tipo === "CAMBIO_FILTRO") {
+    const k = e.tipo === "CAMBIO_HMEF" ? "hme" : e.elemento === "TRACHCARE" ? "tc" : "hepa";
+    const fecha = e.fechaEtiqueta && /^\d{4}-\d{2}-\d{2}$/.test(e.fechaEtiqueta) ? e.fechaEtiqueta : horaLocal(e.registradoEn).slice(0, 10);
+    Object.assign(datos, { k, fecha });
+  }
   const equipos = e.tipo === "CAMBIO_EQUIPOS" ? { equipos: equiposRce(e.equipos) } : e.tipo === "TRASLADO_CAMA" ? { equipos: equiposRce(ep.equipos) } : {};
   return { id: e.id, tipo: "EVENTO", cama, horaToma: horaLocal(real), autor: e.rutAutor, evento, datos, ...equipos };
 }

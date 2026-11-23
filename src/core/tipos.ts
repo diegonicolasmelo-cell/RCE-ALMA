@@ -460,6 +460,11 @@ export type NivelKtm = 1 | 2 | 3 | 4 | 5;
 export type DestinatarioEducacion = "FAMILIA" | "PACIENTE" | "CUIDADOR";
 
 export type ElementoFiltro = "TRACHCARE" | "HEPA";
+/** Lo que encontró la ronda en una cama. `elemento` si es un filtro: se resuelve al cambiarlo. */
+export interface HallazgoRonda {
+  readonly elemento?: "TRACHCARE" | "HEPA" | "HME";
+  readonly texto: string;
+}
 
 export type FasePveControl = "INICIAL" | "30MIN";
 export type MomentoPostExtub = "EXTUB" | "30MIN" | "60MIN" | "120MIN" | "48H";
@@ -569,9 +574,18 @@ export type EventoClinico =
       readonly total: number | null;
       readonly realizadaEn?: string;
     })
-  | (EventoBase & { readonly tipo: "CAMBIO_HMEF" })
+  /**
+   * `fechaEtiqueta` (23-nov-2026): la fecha que dice la etiqueta, cuando se anota después del cambio
+   * (en la ronda). Sin ella, la etiqueta es el día en que se anotó. Manda la ÚLTIMA anotación.
+   */
+  | (EventoBase & { readonly tipo: "CAMBIO_HMEF"; readonly fechaEtiqueta?: string })
   /** Cambio de TrachCare (sonda de circuito cerrado) o filtro HEPA. El HME va como CAMBIO_HMEF. No va atado a un control. */
-  | (EventoBase & { readonly tipo: "CAMBIO_FILTRO"; readonly elemento: ElementoFiltro })
+  | (EventoBase & { readonly tipo: "CAMBIO_FILTRO"; readonly elemento: ElementoFiltro; readonly fechaEtiqueta?: string })
+  /**
+   * Ronda de equipos (23-nov-2026): alguien revisó la sala (ventilador y equipos, fechas de filtros).
+   * Los hallazgos le aparecen en la campana a quien tiene la cama hasta que se resuelven.
+   */
+  | (EventoBase & { readonly tipo: "RONDA_EQUIPOS"; readonly hallazgos: readonly HallazgoRonda[] })
   /**
    * Desvinculacion o reconexion del soporte, deducida del modo del control anterior y el
    * nuevo (p. ej. CPAP+PS -> tubo T / HME). `hora` y `realizadaEn` son la hora REAL del

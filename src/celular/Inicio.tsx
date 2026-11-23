@@ -29,9 +29,10 @@ import {
   Timer,
   UserPlus,
   Wifi,
+  Wrench,
   WifiOff,
   X } from "lucide-react";
-import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
+import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, hallazgosPendientes, hallazgosSugeridos, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
 import { FichaAlma } from "./FichaAlma";
@@ -90,12 +91,26 @@ export interface Aviso {
 }
 
 /** Lo pendiente: eventos sin su control de monitorización y lo que no sube. Nada que decida el clínico. */
-export function avisosDe(resumen: readonly ResumenCama[], sync: EstadoSync): Aviso[] {
+export function avisosDe(resumen: readonly ResumenCama[], sync: EstadoSync, esMia?: (e: Episodio) => boolean, ahora: Date = new Date()): Aviso[] {
   const lista: Aviso[] = [];
   for (const r of resumen) {
     const ultimo = r.controles.at(-1);
     for (const e of eventosSinMonitorizar(r.eventos, ultimo ? [ultimo] : [])) {
       lista.push({ id: e.id, tipo: "crit", titulo: `${nombreCama(r.ep.cama)} · Evento sin monitorización`, detalle: `${describirEvento(e, r.eventos)} · ${e.hora}`, episodioId: r.ep.id });
+    }
+    // Ronda y filtros (23-nov-2026): solo a quien tiene la cama. Lo que encontró la ronda queda hasta
+    // que se resuelve; y lo vencido aparece solo, aunque nadie haya pasado la ronda.
+    if (esMia && esMia(r.ep)) {
+      const p = hallazgosPendientes(r.eventos, ahora);
+      const vistos = new Set<string>();
+      if (p) for (const h of p.hallazgos) {
+        if (h.elemento) vistos.add(h.elemento);
+        lista.push({ id: `ronda-${p.ronda.id}-${h.texto}`, tipo: "warn", titulo: `${nombreCama(r.ep.cama)} · Ronda ${p.ronda.hora}`, detalle: h.texto, episodioId: r.ep.id });
+      }
+      if (esViaAereaArtificial(r.ep.viaAereaActual)) for (const h of hallazgosSugeridos(r.eventos, ahora)) {
+        if (h.elemento && vistos.has(h.elemento)) continue;
+        lista.push({ id: `filtro-${r.ep.id}-${h.elemento}`, tipo: "warn", titulo: `${nombreCama(r.ep.cama)} · Cambiar filtro`, detalle: h.texto, episodioId: r.ep.id });
+      }
     }
   }
   if (sync.noSube) lista.push({ id: "sync", tipo: "crit", titulo: "Lo registrado no está subiendo", detalle: `${sync.pendientes} por subir. Sigue guardado en este celular.` });
@@ -187,14 +202,17 @@ export function BarraInferior({ vista, oculta, onIr, onMas, onEvaluar }: { vista
   );
 }
 
-export type AccionMas = "ingresar" | "control" | "traslado" | "evento" | "pve" | "evaluacion" | "pcr";
+export type AccionMas = "ingresar" | "control" | "traslado" | "evento" | "pve" | "evaluacion" | "ronda" | "pcr";
 
 const ACCIONES: readonly { grupo: string; items: readonly (readonly [AccionMas, string, typeof BedDouble])[] }[] = [
   { grupo: "Urgente", items: [["pcr", "Código PCR", HeartPulse]] },
   { grupo: "Pacientes", items: [["ingresar", "Ingresar", UserPlus], ["control", "Control", Activity], ["traslado", "Cambio de cama", ArrowLeftRight]] },
-  { grupo: "Eventos y evaluaciones", items: [["evento", "Evento", Flag], ["pve", "PVE", Timer], ["evaluacion", "Evaluación", ClipboardList]] }
+  { grupo: "Eventos y evaluaciones", items: [["evento", "Evento", Flag], ["pve", "PVE", Timer], ["evaluacion", "Evaluación", ClipboardList]] },
+  // Ronda de equipos (23-nov-2026): sala por sala, ventiladores y fechas de los filtros.
+  { grupo: "Unidad", items: [["ronda", "Ronda de equipos", Wrench]] }
 ];
 const TITULO_ACCION: Record<AccionMas, string> = {
+  ronda: "",
   ingresar: "¿En qué cama ingresa?",
   control: "¿De qué paciente es el control?",
   traslado: "¿A qué paciente le cambias la cama?",
@@ -244,7 +262,7 @@ export function HojaMas({ accionInicial, episodios, esMia, onCerrar }: { accionI
                 <h3>{g.grupo}</h3>
                 <div className="tiles">
                   {g.items.map(([k, t, Icono]) => (
-                    <button key={k} type="button" className={`tile${k === "pcr" ? " urgente" : ""}`} onClick={() => { if (k === "pcr") { onCerrar(); void iniciarCodigoPcr(db, null); } else setAccion(k); }}>
+                    <button key={k} type="button" className={`tile${k === "pcr" ? " urgente" : ""}`} onClick={() => { if (k === "pcr") { onCerrar(); void iniciarCodigoPcr(db, null); } else if (k === "ronda") { onCerrar(); irA("ronda"); } else setAccion(k); }}>
                       <i><Icono size={28} strokeWidth={1.6} aria-hidden /></i>
                       {t}
                     </button>
@@ -382,9 +400,6 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
             <RefreshCw size={22} aria-hidden />
             <span>Sincronizar ahora<small>{sync.online ? "En línea" : "Sin señal"}{sync.pendientes > 0 ? ` · ${sync.pendientes} por subir` : " · todo subido"}</small></span>
             <ChevronRight size={18} aria-hidden />
-          </button>
-          <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("ayuda"); }}>
-            <CircleHelp size={22} aria-hidden /><span>Ayuda</span><ChevronRight size={18} aria-hidden />
           </button>
         </div>
         <div className="pc-banner">

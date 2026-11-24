@@ -944,6 +944,10 @@ sencilla de llenar:
 - **Al elegirlo** se guarda el ventilador en esa cama y el cuadro muestra su dibujo en 8 bits.
 - Pendiente de Diego: las imágenes en 8 bits (el proyecto no está en estos repositorios) y qué camas
   van en cada sección (adelante/medio/atrás).
+- **Precisiones de Diego (24-nov):** «Equipos médicos» y «Bodega» parten VACÍAS (no recuerda qué hay;
+  se llenan usándolas). En «Pasillo» (y en Bodega) se puede AGREGAR un ventilador con su número.
+  Numeración posible: **Meckis 1–20**, **Vela 1–10** y **el resto 1–10**. Que el número exista no
+  quiere decir que haya tantos equipos: el teclado acepta el rango, no una lista cerrada.
 - Encaja con lo que ya existe: los equipos por cama de Kaptus (`CAMBIO_EQUIPOS`, «en uso») que
   viajan al RCE, y la ronda de equipos del celular (v7.15). Sería otra forma de ver y llenar lo mismo,
   no un registro nuevo. Mockup: `scratchpad/mockups/ronda-8bits.html` (24-nov).
@@ -970,3 +974,12 @@ sencilla de llenar:
   se avisa si se escribe otra (se acepta: puede ser un cambio anotado tarde).
 - Todo vive en `src/core/filtros.ts` (`reglaFiltro`, `contextoFiltros`, `fechaEtiquetaAhora`): lo
   leen la tarjeta, la campana, la ronda, la Entrega y la Estación.
+
+## 29. Stock de insumos descontado por los eventos (IDEA de Diego, 24-nov-2026 · solo feedback, sin programar)
+
+Cada evento que usa un insumo lo descuenta del stock solo: traqueostomía y cambio de cánula (cánula
+elegida por marca, tipo y número), cambio de HME, HEPA y TrachCare, y los insumos de la cánula de alto
+flujo. Es un control de stock «inconsciente»: sale del registro clínico que ya se hace. En el RCE
+estaba aprobado en concepto el «stock de cánulas TQT» (faltaban inventario y umbrales). Feedback y
+preguntas en la conversación del 24-nov; esperando a que Diego termine lo de los ventiladores.
+

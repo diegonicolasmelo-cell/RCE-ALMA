@@ -398,7 +398,9 @@ export function Celular() {
       ahora: new Date()
     });
     if (problemas.length > 0) {
-      const primero = problemas[0];
+      // Un valor imposible no «falta»: está en la casilla equivocada (24-nov-2026). Se va primero a esa.
+      const imposibles = problemas.filter((p) => p.mensaje.includes("no es posible"));
+      const primero = imposibles[0] ?? problemas[0];
       if (primero) {
         const u = ubicacionDeCampo(primero.campo);
         setTab(u.tab);
@@ -407,7 +409,7 @@ export function Celular() {
           setTimeout(() => document.querySelector<HTMLElement>(`#cuerpo [data-campo="${primero.campo}"]`)?.focus(), 80);
         } else pedirSegmento(u.seg);
       }
-      avisar(`Falta: ${problemas.map((p) => p.mensaje).join(", ")}.`);
+      avisar(imposibles.length ? `Revisa: ${imposibles.map((p) => p.mensaje).join("; ")}.` : `Falta: ${problemas.map((p) => p.mensaje).join(", ")}.`);
       return;
     }
     const t = new Date();

@@ -944,6 +944,10 @@ sencilla de llenar:
 - **Al elegirlo** se guarda el ventilador en esa cama y el cuadro muestra su dibujo en 8 bits.
 - Pendiente de Diego: las imágenes en 8 bits (el proyecto no está en estos repositorios) y qué camas
   van en cada sección (adelante/medio/atrás).
+- **Precisiones de Diego (24-nov):** «Equipos médicos» y «Bodega» parten VACÍAS (no recuerda qué hay;
+  se llenan usándolas). En «Pasillo» (y en Bodega) se puede AGREGAR un ventilador con su número.
+  Numeración posible: **Meckis 1–20**, **Vela 1–10** y **el resto 1–10**. Que el número exista no
+  quiere decir que haya tantos equipos: el teclado acepta el rango, no una lista cerrada.
 - Encaja con lo que ya existe: los equipos por cama de Kaptus (`CAMBIO_EQUIPOS`, «en uso») que
   viajan al RCE, y la ronda de equipos del celular (v7.15). Sería otra forma de ver y llenar lo mismo,
   no un registro nuevo. Mockup: `scratchpad/mockups/ronda-8bits.html` (24-nov).
@@ -970,3 +974,29 @@ sencilla de llenar:
   se avisa si se escribe otra (se acepta: puede ser un cambio anotado tarde).
 - Todo vive en `src/core/filtros.ts` (`reglaFiltro`, `contextoFiltros`, `fechaEtiquetaAhora`): lo
   leen la tarjeta, la campana, la ronda, la Entrega y la Estación.
+- **Por qué (Diego, 24-nov, para no perderlo):** hoy el colega de atrás recorre sala por sala anotando
+  a mano en el cuaderno las fechas de cada filtro. Cuando la etiqueta queda oculta o apoyada en el
+  paciente hay que darla vuelta, y en un **aislamiento** eso obliga a vestirse con EPP: tiempo y
+  riesgo de **mano portadora**. Con el día 0 y la fecha escrita al cambiar, el sistema ya sabe qué
+  vence hoy; el colega de atrás solo **corrobora** (pregunta al colega de la cama si ya lo cambió) y,
+  si está cambiado, corrige la fecha en Kaptus. No se pierde supervisión: se ahorra tiempo para la
+  vigilancia. Los ventiladores quedan en su sala salvo un evento (falla, o se mueve a otro paciente
+  más grave por sus prestaciones).
+
+## 29. Stock de insumos descontado por los eventos (IDEA de Diego, 24-nov-2026 · solo feedback, sin programar)
+
+Cada evento que usa un insumo lo descuenta del stock solo: traqueostomía y cambio de cánula (cánula
+elegida por marca, tipo y número), cambio de HME, HEPA y TrachCare, y los insumos de la cánula de alto
+flujo. Es un control de stock «inconsciente»: sale del registro clínico que ya se hace. En el RCE
+estaba aprobado en concepto el «stock de cánulas TQT» (faltaban inventario y umbrales). Feedback y
+preguntas en la conversación del 24-nov; esperando a que Diego termine lo de los ventiladores.
+- **Propuesta dada:** elegir la cánula de un CATÁLOGO (marca, tipo, calibre), no escribirla; el stock
+  como libro de movimientos (entradas de reposición, salidas por evento, ajustes por conteo físico;
+  nada se edita); botón «Baja» para lo que se gasta sin evento (abierta y no usada, caída, vencida);
+  aviso de stock bajo a coordinación en la campana del RCE; la diferencia del conteo físico mide
+  cuánto se registra. El libro viviría en el servidor de Kaptus y el RCE lo mostraría.
+- **Preguntas ABIERTAS (Diego aún no las responde):** ① ¿el día 0 del ingreso descuenta HME,
+  TrachCare y HEPA del stock, o solo los cambios registrados? ② ¿qué trae el kit de alto flujo y se
+  cambia alguna pieza durante el uso? ③ catálogo real: marcas, tipos y calibres de cánulas; ¿HEPA de
+  dos tipos (72 h y el grande de PB/AVEA)? ④ ¿quién anota las entradas y cada cuánto el conteo físico?
+

@@ -15,7 +15,7 @@
  * a cero) son clinicamente distintos y no deben colapsar.
  */
 
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, MODALIDAD_POR_DISPOSITIVO, conSoporte, hayAspectoDeSecreciones, modalidadPermitida, pideMusculaturaAccesoria, transicionSoporte } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, MODALIDAD_POR_DISPOSITIVO, RANGOS_CONTROL, conSoporte, hayAspectoDeSecreciones, modalidadPermitida, pideMusculaturaAccesoria, transicionSoporte } from "./catalogos";
 import { momentoDeEvaluacion } from "./evaluaciones";
 import { esViaAereaArtificial } from "./fisiologia";
 import { dosisDeEscalon, sedoanalgesiaActiva } from "./infusiones";
@@ -320,6 +320,14 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
   for (const c of CAMPOS_VITALES) {
     if (medicionDe(b[c]) === null) falta(c, ETIQUETA_VITAL[c]);
   }
+  // Valores imposibles (24-nov-2026): casi siempre un dato escrito en la casilla equivocada (un Vt en la FR).
+  const fuera = (campo: string, etiqueta: string, unidad: string, v: number | null): void => {
+    const r = RANGOS_CONTROL[campo];
+    if (v === null || !r || (v >= r[0] && v <= r[1])) return;
+    falta(campo, `${etiqueta} ${String(v).replace(".", ",")}${unidad ? " " + unidad : ""} no es posible (entre ${r[0]} y ${r[1]}): revisa si quedó en la casilla equivocada`);
+  };
+  for (const c of CAMPOS_VITALES) fuera(c, ETIQUETA_VITAL[c], "", medicionDe(b[c]));
+  for (const d of CAMPOS_POR_MODALIDAD[b.modalidad]) fuera(d.campo, d.etiqueta, d.unidad, medicionDe(b.vent[d.campo]));
   if (medicionDe(b.vent.frTotal) === null) falta("frTotal", "FR total");
   // En CNAF (tambien por TQT) la temperatura del humidificador es parte de la programacion: se pide.
   if ((b.modalidad === "CNAF" || b.modalidad === "CNAF_TQT") && medicionDe(b.vent.temperatura) === null) falta("temperatura", "temperatura de la CNAF");

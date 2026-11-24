@@ -152,6 +152,22 @@ export function transicionSoporte(previo: Modalidad | null, nuevo: Modalidad, vi
   };
 }
 
+/**
+ * Rangos posibles de cada dato del control, en adultos de UCI (Diego, 24-nov-2026: «una colega anotó
+ * el volumen corriente en la frecuencia respiratoria… Vt 26, y eso no puede ser»). Un valor fuera de
+ * su rango NO se guarda: casi siempre es un dato escrito en la casilla equivocada. Es la misma tabla
+ * del dictado por voz: una regla, un solo sitio.
+ */
+export const RANGOS_CONTROL: Readonly<Record<string, readonly [number, number]>> = {
+  fc: [20, 250], pas: [40, 300], pad: [15, 200], spo2: [50, 100],
+  fio2: [21, 100], peep: [0, 30], presion: [0, 60], presionMax: [0, 60],
+  pPico: [0, 80], pPlateau: [0, 60], pMedia: [0, 50], autoPeep: [0, 30],
+  frProgramada: [4, 60], frTotal: [0, 70],
+  vtProgramado: [150, 1200], vtEspirado: [80, 2000],
+  ti: [0.2, 5], flujo: [0, 80], volMinuto: [1, 40], temperatura: [30, 40], fuga: [0, 150], ie: [0.2, 9], compliance: [5, 200],
+  sas: [1, 7], gcsO: [1, 4], gcsV: [1, 5], gcsM: [1, 6]
+};
+
 export interface CampoVentDef {
   readonly campo: CampoVent;
   readonly etiqueta: string;

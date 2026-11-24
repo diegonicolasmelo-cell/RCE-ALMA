@@ -409,7 +409,7 @@ export function narrarEventos(eventosPeriodo: readonly EventoClinico[], todosEve
       }
       case "REINTUBACION": {
         const que = esReintubacion(e, todosEventos) ? "reintubación" : "intubación orotraqueal";
-        out.push(oracion(`Paciente requiere ${que} ${hrs(e)} con ${e.via === "TET" ? "TOT" : "TQT"} N° ${e.calibre.replace(".", ",")}${e.via === "TET" && e.fijacionCm ? ` a ${e.fijacionCm} cm de arcada dental` : ""}`));
+        out.push(oracion(`Paciente requiere ${que} ${hrs(e)} con ${e.via === "TET" ? "TOT" : "TQT"} N° ${e.calibre.replace(".", ",")}${e.via === "TET" && e.fijacionCm ? ` a ${e.fijacionCm} cm de arcada dental` : ""}${e.motivo ? `, por ${e.motivo.charAt(0).toLowerCase()}${e.motivo.slice(1)}` : ""}`));
         queda(e);
         break;
       }

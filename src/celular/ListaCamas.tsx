@@ -2,6 +2,8 @@ import { ArrowLeftRight, ClipboardList, LogOut, Sheet, Stethoscope, Timer, Zap }
 import { Fragment, useEffect, useState } from "react";
 import {
   CAMAS_UNIDAD,
+  camaRce,
+  soloLectura,
   botonExtubacion,
   nombreCama,
   apkVigente,
@@ -24,6 +26,7 @@ import { CompletarRem, IngresoRapido } from "./IngresoRapido";
 import { TrasladoCama } from "./TrasladoCama";
 import { useAtras } from "./Inicio";
 import { FichaAlma } from "./FichaAlma";
+import { usePacientesRce } from "./pacientesRce";
 import type { PacienteFicha } from "./FichaAlma";
 
 interface Fila {
@@ -39,7 +42,10 @@ const haceTexto = (min: number): string => (min < 60 ? `${min} min` : `${Math.fl
 export function ListaCamas() {
   const { repo } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
+  const lectura = soloLectura(sesion.rol);
   const irA = useApp((s) => s.irA);
+  // Nombre y edad (24-nov-2026, Diego: por ahora todos los ven): llegan del RCE y viven en memoria.
+  const pacientesRce = usePacientesRce((s) => s.porCama);
   const misCamas = useApp((s) => s.misCamas);
   const ahora = useAhora(30_000);
   const [ingresando, setIngresando] = useState<string | null>(null);
@@ -95,6 +101,7 @@ export function ListaCamas() {
 
   const porCama = new Map((filas ?? []).map((f) => [f.ep.cama, f] as const));
   const esMiaCama = (c: string): boolean => {
+    if (lectura) return false;
     if (misCamas) return misCamas.includes(c);
     const f = porCama.get(c);
     return f ? f.ep.rutTitular === sesion.rut : false;
@@ -112,11 +119,15 @@ export function ListaCamas() {
       {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
       {remDe && <CompletarRem ep={remDe} onCerrar={() => setRemDe(null)} />}
       {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
+      {lectura ? (
+        <p className="small muted" style={{ margin: 0 }}>Camas de la unidad. Toca «Sábana» para ver los signos vitales y la ventilación; la historia y el plan están en Entrega.</p>
+      ) : (
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
         <button type="button" className="linkbtn" onClick={() => irA("elegir")}>Cambiar mis camas</button>
       </div>
-      {nMias === 0 && <p className="small muted">No elegiste camas. Puedes abrir cualquiera de abajo o usar «Cambiar mis camas».</p>}
+      )}
+      {!lectura && nMias === 0 && <p className="small muted">No elegiste camas. Puedes abrir cualquiera de abajo o usar «Cambiar mis camas».</p>}
       {orden.map((cama, i) => {
         const encabezadoOtras = i === nMias && nMias > 0 && <h3 style={{ margin: "8px 0 0" }}>Otras camas</h3>;
         const fila = porCama.get(cama);
@@ -129,7 +140,7 @@ export function ListaCamas() {
                   <b className="cama-num">{nombreCama(cama)}</b>
                 </header>
                 <div className="small ink2">Sin ingreso</div>
-                <button type="button" className="btn primary" aria-label={`Ingresar ${nombreCama(cama)}`} onClick={() => setIngresando(cama)}>Ingresar</button>
+                {!lectura && <button type="button" className="btn primary" aria-label={`Ingresar ${nombreCama(cama)}`} onClick={() => setIngresando(cama)}>Ingresar</button>}
               </article>
             </Fragment>
           );
@@ -154,7 +165,7 @@ export function ListaCamas() {
               <span className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
                 <b className="cama-num">{nombreCama(ep.cama)}</b>
                 {/* Las flechas cambian al paciente de cama (solo a camas libres). */}
-                <button
+                {!lectura && <button
                   type="button"
                   className="btn-cambiar-cama"
                   aria-label={`Cambiar de cama · ${nombreCama(ep.cama)}`}
@@ -162,20 +173,26 @@ export function ListaCamas() {
                   onClick={() => setTrasladando(ep)}
                 >
                   <ArrowLeftRight size={17} aria-hidden />
-                </button>
+                </button>}
               </span>
               {/* Egreso rapido (Diego, 22-nov-2026): en todas las tarjetas, mias y de otros colegas. Abre el
                   egreso de Eventos, que pide el destino y la confirmacion: un toque no da de alta a nadie. */}
-              <button type="button" className="btn-egresar" aria-label={`Dar de alta · ${nombreCama(ep.cama)}`} onClick={() => { pedirEvento("egreso"); irA("eventos", ep.id); }}>
+              {!lectura && <button type="button" className="btn-egresar" aria-label={`Dar de alta · ${nombreCama(ep.cama)}`} onClick={() => { pedirEvento("egreso"); irA("eventos", ep.id); }}>
                 <LogOut size={15} aria-hidden /> Dar de alta
-              </button>
+              </button>}
             </header>
+            {pacientesRce.get(Number(camaRce(ep.cama))) && (
+              <div className="paciente-rce">
+                <b>{pacientesRce.get(Number(camaRce(ep.cama)))!.nombre}</b>
+                {pacientesRce.get(Number(camaRce(ep.cama)))!.edad ? <span className="small muted"> · {pacientesRce.get(Number(camaRce(ep.cama)))!.edad} años</span> : null}
+              </div>
+            )}
             <div className="small ink2">
               {textoViaCama(ep, h)}
               {/* Sin etiqueta NAVM (Diego, 22-nov-2026): marcaba a todo ventilado > 48 h y confundía; la NAVM es un diagnóstico, no un tiempo. */}
             </div>
             {/* La edad y el diagnostico REM son para la estadistica: no se muestran, solo se avisa si faltan. */}
-            {(ep.rangoEdad === null || ep.categoriaRem === null) && (
+            {!lectura && (ep.rangoEdad === null || ep.categoriaRem === null) && (
               <button type="button" className="falta-rem" onClick={() => setRemDe(ep)}>
                 Falta para el REM: {[ep.rangoEdad === null ? "edad" : null, ep.categoriaRem === null ? "diagnóstico" : null].filter(Boolean).join(" y ")} ›
               </button>
@@ -204,7 +221,7 @@ export function ListaCamas() {
                 </button>
               )}
             </div>
-            <div className="botones-cama">
+            {!lectura && <div className="botones-cama">
               <button type="button" className="btn primary" onClick={() => irA("cama", ep.id)}>
                 <Stethoscope size={15} aria-hidden /> Monitorización
               </button>
@@ -214,13 +231,13 @@ export function ListaCamas() {
               <button type="button" className="btn" onClick={() => irA("eventos", ep.id)}>
                 <Zap size={15} aria-hidden /> Eventos
               </button>
-            </div>
-            {pve && (
+            </div>}
+            {!lectura && pve && (
               <button type="button" className={pve.destacado ? "btn primary" : "btn"} onClick={() => irA("pve", ep.id)}>
                 <Timer size={15} aria-hidden /> {pve.texto}
               </button>
             )}
-            {boton?.tipo === "FUERA_PROTOCOLO" && (
+            {!lectura && boton?.tipo === "FUERA_PROTOCOLO" && (
               <button type="button" className="btn" onClick={() => { pedirEvento("extub"); irA("eventos", ep.id); }}>
                 <Timer size={15} aria-hidden /> Extubación fuera de protocolo
               </button>

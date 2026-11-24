@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Lock, Wifi, WifiOff } from "lucide-react";
 import {
   apkVigente,
+  soloLectura,
   completarBorrador,
   describirEvento,
   eventosSinMonitorizar,
@@ -59,6 +60,7 @@ import { ListaCamas } from "./ListaCamas";
 import { CLAVE_CODIGO_PCR, CodigoPcr } from "./CodigoPcr";
 import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
+import { useCargarPacientesRce } from "./pacientesRce";
 
 const TABS: readonly (readonly [TabCelular, string])[] = [
   ["control", "Control"],
@@ -88,11 +90,14 @@ export function Celular() {
   const franja = useFranja();
   const online = useOnline();
   const ahora = useAhora(1000);
+  useCargarPacientesRce();
 
   // Camas de prueba (23-nov-2026): solo para quien ve lo que está en prueba (columna «museo»).
   mostrarCamasPrueba(buscarProfesional(sesion.rut)?.museo === true);
   const episodios = useConsulta(() => repo.episodiosActivos(), [repo], []);
-  const esMia = (e: { cama: string; rutTitular: string }): boolean => (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
+  // Médico UCI (24-nov-2026): solo lectura, ve todas las camas como si fueran suyas (orden y Entrega).
+  const lectura = soloLectura(sesion.rol);
+  const esMia = (e: { cama: string; rutTitular: string }): boolean => lectura || (misCamas ? misCamas.includes(e.cama) : e.rutTitular === sesion.rut);
   const mias = episodios.filter(esMia);
 
   // Un codigo PCR en curso manda: al abrir la app se vuelve a el.
@@ -103,11 +108,12 @@ export function Celular() {
   // Sesion restaurada: recuperar las camas de hoy; si nunca las eligio, preguntarlas.
   useEffect(() => {
     if (misCamas !== null) return;
+    if (lectura) { setMisCamas([]); if (useApp.getState().vista === "elegir") useApp.setState({ vista: "camas" }); return; }
     void leerMeta<string[]>(db, claveMisCamas(sesion.rut)).then((g) => {
       if (g) setMisCamas(g);
       else useApp.setState({ vista: "elegir" });
     });
-  }, [db, sesion.rut, misCamas, setMisCamas]);
+  }, [db, sesion.rut, misCamas, setMisCamas, lectura]);
   // El paciente elegido se busca tambien directo en la base: recien ingresado, la lista de
   // activos todavia no lo trae y no hay que saltar a otra cama mientras tanto.
   const elegido = useConsulta<Episodio | null | "cargando">(async () => (camaId ? (await db.episodios.get(camaId)) ?? null : null), [db, camaId], "cargando");
@@ -324,7 +330,8 @@ export function Celular() {
 
   const turno = turnoDe(ahora);
   const estadoSync: EstadoSync = { online, pendientes, noSube: Boolean(errorSync) && pendientes > 0, sincronizar: () => void sincronizarAhora() };
-  const avisos = avisosDe(resumen, estadoSync, esMia, ahora);
+  // El médico no tiene tareas de kinesiología: sin campana de pendientes.
+  const avisos = lectura ? [] : avisosDe(resumen, estadoSync, esMia, ahora);
   /** Franja fina de las vistas de un paciente: quien registra, el turno y la conexion. */
   const cabecera = (
       <div className="cel-top">
@@ -346,8 +353,8 @@ export function Celular() {
       {cabeceraInicio}
       {avisoLlave}
       {contenido}
-      <BarraInferior vista={v} oculta={barraOculta} onIr={(x) => irA(x)} onMas={() => setHojaMas("menu")} onEvaluar={() => setHojaMas("evaluacion")} />
-      {hojaMas && <HojaMas key={hojaMas} accionInicial={hojaMas === "menu" ? null : hojaMas} episodios={episodios} esMia={esMia} onCerrar={() => setHojaMas(null)} />}
+      <BarraInferior vista={v} oculta={barraOculta} soloLectura={lectura} onIr={(x) => irA(x)} onMas={() => setHojaMas("menu")} onEvaluar={() => setHojaMas("evaluacion")} />
+      {hojaMas && !lectura && <HojaMas key={hojaMas} accionInicial={hojaMas === "menu" ? null : hojaMas} episodios={episodios} esMia={esMia} onCerrar={() => setHojaMas(null)} />}
       {panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}
       {panel === "avisos" && <PanelAvisos avisos={avisos} onCerrar={() => setPanel(null)} />}
       <TecladoPropio />
@@ -367,6 +374,8 @@ export function Celular() {
 
   // Sin pacientes (o con la cama elegida ya dada de alta): las camas de la unidad, con las
   // libres listas para ingresar a pie de cama. Nunca una pantalla sin salida.
+  // Solo lectura: ninguna vista que registre (control, eventos, evaluaciones, PVE, ronda, código PCR).
+  if (lectura && !(vista === "camas" || vista === "controles" || vista === "ayuda" || vista === "entrega")) return marcoInicio(<ListaCamas />, "camas");
   if (buscandoElegido && vista === "cama") return <div className="app-cel">{cabecera}<p className="muted" style={{ padding: 16 }}>Cargando…</p></div>;
   if (vista === "pcr") return <div className="app-cel"><CodigoPcr /><TecladoPropio /></div>;
   if (vista === "elegir") return <div className="app-cel inicio elegir"><CabeceraMarca mini />{cabeceraInicio}<ElegirCamas /><PaisajeCoquimbo />{panel === "cuenta" && <PanelCuenta nombre={sesion.nombre} rol={sesion.rol} turno={turno} nMias={mias.length} sync={estadoSync} onCerrar={() => setPanel(null)} onSalir={() => setSesion(null)} />}</div>;

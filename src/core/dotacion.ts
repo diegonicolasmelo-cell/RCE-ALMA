@@ -39,7 +39,9 @@ export const DOTACION_DEMO: readonly Profesional[] = [
   demo("Rodrigo Caamano", "SUBROGANCIA", "COORDINACION"),
   demo("Magdalena Contardo", "SUBROGANCIA", "COORDINACION"),
   demo("Aline Campos", "REEMPLAZO"),
-  demo("Scarlett Tabilo", "REEMPLAZO")
+  demo("Scarlett Tabilo", "REEMPLAZO"),
+  // Perfil de solo lectura (24-nov-2026): el médico de la UCI ve, no registra.
+  demo("Medico Uci", "REEMPLAZO", "MEDICO")
 ];
 
 /** Correo de demostracion de Diego, para el aviso del modo demostracion y las pruebas. */
@@ -78,7 +80,7 @@ export function fijarDotacion(lista: readonly unknown[]): readonly Profesional[]
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || !nombre) return [];
     const turno = TURNOS.includes(o["turno"] as IdTurno) ? (o["turno"] as IdTurno) : "REEMPLAZO";
     const r = String(o["rol"] ?? "").toUpperCase();
-    const rol: Profesional["rol"] = r.startsWith("COORD") ? "COORDINACION" : r.startsWith("INTERN") ? "INTERNO" : "KINE_CLINICO";
+    const rol: Profesional["rol"] = r.startsWith("COORD") ? "COORDINACION" : r.startsWith("INTERN") ? "INTERNO" : r.startsWith("MED") || r.startsWith("MÉD") ? "MEDICO" : "KINE_CLINICO";
     const museo = /^(TRUE|SI|SÍ|1)$/i.test(String(o["museo"] ?? "").trim()) || o["museo"] === true;
     return [{ correo, nombre, turno, rol, ...(museo ? { museo: true } : {}) }];
   });
@@ -107,10 +109,19 @@ export function buscarUsuario(texto: string): Profesional | undefined {
 
 /** Tratamiento profesional para la nota clinica: «Klgo.», o «Int.» para el interno. */
 export function tituloProfesional(p: Profesional): string {
-  return `${p.rol === "INTERNO" ? "Int." : "Klgo."} ${p.nombre}`;
+  return `${p.rol === "INTERNO" ? "Int." : p.rol === "MEDICO" ? "Dr(a)." : "Klgo."} ${p.nombre}`;
 }
 
 /** Como se nombra el rol en la cuenta. */
 export function etiquetaRol(rol: Profesional["rol"]): string {
-  return rol === "COORDINACION" ? "Kinesiólogo · Coordinación" : rol === "INTERNO" ? "Interno de kinesiología" : "Kinesiólogo clínico";
+  return rol === "COORDINACION" ? "Kinesiólogo · Coordinación" : rol === "INTERNO" ? "Interno de kinesiología" : rol === "MEDICO" ? "Médico UCI · solo lectura" : "Kinesiólogo clínico";
+}
+
+/**
+ * Perfil de solo lectura (Diego, 24-nov-2026): el médico de la UCI ve las camas, la sábana y la
+ * Entrega, pero no ingresa, no monitoriza ni registra eventos o evaluaciones. El servidor rechaza
+ * cualquier registro suyo: esconder botones no protege.
+ */
+export function soloLectura(rol: Profesional["rol"] | undefined | null): boolean {
+  return rol === "MEDICO";
 }

@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { CORREO_DEMO, DOTACION_DEMO, buscarProfesional, buscarUsuario, dotacion, etiquetaRol, fijarDotacion, tituloProfesional } from "./dotacion";
+import { CORREO_DEMO, DOTACION_DEMO, buscarProfesional, buscarUsuario, dotacion, etiquetaRol, fijarDotacion, soloLectura, tituloProfesional } from "./dotacion";
 
 afterEach(() => fijarDotacion(DOTACION_DEMO));
 
 describe("dotación de demostración", () => {
-  it("16 profesionales con correos inventados, sin RUT", () => {
-    expect(DOTACION_DEMO).toHaveLength(16);
+  it("16 profesionales y un médico de solo lectura, con correos inventados, sin RUT", () => {
+    expect(DOTACION_DEMO).toHaveLength(17);
+    expect(DOTACION_DEMO.filter((p) => p.rol === "MEDICO").map((p) => p.correo)).toEqual(["medico.uci@demo.upc"]);
     expect(DOTACION_DEMO.every((p) => p.correo.endsWith("@demo.upc"))).toBe(true);
     expect(DOTACION_DEMO.filter((p) => p.turno === "T3").map((p) => p.nombre)).toEqual(["Eduardo Gonzalez", "Diego Melo", "Karen Gonzalez"]);
     expect(DOTACION_DEMO.filter((p) => p.rol === "COORDINACION")).toHaveLength(2);
@@ -63,5 +64,15 @@ describe("dotación de la hoja", () => {
     ]);
     expect(buscarProfesional("a@hospital.cl")?.museo).toBe(true);
     expect(buscarProfesional("b@hospital.cl")?.museo).toBeUndefined();
+  });
+});
+
+describe("perfil Médico UCI (24-nov-2026)", () => {
+  it("la hoja «usuarios» con rol MEDICO o Médico da un perfil de solo lectura", () => {
+    const d = fijarDotacion([{ correo: "a@x.cl", nombre: "A", rol: "MEDICO" }, { correo: "b@x.cl", nombre: "B", rol: "Médico UCI" }, { correo: "c@x.cl", nombre: "C", rol: "" }]);
+    expect(d.map((p) => p.rol)).toEqual(["MEDICO", "MEDICO", "KINE_CLINICO"]);
+    expect(d.map((p) => soloLectura(p.rol))).toEqual([true, true, false]);
+    expect(etiquetaRol("MEDICO")).toBe("Médico UCI · solo lectura");
+    fijarDotacion(DOTACION_DEMO);
   });
 });

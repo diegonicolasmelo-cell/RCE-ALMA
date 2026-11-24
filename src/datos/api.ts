@@ -1,4 +1,4 @@
-import type { HistoriaEntrega, ItemParaRce } from "@core/index";
+import type { HistoriaEntrega, ItemParaRce, PacienteRce } from "@core/index";
 /**
  * Cliente de la API (Google Apps Script sobre Sheets).
  *
@@ -66,7 +66,7 @@ export interface ClienteApi {
    * Historias de la entrega de estas camas: el servidor de Kaptus se las pide al RCE en el momento
    * y no las guarda. El celular tampoco: viven solo en la pantalla abierta (Diego, 22-nov-2026).
    */
-  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string }>>;
+  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string; pacientes?: readonly PacienteRce[] }>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,9 +207,15 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       const r = await post({ token: cfg.appToken, accion: "historias", camas });
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
       const lista = Array.isArray(r["historias"]) ? (r["historias"] as Record<string, unknown>[]) : [];
+      const pacientes = Array.isArray(r["pacientes"])
+        ? (r["pacientes"] as Record<string, unknown>[])
+            .filter((p) => Number.isFinite(Number(p["cama"])) && typeof p["nombre"] === "string" && p["nombre"])
+            .map((p): PacienteRce => ({ cama: Number(p["cama"]), nombre: String(p["nombre"]).slice(0, 80), edad: Number.isFinite(Number(p["edad"])) && p["edad"] !== "" && p["edad"] !== null ? Number(p["edad"]) : null }))
+        : [];
       return {
         ok: true,
         ...(typeof r["estado"] === "string" ? { estado: r["estado"] } : {}),
+        ...(pacientes.length ? { pacientes } : {}),
         historias: lista
           .filter((h) => typeof h["texto"] === "string" && Number.isFinite(Number(h["cama"])))
           .map((h) => ({

@@ -7,6 +7,13 @@
 import type { Episodio, EventoClinico } from "./tipos";
 
 /** Historia de la entrega: la escribe el RCE (PC), sin nombre ni RUT; el celular solo la muestra. */
+/** Nombre y edad del paciente de una cama, desde el RCE (solo en memoria; 24-nov-2026). */
+export interface PacienteRce {
+  readonly cama: number;
+  readonly nombre: string;
+  readonly edad: number | null;
+}
+
 export interface HistoriaEntrega {
   /** Número de cama del RCE (Kaptus «UCI-03» = 3). */
   readonly cama: number;

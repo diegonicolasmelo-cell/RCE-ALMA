@@ -507,6 +507,22 @@ export const MOTIVOS_KTM_NO_REALIZADA: readonly string[] = [
 ];
 
 /** Las 9 razones del RCE para no hacer la PVE en el turno. */
+/**
+ * Motivo de la reintubación: la MISMA lista del RCE (fReintubRaz), para que el formulario del PC
+ * venga prellenado (Diego, 24-nov-2026: «ambas» — la lista y la hipótesis en texto libre).
+ */
+export const MOTIVOS_REINTUBACION: readonly string[] = [
+  "Falla respiratoria post extubación",
+  "Mal manejo de secreciones (no deglute)",
+  "No protege VA",
+  "Edema laríngeo post extubación",
+  "Compromiso de conciencia",
+  "Debilidad muscular respiratoria",
+  "Broncoespasmo",
+  "Extubación accidental",
+  "Otra"
+];
+
 export const RAZONES_PVE_NO_REALIZADA: readonly string[] = [
   "Sin condiciones ventilatorias",
   "Inestabilidad hemodinámica",

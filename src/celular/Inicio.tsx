@@ -184,7 +184,19 @@ const PESTANAS_2: readonly (readonly [VistaCelular | "evaluar", string, typeof B
   ["entrega", "Entrega", ClipboardCheck]
 ];
 
-export function BarraInferior({ vista, oculta, onIr, onMas, onEvaluar }: { vista: VistaCelular; oculta: boolean; onIr: (v: VistaCelular) => void; onMas: () => void; onEvaluar: () => void }) {
+export function BarraInferior({ vista, oculta, soloLectura = false, onIr, onMas, onEvaluar }: { vista: VistaCelular; oculta: boolean; soloLectura?: boolean; onIr: (v: VistaCelular) => void; onMas: () => void; onEvaluar: () => void }) {
+  // Médico UCI: Pacientes, Controles y Entrega. Sin «+» ni Evaluaciones (no registra nada).
+  if (soloLectura) {
+    return (
+      <nav className={`barra-inf solo-lectura${oculta ? " oculta" : ""}`} aria-label="Navegación">
+        {[...PESTANAS, ...PESTANAS_2.filter(([k]) => k !== "evaluar")].map(([k, t, Icono]) => (
+          <button key={k} type="button" aria-current={vista === k ? "page" : undefined} onClick={() => onIr(k as VistaCelular)}>
+            <Icono size={21} aria-hidden /> {t}
+          </button>
+        ))}
+      </nav>
+    );
+  }
   return (
     <nav className={`barra-inf${oculta ? " oculta" : ""}`} aria-label="Navegación">
       {PESTANAS.map(([k, t, Icono]) => (
@@ -348,13 +360,13 @@ export function PanelCuenta({ nombre, rol, turno, nMias, sync, onCerrar, onSalir
           <span className="avatar grande" aria-hidden>{inicial(nombre)}</span>
           <b>{nombreSinTitulo(nombre)}</b>
           <span className="rol">{etiquetaRol(rol)}</span>
-          <span className="caja">{nMias === 1 ? "1 cama a tu cargo" : `${nMias} camas a tu cargo`}</span>
+          <span className="caja">{rol === "MEDICO" ? "Todas las camas · solo lectura" : nMias === 1 ? "1 cama a tu cargo" : `${nMias} camas a tu cargo`}</span>
         </div>
         <div className="pc-turno">{etiquetaTurno(turno)}</div>
         <div className="pc-lista">
-          <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("elegir"); }}>
+          {rol !== "MEDICO" && <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("elegir"); }}>
             <BedDouble size={22} aria-hidden /><span>Mis camas de hoy</span><ChevronRight size={18} aria-hidden />
-          </button>
+          </button>}
           <button type="button" className="pc-fila" onClick={() => { onCerrar(); irA("ayuda"); }}>
             <CircleHelp size={22} aria-hidden /><span>Ayuda y tutorial</span><ChevronRight size={18} aria-hidden />
           </button>

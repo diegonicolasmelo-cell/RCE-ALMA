@@ -49,6 +49,8 @@ export function textoErrorSync(codigo: string): string {
       return "El servidor no respondió como la app: revisa que la implementación de Apps Script tenga acceso «Cualquier persona».";
     case "OCUPADO_REINTENTAR":
       return "El servidor estaba ocupado: se reintenta solo.";
+    case "SOLO_LECTURA":
+      return "Este perfil es de solo lectura: no se guardan registros.";
     case "REGISTRO_CERRADO":
       return "El registro de llaves está cerrado.";
     default:
@@ -161,6 +163,12 @@ export class Sincronizador {
       return this.resumen(ids.length, null);
     }
 
+    if (r.error === "SOLO_LECTURA") {
+      // Perfil médico: el servidor no guarda nada suyo. Reintentar no lo cambia.
+      const detalle = "Este perfil es de solo lectura: el servidor no guarda registros suyos.";
+      await Promise.all(ids.map((id) => this.db.cola.update(id, { estado: "bloqueada", ultimoError: detalle })));
+      return this.resumen(0, detalle);
+    }
     if (r.error === "PAYLOAD_CON_IDENTIDAD") {
       // Es un defecto, no un fallo de red: reintentar no lo arregla.
       const detalle = `El servidor rechazó datos identificables: ${(r.llaves ?? []).join(", ")}`;

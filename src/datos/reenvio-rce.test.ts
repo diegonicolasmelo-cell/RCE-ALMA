@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 /** Carga Codigo.gs con un Google de mentira: hojas en memoria, propiedades y UrlFetchApp. */
-function servidorKaptus(props: Record<string, string>, rce: (cuerpo: Record<string, unknown>) => { code: number; body?: unknown }) {
+function servidorKaptus(props: Record<string, string>, rce: (cuerpo: Record<string, unknown>) => { code: number; body?: unknown }, usuarios?: unknown[][]) {
   const hojas: Record<string, unknown[][]> = {};
+  if (usuarios) hojas["usuarios"] = [["correo", "sal", "hashPin", "nombre", "turno", "rol", "museo"], ...usuarios];
   const hoja = (nombre: string) => ({
     getLastRow: () => hojas[nombre]!.length,
+    getDataRange: () => ({ getValues: () => hojas[nombre]!.map((f) => f.slice()) }),
     appendRow: (f: unknown[]) => { hojas[nombre]!.push(f); },
     setFrozenRows: () => {},
     getRange: (fila: number, col: number, n: number, m: number) => ({
@@ -97,5 +99,22 @@ describe("historias de la entrega: se piden al RCE y no se guardan", () => {
     expect(s.llamadas[0]).toMatchObject({ accion: "historiasEntrega", token: "LLAVE", camas: [3, 4] });
     expect(r).toEqual({ ok: true, historias: [{ cama: 3, texto: "Paciente de 64 años, neumonía grave.", firma: "MCC", fecha: "2026-11-17", pendientes: [], plan: "" }] });
     expect(JSON.stringify(s.hojas)).toBe(antes);
+  });
+
+  it("Médico UCI: lo que firma un médico no se guarda (solo lectura), y no se reenvía al RCE", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true } }),
+      [["medico@demo.cl", "", "", "Dra. Prueba", "", "MEDICO", ""], ["kine@demo", "", "", "Klgo. Prueba", "T1", "", ""]]);
+    const delMedico = { episodios: [], controles: [{ id: "c1", episodioId: "e1", rutAutor: "medico@demo.cl" }], eventos: [], apk: [], paraRce: [] };
+    expect(s.sincronizar(delMedico)).toMatchObject({ ok: false, error: "SOLO_LECTURA" });
+    expect(s.llamadas).toHaveLength(0);
+    expect(s.sincronizar(lote(["a"]))).toMatchObject({ ok: true });
+  });
+
+  it("nombre y edad pasan del RCE al teléfono sin RUT (y sin guardarse en Kaptus)", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, historias: [],
+      pacientes: [{ cama: 3, nombre: "Paciente Prueba", edad: 71 }, { cama: 4, nombre: "12.345.678-5", edad: 50 }] } }));
+    const r = s.historiasDesdeRce([3, 4]);
+    expect(r["pacientes"]).toEqual([{ cama: 3, nombre: "Paciente Prueba", edad: 71 }]);
+    expect(Object.keys(s.hojas)).not.toContain("pacientes");
   });
 });

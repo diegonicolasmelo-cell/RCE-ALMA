@@ -443,6 +443,26 @@ function agregarRegistros(nombreHoja, registros) {
   return { insertados: filas.length, duplicados: duplicados };
 }
 
+/** Correo del primer autor del lote que es médico (rol MEDICO de la hoja «usuarios»), o "". */
+function autorSoloLectura_(cuerpo) {
+  var medicos = {};
+  var d = [];
+  try { d = leerDotacion(); } catch (e) { d = []; }
+  for (var i = 0; i < d.length; i++) if (d[i].rol.indexOf("MED") === 0 || d[i].rol.indexOf("MÉD") === 0) medicos[d[i].correo] = true;
+  var tablas = ["episodios", "controles", "eventos", "apk"];
+  for (var t = 0; t < tablas.length; t++) {
+    var filas = cuerpo[tablas[t]] || [];
+    for (var j = 0; j < filas.length; j++) {
+      var f = filas[j] || {};
+      var a = normalizarCorreo(f.rutAutor || f.rutTitular || f.autor || "");
+      if (a && medicos[a]) return a;
+    }
+  }
+  var rce = cuerpo.paraRce || [];
+  for (var k = 0; k < rce.length; k++) { var x = normalizarCorreo((rce[k] || {}).autor || ""); if (x && medicos[x]) return x; }
+  return "";
+}
+
 function sincronizar(cuerpo) {
   var hallazgos = validarSinIdentidad({
     episodios: cuerpo.episodios,
@@ -455,6 +475,14 @@ function sincronizar(cuerpo) {
   if (hallazgos.length > 0) {
     registrarAuditoria(cuerpo.rutAutor || "", "rechazo_identidad", hallazgos.join(","));
     return { ok: false, error: "PAYLOAD_CON_IDENTIDAD", llaves: hallazgos };
+  }
+
+  // Médico UCI (24-nov-2026): perfil de SOLO LECTURA. La app no le muestra cómo registrar, pero el
+  // candado vive aquí: un registro firmado por un médico no se guarda.
+  var medico = autorSoloLectura_(cuerpo);
+  if (medico) {
+    registrarAuditoria(medico, "rechazo_solo_lectura", "");
+    return { ok: false, error: "SOLO_LECTURA" };
   }
 
   var resultado;
@@ -603,7 +631,7 @@ function historiasDesdeRce(camas) {
   if (!enlace) return { ok: true, historias: [], estado: "apagado" };
   var lista = [];
   if (Object.prototype.toString.call(camas) === "[object Array]") {
-    for (var i = 0; i < camas.length && lista.length < 18; i++) {
+    for (var i = 0; i < camas.length && lista.length < 20; i++) {
       var n = parseInt(camas[i], 10);
       if (n >= 1 && n <= 40) lista.push(n);
     }
@@ -639,7 +667,20 @@ function historiasDesdeRce(camas) {
     if (!texto && !pend.length && !plan) continue;
     out.push({ cama: Number(h.cama), texto: texto, firma: String(h.firma || ""), fecha: String(h.fecha || ""), pendientes: pend, plan: plan });
   }
-  return { ok: true, historias: out };
+  // Nombre y edad (24-nov-2026, decisión de Diego mientras se prueba): pasan del RCE al teléfono
+  // SIN guardarse aquí. Nunca un RUT. Se apagan en el RCE (CONFIG.KAPTUS_NOMBRES_CELULAR).
+  var pacientes = [];
+  var ps2 = resp.pacientes || [];
+  for (var q = 0; q < ps2.length && pacientes.length < 20; q++) {
+    var p = ps2[q] || {};
+    var nombre = String(p.nombre || "").slice(0, 80);
+    if (!nombre || rut.test(nombre)) continue;
+    var edad = parseInt(p.edad, 10);
+    pacientes.push({ cama: Number(p.cama), nombre: nombre, edad: edad >= 0 && edad <= 120 ? edad : null });
+  }
+  var res = { ok: true, historias: out };
+  if (pacientes.length) res.pacientes = pacientes;
+  return res;
 }
 
 /** Desde el editor: pide al RCE las historias de las camas 1 a 20 y muestra que contesta. */

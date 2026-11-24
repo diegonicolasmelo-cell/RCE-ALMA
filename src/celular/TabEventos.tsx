@@ -24,7 +24,8 @@ import {
   ETIQUETA_MOTIVO_EGRESO,
   NIVELES_KTM,
   MOTIVOS_KTM_NO_REALIZADA,
-  RAZONES_PVE_NO_REALIZADA
+  RAZONES_PVE_NO_REALIZADA,
+  MOTIVOS_REINTUBACION
 } from "@core/index";
 import type { DestinatarioEducacion, DispositivoPosterior, EventoClinico, NivelKtm, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
@@ -185,7 +186,11 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         },
         // La PVE de cada dia, aunque no se extube. Sin PVE posible igual se abre: ahi se ve por que.
         { k: "pve", texto: pve ? pve.texto : "PVE", req: "tet", ...(pve ? {} : { ayuda: `${motivoSinPve(ep.viaAereaActual, ultimoPve, eventos) ?? ""} Si no corresponde PVE, ábrela para extubar fuera de protocolo.`.trim() }), crear: (_v, b) => b as never },
-        { k: "reint", texto: yaRetiradaVia ? "Reintubación" : "Intubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] }], crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "" }) },
+        { k: "reint", texto: yaRetiradaVia ? "Reintubación" : "Intubación", req: "nat", campos: [{ id: "via", etiqueta: "Vía", opciones: lista(["TET", "TQT"]) }, { id: "cal", etiqueta: "Calibre", num: true }, { id: "fij", etiqueta: "Fijación (cm en la arcada dental)", num: true }, { id: "talla", etiqueta: "Talla (cm) · para el peso ideal", valor: String(ep.tallaCm), num: true }, { id: "sexo", etiqueta: "Sexo", valor: ep.sexo, opciones: [{ valor: "M", texto: "Hombre" }, { valor: "F", texto: "Mujer" }] },
+          // Reintubación (no la primera intubación): el motivo de la lista del RCE y la hipótesis libre.
+          ...(yaRetiradaVia ? [{ id: "mot", etiqueta: "Motivo de la reintubación", valor: "", opciones: [{ valor: "", texto: "— elegir —" }, ...lista(MOTIVOS_REINTUBACION)] }, { id: "hip", etiqueta: "Hipótesis (opcional)" }] : [])],
+          comentarioDe: "hip",
+          crear: (v, b) => ({ ...b, tipo: "REINTUBACION", via: v["via"] === "TQT" ? "TQT" : "TET", calibre: v["cal"] ?? "", fijacionCm: v["via"] === "TQT" ? "" : v["fij"] ?? "", ...(v["mot"] ? { motivo: v["mot"] } : {}) }) },
         { k: "traq", texto: "Traqueostomía", req: "tet", campos: [{ id: "cal", etiqueta: "Calibre", num: true }], crear: (v, b) => ({ ...b, tipo: "TRAQUEOSTOMIA", calibre: v["cal"] ?? "" }) },
         { k: "ajuste", texto: "Ajustar posición del tubo", req: "tet", campos: [{ id: "cm", etiqueta: "Centímetros en la arcada dental", valor: ep.fijacionCm ?? "", num: true }, { id: "mot", etiqueta: "Motivo", opciones: [{ valor: "DESPLAZAMIENTO_SUPERFICIAL", texto: "Desplazamiento superficial" }, { valor: "CONTROL_RADIOLOGICO", texto: "Control radiológico" }] }], crear: (v, b) => ({ ...b, tipo: "AJUSTE_TUBO", fijacionCm: v["cm"] ?? "", motivo: (v["mot"] ?? "DESPLAZAMIENTO_SUPERFICIAL") as MotivoAjusteTubo }) },
         {

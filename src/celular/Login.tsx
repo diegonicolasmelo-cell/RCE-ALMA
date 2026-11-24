@@ -54,8 +54,8 @@ export function Login() {
   const abrirSesion = async (prof: Profesional): Promise<void> => {
     await guardarMeta(db, CLAVE_SESION, { rut: prof.correo, desde: Date.now() } satisfies SesionGuardada);
     setSesion({ rut: prof.correo, nombre: tituloProfesional(prof), rol: prof.rol });
-    // Cada ingreso pregunta cuales son hoy tus camas.
-    useApp.setState({ vista: "elegir" });
+    // Cada ingreso pregunta cuales son hoy tus camas (el médico, de solo lectura, las ve todas).
+    useApp.setState(prof.rol === "MEDICO" ? { vista: "camas", misCamas: [] } : { vista: "elegir" });
   };
 
   const entrarConHuella = async (h: HuellaGuardada): Promise<void> => {

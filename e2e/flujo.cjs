@@ -1620,6 +1620,31 @@ async function esperarServidor() {
       await c.close();
     });
 
+    await prueba("Médico UCI: ve todas las camas, la sábana y la Entrega; no registra nada", async () => {
+      const c = await navegador.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+      const m = await c.newPage();
+      vigilar(m);
+      await m.goto(URL + "#celular");
+      await m.fill("#rut", "medico.uci@demo.upc");
+      await m.fill("#pin", "kine");
+      await m.click("button[type=submit]");
+      // No pregunta «sus camas»: las ve todas.
+      await m.waitForSelector('article[aria-label^="Cama"]');
+      assert.equal(await m.locator("text=¿Cuáles son tus camas hoy?").count(), 0);
+      // Sin «+», sin Evaluaciones; con Pacientes, Controles y Entrega.
+      assert.equal(await m.locator('nav[aria-label="Navegación"] button.mas').count(), 0, "sin +");
+      assert.deepEqual((await m.locator('nav[aria-label="Navegación"] button').allTextContents()).map((t) => t.trim()), ["Pacientes", "Controles", "Entrega"]);
+      // Las tarjetas no ofrecen registrar: ni monitorización, ni eventos, ni alta, ni ingresar.
+      for (const t of ["Monitorización", "Eventos", "Dar de alta", "Ingresar"]) assert.equal(await m.locator(`article button:has-text("${t}")`).count(), 0, "sin " + t);
+      assert.ok(await m.locator('article button:has-text("Sábana")').count() > 0, "con sábana");
+      await m.click('nav[aria-label="Navegación"] button:has-text("Entrega")');
+      await m.waitForSelector('.ctl-cabeza h1:text-is("Entrega")');
+      assert.ok(await m.locator(".ent-tarjeta").count() > 0, "la Entrega de todas las camas");
+      await m.click('[aria-label="Mi cuenta"]');
+      assert.match(await m.textContent('aside[aria-label="Mi cuenta"]'), /Médico UCI · solo lectura/);
+      await c.close();
+    });
+
     await prueba("cambiar un paciente de cama: solo a camas libres, y todo lo suyo lo sigue", async () => {
       // Se libera la 16 desde el PC (una cama libre es el unico destino posible).
       await pc.click('[role=tab]:has-text("Tablero")');

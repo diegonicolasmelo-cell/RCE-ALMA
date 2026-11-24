@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
+  MOTIVOS_REINTUBACION,
   CRITERIOS_PVE,
   describirEvento,
   ETIQUETA_DISPOSITIVO,
@@ -263,7 +264,7 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
     if (num(f["rcal"]) === null) return setMsg("Falta el calibre.");
     if (f["rvia"] === "TET" && num(f["rcm"]) === null) return setMsg("Faltan los cm en la arcada.");
     if (!(await ev({ tipo: "FALLA_POST_EXTUB", falla: true, hipotesis: (f["hip"] ?? "").trim(), observaciones: (f["obs"] ?? "").trim() }))) return;
-    const reint = await ev({ tipo: "REINTUBACION", via: f["rvia"], calibre: f["rcal"]!.trim(), fijacionCm: f["rvia"] === "TET" ? f["rcm"]!.trim() : "" });
+    const reint = await ev({ tipo: "REINTUBACION", via: f["rvia"], calibre: f["rcal"]!.trim(), fijacionCm: f["rvia"] === "TET" ? f["rcm"]!.trim() : "", ...(f["rmot"] ? { motivo: f["rmot"] } : {}) });
     limpiar();
     // Reintubado: el control que sigue es el del ventilador, ligado a la reintubacion.
     if (reint) {
@@ -486,6 +487,13 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
                     <input id="pve-obs" className="texto" maxLength={200} value={f["obs"] ?? ""} onChange={(e) => set("obs", e.target.value)} />
                   </div>
                   <div className="sub-grupo">Reintubación</div>
+                  <div style={{ padding: "10px 12px", display: "grid", gap: 8 }}>
+                    <label className="et" htmlFor="pve-rmot">Motivo de la reintubación</label>
+                    <select id="pve-rmot" className="texto" value={f["rmot"] ?? ""} onChange={(e) => set("rmot", e.target.value)}>
+                      <option value="">— elegir —</option>
+                      {MOTIVOS_REINTUBACION.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
                   {ops("rvia", "Vía", ["TET", "TQT"])}
                   <Fila etiqueta="Calibre">{casilla("rcal", "Calibre")}</Fila>
                   {f["rvia"] !== "TQT" && <Fila etiqueta="Fijación" unidad="cm en la arcada">{casilla("rcm", "Fijación en cm")}</Fila>}

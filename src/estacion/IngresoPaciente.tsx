@@ -148,7 +148,7 @@ export function IngresoPaciente({ camasOcupadas, onListo, camaInicial = "" }: { 
       <div className="f">
         <label htmlFor="in-titular">Kinesiólogo titular</label>
         <select id="in-titular" value={titular} onChange={(e) => setTitular(e.target.value)}>
-          {dotacion().map((p) => <option key={p.correo} value={p.correo}>{p.nombre}</option>)}
+          {dotacion().filter((p) => p.rol !== "MEDICO").map((p) => <option key={p.correo} value={p.correo}>{p.nombre}</option>)}
         </select>
       </div>
       {error && <div className="notice crit" role="alert">{error}</div>}

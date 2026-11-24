@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { camaRce, hitosDelEpisodio, horasDeVm, nombreCama } from "@core/index";
 import type { HistoriaEntrega } from "@core/index";
+import { usePacientesRce } from "./pacientesRce";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { fichaDe } from "../estacion/Entrega";
@@ -36,6 +37,7 @@ function textoSinHistoria(error: string): string {
 export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]; ahora: Date }) {
   const { api } = useServicios();
   const irA = useApp((s) => s.irA);
+  const pacientes = usePacientesRce((s) => s.porCama);
   const [historias, setHistorias] = useState<EstadoHistorias>("cargando");
   const [vueltas, setVueltas] = useState<ReadonlySet<string>>(new Set());
   const camas = resumen.map((r) => camaRce(r.ep.cama)).filter((n): n is number => n !== null);
@@ -48,7 +50,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
         if (!vivo) return;
         if (!r.ok) setHistorias({ error: r.error });
         else if (r.estado === "apagado") setHistorias({ error: "APAGADO" });
-        else setHistorias(new Map(r.historias.map((h) => [h.cama, h])));
+        else { setHistorias(new Map(r.historias.map((h) => [h.cama, h]))); if (r.pacientes) usePacientesRce.getState().poner(r.pacientes); }
       })
       .catch(() => { if (vivo) setHistorias({ error: "SIN_CONEXION" }); });
     return () => { vivo = false; };
@@ -92,6 +94,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
             <div className="ent-in">
               <section className="ent-cara" aria-hidden={vuelta}>
                 <header className="ent-cab"><b>{nombreCama(ep.cama)}</b>{ep.faseClinica && <span className="ent-fase">{ep.faseClinica}</span>}</header>
+                {n !== null && pacientes.get(n) && <span className="ent-paciente">{pacientes.get(n)!.nombre}{pacientes.get(n)!.edad ? ` · ${pacientes.get(n)!.edad} años` : ""}</span>}
                 {f.resumen && <span className="small ink2">{f.resumen}</span>}
                 <span className="ent-sec">Cómo está</span>
                 <span className="ent-linea">{textoViaCama(ep, horasDeVm(ep, eventos, controles[0]?.registradoEn ?? null, ahora))}</span>

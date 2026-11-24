@@ -69,7 +69,7 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return ev.dispositivo === "REINTUBACION_INMEDIATA" ? "AUTOEXTUBACIÓN con reintubación inmediata" : `AUTOEXTUBACIÓN, queda en ${ETIQUETA_DISPOSITIVO[ev.dispositivo] ?? ev.dispositivo}`;
     case "REINTUBACION": {
       const que = !eventos ? "Intubación / reintubación" : esReintubacion(ev, eventos) ? "Reintubación" : "Intubación";
-      return `${que} ${ev.via} calibre ${ev.calibre}${ev.via === "TET" && ev.fijacionCm ? `, fijación ${ev.fijacionCm} cm` : ""}`;
+      return `${que} ${ev.via} calibre ${ev.calibre}${ev.via === "TET" && ev.fijacionCm ? `, fijación ${ev.fijacionCm} cm` : ""}${ev.motivo ? ` · ${ev.motivo}` : ""}`;
     }
     case "CAMBIO_TUBO":
       return `Cambio de tubo: TET calibre ${ev.calibre}, fijación ${ev.fijacionCm} cm (${ETIQUETA_MOTIVO_CAMBIO[ev.motivo]})`;

@@ -288,3 +288,12 @@ describe("evento libre (Diego, 22-nov-2026)", () => {
     expect(narrarEventos([libre()], [libre()], [], 60).join(" ")).toMatch(/Desplazamiento de cánula a las 08:15 hrs/);
   });
 });
+
+describe("motivo de la reintubación (24-nov-2026, la lista del RCE)", () => {
+  it("se narra en la evolución y en la nota", () => {
+    const ext = unEvento<Extract<EventoClinico, { tipo: "EXTUBACION_PROGRAMADA" }>>({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", hora: "10:00", registradoEn: "2026-11-24T13:00:00.000Z" });
+    const reint = unEvento<Extract<EventoClinico, { tipo: "REINTUBACION" }>>({ tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22", motivo: "Edema laríngeo post extubación", hora: "14:00", registradoEn: "2026-11-24T17:00:00.000Z" });
+    expect(narrarEventos([reint], [ext, reint], [], 60).join(" ")).toMatch(/reintubación a las 14:00 hrs con TOT N° 7,5 a 22 cm de arcada dental, por edema laríngeo post extubación/);
+    expect(describirEvento(reint, [ext, reint])).toMatch(/· Edema laríngeo post extubación$/);
+  });
+});

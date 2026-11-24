@@ -509,7 +509,8 @@ export type EventoClinico =
   | (EventoBase & { readonly tipo: "EXTUBACION_PROGRAMADA"; readonly dispositivo: DispositivoPosterior; readonly sinPve?: MotivoExtubacionSinPve })
   /** `accidental`: la extubo el equipo sin querer (no el paciente). Cuenta junto a las autoextubaciones. */
   | (EventoBase & { readonly tipo: "AUTOEXTUBACION"; readonly dispositivo: DispositivoPosterior; readonly accidental?: boolean })
-  | (EventoBase & { readonly tipo: "REINTUBACION"; readonly via: "TET" | "TQT"; readonly calibre: string; readonly fijacionCm: string })
+  /** `motivo`: de MOTIVOS_REINTUBACION (la lista del RCE); la hipótesis libre va en el comentario. */
+  | (EventoBase & { readonly tipo: "REINTUBACION"; readonly via: "TET" | "TQT"; readonly calibre: string; readonly fijacionCm: string; readonly motivo?: string })
   | (EventoBase & { readonly tipo: "TRAQUEOSTOMIA"; readonly calibre: string })
   /** Cambio de centimetros a la comisura. NO cuenta como intubacion. */
   | (EventoBase & { readonly tipo: "AJUSTE_TUBO"; readonly fijacionCm: string; readonly motivo: MotivoAjusteTubo })
@@ -673,7 +674,8 @@ export interface Profesional {
   readonly nombre: string;
   readonly turno: IdTurno;
   /** INTERNO: estudiante en practica (Diego, 19-nov-2026). Firma como «Int.», no como «Klgo.». */
-  readonly rol: "KINE_CLINICO" | "COORDINACION" | "INTERNO";
+  /** MEDICO (24-nov-2026): médico de la UCI, solo lectura (sábana, signos vitales y Entrega). */
+  readonly rol: "KINE_CLINICO" | "COORDINACION" | "INTERNO" | "MEDICO";
   /** Ve el Museo mientras esta en prueba (columna «museo» de la hoja «usuarios»). */
   readonly museo?: boolean;
 }

@@ -8,6 +8,7 @@
 
 import { periodoDe } from "./estadistica";
 import { ETIQUETA_ELEMENTO, elementoDeCambio, filtrosPorCambiar } from "./filtros";
+import type { ContextoFiltros } from "./filtros";
 import type { EventoClinico, HallazgoRonda } from "./tipos";
 
 type Ronda = Extract<EventoClinico, { tipo: "RONDA_EQUIPOS" }>;
@@ -22,8 +23,8 @@ export function rondaDelTurno(eventos: readonly EventoClinico[], ahora: Date): R
 }
 
 /** Lo que la ronda debería anotar solo: filtros vencidos o que vencen hoy. */
-export function hallazgosSugeridos(eventos: readonly EventoClinico[], ahora: Date): readonly HallazgoRonda[] {
-  return filtrosPorCambiar(eventos, ahora).map((f) => ({
+export function hallazgosSugeridos(eventos: readonly EventoClinico[], ahora: Date, ctx?: ContextoFiltros): readonly HallazgoRonda[] {
+  return filtrosPorCambiar(eventos, ahora, ctx).map((f) => ({
     elemento: f.elemento,
     texto: `${ETIQUETA_ELEMENTO[f.elemento]} ${f.estado === "VENCIDO" ? "vencido" : "vence hoy"}${f.cambiadoEn ? ` (etiqueta ${ddmm(f.cambiadoEn)})` : ""}`
   }));

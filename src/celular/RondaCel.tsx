@@ -6,6 +6,7 @@ import {
   esViaAereaArtificial,
   etiquetaEquipo,
   hallazgosSugeridos,
+  contextoFiltros,
   nombreCama,
   rondaDelTurno,
   vigenciaFiltros
@@ -45,7 +46,7 @@ export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly Resum
       <div className="evgrid ev-lista">
         {orden.map((r) => {
           const ronda = rondaDelTurno(r.eventos, ahora);
-          const vencidos = esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora) : [];
+          const vencidos = esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles)) : [];
           const enUso = r.ep.equipos.find((e) => e.enUso);
           return (
             <button key={r.ep.id} type="button" className="ev-fila ronda-fila" onClick={() => setAbierta(r.ep.id)}>
@@ -80,7 +81,10 @@ function RondaCama({ r, ahora, rutAutor, onCerrar, onSiguiente, nombreSiguiente 
   const avisar = useApp((s) => s.avisar);
   const { ep, eventos, controles } = r;
   const conCircuito = esViaAereaArtificial(ep.viaAereaActual);
-  const vig = vigenciaFiltros(eventos, ahora);
+  // Solo los elementos que corresponden a esta cama (HEPA con ventilador, HME sin humidificación activa…).
+  const ctxF = contextoFiltros(ep, controles);
+  const vig = vigenciaFiltros(eventos, ahora, ctxF);
+  const aplican = ELEMENTOS.filter((el) => vig.find((v) => v.elemento === el)?.estado !== "NO_APLICA");
   // La fecha que se VE en la etiqueta; parte con la registrada y se corrige si no coincide.
   const [fechas, setFechas] = useState<Record<string, string>>(() => Object.fromEntries(ELEMENTOS.map((el) => [el, vig.find((v) => v.elemento === el)?.cambiadoEn ?? ""])));
   const [otro, setOtro] = useState("");
@@ -91,7 +95,7 @@ function RondaCama({ r, ahora, rutAutor, onCerrar, onSiguiente, nombreSiguiente 
     const b = baseEvento(ep, rutAutor, new Date(ahora.getTime() - 1000));
     return el === "HME" ? { ...b, tipo: "CAMBIO_HMEF", fechaEtiqueta: fechas[el]! } : { ...b, tipo: "CAMBIO_FILTRO", elemento: el, fechaEtiqueta: fechas[el]! };
   });
-  const sugeridos = conCircuito ? hallazgosSugeridos([...eventos, ...corregidos], ahora) : [];
+  const sugeridos = conCircuito ? hallazgosSugeridos([...eventos, ...corregidos], ahora, ctxF) : [];
   const [quitados, setQuitados] = useState<ReadonlySet<string>>(new Set());
   const hallazgos: HallazgoRonda[] = [...sugeridos.filter((h) => !quitados.has(h.texto)), ...(otro.trim() ? [{ texto: otro.trim().slice(0, 140) }] : [])];
   const ctx = { ep, rutAutor, ahora, ultimo: controles[controles.length - 1] ?? null } as unknown as ContextoCama;
@@ -125,8 +129,9 @@ function RondaCama({ r, ahora, rutAutor, onCerrar, onSiguiente, nombreSiguiente 
             <section className="ronda-sec">
               <h3>Fecha de la etiqueta</h3>
               <p className="small muted" style={{ margin: 0 }}>Escribe la fecha que ves en cada etiqueta. Si no coincide con la anotada, manda la de la etiqueta.</p>
-              {ELEMENTOS.map((el) => {
+              {aplican.map((el) => {
                 const v = vig.find((x) => x.elemento === el);
+                if (v?.estado === "POR_ESTADIA") return <p key={el} className="small muted" style={{ margin: 0 }}>{ETIQUETA_ELEMENTO[el]}: uno por estadía (PB / AVEA), no se cambia.</p>;
                 return (
                   <label key={el} className="ronda-filtro">
                     <span>{ETIQUETA_ELEMENTO[el]}<small className="muted">{v?.cambiadoEn ? ` anotada ${ddmm(v.cambiadoEn)}` : " sin anotar"}</small></span>

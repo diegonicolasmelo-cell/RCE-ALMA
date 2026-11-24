@@ -1,6 +1,7 @@
 import { Copy, ExternalLink, FileText } from "lucide-react";
 import { useState } from "react";
 import {
+  contextoFiltros,
   dotacion,
   apkDelTurno,
 
@@ -151,7 +152,7 @@ export function Detalle({ ep, controles, eventos, apks, identidad, ahora }: Prop
       <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} />
 
       <PanelPve eventos={eventos} ahora={ahora} />
-      <PanelCircuitoYEvaluaciones eventos={eventos} ahora={ahora} />
+      <PanelCircuitoYEvaluaciones eventos={eventos} ahora={ahora} ctx={contextoFiltros(ep, controles)} />
 
       <section>
         <h3>Alta</h3>

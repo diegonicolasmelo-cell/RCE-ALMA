@@ -1292,3 +1292,5 @@ body.dictando .cel-pie{visibility:hidden}
 .ent-paciente{font-size:14px;font-weight:600}
 /* Historia sin tope de letras (24-nov-2026): una larga se desplaza dentro de su recuadro. */
 .ent-historia{max-height:55vh;overflow-y:auto;overscroll-behavior:contain}
+/* La fecha escrita no es la que corresponde a esta hora (24-nov-2026): se avisa, no se bloquea. */
+.aviso-etiqueta{color:var(--warn-ink)}

@@ -969,6 +969,15 @@ async function esperarServidor() {
       await cel.click('[role=tab]:has-text("Eventos")');
       assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
       await cel.click('button:has-text("Cambio de filtro HME")');
+      // La fecha de la etiqueta se escribe a mano (24-nov-2026): sin ella no se guarda.
+      await cel.waitForSelector("#evf-fe");
+      assert.equal(await cel.inputValue("#evf-fe"), "", "parte vacía");
+      assert.match(await cel.textContent(".pf-cuerpo"), /Según la hora, la etiqueta de ahora es/);
+      await cel.click('.pie-inf button:text-is("Registrar")');
+      assert.match(await aviso(), /Escribe la fecha que pusiste en la etiqueta/);
+      const etiqueta = await cel.evaluate(() => { const d = new Date(); if (d.getHours() >= 20) d.setDate(d.getDate() + 1); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); });
+      await cel.fill("#evf-fe", etiqueta);
+      await cel.click('.pie-inf button:text-is("Registrar")');
       await cel.waitForTimeout(400);
       assert.match(await cel.textContent(".app-cel"), /Línea de tiempo[\s\S]*Cambio de filtro HME/, "el cambio queda en la linea de tiempo");
       assert.equal(await cel.locator('h3:text-is("Filtros y circuito")').count(), 0, "Eventos muestra solo los eventos");

@@ -948,3 +948,25 @@ sencilla de llenar:
   viajan al RCE, y la ronda de equipos del celular (v7.15). Sería otra forma de ver y llenar lo mismo,
   no un registro nuevo. Mockup: `scratchpad/mockups/ronda-8bits.html` (24-nov).
 
+
+## 28. Filtros: reglas por equipo, día 0 y fecha escrita a mano (Diego, 24-nov-2026 · PROGRAMADO)
+
+- **HEPA es del ventilador** (filtro viral-bacteriano, rama espiratoria): solo con un ventilador
+  conectado. Desvinculado (tubo T, válvula, CTAF, O₂) o sin ventilador en uso ⇒ no hay HEPA.
+  - PB 840, PB 980 y AVEA usan uno más grande que dura **toda la estadía** (uno por paciente): no
+    avisa vencimiento. Mismo criterio que `HEPA_FIJO_EQUIPOS` del RCE (por prefijo: PB, AVEA).
+  - Servo U, Savina, Vela, Meckis… usan HEPA de **72 h** (en una estadía larga, 2, 3 o más).
+- **HME = humidificación pasiva**, 48 h, con TOT o TQT, ventilado o no (el desvinculado con TQT
+  sigue con HME de traqueostomía). Con **humidificación activa** no hay HME: MR850 en uso con el
+  ventilador, o **CTAF** (Airvo 2 por TQT, modalidad `CNAF_TQT`).
+- **TrachCare** 72 h siempre con TOT o TQT.
+- **Día 0**: al ingreso, o con una vía aérea nueva (reintubación, TQT, cambio de tubo o cánula), todo
+  parte nuevo ese día; ya no hace falta un primer cambio registrado para que avise.
+- **Fecha de la etiqueta**: de 20:00 a 19:59 se escribe la fecha del día siguiente
+  (`ETIQUETA_CORTE_HORA = 20`). El turno del RCE sigue cambiando a las 21:00 a propósito (margen para
+  terminar de evolucionar): son dos relojes distintos.
+- **Cambiar un filtro**: sin monitorización y con la fecha de la etiqueta **escrita a mano** (parte
+  vacía; obliga a pensar si de verdad se cambió). Debajo se muestra la que corresponde a la hora y
+  se avisa si se escribe otra (se acepta: puede ser un cambio anotado tarde).
+- Todo vive en `src/core/filtros.ts` (`reglaFiltro`, `contextoFiltros`, `fechaEtiquetaAhora`): lo
+  leen la tarjeta, la campana, la ronda, la Entrega y la Estación.

@@ -25,7 +25,10 @@ import {
   NIVELES_KTM,
   MOTIVOS_KTM_NO_REALIZADA,
   RAZONES_PVE_NO_REALIZADA,
-  MOTIVOS_REINTUBACION
+  MOTIVOS_REINTUBACION,
+  contextoFiltros,
+  fechaEtiquetaAhora,
+  reglaFiltro
 } from "@core/index";
 import type { DestinatarioEducacion, DispositivoPosterior, EventoClinico, NivelKtm, MotivoAjusteTubo, MotivoCambioVia, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
@@ -42,7 +45,7 @@ import { iniciarCodigoPcr } from "./CodigoPcr";
 
 type Base = ReturnType<typeof baseEvento>;
 interface Opcion { valor: string; texto: string }
-interface CampoForm { id: string; etiqueta: string; opciones?: readonly Opcion[]; valor?: string; /** Casilla numerica: usa el teclado propio. */ num?: boolean; /** Hora HH:MM (el reloj del telefono). */ hora?: boolean; /** Texto largo (varias lineas). */ largo?: boolean }
+interface CampoForm { id: string; etiqueta: string; opciones?: readonly Opcion[]; valor?: string; /** Casilla numerica: usa el teclado propio. */ num?: boolean; /** Hora HH:MM (el reloj del telefono). */ hora?: boolean; /** Texto largo (varias lineas). */ largo?: boolean; /** Fecha de la etiqueta, escrita a mano (filtros, 24-nov-2026). */ fechaEtiqueta?: boolean }
 interface Item {
   k: string;
   texto: string;
@@ -67,6 +70,9 @@ const DISPOSITIVOS: readonly Opcion[] = [
   { valor: "AIRE_AMBIENTE", texto: "Aire ambiente" }
 ];
 const lista = (xs: readonly string[]): readonly Opcion[] => xs.map((x) => ({ valor: x, texto: x }));
+/** La fecha de la etiqueta: vacía, para escribirla a mano. */
+const CAMPO_ETIQUETA: CampoForm = { id: "fe", etiqueta: "Fecha que escribiste en la etiqueta", fechaEtiqueta: true, valor: "" };
+const ddmmEt = (ymd: string): string => `${ymd.slice(8, 10)}-${ymd.slice(5, 7)}`;
 
 /** Eventos que cambian la via aerea: despues de registrarlos se sigue con el control. */
 const CAMBIAN_VIA = ["extub", "reint", "traq", "autoext", "accext", "decan"];
@@ -136,6 +142,14 @@ const MOTIVOS_CAMBIO: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_CAMBIO) a
  */
 export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVia?: (texto: string, cambiaVia: boolean) => void }) {
   const { ep, eventos, ahora, rutAutor } = ctx;
+  // Filtros: HEPA solo con ventilador conectado; HME no con humidificación activa (24-nov-2026).
+  const ctxF = contextoFiltros(ep, ctx.controles);
+  const noAplica = (el: "HME" | "HEPA"): Partial<Item> => {
+    const r = reglaFiltro(el, ctxF);
+    if (r === "NO_APLICA") return { deshabilitado: true, ayuda: el === "HEPA" ? "Sin ventilador conectado: no hay HEPA." : "Con humidificación activa no hay HME." };
+    if (r === "POR_ESTADIA") return { ayuda: "PB / AVEA: el HEPA es uno por estadía." };
+    return {};
+  };
   const { repo, db } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const [abierto, setAbierto] = useState<string | null>(null);
@@ -272,9 +286,11 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         { k: "cult", texto: "Toma de cultivo", campos: [{ id: "mu", etiqueta: "Muestra", opciones: lista(MUESTRAS_CULTIVO) }], crear: (v, b) => ({ ...b, tipo: "TOMA_CULTIVO", muestra: v["mu"] ?? MUESTRAS_CULTIVO[0] ?? "" }) },
         { k: "img", texto: "Traslado a imagenología", campos: [{ id: "dst", etiqueta: "Destino", opciones: lista(DESTINOS_IMAGEN) }], crear: (v, b) => ({ ...b, tipo: "TRASLADO_IMAGEN", destino: v["dst"] ?? DESTINOS_IMAGEN[0] ?? "" }) },
         { k: "asist", texto: "Asistencia en procedimiento", campos: [{ id: "pr", etiqueta: "Procedimiento", opciones: lista(PROCEDIMIENTOS_MEDICOS) }], crear: (v, b) => ({ ...b, tipo: "ASISTENCIA_PROCEDIMIENTO", procedimiento: v["pr"] ?? PROCEDIMIENTOS_MEDICOS[0] ?? "" }) },
-        { k: "hme", texto: "Cambio de filtro HME", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_HMEF" }) },
-        { k: "trach", texto: "Cambio de TrachCare", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "TRACHCARE" }) },
-        { k: "hepa", texto: "Cambio de filtro HEPA", req: "art", crear: (_v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "HEPA" }) }
+        // Cambio de filtro (Diego, 24-nov-2026): sin monitorización y con la FECHA DE LA ETIQUETA escrita
+        // a mano (no automática: obliga a pensar si de verdad se cambió). Solo lo que corresponde.
+        { k: "hme", texto: "Cambio de filtro HME", req: "art", campos: [CAMPO_ETIQUETA], ...noAplica("HME"), crear: (v, b) => ({ ...b, tipo: "CAMBIO_HMEF", fechaEtiqueta: v["fe"] ?? "" }) },
+        { k: "trach", texto: "Cambio de TrachCare", req: "art", campos: [CAMPO_ETIQUETA], crear: (v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "TRACHCARE", fechaEtiqueta: v["fe"] ?? "" }) },
+        { k: "hepa", texto: "Cambio de filtro HEPA", req: "art", campos: [CAMPO_ETIQUETA], ...noAplica("HEPA"), crear: (v, b) => ({ ...b, tipo: "CAMBIO_FILTRO", elemento: "HEPA", fechaEtiqueta: v["fe"] ?? "" }) }
       ]
     },
     {
@@ -317,6 +333,11 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
       return (x ?? "").trim() !== "" && Number.isFinite(n) && n >= min && n <= max;
     };
     if ((it.k === "cambioTubo" || it.k === "cambioCanula" || it.k === "traq") && !numOk(v["cal"], 2, 12)) return avisar("Revisa el calibre (entre 2 y 12).");
+    if (it.k === "hme" || it.k === "trach" || it.k === "hepa") {
+      const fe = v["fe"] ?? "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fe)) return avisar("Escribe la fecha que pusiste en la etiqueta.");
+      if (fe > fechaEtiquetaAhora(new Date())) return avisar("La fecha de la etiqueta no puede ser posterior a la de hoy.");
+    }
     if (it.k === "cambioTubo" && !numOk(v["fij"], 10, 35)) return avisar("Revisa los cm en la arcada (entre 10 y 35).");
     if (it.k === "ajuste" && !numOk(v["cm"], 10, 35)) return avisar("Revisa los cm en la arcada (entre 10 y 35).");
     if (it.k === "reint") {
@@ -506,6 +527,15 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
                     <select id={`evf-${c.id}`} value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))}>
                       {c.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                     </select>
+                  ) : c.fechaEtiqueta ? (
+                    <>
+                      <input id={`evf-${c.id}`} type="date" className="ev-hora" max={fechaEtiquetaAhora(ahora)} value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
+                      <span className={`small ${valores[c.id] && valores[c.id] !== fechaEtiquetaAhora(ahora) ? "aviso-etiqueta" : "muted"}`}>
+                        {valores[c.id] && valores[c.id] !== fechaEtiquetaAhora(ahora)
+                          ? `Escribiste ${ddmmEt(valores[c.id]!)}; a esta hora correspondería ${ddmmEt(fechaEtiquetaAhora(ahora))}. Si lo anotas tarde, está bien.`
+                          : `Según la hora, la etiqueta de ahora es ${ddmmEt(fechaEtiquetaAhora(ahora))} (desde las 20:00 va la fecha del día siguiente).`}
+                      </span>
+                    </>
                   ) : c.hora ? (
                     <input id={`evf-${c.id}`} type="time" className="ev-hora" value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))} />
                   ) : c.largo ? (

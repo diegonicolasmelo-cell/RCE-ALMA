@@ -1,4 +1,5 @@
 import { CRITERIOS_PVE, ETIQUETA_ELEMENTO, bloquesPostExtub, registrosPve, vigenciaFiltros } from "@core/index";
+import type { ContextoFiltros } from "@core/index";
 import type { EventoClinico, LecturasPve, Medicion } from "@core/index";
 
 const v = (x: Medicion | string | undefined): string => (x === null || x === undefined || x === "" ? "—" : String(x));
@@ -88,15 +89,15 @@ export function PanelPve({ eventos, ahora }: { eventos: readonly EventoClinico[]
 }
 
 /** Filtros/TrachCare con su plazo, y la ultima evaluacion de cada escala. */
-export function PanelCircuitoYEvaluaciones({ eventos, ahora }: { eventos: readonly EventoClinico[]; ahora: Date }) {
-  const filtros = vigenciaFiltros(eventos, ahora);
+export function PanelCircuitoYEvaluaciones({ eventos, ahora, ctx }: { eventos: readonly EventoClinico[]; ahora: Date; ctx?: ContextoFiltros }) {
+  const filtros = vigenciaFiltros(eventos, ahora, ctx).filter((f) => f.estado !== "NO_APLICA");
   return (
     <section className="card" style={{ marginTop: 14 }}>
       <h3 style={{ marginTop: 0 }}>Fechas de filtros y sonda de circuito cerrado</h3>
       <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
         {filtros.map((f) => (
           <span key={f.elemento} className={`pill ${f.estado === "VENCIDO" ? "crit" : f.estado === "VENCE_HOY" ? "warn" : ""}`}>
-            {ETIQUETA_ELEMENTO[f.elemento]}: {f.cambiadoEn ? `cambiado ${f.cambiadoEn} · ${f.estado === "VENCIDO" ? "vencido" : f.estado === "VENCE_HOY" ? "vence hoy" : `vence ${f.venceFecha}`}` : "sin registro"}
+            {ETIQUETA_ELEMENTO[f.elemento]}: {f.estado === "POR_ESTADIA" ? "uno por estadía (PB / AVEA)" : f.cambiadoEn ? `${f.desdeIngreso ? "desde el ingreso" : "etiqueta"} ${f.cambiadoEn} · ${f.estado === "VENCIDO" ? "vencido" : f.estado === "VENCE_HOY" ? "vence hoy" : `vence ${f.venceFecha}`}` : "sin registro"}
           </span>
         ))}
       </div>

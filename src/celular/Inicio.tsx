@@ -32,7 +32,7 @@ import {
   Wrench,
   WifiOff,
   X } from "lucide-react";
-import { CAMAS_UNIDAD, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, hallazgosPendientes, hallazgosSugeridos, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
+import { CAMAS_UNIDAD, contextoFiltros, ETIQUETA_MODALIDAD, describirEvento, esViaAereaArtificial, hallazgosPendientes, hallazgosSugeridos, etiquetaTurno, etiquetaRol, eventosSinMonitorizar, nombreCama, turnoDe, turnosVisiblesMisControles, HORAS_GRACIA_MIS_CONTROLES } from "@core/index";
 import type { Control, Episodio, EventoClinico, TurnoGuardia } from "@core/index";
 import { ACENTOS, useApp } from "../app/store";
 import { FichaAlma } from "./FichaAlma";
@@ -107,7 +107,7 @@ export function avisosDe(resumen: readonly ResumenCama[], sync: EstadoSync, esMi
         if (h.elemento) vistos.add(h.elemento);
         lista.push({ id: `ronda-${p.ronda.id}-${h.texto}`, tipo: "warn", titulo: `${nombreCama(r.ep.cama)} · Ronda ${p.ronda.hora}`, detalle: h.texto, episodioId: r.ep.id });
       }
-      if (esViaAereaArtificial(r.ep.viaAereaActual)) for (const h of hallazgosSugeridos(r.eventos, ahora)) {
+      if (esViaAereaArtificial(r.ep.viaAereaActual)) for (const h of hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles))) {
         if (h.elemento && vistos.has(h.elemento)) continue;
         lista.push({ id: `filtro-${r.ep.id}-${h.elemento}`, tipo: "warn", titulo: `${nombreCama(r.ep.cama)} · Cambiar filtro`, detalle: h.texto, episodioId: r.ep.id });
       }

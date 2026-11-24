@@ -7,6 +7,7 @@ import {
   describirEvento,
   estadoFlujoPve,
   filtrosPorCambiar,
+  contextoFiltros,
   horasDeVm,
   nombreCama,
   periodoDe,
@@ -77,7 +78,7 @@ export function fichaDe(ep: Episodio, controles: readonly Control[], eventos: re
     }
   }
   if (flujo.fase === "EN_CURSO") atencion.push(`PVE en curso desde las ${flujo.pve.inicioEn ? new Date(flujo.pve.inicioEn).toTimeString().slice(0, 5) : "—"}`);
-  for (const f of filtrosPorCambiar(eventos, ahora)) atencion.push(`${ETIQUETA_ELEMENTO[f.elemento]} ${f.estado === "VENCIDO" ? "vencido" : "vence hoy"}${f.cambiadoEn ? ` (etiqueta ${ddmm(f.cambiadoEn)})` : ""}`);
+  for (const f of filtrosPorCambiar(eventos, ahora, contextoFiltros(ep, controles))) atencion.push(`${ETIQUETA_ELEMENTO[f.elemento]} ${f.estado === "VENCIDO" ? "vencido" : "vence hoy"}${f.cambiadoEn ? ` (etiqueta ${ddmm(f.cambiadoEn)})` : ""}`);
   for (const e of evaluacionesDe(eventos).slice(0, 2)) atencion.push(`${describirEvento(e, eventos)} · ${ddmm(e.registradoEn)} · ${iniciales(e.rutAutor)}`);
   if (atencion.length === 0) atencion.push("Nada pendiente registrado");
 

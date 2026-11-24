@@ -219,7 +219,7 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
         historias: lista
           .filter((h) => typeof h["texto"] === "string" && Number.isFinite(Number(h["cama"])))
           .map((h) => ({
-            cama: Number(h["cama"]), texto: String(h["texto"]).slice(0, 600), firma: String(h["firma"] ?? ""), fecha: String(h["fecha"] ?? ""),
+            cama: Number(h["cama"]), texto: String(h["texto"]).slice(0, 6000), firma: String(h["firma"] ?? ""), fecha: String(h["fecha"] ?? ""),
             pendientes: Array.isArray(h["pendientes"]) ? (h["pendientes"] as unknown[]).map(String).slice(0, 8) : [],
             plan: typeof h["plan"] === "string" ? h["plan"].slice(0, 400) : ""
           }))

@@ -657,7 +657,7 @@ function historiasDesdeRce(camas) {
   var hs = resp.historias || [];
   for (var j = 0; j < hs.length; j++) {
     var h = hs[j] || {};
-    var texto = String(h.texto || "").slice(0, 600);
+    var texto = String(h.texto || "").slice(0, 6000);   // texto libre (24-nov-2026); 6000 = tope de seguridad
     if (rut.test(texto)) texto = "";
     var pend = [];
     var ps = h.pendientes || [];

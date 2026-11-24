@@ -17,7 +17,7 @@ export interface PacienteRce {
 export interface HistoriaEntrega {
   /** Número de cama del RCE (Kaptus «UCI-03» = 3). */
   readonly cama: number;
-  /** Hasta 600 letras; puede venir en punteo (saltos de línea). */
+  /** Texto libre (tope de seguridad 6000 letras, 24-nov-2026); puede venir en punteo. */
   readonly texto: string;
   /** Iniciales de quien la guardó. */
   readonly firma: string;

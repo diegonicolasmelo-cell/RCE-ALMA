@@ -1290,3 +1290,5 @@ body.dictando .cel-pie{visibility:hidden}
 /* Nombre y edad del paciente, desde el RCE (solo en memoria). */
 .paciente-rce{font-size:15px;line-height:1.3}
 .ent-paciente{font-size:14px;font-weight:600}
+/* Historia sin tope de letras (24-nov-2026): una larga se desplaza dentro de su recuadro. */
+.ent-historia{max-height:55vh;overflow-y:auto;overscroll-behavior:contain}

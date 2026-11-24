@@ -7,6 +7,8 @@ import {
   etiquetaEquipo,
   hallazgosSugeridos,
   contextoFiltros,
+  filtrosPorCambiar,
+  buscarProfesional,
   nombreCama,
   rondaDelTurno,
   vigenciaFiltros
@@ -24,6 +26,8 @@ const ddmm = (ymd: string | null): string => (ymd ? `${ymd.slice(8, 10)}-${ymd.s
 const hhmm = (iso: string): string => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 const iniciales = (correo: string): string => correo.split("@")[0]!.split(/[._-]/).map((p) => p.charAt(0).toUpperCase()).join("").slice(0, 3);
 const ELEMENTOS: readonly ElementoCircuito[] = ["HME", "TRACHCARE", "HEPA"];
+/** Quién tiene la cama (el titular del episodio), para preguntarle si ya lo cambió. */
+const titularDe = (correo: string): string => buscarProfesional(correo)?.nombre ?? "";
 
 /**
  * Ronda de equipos en el celular (Diego, 22/23-nov-2026). Quien toma las salas de atrás recorre
@@ -37,12 +41,29 @@ export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly Resum
   const actual = abierta ? orden.find((r) => r.ep.id === abierta) ?? null : null;
   const siguiente = actual ? orden[orden.indexOf(actual) + 1] ?? null : null;
   const revisadas = orden.filter((r) => rondaDelTurno(r.eventos, ahora)).length;
+  // «Vence hoy en la unidad» (Diego, 24-nov-2026): lo que antes se copiaba del cuaderno sala por sala.
+  // El colega de atrás solo corrobora con quien tiene la cama; no hay que dar vuelta etiquetas.
+  const vencen = orden.flatMap((r) => (esViaAereaArtificial(r.ep.viaAereaActual) ? filtrosPorCambiar(r.eventos, ahora, contextoFiltros(r.ep, r.controles)) : [])
+    .map((f) => ({ r, f })));
 
   return (
     <div className="cel-cuerpo ronda-cel" aria-label="Ronda de equipos">
       <p className="small muted" style={{ margin: 0 }}>
         {revisadas} de {orden.length} camas revisadas en este turno. Toca una cama: equipos de la sala y fecha de etiqueta de los filtros.
       </p>
+      <details className="card vence-hoy" open={vencen.length > 0}>
+        <summary><b>Vence hoy en la unidad</b> <span className="small muted">{vencen.length ? `${vencen.length} por cambiar` : "nada por cambiar"}</span></summary>
+        {vencen.length > 0 && (
+          <ul>
+            {vencen.map(({ r, f }) => (
+              <li key={`${r.ep.id}-${f.elemento}`}>
+                <b>{nombreCama(r.ep.cama)}</b> · {ETIQUETA_ELEMENTO[f.elemento]} {f.estado === "VENCIDO" ? "vencido" : "vence hoy"}
+                <span className="small muted">{f.cambiadoEn ? ` · ${f.desdeIngreso ? "desde el ingreso" : "etiqueta"} ${ddmm(f.cambiadoEn)}` : ""}{titularDe(r.ep.rutTitular) ? ` · ${titularDe(r.ep.rutTitular)}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
       <div className="evgrid ev-lista">
         {orden.map((r) => {
           const ronda = rondaDelTurno(r.eventos, ahora);

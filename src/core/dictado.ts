@@ -9,7 +9,7 @@
  * Lo unico que se pregunta es un mismo dato dicho con valores distintos. Nunca guarda nada.
  */
 
-import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, MODALIDADES_POR_VIA } from "./catalogos";
+import { CAMPOS_POR_MODALIDAD, ETIQUETA_MODALIDAD, INFUSIONES, MODALIDADES_POR_VIA, RANGOS_CONTROL } from "./catalogos";
 import { cambiarModalidad, iniciarInfusion, sedoanalgesiaActivaEnBorrador, suspenderInfusion } from "./borrador";
 import type { BorradorControl } from "./borrador";
 import { dosisDeEscalon } from "./infusiones";
@@ -263,12 +263,8 @@ export function etiquetaDictado(campo: CampoDictado, modalidad: Modalidad): stri
 }
 
 /** Limites: fuera de ellos el dato no se aplica. */
-const RANGO: Partial<Record<CampoDictado, readonly [number, number]>> = {
-  fc: [20, 250], pas: [40, 300], pad: [15, 200], spo2: [50, 100], fio2: [21, 100], peep: [0, 30], presion: [0, 60], presionMax: [0, 60],
-  pPico: [0, 80], pPlateau: [0, 60], pMedia: [0, 50], autoPeep: [0, 30], frProgramada: [0, 60], frTotal: [0, 80],
-  vtProgramado: [50, 1500], vtEspirado: [20, 2000], ti: [0.2, 5], flujo: [0, 80], volMinuto: [0, 40], temperatura: [30, 40], fuga: [0, 150], ie: [0.2, 9], compliance: [5, 200],
-  sas: [1, 7], gcsO: [1, 4], gcsV: [1, 5], gcsM: [1, 6]
-};
+// Los mismos rangos con que se guarda el control (catalogos.RANGOS_CONTROL).
+const RANGO: Partial<Record<CampoDictado, readonly [number, number]>> = RANGOS_CONTROL as Partial<Record<CampoDictado, readonly [number, number]>>;
 
 const comoTeclado = (v: string): string => v.replace(".", ",");
 const numero = (v: string): number => Number(v.replace(",", "."));

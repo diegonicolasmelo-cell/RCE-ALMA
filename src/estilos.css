@@ -660,7 +660,7 @@ article .btn-cambiar-cama{width:34px;height:34px;margin-left:0}
 .avatar.grande{width:68px;height:68px;font-size:30px;cursor:default}
 .app-cel.inicio .ctl-cabeza{padding:4px 16px 2px}
 .app-cel.inicio .ctl-cabeza h1{font-size:22px}
-.app-cel.inicio .cel-cuerpo{padding-bottom:96px}
+.app-cel.inicio .cel-cuerpo{padding-bottom:96px;scroll-padding-bottom:96px}
 
 .tarjeta-cama .cama-num{font:800 24px var(--font-ui);letter-spacing:-.01em}
 .cama-sin .cama-num{font:800 20px var(--font-ui)}
@@ -1294,3 +1294,9 @@ body.dictando .cel-pie{visibility:hidden}
 .ent-historia{max-height:55vh;overflow-y:auto;overscroll-behavior:contain}
 /* La fecha escrita no es la que corresponde a esta hora (24-nov-2026): se avisa, no se bloquea. */
 .aviso-etiqueta{color:var(--warn-ink)}
+/* Ronda · «Vence hoy en la unidad» (24-nov-2026) */
+.vence-hoy{padding:10px 12px;flex-shrink:0}
+.vence-hoy summary{cursor:pointer;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.vence-hoy ul{margin:8px 0 0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+/* La ronda es una columna que se desplaza entera: nada se encoge ni se monta sobre lo de abajo. */
+.ronda-cel>*{flex-shrink:0}

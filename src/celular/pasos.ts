@@ -1,3 +1,4 @@
+import { CAMPOS_VENT } from "@core/index";
 /**
  * El control se llena por SECCIONES, como la hoja de papel. Cada pestana es una
  * pantalla larga con scroll libre dividida en segmentos; "Siguiente" lleva al
@@ -47,5 +48,7 @@ export function ubicacionDeCampo(campo: string): { tab: "control" | TabControl; 
   if (campo === "spo2") return { tab: "control", seg: "pa" };
   if (campo === "kine") return { tab: "kine", seg: "kine" };
   if (campo === "apk") return { tab: "kine", seg: "apk" };
+  // Cualquier otro parámetro del ventilador (un valor imposible, 24-nov-2026) vive en Ventilación.
+  if ((CAMPOS_VENT as readonly string[]).includes(campo)) return { tab: "control", seg: "vent" };
   return { tab: "control", seg: "fc" };
 }

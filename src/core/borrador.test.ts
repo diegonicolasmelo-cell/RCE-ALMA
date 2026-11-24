@@ -539,3 +539,21 @@ describe("control despues de extubar o decanular", () => {
     expect(b.vent.fio2).toBe("28");
   });
 });
+
+describe("valores imposibles: casi siempre un dato en la casilla equivocada (24-nov-2026)", () => {
+  const ctx = { apkVigente: firmarApkCumple({ id: "a9", episodioId: "ep-1", via: "TET", rutAutor: "x", siglas: "XX", ahora: AHORA }) };
+  const msj = (b: BorradorControl) => validarBorrador(b, ctx).map((p) => `${p.campo}: ${p.mensaje}`);
+  it("un Vt de 26 (era la FR) no se guarda, y dice por qué", () => {
+    const b = completo();
+    const m = msj({ ...b, vent: { ...b.vent, vtEspirado: "26" } });
+    expect(m.find((x) => x.startsWith("vtEspirado"))).toMatch(/26 ml no es posible \(entre 80 y 2000\): revisa si quedó en la casilla equivocada/);
+  });
+  it("una FR de 450 (era el Vt) tampoco; un control normal sí se guarda", () => {
+    const b = completo();
+    expect(msj({ ...b, vent: { ...b.vent, frTotal: "450" } }).some((x) => x.startsWith("frTotal"))).toBe(true);
+    expect(msj(b)).toEqual([]);
+  });
+  it("también los signos vitales: una SpO2 de 970", () => {
+    expect(msj(completo({ spo2: "970" })).some((x) => x.startsWith("spo2"))).toBe(true);
+  });
+});

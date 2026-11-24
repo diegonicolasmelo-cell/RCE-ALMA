@@ -1737,6 +1737,10 @@ async function esperarServidor() {
       await cel.click('nav[aria-label="Navegación"] button.mas');
       await cel.click('.tile:has-text("Ronda de equipos")');
       await cel.waitForSelector(".ronda-cel");
+      // Arriba, todo lo que vence hoy en la unidad (lo que antes se copiaba del cuaderno).
+      assert.match(await cel.textContent(".vence-hoy summary"), /Vence hoy en la unidad/);
+      // Con la lista abierta arriba, la fila puede quedar detrás de la barra: se lleva al centro, como al desplazar.
+      await cel.locator('.ronda-fila:has-text("Cama 2")').evaluate((el) => el.scrollIntoView({ block: "center" }));
       await cel.click('.ronda-fila:has-text("Cama 2")');
       const dlg = cel.locator('[role=dialog][aria-label="Ronda · Cama 2"]');
       await dlg.waitFor();

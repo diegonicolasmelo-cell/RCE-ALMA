@@ -194,7 +194,10 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     hora: e.hora, dispositivo: simple("dispositivo"), sinPve: simple("sinPve"), accidental: simple("accidental"),
     exitosa: simple("exitosa"), realizada: simple("realizada"), nivel: simple("nivel"), muestra: simple("muestra"),
     destino: simple("destino"), escala: simple("escala"), total: simple("total"), razon: simple("razon"), motivo: simple("motivo"),
-    desde: simple("desde"), hasta: simple("hasta"), descripcion: simple("descripcion")
+    desde: simple("desde"), hasta: simple("hasta"), descripcion: simple("descripcion"),
+    // Prellenado de la evolución del RCE (24-nov-2026): el detalle que pide cada bloque del formulario.
+    duracionMin: simple("duracionMin"), via: simple("via"), calibre: simple("calibre"), fijacionCm: simple("fijacionCm"),
+    dirigidaA: simple("dirigidaA"), ems: simple("ems"), procedimiento: simple("procedimiento")
   });
   if (e.tipo === "SUSPENSION_SEDACION" || e.tipo === "SUSPENSION_DVA") Object.assign(datos, { farmacos: e.farmacos.join(", ").slice(0, 200) });
   if (e.tipo === "RONDA_EQUIPOS") Object.assign(datos, { hallazgos: e.hallazgos.map((h) => h.texto).join("; ").slice(0, 300) });

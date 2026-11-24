@@ -96,3 +96,18 @@ describe("una etiqueta anotada después del ingreso manda aunque diga una fecha 
     expect(r.find((x) => x.elemento === "HME")).toMatchObject({ cambiadoEn: "2026-11-06", estado: "VENCIDO" });
   });
 });
+
+describe("el ejemplo de Diego (24-nov-2026): la noche del 24, con etiqueta 25", () => {
+  it("vence el HME con fecha 23 y el TrachCare y el HEPA con fecha 22", () => {
+    const etq = (tipo: "HME" | "TRACHCARE" | "HEPA", fecha: string): EventoClinico =>
+      tipo === "HME" ? { ...base(dia(20), "h" + fecha), tipo: "CAMBIO_HMEF", fechaEtiqueta: fecha } : { ...base(dia(20), tipo + fecha), tipo: "CAMBIO_FILTRO", elemento: tipo, fechaEtiqueta: fecha };
+    const noche = new Date(2026, 10, 24, 22, 0);
+    const estado = (e: EventoClinico) => vigenciaFiltros([e], noche).find((x) => x.estado !== "SIN_REGISTRO")!.estado;
+    expect(fechaEtiquetaAhora(noche)).toBe("2026-11-25");
+    expect(estado(etq("HME", "2026-11-23"))).toBe("VENCE_HOY");
+    expect(estado(etq("HME", "2026-11-24"))).toBe("VIGENTE");
+    expect(estado(etq("TRACHCARE", "2026-11-22"))).toBe("VENCE_HOY");
+    expect(estado(etq("HEPA", "2026-11-22"))).toBe("VENCE_HOY");
+    expect(estado(etq("HEPA", "2026-11-23"))).toBe("VIGENTE");
+  });
+});

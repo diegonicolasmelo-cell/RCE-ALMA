@@ -931,3 +931,20 @@ de Entrega**. Nada programado.
   - Reutilizar la lógica de la ronda del RCE, no inventar otra.
 - **Orden sugerido**: 1) ronda de ventiladores (más impacto en la calidad del dato, y los datos ya
   existen), 2) pauta de aspiración, 3) pauta NAVM (depende del documento original).
+
+### 27.3 Ronda «en 8 bits»: la sala dibujada (IDEA de Diego, 24-nov-2026 · GUARDADA, sin programar)
+Diego tenía un proyecto de ventiladores dibujados en 8 bits y quiere usarlo para que la ronda sea
+sencilla de llenar:
+- **Secciones con botones rápidos** arriba: Adelante · Medio · Atrás · Pasillo · Bodega · Equipos
+  médicos. Se salta de una sección a otra con un toque.
+- **La pantalla dividida en 6 cuadros = las 6 camas** de la sección (grilla 2×3).
+- **Tocar una cama** abre un modal con los TIPOS de ventilador (Savina, Servo U, PB 840, PB 980,
+  AVEA, Vela, Meckis, V60, Airvo…), cada uno con su dibujo.
+- **Tocar el tipo** abre un teclado para anotar CUÁL es (el número del equipo: «Savina 2»).
+- **Al elegirlo** se guarda el ventilador en esa cama y el cuadro muestra su dibujo en 8 bits.
+- Pendiente de Diego: las imágenes en 8 bits (el proyecto no está en estos repositorios) y qué camas
+  van en cada sección (adelante/medio/atrás).
+- Encaja con lo que ya existe: los equipos por cama de Kaptus (`CAMBIO_EQUIPOS`, «en uso») que
+  viajan al RCE, y la ronda de equipos del celular (v7.15). Sería otra forma de ver y llenar lo mismo,
+  no un registro nuevo. Mockup: `scratchpad/mockups/ronda-8bits.html` (24-nov).
+

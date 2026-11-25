@@ -6,7 +6,7 @@ import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { nuevoId } from "../app/util";
 import { guardarMeta } from "../datos/db";
-import { claveMisCamas } from "./ElegirCamas";
+import { avisarMisCamasRce, claveMisCamas } from "./ElegirCamas";
 import { Seg } from "./componentes";
 import { EditorEquipos } from "./EditorEquipos";
 import { casillaNumerica } from "./TecladoPropio";
@@ -29,7 +29,7 @@ export function textoPesoIdeal(tallaCm: number | null, sexo: Sexo | null): strin
  * se sigue con el control de ingreso.
  */
 export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: () => void }) {
-  const { repo, db } = useServicios();
+  const { repo, db, api } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
   const misCamas = useApp((s) => s.misCamas);
   const avisar = useApp((s) => s.avisar);
@@ -104,6 +104,7 @@ export function IngresoRapido({ cama, onCancelar }: { cama: string; onCancelar: 
       const lista = [...misCamas, cama];
       await guardarMeta(db, claveMisCamas(sesion.rut), lista);
       useApp.getState().setMisCamas(lista);
+      avisarMisCamasRce(api, sesion.rut, lista);
     }
     avisar(`${nombreCama(cama)} ingresada. Sigue con el control de ingreso; el nombre y el RUT se agregan en el PC.`);
     irA("cama", ep.id);

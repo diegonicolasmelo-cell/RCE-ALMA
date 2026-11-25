@@ -6,13 +6,28 @@ import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
 import { useApp } from "../app/store";
 import { guardarMeta, leerMeta } from "../datos/db";
+import type { ClienteApi } from "../datos/api";
 
 export const claveMisCamas = (rut: string): string => `misCamas:${rut}`;
+
+/** "UCI-07" -> 7. Lo que el RCE entiende por cama. */
+export const numerosDeCamas = (camas: readonly string[]): number[] =>
+  camas.map((c) => Number(/(\d+)\s*$/.exec(c)?.[1])).filter((n) => Number.isInteger(n) && n > 0);
+
+/**
+ * Mis camas en Kaptus = mis camas en el RCE (Diego, 25-nov-2026: «si yo selecciono mis camas en Kaptus,
+ * debería seleccionar mis camas en RCE de forma automática»). Va por detrás: sin señal no pasa nada y el
+ * reparto del RCE se sigue pudiendo pintar a mano.
+ */
+export function avisarMisCamasRce(api: ClienteApi, correo: string, camas: readonly string[]): void {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  void api.informarMisCamas(correo, numerosDeCamas(camas)).catch(() => null);
+}
 const TAMANO_GRUPO = 6;
 
 /** "Cuales son hoy tus camas": se pregunta al ingresar y se puede reabrir desde la portada. */
 export function ElegirCamas() {
-  const { repo, db } = useServicios();
+  const { repo, db, api } = useServicios();
   const sesion = useApp((s) => s.sesion)!;
   const setMisCamas = useApp((s) => s.setMisCamas);
   const irA = useApp((s) => s.irA);
@@ -41,6 +56,7 @@ export function ElegirCamas() {
     const lista = camas.filter((c) => actual.has(c));
     await guardarMeta(db, claveMisCamas(sesion.rut), lista);
     setMisCamas(lista);
+    avisarMisCamasRce(api, sesion.rut, lista);
     irA("camas");
   };
 

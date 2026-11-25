@@ -40,6 +40,10 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
     expect(con({ fentanilo: { dosis: 1.2, escalon: 2 }, propofol: { dosis: 1.5, escalon: 3 } })).toMatchObject({ SED_TIPO: "Escalón 3", SED_FARMACOS: "Fentanyl, Propofol" });
     expect(con({ midazolam: { dosis: 0.2, escalon: null } })).toMatchObject({ SED_TIPO: "Fuera de escalón", SED_FARMACOS: "Midazolam" });
     expect(con({ dexmedetomidina: { dosis: 0.4, escalon: 1 } })).toMatchObject({ SED_TIPO: "Escalón 1", SED_FARMACOS: "Precedex" });
+    // Las bombas con su dosis (25-nov): el RCE las muestra tal cual, en vez de «múltiples drogas».
+    expect(con({ noradrenalina: { dosis: 0.35, escalon: null }, vasopresina: { dosis: 0.03, escalon: null }, fentanilo: { dosis: 1.2, escalon: 2 } })).toMatchObject({
+      KAP_DVA_DETALLE: "Noradrenalina 0,35 mcg/kg/min · Vasopresina 0,03 UI/min", KAP_DVA_NIVEL: "ALTA", KAP_SED_DETALLE: "Fentanilo 1,2 mcg/kg/h (esc. 2)"
+    });
   });
 
   it("los eventos de la primera tanda viajan con su código; los demás no", () => {

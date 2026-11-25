@@ -539,17 +539,29 @@ export const MOTIVOS_REINTUBACION: readonly string[] = [
   "Otra"
 ];
 
-export const RAZONES_PVE_NO_REALIZADA: readonly string[] = [
-  "Sin condiciones ventilatorias",
-  "Inestabilidad hemodinámica",
-  "Sedación profunda / BNM",
-  "Compromiso de conciencia",
-  "Secreciones abundantes",
-  "Menos de 24 h de VM",
-  "Indicación médica de mantener soporte",
-  "Procedimiento o pabellón programado",
-  "Otra"
+/**
+ * Por qué no se hizo la PVE: las del Protocolo de Destete y Extubación de la unidad, en DOS niveles que
+ * no se mezclan (Diego, 19-sep-2026, acuerdo 2.5 de NEXT; aquí y en el RCE desde el 25-nov):
+ * «no aplica el protocolo» vale para el episodio; el «criterio de la evaluación diaria», solo para hoy.
+ * Mismos textos que el desplegable del RCE (fPveSCraz): el prellenado los elige por texto.
+ */
+export const RAZONES_PVE_NO_REALIZADA_GRUPOS: readonly { readonly grupo: string; readonly razones: readonly string[] }[] = [
+  { grupo: "No aplica el protocolo (vale para el episodio)", razones: ["Adecuación del esfuerzo terapéutico", "VMI menor a 24 horas", "VM domiciliaria"] },
+  {
+    grupo: "Criterio de la evaluación diaria (vale para hoy)",
+    razones: [
+      "Cuadro clínico no resuelto",
+      "Inestabilidad hemodinámica",
+      "Parámetros de oxigenación / ventilación alterados",
+      "Infección activa",
+      "Conciencia o sedación que no permita SAS 3-4",
+      "Ausencia de esfuerzo respiratorio",
+      "Inestabilidad metabólica",
+      "Anemia"
+    ]
+  }
 ];
+export const RAZONES_PVE_NO_REALIZADA: readonly string[] = [...RAZONES_PVE_NO_REALIZADA_GRUPOS.flatMap((g) => g.razones), "Otra"];
 
 export const ETIQUETA_EDUCACION: Readonly<Record<DestinatarioEducacion, string>> = {
   FAMILIA: "a la familia",
@@ -583,6 +595,9 @@ export const ETIQUETA_MOTIVO_SIN_PVE: Readonly<Record<MotivoExtubacionSinPve, st
   AET: "adecuación del esfuerzo terapéutico",
   VENTILACION_DOMICILIARIA: "ventilación mecánica domiciliaria",
   AGITACION_PSICOMOTORA: "agitación psicomotora",
+  // Las dos que tenía el RCE y no el celular (25-nov-2026): ahora la lista es la misma en los dos.
+  DEPENDIENTE_PRESION_POSITIVA: "dependiente de presión positiva",
+  POST_PABELLON: "post pabellón",
   CRITERIO_CLINICO: "criterio clínico / indicación médica",
   OTRO: "otro motivo"
 };

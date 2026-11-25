@@ -1000,3 +1000,30 @@ preguntas en la conversación del 24-nov; esperando a que Diego termine lo de lo
   cambia alguna pieza durante el uso? ③ catálogo real: marcas, tipos y calibres de cánulas; ¿HEPA de
   dos tipos (72 h y el grande de PB/AVEA)? ④ ¿quién anota las entradas y cada cuánto el conteo físico?
 
+
+## 30. Ideas rescatables de KINE-RCE-NEXT (revisado el 24-nov-2026, a pedido de Diego)
+
+Diego lo recordaba como «RCE Master Plan»: es el repositorio público `KINE-RCE-NEXT`, la nueva
+generación modular del RCE (base RCE-KINE 7.04, sep-2026). Sus planes viejos están archivados; lo que
+manda es `docs/ACUERDOS_REDISENO.md` (decisiones de Diego del 19-20 sep, con sus palabras) y
+`docs/LO_ESENCIAL.md`. Lo que sirve para Kaptus o para el RCE actual:
+
+- **«Un valor que pone el programa se marca como suyo; lo que tocó una persona no se toca.»** Es la
+  regla del prellenado desde el celular (marca verde «desde-kaptus").
+- **Hemodinamia «se pide, ya no se afirma sola»**: en el RCE actual `fHEst` nace en «Estable» sin
+  opción vacía y el texto dice «HDN estable» aunque nadie la haya mirado (verificado el 24-nov).
+- **«No corresponde» = un NO con razón, en dos niveles del Protocolo de Destete**: no aplica el
+  protocolo (AET, VMI < 24 h, VM domiciliaria: vale todo el episodio) y criterio de la evaluación
+  diaria (8 razones: vale hoy). Resuelve el desajuste de motivos entre Kaptus y el RCE.
+- **El sistema pre-marca la razón en ámbar con la cifra que la justifica** («Parámetros alterados ·
+  PEEP 12»), siempre desmarcable.
+- **Días por horas completas** (24, 48, 72) con la tarjeta «0 · 9 h».
+- **Pendientes del episodio que viajan con el paciente**, con días («Pabellón pendiente · 2 días»),
+  texto libre, sin duplicados (defensa en pantalla y servidor); cierre en tres bloques: qué pasó
+  hoy · plan · lo que queda pendiente.
+- **Pool de evaluaciones con último valor, fecha y firma** (MRC, FSS, CPAx, Pimáx, PEmáx, FEmáx,
+  dinamometría, IMS, ecografía, protección de vía aérea). KTM de noche: se ve y no se llena.
+- **Íconos dibujados de HME, HEPA y TrachCare** (sirven para la ronda en 8 bits).
+- **Respaldo automático a Drive con copia mensual permanente** (`svc_backup.gs`).
+- **Clave propia por kinesiólogo** (`svc_acceso.gs`, nace apagada): el candado que le falta al RCE
+  para que el perfil médico no pueda escribir por el enlace del RCE.

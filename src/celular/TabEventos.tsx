@@ -24,7 +24,7 @@ import {
   ETIQUETA_MOTIVO_EGRESO,
   NIVELES_KTM,
   MOTIVOS_KTM_NO_REALIZADA,
-  RAZONES_PVE_NO_REALIZADA,
+  RAZONES_PVE_NO_REALIZADA_GRUPOS,
   MOTIVOS_REINTUBACION,
   contextoFiltros,
   fechaEtiquetaAhora,
@@ -44,7 +44,20 @@ import { useAtras } from "./Inicio";
 import { iniciarCodigoPcr } from "./CodigoPcr";
 
 type Base = ReturnType<typeof baseEvento>;
-interface Opcion { valor: string; texto: string }
+/** `grupo`: las opciones seguidas con el mismo grupo van juntas bajo su título (p. ej. los dos niveles del protocolo). */
+interface Opcion { valor: string; texto: string; grupo?: string }
+/** Las opciones del desplegable, con sus grupos (optgroup) cuando los traen. */
+function opcionesConGrupos(ops: readonly Opcion[]) {
+  const out: JSX.Element[] = [];
+  for (let i = 0; i < ops.length; ) {
+    const g = ops[i]!.grupo;
+    if (!g) { const o = ops[i]!; out.push(<option key={o.valor || "_vacio"} value={o.valor}>{o.texto}</option>); i++; continue; }
+    const del: Opcion[] = [];
+    while (i < ops.length && ops[i]!.grupo === g) del.push(ops[i++]!);
+    out.push(<optgroup key={g} label={g}>{del.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}</optgroup>);
+  }
+  return out;
+}
 interface CampoForm { id: string; etiqueta: string; opciones?: readonly Opcion[]; valor?: string; /** Casilla numerica: usa el teclado propio. */ num?: boolean; /** Hora HH:MM (el reloj del telefono). */ hora?: boolean; /** Texto largo (varias lineas). */ largo?: boolean; /** Fecha de la etiqueta, escrita a mano (filtros, 24-nov-2026). */ fechaEtiqueta?: boolean }
 interface Item {
   k: string;
@@ -225,7 +238,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
         { k: "autoext", texto: "Autoextubación", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
         // Accidental: la extubo el equipo sin querer (p. ej. en una movilizacion). Cuenta con las autoextubaciones.
         { k: "accext", texto: "Extubación accidental", req: "tet", peligro: true, campos: [{ id: "txt", etiqueta: "Qué pasó (breve)" }, { id: "disp", etiqueta: "Queda en", opciones: [...DISPOSITIVOS, { valor: "REINTUBACION_INMEDIATA", texto: "Reintubación inmediata" }] }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "AUTOEXTUBACION", accidental: true, dispositivo: (v["disp"] ?? "CNAF") as DispositivoPosterior }) },
-        { k: "pveNo", texto: "PVE no realizada", req: "tet", campos: [{ id: "raz", etiqueta: "¿Por qué no se realizó la PVE en este turno?", valor: "", opciones: [{ valor: "", texto: "— elegir —" }, ...lista(RAZONES_PVE_NO_REALIZADA)] }, { id: "txt", etiqueta: "Detalle (opcional)" }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "PVE_NO_REALIZADA", razon: v["raz"] ?? "" }) }
+        { k: "pveNo", texto: "PVE no realizada", req: "tet", campos: [{ id: "raz", etiqueta: "¿Por qué no se realizó la PVE en este turno?", valor: "", opciones: [{ valor: "", texto: "— elegir —" }, ...RAZONES_PVE_NO_REALIZADA_GRUPOS.flatMap((g) => g.razones.map((r) => ({ valor: r, texto: r, grupo: g.grupo }))), { valor: "Otra", texto: "Otra (escribe el detalle)" }] }, { id: "txt", etiqueta: "Detalle (obligatorio con «Otra»)" }], comentarioDe: "txt", crear: (v, b) => ({ ...b, tipo: "PVE_NO_REALIZADA", razon: v["raz"] ?? "" }) }
       ]
     },
     {
@@ -357,6 +370,8 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     if (it.k === "ktm" && (v["ims"] ?? "").trim() !== "" && !numOk(v["ims"], 0, 10)) return avisar("El IMS va de 0 a 10.");
     if (it.k === "ktmNo" && !v["mot"]) return avisar("Elige el motivo por el que no se hizo.");
     if (it.k === "pveNo" && !v["raz"]) return avisar("Elige por qué no se realizó la PVE.");
+    // «Otra» pide el detalle, igual que en el RCE (una razón sin nombre no se puede contar).
+    if (it.k === "pveNo" && v["raz"] === "Otra" && !(v["txt"] ?? "").trim()) return avisar("Con «Otra», escribe cuál es la razón.");
     if (it.k === "extub" && !v["mot"]) return avisar("Elige por qué fue fuera de protocolo.");
     if (it.k === "libre") {
       const txt = (v["txt"] ?? "").trim();
@@ -525,7 +540,7 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
                   <label htmlFor={`evf-${c.id}`}>{c.etiqueta}</label>
                   {c.opciones ? (
                     <select id={`evf-${c.id}`} value={valores[c.id] ?? ""} onChange={(e) => setValores((x) => ({ ...x, [c.id]: e.target.value }))}>
-                      {c.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
+                      {opcionesConGrupos(c.opciones)}
                     </select>
                   ) : c.fechaEtiqueta ? (
                     <>

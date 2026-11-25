@@ -769,7 +769,8 @@ async function esperarServidor() {
       await pveBtn.click();
       await cel.click('button:has-text("No corresponde PVE: extubar fuera de protocolo")');
       const opciones = await cel.locator('[aria-label="Por qué sin PVE"] button').allTextContents();
-      assert.deepEqual(opciones, ["Adecuación del esfuerzo terapéutico", "Ventilación mecánica domiciliaria", "Agitación psicomotora", "Criterio clínico / indicación médica", "Otro motivo"]);
+      // 25-nov-2026: la misma lista que el RCE (se sumaron «dependiente de presión positiva» y «post pabellón»).
+      assert.deepEqual(opciones, ["Adecuación del esfuerzo terapéutico", "Ventilación mecánica domiciliaria", "Agitación psicomotora", "Dependiente de presión positiva", "Post pabellón", "Criterio clínico / indicación médica", "Otro motivo"]);
       await cel.click('button:has-text("Registrar extubación fuera de protocolo")');
       assert.match(await cel.textContent("[role=alert]"), /por qué no corresponde PVE/);
       await cel.click('[aria-label="Por qué sin PVE"] button:text-is("Ventilación mecánica domiciliaria")');
@@ -1725,10 +1726,15 @@ async function esperarServidor() {
       await cel.click('.evgrid button:has-text("PVE no realizada")');
       await cel.click('button:text-is("Registrar")');
       assert.match(await aviso(), /por qué no se realizó/);
-      assert.equal(await cel.locator("#evf-raz option").count(), 10, "las 9 razones del RCE");
-      await cel.selectOption("#evf-raz", "Secreciones abundantes");
+      // Las del Protocolo de Destete, en dos niveles (25-nov-2026): 3 + 8, más «Otra» y la vacía.
+      assert.equal(await cel.locator("#evf-raz option").count(), 13, "las 11 razones del protocolo, «Otra» y la vacía");
+      assert.deepEqual(await cel.locator("#evf-raz optgroup").evaluateAll((g) => g.map((x) => x.label)), ["No aplica el protocolo (vale para el episodio)", "Criterio de la evaluación diaria (vale para hoy)"]);
+      await cel.selectOption("#evf-raz", "Otra");
       await cel.click('button:text-is("Registrar")');
-      await cel.waitForSelector('.linea-tiempo:has-text("PVE no realizada: Secreciones abundantes")');
+      assert.match(await aviso(), /Con «Otra», escribe cuál es la razón/);
+      await cel.selectOption("#evf-raz", "Infección activa");
+      await cel.click('button:text-is("Registrar")');
+      await cel.waitForSelector('.linea-tiempo:has-text("PVE no realizada: Infección activa")');
       await cel.click('button:has-text("‹ Pacientes")');
     });
 
@@ -1797,7 +1803,7 @@ async function esperarServidor() {
       assert.deepEqual(cols, ["Cama", "Modo ventilatorio", "KTR", "KTM / IMT", "APK", "Eventos (PVE incluida)", "Firmó"]);
       assert.ok(await pc.locator(".est-tabla tbody tr").count() > 0, "hay camas con registros este mes");
       await pc.waitForSelector('.est-tabla tbody tr:has-text("Cama 9"):has-text("nivel 4 · PTO · IMT")');
-      assert.match(await pc.textContent(".est-dos"), /Secreciones abundantes/);
+      assert.match(await pc.textContent(".est-dos"), /Infección activa/);
       await foto("estadistica");
       // Indicadores: los cuatro principales con su meta.
       await pc.click('[role=tab]:text-is("Indicadores")');

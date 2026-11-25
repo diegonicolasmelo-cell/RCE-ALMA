@@ -543,8 +543,30 @@ function pendientesRce_() {
   return out;
 }
 
+/**
+ * Iniciales de un nombre como las firmas del RCE (25-nov-2026): primera letra del nombre y de los
+ * dos apellidos. «Diego Melo Villagrán» → DMV. El RCE la usa solo si esa firma existe en su dotación.
+ */
+function inicialesRce_(nombre) {
+  var p = String(nombre || "").trim().split(/\s+/).filter(function (x) { return x; });
+  if (!p.length) return "";
+  var sel = p.length >= 3 ? [p[0], p[p.length - 2], p[p.length - 1]] : p;
+  return sel.map(function (x) { return x.charAt(0); }).join("").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
+/** A cada item le pone la firma por iniciales de quien lo anotó (el correo sigue en `autor`). */
+function conFirmaRce_(items) {
+  var porCorreo = {};
+  try { leerDotacion().forEach(function (u) { porCorreo[u.correo] = inicialesRce_(u.nombre); }); } catch (e) { /* sin dotacion */ }
+  return items.map(function (it) {
+    var f = porCorreo[normalizarCorreo(it && it.autor)];
+    return f ? Object.assign({}, it, { firma: f }) : it;
+  });
+}
+
 /** Una llamada al RCE. Devuelve la respuesta o null si no hubo respuesta valida. */
 function llamarRce_(enlace, items) {
+  items = conFirmaRce_(items);
   var r = UrlFetchApp.fetch(enlace.url, {
     method: "post",
     contentType: "text/plain;charset=utf-8",

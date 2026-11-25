@@ -326,7 +326,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--
 .evento-soporte label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600;font-size:13px}
 .evento-soporte input[type=time]{min-height:38px;font:600 16px var(--font-mono, monospace)}
 /* Evaluaciones: pestanas por bloque, filas de botones y avance solo al responder. */
-.pestanas-ev{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:4px;position:sticky;top:0;z-index:2}
+.pestanas-ev{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:4px;position:sticky;top:0;z-index:2}
 .pestanas-ev button{border:0;background:transparent;border-radius:8px;min-height:44px;padding:4px 2px;font:600 12.5px/1.15 var(--font-ui);color:var(--ink-2);cursor:pointer}
 .pestanas-ev button[aria-selected="true"]{background:var(--panel);color:var(--accent);box-shadow:0 1px 3px rgba(15,26,36,.15)}
 .ev-lista{display:grid;gap:8px}
@@ -1300,3 +1300,13 @@ body.dictando .cel-pie{visibility:hidden}
 .vence-hoy ul{margin:8px 0 0;padding-left:18px;display:grid;gap:4px;font-size:14px}
 /* La ronda es una columna que se desplaza entera: nada se encoge ni se monta sobre lo de abajo. */
 .ronda-cel>*{flex-shrink:0}
+
+/* ---- Sábana del celular: zoom con dos dedos y en horizontal (25-nov-2026) ---- */
+.sabana-cel-cuerpo{position:relative}
+.sabana-zoom{transform-origin:0 0}
+.zoom-ctrl{position:sticky;bottom:8px;left:100%;margin:8px 0 0 auto;width:max-content;display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;box-shadow:0 2px 8px rgba(15,26,36,.18);z-index:3}
+.zoom-ctrl button{min-width:40px;min-height:36px;border:0;background:transparent;border-radius:999px;font:600 14px/1 var(--font-ui);color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.zoom-ctrl button:active{background:var(--panel-2)}
+.dia-estadia{color:var(--ink)}
+/* Con zoom la sábana se desplaza también hacia los lados (el resto del celular no). */
+html.celular .sabana-cel-cuerpo{overflow-x:auto}

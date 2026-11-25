@@ -20,7 +20,8 @@ export default defineConfig({
         theme_color: "#0e3b40",
         background_color: "#0e3b40",
         display: "standalone",
-        orientation: "portrait",
+        // "any" (25-nov-2026): la sábana se lee mejor en horizontal; Diego pidió poder girar el teléfono.
+        orientation: "any",
         // Relativos: funciona igual en la raiz de un dominio o en un subdirectorio (GitHub Pages).
         // Sin start_url: al instalar, el telefono usa la direccion de la pagina. En iPhone esa
         // direccion trae el enlace de configuracion y la app instalada nace conectada.

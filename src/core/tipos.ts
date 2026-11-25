@@ -451,6 +451,8 @@ export type IdEscala =
   | "FRAGILIDAD"
   | "BARTHEL"
   | "CHARLSON"
+  /** Delirio (25-nov-2026, Diego: «CAM-ICU debería anotarse como evaluación»). */
+  | "CAM_ICU"
   /** De una version anterior: se leen, ya no se ofrecen. */
   | "FLUJO_PICO_TOS"
   | "DEGLUCION";

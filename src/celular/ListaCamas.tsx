@@ -1,6 +1,7 @@
 import { ArrowLeftRight, ClipboardList, LogOut, Sheet, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import {
+  diaDeEstadia,
   CAMAS_UNIDAD,
   camaRce,
   contextoFiltros,
@@ -189,6 +190,8 @@ export function ListaCamas() {
               </div>
             )}
             <div className="small ink2">
+              {/* Día de estadía (25-nov-2026, Diego): el día del ingreso es el día 1. */}
+              {diaDeEstadia(ep.ingresadoEn, ahora) !== null && <b className="dia-estadia">Día {diaDeEstadia(ep.ingresadoEn, ahora)} · </b>}
               {textoViaCama(ep, h)}
               {/* Sin etiqueta NAVM (Diego, 22-nov-2026): marcaba a todo ventilado > 48 h y confundía; la NAVM es un diagnóstico, no un tiempo. */}
             </div>

@@ -22,7 +22,7 @@ import {
   hallazgosSugeridos,
   salaAlElegir
 } from "@core/index";
-import { camaRce, dejarEnSala, equipoDeInventario, nombreRce, usarEnSala } from "@core/index";
+import { MAX_EQUIPOS_SALA, camaRce, dejarEnSala, equipoDeInventario, nombreRce, segmentosSala, usarEnSala } from "@core/index";
 import type { EquipoEnSala, EquipoRce, MotivoCambioEquipo } from "@core/index";
 import { useCargarInventarioRce, useInventarioRce } from "./inventarioRce";
 import { useServicios } from "../app/contexto";
@@ -50,12 +50,27 @@ const COLORES: Readonly<Record<string, readonly [string, string]>> = {
 
 const ALIAS: readonly [RegExp, string][] = [
   [/^servo/i, "Servo U"], [/^savina/i, "Savina"], [/^vela/i, "Vela"], [/^avea/i, "Avea"], [/^me(c?k|ck)/i, "Meckis"],
-  [/^pb\s*9/i, "PB 980"], [/^pb|puritan/i, "PB 840"], [/^v\s?60/i, "V60"], [/^airvo/i, "Airvo 2"], [/^mr|humid/i, "Humidificador MR850"], [/aerogen|nbz/i, "NBZ Aerogen"]
+  [/^pb\s*9/i, "PB 980"], [/^pb|puritan/i, "PB 840"], [/^v\s?60/i, "V60"], [/ht\s?70|newport/i, "HT70"], [/^airvo/i, "Airvo 2"], [/^mr|humid/i, "Humidificador MR850"], [/aerogen|nbz/i, "NBZ Aerogen"]
 ];
+/** Dibujos propios (25-nov-2026, desde las fotos de Diego): cada modelo con su forma. */
+const PAL2: Readonly<Record<string, string>> = {"k": "#1d2a33", "w": "#f4f7f9", "g": "#9fb3bf", "G": "#7d8b96", "d": "#5b6b77", "n": "#0f1d33", "c": "#5fd3c4", "b": "#5aa0d8", "N": "#2f3f7a", "L": "#a9c4e6", "B": "#5f86c4", "p": "#e9eef2", "y": "#f2c14e", "l": "#bfe0f3", "m": "#e98aa6", "Y": "#f3e04a", "s": "#c9d2d9", "t": "#cfe9f7", "h": "#dfe6ee"};
+const PROPIOS: Readonly<Record<string, readonly string[]>> = {
+  "PB 840": ["..kkkkkkkkkkkk..", "..kwnnnnnnwwwk..", "..kwnnnnnnwddk..", "..kwnnnnnnwdck..", "..kwnnnnnnwwwk..", "..kwnnnnnnkkkk..", "..kwnnnnnnwk....", "..kwbwbwwgwk....", "..kkkkkkkkkk....", ".kggggggggggk...", "..kwwwwwwwwk....", "..kwddwwgwwk....", "..kwddwwwwwk....", "..kwwwwwwwwk....", "..kkkkkkkkkk....", "...k......k....."],
+  "PB 980": ["................", ".kkkkkkkkkkkkkk.", ".kNNNNNNNNNNNNk.", ".kNnnnnnnnnnnNk.", ".kNnccncnnccnNk.", ".kNnnnnnnnnnnNk.", ".kNNNNNwwNNNNNk.", ".kkkkkkkkkkkkkk.", "......kggk......", "NNNNNNNNNNNNNNNN", ".kwwwwwwwwwwwwk.", ".kNNNwwwwwwNNNk.", ".kNNNwwNNwwNNNk.", ".kNNNwwwwwwNNNk.", ".kkkkkkkkkkkkkk.", "................"],
+  "Avea": ["..kkkkkkkkkkkk..", "..kLLLLLLLLLLk..", "..kLnnnnnnnnLk..", "..kLnnccccnnLk..", "..kLnnnnnnnnLk..", "..kLLLLLLLggLk..", "..kkkkkkkkkkkk..", "......kLLk......", ".kkkkkkkkkkkkkk.", ".kBBBBBBBBBBBBk.", ".kBBBBBBdddBBBk.", ".kBBBBBBdgdBBBk.", ".kBBBBBBdddBBBk.", ".kBBBBBBBBBBBBk.", ".kkkkkkkkkkkkkk.", "................"],
+  "Servo U": ["...kkkkkkkkkk...", "...knnnnnnnnk...", "...knnnnnnnnk...", "...knnnnnnnnk...", "...kkkkkkkkkk...", "...wwwwwwwwww...", ".......kk.......", ".....kwwwwk.....", ".....kwwkdk.....", ".....kwwkdk.....", ".....kwwwwk.....", "......kggk......", "......kggk......", "..kkkkkkkkkkkk..", ".kk..........kk.", ".kk..........kk."],
+  "Savina": ["................", ".kkkkkkkkkkkkkk.", ".kwwwwwwwwwwwwk.", ".kwppppppppywwk.", ".kwpddpppppgwwk.", ".kwppppppppwGwk.", ".kwwwwwwwwwwwwk.", "Gkkkkkkkkkkkkkk.", "GklllllllllllkG.", ".klwwlllllwwlk.G", ".klwcwlllwcwlk..", ".kllwllllllwlk..", ".kkkkkkkkkkkkkk.", ".GGGGGGGGGGGGGG.", "..G..........G..", "................"],
+  "Vela": ["................", ".kkkkkkkkkkkkkk.", ".kLLLLLLLLLLLLk.", ".kLnnnnnnnnLmLk.", ".kLnnnnnnnnLmLk.", ".kLnnnnnnnnLhLk.", ".kLnnnnnnnnLhLk.", ".kLnnnnnnnnLLGk.", ".kLLLLLLLLLLGGk.", ".kBBBBBBBBBBBBk.", ".kBdBBBsssBBdBk.", ".kBBBBBsdsBBBBk.", ".kBBBBBsssBBBBk.", ".kkkkkkkkkkkkkk.", "...kk......kk...", "................"],
+  "HT70": ["....kkkkkkkk....", "...kwwwwwwwwk...", "...kwk....kwk...", ".kkkkkkkkkkkkkk.", ".kwhhhhhhhhhhwk.", ".kwhtttttttthwk.", ".kwhtYttcttthwk.", ".kwhtttttttthwk.", ".kwhtccttttthwk.", ".kwhhhhhhhhhhwk.", ".kwwwwwwwwwwwwk.", ".kwsswwwwwhhhwk.", ".kwsswwwwwhhhwk.", ".kNNNNNNNNNNNNk.", ".kkkkkkkkkkkkkk.", "................"],
+  "Humidificador MR850": ["................", "...kkkkkkkkkk...", "..ksssssssssssk.", "..kLLLLLLLLLLLk.", "..kwwwwwwwwwwwk.", "..khhhhhhhhhhhk.", "..khgkkkkkkhghk.", "..khhkYYYYkhhhk.", "..khgkkkkkkhghk.", "..khhhhhhhhhhhk.", "..kwwwwwwwwwwwk.", "..kwwwwwwwwwwwk.", "..kkkkkkkkkkkkk.", "................", "................", "................"],
+  "Airvo 2": ["........kk......", "........ll......", "........kk......", "...kkkkkkkkkk...", "..kggggggggggk..", "..kgdnngggggggk.", "..kgggggggggggk.", ".kggggktttttkgk.", ".kggggktllltkgk.", ".kggggktlbltkgk.", ".kggggktttttkgk.", ".kggggkkkkkkkgk.", ".kNNNNNNNNNNNNk.", ".kkkkkkkkkkkkkk.", "................", "................"]
+};
+function aliasDe(modelo: string): string {
+  if (COLORES[modelo]) return modelo;
+  return ALIAS.find(([re]) => re.test(modelo.trim()))?.[1] ?? "";
+}
 function colorDe(modelo: string): readonly [string, string] {
-  if (COLORES[modelo]) return COLORES[modelo]!;
-  const a = ALIAS.find(([re]) => re.test(modelo.trim()));
-  return (a && COLORES[a[1]]) || ["#33404a", "#9fb3bf"];
+  return COLORES[aliasDe(modelo)] ?? ["#33404a", "#9fb3bf"];
 }
 
 export function Sprite8({ modelo, px = 64 }: { modelo: string; px?: number }) {
@@ -63,8 +78,13 @@ export function Sprite8({ modelo, px = 64 }: { modelo: string; px?: number }) {
   useEffect(() => {
     const ctx = ref.current?.getContext("2d");
     if (!ctx) return;
-    const [pant, base] = colorDe(modelo);
     ctx.clearRect(0, 0, 16, 16);
+    const propio = PROPIOS[aliasDe(modelo)];
+    if (propio) {
+      propio.forEach((fila, y) => [...fila].forEach((ch, x) => { const col = PAL2[ch]; if (col) { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); } }));
+      return;
+    }
+    const [pant, base] = colorDe(modelo);
     SILUETA.forEach((fila, y) => [...fila].forEach((ch, x) => {
       const col = ch === "S" ? pant : ch === "A" ? base : PAL[ch];
       if (col) { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); }
@@ -102,15 +122,29 @@ export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
           // Si el celular aún no anotó equipos en esta cama, se muestran los que el RCE tiene ahí.
           const delRce = r.ep.equipos.length ? [] : inv.filter((e) => e.cama === camaRce(cama)).map((e) => equipoDeInventario(e, e.enUso));
           const eq = equipoParaDibujar(r.ep.equipos.length ? r.ep.equipos : delRce);
+          // La cama se parte en 1, 2 o 4 (Diego, 25-nov): hasta 4 equipos a la vista, el que está en uso resaltado.
+          const lista = (r.ep.equipos.length ? r.ep.equipos : delRce).slice(0, MAX_EQUIPOS_SALA);
+          const seg = segmentosSala(lista.length);
           const ronda = rondaDelTurno(r.eventos, ahora);
           const porCambiar = !ronda && esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles)).length : 0;
           return (
             <button key={cama} type="button" className={`sala8-cama${eq ? "" : " vacia"}`} aria-label={`Sala · ${nombreCama(cama)}`} onClick={() => setEligiendo(r.ep.id)}>
               <span className="sala8-n">{nombreCama(cama)}{ronda ? <span className="sala8-ok" title="Revisada en este turno"> ✓</span> : null}</span>
-              {eq ? <Sprite8 modelo={eq.modelo} /> : <span className="sala8-mas" aria-hidden>+</span>}
-              <span className="sala8-eq">{eq ? etiquetaEquipo(eq) : "Sin equipo"}</span>
+              {lista.length ? (
+                <span className={`sala8-segs s${seg}`}>
+                  {lista.map((e) => {
+                    const uso = esSoporteRespiratorio(e.tipo) && e.enUso;
+                    return (
+                      <span key={etiquetaEquipo(e)} className={`sala8-seg${uso ? " uso" : ""}`}>
+                        <Sprite8 modelo={e.modelo} px={seg === 1 ? 64 : seg === 2 ? 44 : 32} />
+                        <span className="sala8-eq">{etiquetaEquipo(e)}</span>
+                        {seg === 1 && esSoporteRespiratorio(e.tipo) && <span className={`sala8-uso ${e.enUso ? "si" : "no"}`}>{e.enUso ? "en uso" : "sin uso"}</span>}
+                      </span>
+                    );
+                  })}
+                </span>
+              ) : (<><span className="sala8-mas" aria-hidden>+</span><span className="sala8-eq">Sin equipo</span></>)}
               {delRce.length > 0 && <span className="sala8-rce">según RCE · confirmar</span>}
-              {eq && esSoporteRespiratorio(eq.tipo) && <span className={`sala8-uso ${eq.enUso ? "si" : "no"}`}>{eq.enUso ? "en uso" : "sin uso"}</span>}
               {porCambiar > 0 && <span className="sala8-venc">{porCambiar} por cambiar</span>}
             </button>
           );
@@ -274,6 +308,7 @@ function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
   const otraCama = (nombre: string): ResumenCama | null => resumen.find((x) => x.ep.id !== ep.id && x.ep.equipos.some((e) => nombreRce(e).toLowerCase() === nombre.toLowerCase())) ?? null;
 
   const agregar = (e: EquipoRce): Promise<void> => hacer(async () => {
+    if (sala.length >= MAX_EQUIPOS_SALA) { setError(`Caben hasta ${MAX_EQUIPOS_SALA} equipos por cama: saca uno primero.`); return false; }
     const de = otraCama(e.nombre);
     if (de) {
       const suyo = de.ep.equipos.find((x) => nombreRce(x).toLowerCase() === e.nombre.toLowerCase())!;
@@ -352,7 +387,7 @@ function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
             {error && <p className="aviso-etiqueta" role="alert">{error}</p>}
           </section>
           <section className="ronda-sec">
-            <h3>Agregar a la sala</h3>
+            <h3>Agregar a la sala <span className="small muted">· {sala.length} de {MAX_EQUIPOS_SALA}</span></h3>
             <div className="sala8-secs" role="tablist" aria-label="Tipo de equipo">
               {CATS.map((c) => <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id)}>{c.t}</button>)}
             </div>

@@ -68,6 +68,7 @@ export interface EpisodioNube {
   readonly viaAereaActual: string;
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
+  readonly viaDesde?: string;
   readonly diasVM: number;
   readonly ingresadoEn?: string;
   readonly correcciones?: readonly { campo: string; antes: string | null; despues: string; rutAutor: string; registradoEn: string }[];
@@ -102,6 +103,7 @@ export function serializarEpisodioParaNube(e: Episodio): EpisodioNube {
     viaAereaActual: e.viaAereaActual,
     calibreVia: e.calibreVia,
     fijacionCm: e.fijacionCm,
+    ...(e.viaDesde ? { viaDesde: e.viaDesde } : {}),
     diasVM: e.diasVM,
     ...(e.ingresadoEn ? { ingresadoEn: e.ingresadoEn } : {}),
     ...(e.correcciones?.length ? { correcciones: e.correcciones.map((c) => ({ ...c })) } : {}),

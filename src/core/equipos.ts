@@ -94,9 +94,13 @@ export function etiquetaTipoEquipo(t: TipoEquipo): string {
 // queda en la sala sin uso (la VNI es el V60). CNAF (Airvo 2) y V60 se ofrecen con via natural y
 // con TQT; base calefactora y Aerogen, con cualquier via.
 
-/** Si un tipo de equipo se ofrece con esta via. */
-export function tipoSeOfrece(t: TipoEquipo, via: ViaAerea): boolean {
-  if (t === "ALTO_FLUJO" || t === "VMNI") return via !== "TET";
+/**
+ * Si un tipo de equipo se ofrece con esta via. 25-nov-2026 (Diego): CUALQUIER equipo puede quedar en la
+ * sala con cualquier via aerea —un V60 o un Airvo junto a un intubado, por si se extuba—. La via aerea
+ * no decide que hay en la sala: decide que puede estar EN USO (puedeEstarEnUso). Y un cambio de equipos
+ * jamas cambia la via aerea: eso solo lo hace un evento.
+ */
+export function tipoSeOfrece(_t: TipoEquipo, _via: ViaAerea): boolean {
   return true;
 }
 

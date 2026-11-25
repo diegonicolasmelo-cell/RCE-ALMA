@@ -278,6 +278,26 @@ export function eventosDeRiesgo(
  * Un AJUSTE_TUBO cambia los centimetros pero no es una intubacion.
  */
 export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodio {
+  const r = aplicarEventoBase(ep, ev);
+  // Si el evento cambió la vía aérea, queda sellado cuándo (ver Episodio.viaDesde).
+  if (r !== ep && (r.viaAereaActual !== ep.viaAereaActual || r.calibreVia !== ep.calibreVia || r.fijacionCm !== ep.fijacionCm)) {
+    return { ...r, viaDesde: ev.registradoEn };
+  }
+  return r;
+}
+
+/** De dos copias de un mismo episodio, la vía aérea que vale: la del cambio más reciente. */
+export function viaMasReciente(a: Episodio, b: Episodio): Episodio {
+  return (b.viaDesde ?? "") > (a.viaDesde ?? "") ? b : a;
+}
+
+/** `base` con la vía aérea de `fuente` (vía, calibre, fijación y su sello). */
+export function conViaDe(base: Episodio, fuente: Episodio): Episodio {
+  if (base === fuente || (base.viaDesde ?? "") === (fuente.viaDesde ?? "")) return base;
+  return { ...base, viaAereaActual: fuente.viaAereaActual, calibreVia: fuente.calibreVia, fijacionCm: fuente.fijacionCm, ...(fuente.viaDesde ? { viaDesde: fuente.viaDesde } : {}) };
+}
+
+function aplicarEventoBase(ep: Episodio, ev: EventoClinico): Episodio {
   switch (ev.tipo) {
     case "EXTUBACION_PROGRAMADA":
     case "AUTOEXTUBACION":

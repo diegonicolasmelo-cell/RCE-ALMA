@@ -388,3 +388,33 @@ describe("suspensión automática al guardar el control", () => {
     expect((await db.cola.toArray()).filter((e) => e.tipo === "evento")).toHaveLength(1);
   });
 });
+
+describe("la vía aérea no la pisa un teléfono desactualizado (Scarlett, cama 1, 25-nov-2026)", () => {
+  it("A intuba; B, con la copia vieja, guarda otra cosa después; los tres teléfonos quedan con TET", async () => {
+    const { api } = servidorFalso();
+    let t = Date.UTC(2026, 10, 25, 8, 0);
+    const reloj = () => t;
+    const fecha = () => new Date(t);
+    // Los tres teléfonos parten con el paciente en vía natural.
+    const telefono = async () => { const db = nuevaDb(); const sync = new Sincronizador(db, api, reloj); return { db, sync, repo: new Repositorio(db, sync, fecha) }; };
+    const A = await telefono(), B = await telefono();
+    await A.repo.guardarEpisodio(unEpisodio({ id: "ep-1", cama: "UCI-01", viaAereaActual: "NATURAL", calibreVia: null, fijacionCm: null, equipos: [] }));
+    await A.sync.empujar();
+    await B.sync.traer({ todo: true });
+    // A intuba a las 09:00.
+    t += 3_600_000;
+    await A.repo.registrarEvento(unEvento<EventoClinico>({ id: "ev-intub", episodioId: "ep-1", tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22", registradoEn: new Date(t).toISOString() } as never));
+    await A.sync.empujar();
+    // B, sin haber leído, anota a las 09:30 un cambio de equipos: su copia todavía dice «natural».
+    t += 1_800_000;
+    await B.repo.registrarEvento(unEvento<EventoClinico>({ id: "ev-eq", episodioId: "ep-1", tipo: "CAMBIO_EQUIPOS", equipos: [], registradoEn: new Date(t).toISOString() } as never));
+    await B.sync.empujar();
+    // Cada uno lee lo de los demás, y llega un tercero que no tenía nada.
+    await A.sync.traer({ todo: true });
+    await B.sync.traer({ todo: true });
+    const C = await telefono(); await C.sync.traer({ todo: true });
+    for (const [quien, x] of [["A", A], ["B", B], ["C", C]] as const) {
+      expect([quien, (await x.db.episodios.get("ep-1"))?.viaAereaActual]).toEqual([quien, "TET"]);
+    }
+  });
+});

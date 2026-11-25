@@ -20,8 +20,8 @@ export interface DefSegmento {
 }
 
 export const SEGMENTOS: Readonly<Record<TabControl, readonly DefSegmento[]>> = {
+  // 25-nov-2026: la auscultación sale y las secreciones pasan al final del control: aquí queda solo la APK.
   kine: [
-    { id: "kine", corto: "Kine" },
     { id: "apk", corto: "APK" }
   ]
 };
@@ -46,7 +46,7 @@ export function ubicacionDeCampo(campo: string): { tab: "control" | TabControl; 
   if (campo === "frTotal" || campo === "temperatura") return { tab: "control", seg: "vent" };
   if (campo === "modalidad" || campo === "horaEvento") return { tab: "control", seg: "modo" };
   if (campo === "spo2") return { tab: "control", seg: "pa" };
-  if (campo === "kine") return { tab: "kine", seg: "kine" };
+  if (campo === "kine") return { tab: "control", seg: "vent" };
   if (campo === "apk") return { tab: "kine", seg: "apk" };
   // Cualquier otro parámetro del ventilador (un valor imposible, 24-nov-2026) vive en Ventilación.
   if ((CAMPOS_VENT as readonly string[]).includes(campo)) return { tab: "control", seg: "vent" };

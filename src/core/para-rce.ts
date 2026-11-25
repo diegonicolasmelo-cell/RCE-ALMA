@@ -11,7 +11,7 @@
  */
 
 import { calcularDerivados, calcularGlasgow } from "./fisiologia";
-import { infusionesActivas } from "./infusiones";
+import { infusionesActivas, semaforoDva } from "./infusiones";
 import { calcularPbw } from "./fisiologia";
 import { ASPECTOS_SECRECIONES } from "./catalogos";
 import { etiquetaEquipo } from "./equipos";
@@ -91,6 +91,10 @@ export function soporteRce(via: ViaAerea, m: Modalidad, flujoO2: number | null):
 /** Nombre de cada sedante en los botones del RCE (lorazepam no está allá: no se manda). */
 const SEDANTE_RCE: Readonly<Record<string, string>> = { fentanilo: "Fentanyl", propofol: "Propofol", midazolam: "Midazolam", dexmedetomidina: "Precedex" };
 
+/** «Noradrenalina 0,12 mcg/kg/min» (escalón si lo tiene). */
+const bomba = (x: { nombre: string; dosis: number; unidad: string; escalon: number | null }): string =>
+  `${x.nombre} ${String(x.dosis).replace(".", ",")} ${x.unidad}${x.escalon !== null ? ` (esc. ${x.escalon})` : ""}`;
+
 /** Solo lo que tiene dato (el RCE descarta el resto). */
 function limpio(o: Record<string, string | number | boolean | null | undefined>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};
@@ -130,6 +134,10 @@ export function controlParaRce(c: Control, ep: Episodio, eventos: readonly Event
     SED_GCS_TOT: g ? g.display : null, SED_GCS_O: c.glasgow?.ocular, SED_GCS_V: g ? (g.intubado ? "T" : c.glasgow?.verbal) : null, SED_GCS_M: c.glasgow?.motora,
     SED_SAS: c.sas, SED_TIPO: sedTipo, SED_FARMACOS: sedFarmacos.length ? sedFarmacos.join(", ") : null,
     HEMO_DVA: dva.length ? "Sí" : null, HEMO_NUM_DVA: dva.length || null,
+    // 25-nov-2026 (Diego): las bombas con su dosis, para verlas en el RCE en vez de «múltiples drogas».
+    KAP_DVA_DETALLE: dva.length ? dva.map(bomba).join(" · ").slice(0, 200) : null,
+    KAP_DVA_NIVEL: dva.length ? semaforoDva(c.infusiones) : null,
+    KAP_SED_DETALLE: sed.length ? sed.map(bomba).join(" · ").slice(0, 200) : null,
     KAP_FC: c.fc, KAP_PAS: c.pas, KAP_PAD: c.pad, KAP_PAM: d.pam,
     RESP_SECR_CAR: aspecto || null, RESP_SECR_REOL: c.kineResp.reologia?.toLowerCase() ?? null, RESP_SECR_QTY: c.kineResp.cantidad?.toLowerCase() ?? null
   });
@@ -175,6 +183,8 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "FIN_BNM": return "FIN_BNM";
     // Evento escrito a mano (22-nov-2026): llega al RCE como nota con su texto y su hora.
     case "EVENTO_LIBRE": return "NOTA";
+    // Coordinación anula un evento (25-nov-2026): el RCE lo marca anulado en su copia y deja de contarlo.
+    case "ANULACION_EVENTO": return "ANULACION";
     // Cambio de cama (23-nov-2026): el RCE mueve al paciente igual que «mover a cama vacía».
     case "TRASLADO_CAMA": return "TRASLADO";
     // Cambio de ventilador u otro equipo de la sala (23-nov-2026): el RCE lo pone en la cama.
@@ -208,6 +218,7 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     duracionMin: simple("duracionMin"), via: simple("via"), calibre: simple("calibre"), fijacionCm: simple("fijacionCm"),
     dirigidaA: simple("dirigidaA"), ems: simple("ems"), procedimiento: simple("procedimiento")
   });
+  if (e.tipo === "ANULACION_EVENTO") Object.assign(datos, { anula: e.anulaId, motivo: e.motivo.slice(0, 200) });
   if (e.tipo === "SUSPENSION_SEDACION" || e.tipo === "SUSPENSION_DVA") Object.assign(datos, { farmacos: e.farmacos.join(", ").slice(0, 200) });
   if (e.tipo === "RONDA_EQUIPOS") Object.assign(datos, { hallazgos: e.hallazgos.map((h) => h.texto).join("; ").slice(0, 300) });
   if (e.tipo === "CAMBIO_HMEF" || e.tipo === "CAMBIO_FILTRO") {

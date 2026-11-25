@@ -420,7 +420,8 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
         <div className="guia-pi"><PesoIdeal ctx={ctx} /></div>
         <div className="equipos-simple"><PanelEquipos ctx={ctx} /></div>
       </section>
-      {!esViaAereaArtificial(ep.viaAereaActual) && (
+      {/* 25-nov-2026 (Diego): siempre al final del control, también con vía aérea artificial (Don Arturo, VM). */}
+      {(
         <section aria-label="Secreciones, tos y deglución">
           <h2>Secreciones, tos y deglución</h2>
           <Fila etiqueta="Secreciones">

@@ -1,4 +1,4 @@
-import { normalizarControl } from "@core/index";
+import { normalizarControl, sinAnulados } from "@core/index";
 import type { Control, Episodio, EventoClinico, IdentidadPaciente, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useConsulta } from "../app/hooks";
@@ -55,7 +55,7 @@ export function useDatosUnidad(): DatosUnidad {
         episodios,
         todosEpisodios: ultimaVersion(todos),
         controles: agrupar(controles.map(normalizarControl)),
-        eventos: agrupar(eventos),
+        eventos: agrupar(sinAnulados(eventos)),
         apks: agrupar(apks),
         identidades: new Map(ids.map((i) => [i.episodioId, i] as const)),
         pendientesPurga: ultimaVersion(todos).filter((e) => !e.activo && ids.some((i) => i.episodioId === e.id))

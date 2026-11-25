@@ -134,6 +134,8 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
     case "DESVINCULACION":
     case "RECONEXION":
       return `${ev.tipo === "DESVINCULACION" ? "Desvinculación" : "Reconexión"}: de ${ETIQUETA_MODALIDAD[ev.desde]} a ${ETIQUETA_MODALIDAD[ev.hasta]}`;
+    case "ANULACION_EVENTO":
+      return `Evento anulado por coordinación: ${ev.motivo}`;
     default: {
       const _exhaustivo: never = ev;
       return String(_exhaustivo);

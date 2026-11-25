@@ -1359,3 +1359,6 @@ html.celular .sabana-cel-cuerpo{overflow-x:auto}
 .sala8-seg.uso{border:1px solid var(--accent) !important;background:color-mix(in srgb,var(--accent) 12%,transparent) !important}
 .sala8-segs.s4 .sala8-eq{font-size:10.5px}
 .sala8-segs.s2 .sala8-eq{font-size:11.5px}
+.anular-ev{margin-left:auto;color:var(--danger,#b3261e)}
+.anular-form{display:flex;flex-wrap:wrap;gap:6px;width:100%;margin-top:6px}
+.anular-form input{flex:1 1 160px;min-width:0}

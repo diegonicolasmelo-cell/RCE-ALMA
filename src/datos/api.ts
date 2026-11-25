@@ -74,6 +74,8 @@ export interface ClienteApi {
   ubicarEquipos(correo: string, movimientos: readonly MovimientoEquipo[]): Promise<Resultado<{ movidos: number; avisos: readonly string[] }>>;
   /** Inventario de equipos del RCE (25-nov-2026): la sala en 8 bits elige de aquí. */
   leerInventario(): Promise<Resultado<{ equipos: readonly EquipoRce[]; estado?: string }>>;
+  /** «Mis camas» del turno (25-nov-2026, Diego): las mismas quedan pintadas a su firma en el reparto del RCE. */
+  informarMisCamas(correo: string, camas: readonly number[]): Promise<Resultado<{ firma: string; turno: string }>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +240,11 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
       return { ok: true, movidos: Number(r["movidos"]) || 0, avisos: Array.isArray(r["avisos"]) ? (r["avisos"] as unknown[]).map(String) : [] };
     },
+    async informarMisCamas(correo, camas) {
+      const r = await post({ token: cfg.appToken, accion: "misCamas", correo, camas: [...camas] });
+      if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
+      return { ok: true, firma: String(r["firma"] ?? ""), turno: String(r["turno"] ?? "") };
+    },
     async leerInventario() {
       const r = await post({ token: cfg.appToken, accion: "inventario" });
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
@@ -316,6 +323,10 @@ export function crearApiLocal(): ClienteApi {
     async ubicarEquipos(_correo, movimientos) {
       // Sin servidor (demo): se da por hecho; el inventario de ejemplo se ajusta en la pantalla.
       return { ok: true, movidos: movimientos.length, avisos: [] };
+    },
+    async informarMisCamas() {
+      // Sin servidor (demo): no hay RCE al que avisar.
+      return { ok: true, firma: "", turno: "" };
     },
     async leerInventario() {
       // Sin servidor (demo): un inventario de ejemplo, todo en bodega, para usar la sala igual.

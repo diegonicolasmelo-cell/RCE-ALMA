@@ -144,6 +144,8 @@ function procesarPost(cuerpo) {
       return inventarioDesdeRce();
     case "ubicarEquipos":
       return ubicarEquiposEnRce(cuerpo.correo, cuerpo.movimientos);
+    case "misCamas":
+      return misCamasEnRce(cuerpo.correo, cuerpo.camas);
     default:
       return { ok: false, error: "ACCION_DESCONOCIDA" };
   }
@@ -713,6 +715,36 @@ function ubicarEquiposEnRce(correo, movimientos) {
   if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA" };
   if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
   return { ok: true, movidos: Number(resp.movidos) || 0, avisos: resp.avisos || [] };
+}
+
+/**
+ * Mis camas del turno (Diego, 25-nov-2026): las que el colega elige en el celular quedan pintadas a su
+ * firma en el reparto del RCE. Solo numeros de cama, el correo y las iniciales: nada de pacientes.
+ */
+function misCamasEnRce(correo, camas) {
+  var enlace = enlaceRce_();
+  if (!enlace) return { ok: false, error: "RCE_ENLACE_APAGADO" };
+  var lista = [];
+  if (Object.prototype.toString.call(camas) === "[object Array]") {
+    for (var i = 0; i < camas.length && lista.length < 30; i++) {
+      var n = parseInt(camas[i], 10);
+      if (n > 0 && n <= 40 && lista.indexOf(n) === -1) lista.push(n);
+    }
+  }
+  var firma = "";
+  try { var u = leerDotacion().filter(function (x) { return x.correo === normalizarCorreo(correo); })[0]; if (u) firma = inicialesRce_(u.nombre); } catch (e) { firma = ""; }
+  var r = UrlFetchApp.fetch(enlace.url, {
+    method: "post",
+    contentType: "text/plain;charset=utf-8",
+    payload: JSON.stringify({ accion: "misCamas", token: enlace.token, autor: normalizarCorreo(correo), firma: firma, camas: lista }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  var resp = null;
+  if (r.getResponseCode() === 200) { try { resp = JSON.parse(r.getContentText()); } catch (e) { resp = null; } }
+  if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA" };
+  if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
+  return { ok: true, firma: String(resp.firma || ""), turno: String(resp.turno || "") };
 }
 
 function historiasDesdeRce(camas) {

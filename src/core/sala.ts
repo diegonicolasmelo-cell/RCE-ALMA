@@ -95,7 +95,7 @@ const mismoNombre = (a: EquipoEnSala, nombre: string): boolean => (a.numero === 
  * salvo que la cama necesite un soporte en uso y no tenga ninguno (TET conectado): ahí entra en uso.
  */
 export function dejarEnSala(lista: readonly EquipoEnSala[], e: EquipoRce, via: ViaAerea, conectado: boolean): readonly EquipoEnSala[] {
-  if (lista.some((x) => mismoNombre(x, e.nombre))) return lista;
+  if (lista.some((x) => mismoNombre(x, e.nombre)) || lista.length >= 4) return lista;
   const nuevo = equipoDeInventario(e, false);
   const falta = via !== "NATURAL" && conectado && esSoporteRespiratorio(nuevo.tipo) && puedeEstarEnUso(nuevo.tipo, via) && !lista.some((x) => esSoporteRespiratorio(x.tipo) && x.enUso);
   return [...lista, falta ? { ...nuevo, enUso: true } : nuevo];
@@ -109,3 +109,8 @@ export function usarEnSala(lista: readonly EquipoEnSala[], equipo: EquipoEnSala)
 
 /** El nombre con que el RCE conoce a un equipo de la sala. */
 export const nombreRce = (e: EquipoEnSala): string => (e.numero === null ? e.modelo : `${e.modelo} ${e.numero}`);
+
+/** Hasta 4 equipos por cama (Diego, 25-nov): el cuadro de la cama se parte en 1, 2 o 4. */
+export const MAX_EQUIPOS_SALA = 4;
+/** Cuántos segmentos dibuja el cuadro: 1 → 1, 2 → 2, 3 o 4 → 4. */
+export const segmentosSala = (n: number): 1 | 2 | 4 => (n <= 1 ? 1 : n === 2 ? 2 : 4);

@@ -99,10 +99,9 @@ describe("equipos segun la via aerea y la cama", async () => {
   const vent = (n: number, enUso: boolean) => ({ tipo: "VENTILADOR" as const, modelo: "Savina", numero: n, enUso });
   const airvo = (enUso: boolean) => ({ tipo: "ALTO_FLUJO" as const, modelo: "Airvo 2", numero: 1, enUso });
 
-  it("ofrece CNAF y V60 con via natural y TQT, no con TET; el ventilador siempre", () => {
+  it("con cualquier via se ofrece todo: un V60 o un Airvo pueden esperar en la sala de un intubado (25-nov)", () => {
     const modelos = (v: "TET" | "TQT" | "NATURAL") => modelosOfrecidos(v).map((d) => d.modelo);
-    expect(modelos("TET")).not.toContain("Airvo 2");
-    expect(modelos("TET")).not.toContain("V60");
+    expect(modelos("TET")).toEqual(expect.arrayContaining(["Airvo 2", "V60", "Savina"]));
     expect(modelos("TQT")).toEqual(expect.arrayContaining(["Airvo 2", "V60", "Servo U", "PB 980"]));
     expect(modelos("NATURAL")).toEqual(expect.arrayContaining(["Airvo 2", "V60", "Savina", "Humidificador MR850", "NBZ Aerogen"]));
   });
@@ -139,7 +138,8 @@ describe("equipos segun la via aerea y la cama", async () => {
   it("al pasar a la via, se ordena solo: TET deja el ventilador en uso, natural lo apaga", () => {
     expect(equiposParaVia([vent(1, false)], "TET")[0]!.enUso).toBe(true);
     expect(equiposParaVia([vent(1, true)], "NATURAL")[0]!.enUso).toBe(false);
-    expect(equiposParaVia([vent(1, true), airvo(false)], "TET").map((e) => e.modelo)).toEqual(["Savina"]);
+    // El Airvo se queda en la sala, sin uso: con TET da el soporte el ventilador.
+    expect(equiposParaVia([vent(1, true), airvo(false)], "TET").map((e) => [e.modelo, e.enUso])).toEqual([["Savina", true], ["Airvo 2", false]]);
   });
 
   it("cambiar el ventilador pide motivo; cambiar solo su uso, no", () => {

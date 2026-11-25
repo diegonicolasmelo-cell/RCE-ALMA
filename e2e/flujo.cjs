@@ -1788,6 +1788,27 @@ async function esperarServidor() {
       await cel.waitForSelector('[role=dialog][aria-label="Avisos"]');
       assert.match(await cel.textContent('[role=dialog][aria-label="Avisos"]'), /Cama 2 · Ronda[\s\S]*Filtro HME vencido/);
       await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
+      // La sala en 8 bits (25-nov-2026): secciones de 6 camas, tipo con su dibujo y teclado del número.
+      await cel.click('.seg-ronda button:text-is("Sala")');
+      await cel.waitForSelector(".sala8-grilla");
+      assert.deepEqual(await cel.locator(".sala8-secs button").allTextContents(), ["Adelante", "Medio", "Atrás"]);
+      assert.equal(await cel.locator(".sala8-cama").count(), 6);
+      await cel.click('button[aria-label="Sala · Cama 2"]');
+      const eqDlg = cel.locator('[role=dialog][aria-label="Equipo · Cama 2"]');
+      await eqDlg.waitFor();
+      await eqDlg.locator('.sala8-tipo:has-text("Vela")').click();
+      for (const t of ["1", "2"]) await eqDlg.locator(`.sala8-teclado button[aria-label="${t}"]`).click();
+      assert.match(await eqDlg.textContent(".aviso-etiqueta"), /Vela va del 1 al 10/);
+      await eqDlg.locator('.sala8-teclado button[aria-label="Borrar"]').click();
+      await eqDlg.locator('.sala8-teclado button[aria-label="Borrar"]').click();
+      await eqDlg.locator('.sala8-teclado button[aria-label="3"]').click();
+      if (await eqDlg.locator(".sala8-motivo").count()) await eqDlg.locator('.sala8-motivo button:has-text("Mantención")').click();
+      await eqDlg.locator('button:has-text("Anotar Vela 3 en Cama 2")').click();
+      await eqDlg.waitFor({ state: "detached" });
+      assert.match(await cel.textContent('button[aria-label="Sala · Cama 2"]'), /Vela 3/);
+      assert.equal(await cel.locator('button[aria-label="Sala · Cama 2"] canvas.sprite8').count(), 1, "se dibuja el ventilador");
+      if (process.env.FOTO_SALA) await cel.screenshot({ path: process.env.FOTO_SALA });
+      await cel.click('.seg-ronda button:text-is("Lista")');
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
     });

@@ -21,6 +21,7 @@ import type { ContextoCama } from "./contextoCama";
 import type { ResumenCama } from "./Inicio";
 import { PanelEquipos } from "./TabControl";
 import { useAtras } from "./Inicio";
+import { SalaOchoBits } from "./SalaOchoBits";
 
 const ddmm = (ymd: string | null): string => (ymd ? `${ymd.slice(8, 10)}-${ymd.slice(5, 7)}` : "—");
 const hhmm = (iso: string): string => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
@@ -37,6 +38,9 @@ const titularDe = (correo: string): string => buscarProfesional(correo)?.nombre 
  */
 export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly ResumenCama[]; ahora: Date; rutAutor: string }) {
   const [abierta, setAbierta] = useState<string | null>(null);
+  // Dos formas de ver lo mismo (25-nov-2026): la lista de camas o la sala dibujada en 8 bits.
+  const [vista, setVista] = useState<"lista" | "sala">(() => { try { return localStorage.getItem("ronda-vista") === "sala" ? "sala" : "lista"; } catch { return "lista"; } });
+  const verComo = (v: "lista" | "sala"): void => { setVista(v); try { localStorage.setItem("ronda-vista", v); } catch { /* sin almacenamiento */ } };
   const orden = [...resumen].sort((a, b) => a.ep.cama.localeCompare(b.ep.cama, "es", { numeric: true }));
   const actual = abierta ? orden.find((r) => r.ep.id === abierta) ?? null : null;
   const siguiente = actual ? orden[orden.indexOf(actual) + 1] ?? null : null;
@@ -64,7 +68,12 @@ export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly Resum
           </ul>
         )}
       </details>
-      <div className="evgrid ev-lista">
+      <div className="seg-ronda" role="tablist" aria-label="Ver la ronda como">
+        <button type="button" role="tab" aria-selected={vista === "lista"} onClick={() => verComo("lista")}>Lista</button>
+        <button type="button" role="tab" aria-selected={vista === "sala"} onClick={() => verComo("sala")}>Sala</button>
+      </div>
+      {vista === "sala" && <SalaOchoBits resumen={orden} ahora={ahora} rutAutor={rutAutor} onRevisar={setAbierta} />}
+      {vista === "lista" && <div className="evgrid ev-lista">
         {orden.map((r) => {
           const ronda = rondaDelTurno(r.eventos, ahora);
           const vencidos = esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles)) : [];
@@ -79,7 +88,7 @@ export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly Resum
             </button>
           );
         })}
-      </div>
+      </div>}
       {actual && (
         <RondaCama
           key={actual.ep.id}

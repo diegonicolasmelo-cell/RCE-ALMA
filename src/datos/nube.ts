@@ -17,6 +17,7 @@ import {
   serializarEventoParaNube
 } from "@core/index";
 import type { Control, Episodio, EventoClinico, ValidacionApk } from "@core/index";
+import { conViaDe, viaMasReciente } from "@core/index";
 import type { TipoRegistro } from "./db";
 
 export interface FilaNube {
@@ -86,12 +87,18 @@ export function versionDeEpisodioNube(x: unknown): VersionEpisodio | null {
   return { episodio, registradoEn };
 }
 
-/** Para cada episodio, la version mas reciente. */
+/**
+ * Para cada episodio, la version mas reciente... salvo la VIA AEREA, que viene de la version cuyo
+ * cambio de via es el mas reciente (25-nov-2026): una copia vieja guardada despues no la pisa.
+ */
 export function ultimasVersiones(versiones: readonly VersionEpisodio[]): readonly Episodio[] {
   const mejor = new Map<string, VersionEpisodio>();
+  const via = new Map<string, Episodio>();
   for (const v of versiones) {
     const actual = mejor.get(v.episodio.id);
     if (!actual || v.registradoEn > actual.registradoEn) mejor.set(v.episodio.id, v);
+    const vv = via.get(v.episodio.id);
+    via.set(v.episodio.id, vv ? viaMasReciente(vv, v.episodio) : v.episodio);
   }
-  return [...mejor.values()].map((v) => v.episodio);
+  return [...mejor.values()].map((v) => conViaDe(v.episodio, via.get(v.episodio.id) ?? v.episodio));
 }

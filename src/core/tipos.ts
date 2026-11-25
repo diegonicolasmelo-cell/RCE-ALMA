@@ -285,6 +285,12 @@ export interface Episodio {
   readonly viaAereaActual: ViaAerea;
   readonly calibreVia: string | null;
   readonly fijacionCm: string | null;
+  /**
+   * Cuándo cambió la vía aérea por última vez (el `registradoEn` del evento que la cambió). 25-nov-2026:
+   * un teléfono con la ficha vieja, al guardar cualquier cosa, pisaba la intubación de otro (Scarlett:
+   * «la cama 1 volvía a vía aérea natural»). Al juntar copias, la vía aérea la decide este sello.
+   */
+  readonly viaDesde?: string;
   /** Dias de VM con que llego (solo registros antiguos). Los nuevos cuentan desde `ingresadoEn`. */
   readonly diasVM: number;
   /**

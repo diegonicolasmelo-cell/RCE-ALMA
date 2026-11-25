@@ -971,6 +971,15 @@ coincide con su hoja VENTILADORES («Mek 12», «PB 1»), y Kaptus mandaba su ca
 en la cola. «✓ Sigue igual» confirma la ronda de la cama (si la sala venía del RCE, la anota primero).
 Sin enlace (demo) se usa un inventario de ejemplo; sin inventario, el catálogo de antes.
 
+**25-nov-2026 (noche) · la vía aérea se perdía entre teléfonos (Scarlett, cama 1).** El episodio viaja
+como foto completa y ganaba la ÚLTIMA guardada: un teléfono con la copia vieja (vía natural) que anotaba
+cualquier cosa (transcrito, equipos, REM) pisaba la intubación de otro, y al controlar había que
+«volver a intubar». Ahora el episodio lleva `viaDesde` (cuándo un EVENTO cambió la vía) y al juntar
+copias la vía la decide ese sello (`ultimasVersiones`, `traer`). Prueba en `sync.test.ts` (roja sin el
+arreglo). 🔴 Las reintubaciones repetidas que se anotaron para «arreglar» la vía hay que revisarlas a mano.
+Además: un cambio de equipos nunca cambia la vía; con cualquier vía caben V60/Airvo en la sala (sin uso);
+hasta 4 equipos por cama (cuadro partido en 1, 2 o 4) y dibujos propios por modelo desde fotos de Diego.
+
 ## 28. Filtros: reglas por equipo, día 0 y fecha escrita a mano (Diego, 24-nov-2026 · PROGRAMADO)
 
 - **HEPA es del ventilador** (filtro viral-bacteriano, rama espiratoria): solo con un ventilador

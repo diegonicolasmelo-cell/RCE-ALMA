@@ -12,7 +12,7 @@
 import { borrarMeta, leerMeta, guardarMeta } from "./db";
 import type { BaseLocal, EntradaCola } from "./db";
 import type { ClienteApi, LoteSync } from "./api";
-import { controlParaRce, eventoParaRce, normalizarControl } from "@core/index";
+import { controlParaRce, conViaDe, eventoParaRce, normalizarControl, viaMasReciente } from "@core/index";
 import type { ItemParaRce } from "@core/index";
 import {
   apkDeNube,
@@ -244,9 +244,17 @@ export class Sincronizador {
     for (const ep of ultimasVersiones(versiones)) {
       const marcaLocal = await leerMeta<string>(this.db, prefijoVersion(ep.id));
       const marcaRemota = marcaDe.get(ep.id) ?? "";
+      const local = await this.db.episodios.get(ep.id);
       if (marcaLocal === undefined || marcaRemota > marcaLocal) {
-        await this.db.episodios.put(ep);
+        // La version remota es mas nueva, pero si ESTE telefono sabe de un cambio de via aerea mas
+        // reciente, la via se queda la de aqui (25-nov-2026: la intubacion no se pierde).
+        await this.db.episodios.put(local ? conViaDe(ep, viaMasReciente(ep, local)) : ep);
         await guardarMeta(this.db, prefijoVersion(ep.id), marcaRemota);
+        nEp += 1;
+      } else if (local && (ep.viaDesde ?? "") > (local.viaDesde ?? "")) {
+        // La copia local es posterior pero vieja en la via aerea (la guardo un telefono desactualizado):
+        // se corrige solo la via aerea.
+        await this.db.episodios.put(conViaDe(local, ep));
         nEp += 1;
       }
     }

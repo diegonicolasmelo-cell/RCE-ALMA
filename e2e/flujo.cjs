@@ -60,6 +60,17 @@ async function esperarServidor() {
     };
     const cel = await ctx.newPage();
     vigilar(cel);
+  // 25-nov-2026: el control ya no tiene pestaña Eventos; se entra desde la tarjeta de la cama.
+  const aEventos = async (n) => {
+    if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+    await cel.click(`article[aria-label="Cama UCI-0${n}"] button:has-text("Eventos")`);
+    await cel.waitForSelector(`.ctl-cabeza h1:text-is("Eventos · Cama ${n}")`);
+  };
+  const aControl = async (n) => {
+    if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+    await cel.click(`article[aria-label="Cama UCI-0${n}"] button:has-text("Monitorización")`);
+    await cel.waitForSelector(".hoja-simple");
+  };
     const aviso = () => cel.textContent(".toast-app");
     const parada = () => cel.evaluate(() => document.activeElement?.dataset?.stop);
     const franja = () => cel.locator(".franja-opciones .qchip").allTextContents();
@@ -169,11 +180,10 @@ async function esperarServidor() {
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 3")');
       assert.equal(await cel.locator('nav[aria-label="Navegación"]').count(), 0, "dentro del control no hay barra: manda el teclado y guardar");
       await cel.click('button:has-text("‹ Pacientes")');
-      // «Evaluaciones» pide el paciente; tocar fuera cierra la hoja.
-      await cel.click('nav[aria-label="Navegación"] button:has-text("Evaluaciones")');
-      await cel.waitForSelector('[role=dialog][aria-label="¿A qué paciente evalúas?"]');
-      await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
-      assert.equal(await cel.locator(".hoja-mas").count(), 0);
+      // 25-nov-2026: en la barra, la Ronda de ventiladores reemplaza a Evaluaciones.
+      assert.equal(await cel.locator('nav[aria-label="Navegación"] button:has-text("Evaluaciones")').count(), 0);
+      await cel.click('nav[aria-label="Navegación"] button:has-text("Ronda")');
+      await cel.waitForSelector(".ronda-cel");
       await cel.click('nav[aria-label="Navegación"] button:has-text("Controles")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Controles")');
       // La ayuda vive en el panel de la cuenta (22-nov-2026); su lugar en la barra es la Entrega.
@@ -246,7 +256,7 @@ async function esperarServidor() {
     });
 
     await prueba("el control es el registro simple: dos tarjetas, CSV y terapia ventilatoria, una fila por dato", async () => {
-      assert.deepEqual(await cel.locator(".hoja-simple > section > h2").evaluateAll((l) => l.map((x) => x.firstChild.textContent.trim())), ["CSV", "Terapia ventilatoria"]);
+      assert.deepEqual(await cel.locator(".hoja-simple > section > h2").evaluateAll((l) => l.map((x) => x.firstChild.textContent.trim())), ["CSV", "Terapia ventilatoria", "Secreciones, tos y deglución"]);
       const csv = (await cel.locator('section[aria-label="CSV"] > .fila > .et').allTextContents()).map((t) => t.split(/\s{2,}|Se guarda|lpm|mmHg|%|O · V · M|1-7/)[0].trim());
       assert.deepEqual(csv.slice(0, 6), ["Hora del control", "Frec. cardiaca", "P. arterial", "PAM", "SpO₂", "Glasgow"], csv.join(" | "));
       // SAS (o vigilia) va despues de las infusiones: la sedacion en curso decide cual se mide.
@@ -595,51 +605,32 @@ async function esperarServidor() {
       assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Control/, "lleva a la hoja donde falta el dato");
       assert.equal(await cel.evaluate(() => document.activeElement.id), "in-fc", "y deja el cursor en la FC");
       await cel.click('button:has-text("Rellenar signos de ejemplo")');
+      // 25-nov-2026: «guardar y firmar APK»: sin APK del turno, al guardar se firma sola y se avisa.
       await cel.click("#btn-guardar-control");
-      assert.match(await aviso(), /firmar la APK/);
-      assert.match(await cel.textContent("[role=tab][aria-selected=true]"), /Kine/);
+      await cel.waitForTimeout(500);
+      assert.match(await aviso(), /Guardado UCI-01.*APK firmada\./);
+      await cel.waitForSelector('article[aria-label^="Cama"]');
+      await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
+      await cel.waitForSelector(".hoja-simple");
     });
 
-    await prueba("la APK se exige una vez por turno y vale para los controles siguientes", async () => {
-      const kine = await cel.textContent(".app-cel");
-      assert.ok(kine.includes("Auscultación") && kine.includes("Secreciones"), "la kine respiratoria pide auscultacion y secreciones");
-      assert.ok(!/Aspiración|TrachCare|Set\b/.test(await cel.textContent('.segmento[data-seg="kine"]')), "ya no se pregunta por aspiracion");
-      assert.equal(await cel.locator('[aria-label="Kinesiterapia respiratoria"]').count(), 0, "cada control es una atencion: no hay Si/No de kine");
-      // auscultacion y secreciones en listas desplegables
-      await cel.fill("#in-auscultacion", "Crépitos bibasales, roncus");
-      assert.equal(await cel.inputValue("#in-auscultacion"), "Crépitos bibasales, roncus", "la auscultacion es texto libre");
-      assert.ok((await cel.locator("#sugerencias-auscultacion option").count()) >= 5, "con sugerencias desplegables");
-      assert.equal(await cel.locator("#in-auscultacion[type=checkbox], .desplegable input[type=checkbox]").count(), 0, "ya no hay casillas de verificacion");
-      // reologia y cantidad solo se habilitan si hay secreciones
-      assert.equal(await cel.locator("#sel-cantidad").isDisabled(), true, "sin aspecto, la cantidad esta deshabilitada");
-      assert.equal(await cel.locator("#sel-reologia").isDisabled(), true);
-      assert.equal(await cel.locator("#sel-aspecto option").count(), 14, "13 aspectos mas el vacio");
-      await cel.selectOption("#sel-aspecto", "MUCOPURULENTA_TINTE_HEMATICO");
-      assert.equal(await cel.locator("#sel-cantidad").isDisabled(), false);
-      await cel.selectOption("#sel-cantidad", "MODERADA");
-      await cel.selectOption("#sel-aspecto", "NINGUNA");
-      assert.equal(await cel.locator("#sel-cantidad").isDisabled(), true, "sin secreciones se vuelve a deshabilitar");
-      assert.equal(await cel.inputValue("#sel-cantidad"), "", "y se limpia");
-      // la tos se registra en el control; el flujo pico de tos y la deglucion son evaluaciones
-      await cel.selectOption("#sel-tos", "DEFICIENTE");
-      assert.equal(await cel.locator("#in-pef-tos").count(), 0, "el flujo pico de tos ya no esta en el control");
-      assert.equal(await cel.locator("#sel-deglucion").count(), 0, "la deglucion ya no esta en el control");
-      // la kine motora va aparte y no es obligatoria
-      assert.equal(await cel.locator('[aria-label="Terapia física"]').count(), 0, "la terapia fisica no esta en kine respiratoria");
-      assert.equal(await cel.locator('[role=tab]:has-text("Kine motora")').count(), 0, "la terapia fisica ahora es un evento");
-      await cel.click("#btn-guardar-control");
-      assert.match(await aviso(), /APK/);
-      await cel.waitForTimeout(500);
-      assert.match(await cel.textContent('.paso-chip[aria-current="step"]'), /APK/, "lleva a la APK: " + (await cel.textContent('.paso-chip[aria-current="step"]')) + " / " + (await aviso()));
-      assert.equal(await cel.locator(".segmento[data-seg=apk] .seg, .segmento[data-seg=apk] [aria-label=\"Alimentación suspendida (*)\"]").count(), 0, "solo firmar: sin formulario criterio por criterio");
-      await cel.click('button:has-text("Firmar APK")');
-      assert.match(await cel.textContent(".notice.good"), /APK firmada · \d\d\/\d\d\/\d{4} \d\d:\d\d · DM/, "queda con fecha, hora y siglas de quien inicio sesion");
-      assert.match(await cel.textContent(".notice.good"), /todos tus controles de este turno/);
+    await prueba("el control es solo control: secreciones al final (también ventilado), sin auscultación ni eventos; la APK queda firmada", async () => {
+      // Cama 1 está en VM: igual lleva secreciones, tos y deglución al final del control.
+      assert.equal(await cel.locator('section[aria-label="Secreciones, tos y deglución"]').count(), 1);
+      assert.equal(await cel.locator("#in-auscultacion").count(), 0, "la auscultación salió");
+      assert.deepEqual(await cel.locator(".ph-tabs [role=tab]").allTextContents(), ["Control", "APK"], "sin pestaña Eventos");
+      await cel.selectOption("#in-secreciones", "MUCOPURULENTA_TINTE_HEMATICO");
+      await cel.selectOption("#in-cantidad", "MODERADA");
+      await cel.click('[role=tab]:has-text("APK")');
+      assert.match(await cel.textContent(".notice.good"), /APK firmada · \d\d\/\d\d\/\d{4} \d\d:\d\d · DM/, "la firmó al guardar, con fecha, hora y siglas");
+      await cel.click('[role=tab]:has-text("Control")');
+      await cel.click('button:has-text("Rellenar signos de ejemplo")');
+      if (await cel.locator("#in-sas").count()) await cel.fill("#in-sas", "3");
       await cel.click("#btn-guardar-control");
       await cel.waitForTimeout(500);
       assert.match(await aviso(), /Guardado UCI-01/);
+      assert.doesNotMatch(await aviso(), /APK firmada/, "la segunda vez ya no la firma de nuevo");
       await cel.waitForSelector('article[aria-label^="Cama"]');
-      assert.equal(await cel.locator("#cuerpo .segmento").count(), 0, "al guardar vuelve a las tarjetas de las camas");
       await cel.click('article[aria-label="Cama UCI-01"] button:has-text("Monitorización")');
       await cel.waitForSelector(".hoja-simple");
     });
@@ -653,7 +644,7 @@ async function esperarServidor() {
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.04", "▲ sube un paso");
       await cel.click('button[aria-label="Bajar Noradrenalina"]');
       assert.equal(await cel.inputValue("#in-inf-noradrenalina-dosis"), "0.03", "▼ baja un paso");
-      await cel.click('[role=tab]:has-text("Kine")');
+      await cel.click('[role=tab]:has-text("APK")');
       assert.ok((await cel.locator(".notice.good").count()) >= 1, "la APK del turno sigue vigente");
     });
 
@@ -694,7 +685,7 @@ async function esperarServidor() {
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
       assert.match(await cel.textContent(".banda .l1"), /TET 7\.5 · 22 cm/);
       // La linea de tiempo junta los eventos y los controles, del mas nuevo al mas antiguo, con fecha y hora.
-      await cel.click('[role=tab]:has-text("Eventos")');
+      await aEventos(2);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
       assert.equal(await cel.locator('.evgrid button:text-is("Reintubación")').count(), 0, "intubado: ya no se ofrece intubar");
       assert.equal(await cel.locator('.evgrid button:text-is("Extubación")').count(), 1, "una sola puerta para extubar");
       assert.equal(await cel.locator('.evgrid button:text-is("Extubación fuera de protocolo")').count(), 0, "fuera de protocolo se elige dentro de «Extubación»");
@@ -704,11 +695,11 @@ async function esperarServidor() {
       assert.match(linea[0] ?? "", /^hoy \d\d:\d\d\s*Reintubación TET calibre 7\.5/, linea.join(" | "));
       assert.ok(linea.some((x) => /AUTOEXTUBACIÓN, queda en/.test(x)), "la autoextubacion queda en la linea: " + linea.join(" | "));
       assert.ok(linea.some((x) => /Control · ACVC/.test(x)), "los controles tambien");
-      await cel.click('[role=tab]:has-text("Control")');
+      await aControl(2);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
     });
 
     await prueba("corregir un dato mal anotado no crea evento; un cambio de tubo real si, y no es reintubacion", async () => {
-      await cel.click('[role=tab]:has-text("Eventos")');
+      await aEventos(2);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
       const nLinea = await cel.locator('[aria-label="Línea de tiempo"] li').count();
       // Correccion: el colega anoto 7.5 / 22 y era 8.0 / 23.
       await cel.click('[aria-label="Vía aérea actual"] button:has-text("Corregir dato")');
@@ -718,7 +709,6 @@ async function esperarServidor() {
       await cel.waitForSelector('.toast-app:has-text("No se registró ningún evento")');
       await cel.waitForTimeout(400);
       assert.match(await cel.textContent('[aria-label="Vía aérea actual"]'), /TET 8\.0 · 23 cm[\s\S]*Corregido por Klgo\.? ?Diego Melo|TET 8\.0 · 23 cm[\s\S]*Corregido por Diego Melo/);
-      assert.match(await cel.textContent(".banda .l1"), /TET 8\.0 · 23 cm/);
       assert.equal(await cel.locator('[aria-label="Línea de tiempo"] li').count(), nLinea, "la correccion no aparece como evento");
       // Cambio de tubo real: queda en la linea de tiempo con su motivo, sin reintubar.
       await cel.click('.evgrid button:text-is("Cambio de tubo")');
@@ -729,10 +719,10 @@ async function esperarServidor() {
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 2")');
       assert.match(await cel.textContent(".franja-evento"), /Monitorización del evento: Cambio de tubo/);
       await cel.waitForSelector('.banda .l1:has-text("TET 7.0 · 23 cm")');
-      await cel.click('[role=tab]:has-text("Eventos")');
+      await aEventos(2);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.match(linea[0] ?? "", /Cambio de tubo: TET calibre 7\.0, fijación 23 cm \(fuga\)/, linea.join(" | "));
-      await cel.click('[role=tab]:has-text("Control")');
+      await aControl(2);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
     });
 
     await prueba("un solo boton de extubacion: fuera de protocolo antes de 24 h de VM, PVE despues; sin PVE posible, se extuba fuera de protocolo desde la PVE", async () => {
@@ -805,10 +795,10 @@ async function esperarServidor() {
       await cel.click('button:text-matches("^Registrar( y monitorizar ›)?$")');
       await cel.waitForSelector('.ctl-cabeza h1:text-is("Control · Cama 4")');
       assert.match(await cel.textContent(".banda .l1"), /TET 8 · 23 cm/);
-      await cel.click('[role=tab]:has-text("Eventos")');
+      await aEventos(4);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
       const linea = await cel.locator('[aria-label="Línea de tiempo"] li').allTextContents();
       assert.ok(linea.some((x) => /AUTOEXTUBACIÓN con reintubación inmediata/.test(x)), linea.join(" | "));
-      await cel.click('[role=tab]:has-text("Control")');
+      await aControl(4);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
     });
 
     await prueba("PVE como el registro simple: checklist, inicio, termino contrastado, extubacion, post extubacion y falla con reintubacion", async () => {
@@ -979,7 +969,7 @@ async function esperarServidor() {
       await cel.click(".agregar-inf");
       assert.ok((await cel.locator('.elegir-inf .sub-titulo:text-is("Bloqueo neuromuscular")').count()) === 1, "el BNM se agrega en las infusiones en curso, con la sedacion");
       await cel.click('.pie-inf button:text-is("Cancelar")');
-      await cel.click('[role=tab]:has-text("Eventos")');
+      await aEventos(3);   // 25-nov-2026: los eventos se abren desde la tarjeta, no desde el control
       assert.ok((await cel.locator('button:has-text("Iniciar bloqueo neuromuscular")').count()) === 0, "ya no esta en Eventos");
       await cel.click('button:has-text("Cambio de filtro HME")');
       // La fecha de la etiqueta se escribe a mano (24-nov-2026): sin ella no se guarda.
@@ -1792,7 +1782,8 @@ async function esperarServidor() {
       // La sala en 8 bits con el inventario del RCE (25-nov-2026): tocar deja en la sala, otro toque pone
       // en uso o mueve, y «sigue igual» confirma la ronda. Cada toque se guarda (la cola los sube).
       await cel.waitForSelector(".sala8-grilla");
-      assert.deepEqual(await cel.locator(".sala8-secs button").allTextContents(), ["Adelante", "Medio", "Atrás"]);
+      // Quien tiene camas de atrás (o ninguna elegida) ve la unidad entera y los depósitos; el resto, solo sus camas.
+      assert.deepEqual(await cel.locator(".sala8-secs button").allTextContents(), ["Adelante", "Medio", "Atrás", "Bodega", "Equipos médicos", "Préstamos"]);
       assert.equal(await cel.locator(".sala8-cama").count(), 6);
       await cel.click('button[aria-label="Sala · Cama 4"]');
       const sDlg = cel.locator('[role=dialog][aria-label="Equipo · Cama 4"]');
@@ -1814,6 +1805,22 @@ async function esperarServidor() {
       await sDlg.waitFor({ state: "detached" });
       assert.match(await cel.textContent('button[aria-label="Sala · Cama 4"]'), /Savina 3/);
       assert.match(await cel.textContent('button[aria-label="Sala · Cama 4"] .sala8-n'), /✓/);
+      // Cama libre (25-nov-2026): los ventiladores habitan la cama aunque no haya paciente.
+      let libreOk = false;
+      for (const secc of ["Adelante", "Medio", "Atrás"]) {
+        await cel.click(`.sala8-secs button:text-is("${secc}")`);
+        const libre = cel.locator(".sala8-cama.libre").first();
+        if (!(await libre.count())) continue;
+        await libre.click();
+        const lDlg = cel.locator('[role=dialog][aria-label$=" libre"]');
+        await lDlg.waitFor();
+        await lDlg.locator('button[aria-label^="Agregar · "]').first().click();
+        await lDlg.waitFor({ state: "detached" });
+        assert.ok(await cel.locator(".sala8-cama.libre canvas.sprite8").count() > 0, "la cama libre muestra su equipo");
+        libreOk = true; break;
+      }
+      assert.ok(libreOk, "hay al menos una cama libre para probar");
+      await cel.click('.sala8-secs button:text-is("Adelante")');
       if (process.env.FOTO_SALA) await cel.screenshot({ path: process.env.FOTO_SALA });
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');

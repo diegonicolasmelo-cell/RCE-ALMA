@@ -1,4 +1,7 @@
 import type { EquipoRce, HistoriaEntrega, ItemParaRce, PacienteRce } from "@core/index";
+
+/** Un movimiento de equipo hacia el RCE. tipo: CAMA (con `detalle` = n° de cama), BODEGA, EQUIPOS, PRESTAMO, PASILLO. */
+export interface MovimientoEquipo { readonly equipo: string; readonly tipo: string; readonly detalle?: string | number; readonly enUso?: boolean }
 /**
  * Cliente de la API (Google Apps Script sobre Sheets).
  *
@@ -67,6 +70,8 @@ export interface ClienteApi {
    * y no las guarda. El celular tampoco: viven solo en la pantalla abierta (Diego, 22-nov-2026).
    */
   leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string; pacientes?: readonly PacienteRce[] }>>;
+  /** Mueve equipos en el RCE sin paciente de por medio: cama libre, bodega, equipos médicos, préstamo. */
+  ubicarEquipos(correo: string, movimientos: readonly MovimientoEquipo[]): Promise<Resultado<{ movidos: number; avisos: readonly string[] }>>;
   /** Inventario de equipos del RCE (25-nov-2026): la sala en 8 bits elige de aquí. */
   leerInventario(): Promise<Resultado<{ equipos: readonly EquipoRce[]; estado?: string }>>;
 }
@@ -228,6 +233,11 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       };
     },
 
+    async ubicarEquipos(correo, movimientos) {
+      const r = await post({ token: cfg.appToken, accion: "ubicarEquipos", correo, movimientos });
+      if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
+      return { ok: true, movidos: Number(r["movidos"]) || 0, avisos: Array.isArray(r["avisos"]) ? (r["avisos"] as unknown[]).map(String) : [] };
+    },
     async leerInventario() {
       const r = await post({ token: cfg.appToken, accion: "inventario" });
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
@@ -302,6 +312,10 @@ export function crearApiLocal(): ClienteApi {
     async leerHistorias() {
       // Sin servidor no hay RCE al que pedirle historias.
       return { ok: true, historias: [] };
+    },
+    async ubicarEquipos(_correo, movimientos) {
+      // Sin servidor (demo): se da por hecho; el inventario de ejemplo se ajusta en la pantalla.
+      return { ok: true, movidos: movimientos.length, avisos: [] };
     },
     async leerInventario() {
       // Sin servidor (demo): un inventario de ejemplo, todo en bodega, para usar la sala igual.

@@ -95,6 +95,7 @@ export function viaAereaVigente(
       case "TERAPIA_FISICA":
       case "IMT":
       case "EDUCACION":
+      case "ANULACION_EVENTO":
         break;
       default: {
         const _exhaustivo: never = ev;
@@ -284,6 +285,13 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
     return { ...r, viaDesde: ev.registradoEn };
   }
   return r;
+}
+
+/** Los eventos que cuentan: sin los anulados por coordinación ni las marcas de anulación. */
+export function sinAnulados(eventos: readonly EventoClinico[]): readonly EventoClinico[] {
+  const anulados = new Set(eventos.filter((e) => e.tipo === "ANULACION_EVENTO").map((e) => (e as Extract<EventoClinico, { tipo: "ANULACION_EVENTO" }>).anulaId));
+  if (!anulados.size) return eventos;
+  return eventos.filter((e) => e.tipo !== "ANULACION_EVENTO" && !anulados.has(e.id));
 }
 
 /** De dos copias de un mismo episodio, la vía aérea que vale: la del cambio más reciente. */

@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  buscarProfesional,
   DESTINOS_IMAGEN,
   MUESTRAS_CULTIVO,
   PROCEDIMIENTOS_MEDICOS,
@@ -487,10 +488,21 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
   // Linea de tiempo: todo lo que paso en la cama, del mas nuevo al mas antiguo, con su fecha y hora.
   const [todo, setTodo] = useState(false);
   const linea = [
-    ...eventos.map((e) => ({ id: e.id, en: ("realizadaEn" in e && typeof e.realizadaEn === "string" ? e.realizadaEn : e.registradoEn), texto: describirEvento(e, eventos), fuerte: e.tipo !== "EVALUACION_PUNTUAL" && e.tipo !== "CAMBIO_HMEF" && e.tipo !== "CAMBIO_FILTRO" })),
-    ...ctx.controles.map((c) => ({ id: c.id, en: c.registradoEn, texto: `Control · ${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? c.ventilacion.modalidad}`, fuerte: false }))
+    ...eventos.map((e) => ({ id: e.id, en: ("realizadaEn" in e && typeof e.realizadaEn === "string" ? e.realizadaEn : e.registradoEn), texto: describirEvento(e, eventos), fuerte: e.tipo !== "EVALUACION_PUNTUAL" && e.tipo !== "CAMBIO_HMEF" && e.tipo !== "CAMBIO_FILTRO", evento: true })),
+    ...ctx.controles.map((c) => ({ id: c.id, en: c.registradoEn, texto: `Control · ${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? c.ventilacion.modalidad}`, fuerte: false, evento: false }))
   ].sort((a, b) => b.en.localeCompare(a.en));
   const visibles = todo ? linea : linea.slice(0, 10);
+  // Coordinación anula un evento mal anotado (25-nov-2026): queda la marca con motivo, nada se borra.
+  const esCoord = buscarProfesional(rutAutor)?.rol === "COORDINACION";
+  const [anulando, setAnulando] = useState<string | null>(null);
+  const [motivoAnula, setMotivoAnula] = useState("");
+  const anular = async (id: string): Promise<void> => {
+    const m = motivoAnula.trim();
+    if (m.length < 4) return avisar("Escribe por qué se anula (por ejemplo: «reintubación anotada por error»).");
+    await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), tipo: "ANULACION_EVENTO", anulaId: id, motivo: m.slice(0, 200) });
+    avisar("Evento anulado: ya no cuenta en la estadística.");
+    setAnulando(null); setMotivoAnula("");
+  };
   const cuando = (iso: string): string => {
     const d = new Date(iso);
     const ayer = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1);
@@ -627,7 +639,16 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
           <h3>Línea de tiempo ({linea.length})</h3>
           <ol className="linea-tiempo">
             {visibles.map((x) => (
-              <li key={x.id}><span className="mono cuando">{cuando(x.en)}</span><span>{x.fuerte ? <b>{x.texto}</b> : x.texto}</span></li>
+              <li key={x.id}><span className="mono cuando">{cuando(x.en)}</span><span>{x.fuerte ? <b>{x.texto}</b> : x.texto}</span>
+                {esCoord && x.evento && anulando !== x.id && <button type="button" className="linkbtn anular-ev" aria-label={`Anular · ${x.texto}`} onClick={() => { setAnulando(x.id); setMotivoAnula(""); }}>Anular</button>}
+                {anulando === x.id && (
+                  <span className="anular-form">
+                    <input type="text" value={motivoAnula} maxLength={200} placeholder="¿Por qué se anula?" aria-label="Motivo de la anulación" onChange={(e) => setMotivoAnula(e.target.value)} />
+                    <button type="button" className="btn" onClick={() => void anular(x.id)}>Anular</button>
+                    <button type="button" className="linkbtn" onClick={() => setAnulando(null)}>Cancelar</button>
+                  </span>
+                )}
+              </li>
             ))}
           </ol>
           {linea.length > 10 && <button type="button" className="linkbtn" onClick={() => setTodo((t) => !t)}>{todo ? "Ver menos" : `Ver todo (${linea.length})`}</button>}

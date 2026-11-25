@@ -13,12 +13,17 @@ interface EstadoInventario {
   cargado: boolean;
   poner: (lista: readonly EquipoRce[]) => void;
   ubicar: (nombre: string, cama: number | null, enUso: boolean) => void;
+  /** Ubica un equipo en un depósito o en una cama (sin uso), tal como lo dejó el RCE. */
+  ubicarEn: (nombre: string, tipo: string, cama: number | null) => void;
 }
 
 export const useInventarioRce = create<EstadoInventario>((set) => ({
   equipos: [],
   cargado: false,
   poner: (lista) => set({ equipos: lista, cargado: true }),
+  ubicarEn: (nombre, tipo, cama) => set((s) => ({
+    equipos: s.equipos.map((e) => (e.nombre.toLowerCase() === nombre.toLowerCase() ? { ...e, ubicacion: tipo, cama: tipo === "CAMA" ? cama : null, enUso: false } : e))
+  })),
   ubicar: (nombre, cama, enUso) => set((s) => ({
     equipos: s.equipos.map((e) => (e.nombre.toLowerCase() === nombre.toLowerCase() ? { ...e, ubicacion: cama === null ? "PASILLO" : "CAMA", cama, enUso } : e))
   }))

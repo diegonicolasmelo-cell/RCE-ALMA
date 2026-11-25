@@ -190,7 +190,7 @@ export const ESCALAS: readonly DefEscala[] = [
     campos: [{ id: "nivel", etiqueta: "Lo máximo que logró hoy", tipo: "lista", min: 0, max: 10, opciones: IMS.map((t, v) => ({ val: v, label: t })) }] },
   { id: "DINAMOMETRIA", nombre: "Prensión manual (dinamometría)", corto: "Prensión", pestana: "FUERZA",
     campos: [num("kg", "Prensión · mejor intento", "kg", { max: 100 })] },
-  { id: "FUERZA_RESPIRATORIA", nombre: "Pimáx · fuerza respiratoria", corto: "Pimáx", pestana: "FUERZA",
+  { id: "FUERZA_RESPIRATORIA", nombre: "PIM y PEM · fuerza respiratoria", corto: "Pimáx", pestana: "FUERZA",
     campos: [num("pim", "Pimáx · valor absoluto", "cmH₂O", { min: -250, max: 250 }), num("pem", "PEM · opcional", "cmH₂O", { min: -250, max: 300 })] },
   // --- PVE y extubacion ---
   { id: "TOS_DEGLUCION", nombre: "Tos y deglución", corto: "Tos y deglución", pestana: "PVE",

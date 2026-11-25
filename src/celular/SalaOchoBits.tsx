@@ -25,6 +25,10 @@ import {
 import { MAX_EQUIPOS_SALA, camaRce, dejarEnSala, equipoDeInventario, nombreRce, segmentosSala, usarEnSala } from "@core/index";
 import type { EquipoEnSala, EquipoRce, MotivoCambioEquipo } from "@core/index";
 import { useCargarInventarioRce, useInventarioRce } from "./inventarioRce";
+import { buscarProfesional } from "@core/index";
+
+/** Fuera de las camas (25-nov-2026): Bodega, Equipos médicos y Préstamos, con la ubicación del RCE. */
+const DEPOSITOS: readonly { tipo: string; nombre: string }[] = [{ tipo: "BODEGA", nombre: "Bodega" }, { tipo: "EQUIPOS", nombre: "Equipos médicos" }, { tipo: "PRESTAMO", nombre: "Préstamos" }];
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { baseEvento } from "./eventos-ui";
@@ -102,23 +106,56 @@ export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
 }) {
   useCargarInventarioRce();
   const inv = useInventarioRce((x) => x.equipos);
-  const [seccion, setSeccion] = useState(SECCIONES_SALA[0]!.id);
+  // 25-nov-2026 (Diego): cada colega ve SUS camas; quien tiene camas de atrás (13–18) o coordina, ve la unidad
+  // entera más Bodega, Equipos médicos y Préstamos («por si hay alguno que quedó afuera»).
+  const mis = useApp((x) => x.misCamas) ?? [];
+  const coord = buscarProfesional(rutAutor)?.rol === "COORDINACION";
+  const todo = coord || mis.length === 0 || mis.some((c) => SECCIONES_SALA[2]!.camas.includes(c));
+  const secciones: readonly { id: string; nombre: string; camas: readonly string[]; deposito?: string }[] = todo
+    ? [...SECCIONES_SALA, ...DEPOSITOS.map((d) => ({ id: d.tipo, nombre: d.nombre, camas: [] as string[], deposito: d.tipo }))]
+    : [{ id: "MIAS", nombre: "Mis camas", camas: [...mis].sort((a, b) => a.localeCompare(b, "es", { numeric: true })) }];
+  const [seccion, setSeccion] = useState(secciones[0]!.id);
   const [eligiendo, setEligiendo] = useState<string | null>(null);
-  const sec = SECCIONES_SALA.find((s) => s.id === seccion) ?? SECCIONES_SALA[0]!;
+  const [libre, setLibre] = useState<string | null>(null);
+  const [deUnidad, setDeUnidad] = useState<EquipoRce | null>(null);
+  const sec = secciones.find((s) => s.id === seccion) ?? secciones[0]!;
   const porCama = new Map(resumen.map((r) => [r.ep.cama, r]));
   const actual = eligiendo ? resumen.find((r) => r.ep.id === eligiendo) ?? null : null;
 
   return (
     <div className="sala8">
       <div className="sala8-secs" role="tablist" aria-label="Secciones de la sala">
-        {SECCIONES_SALA.map((s) => (
+        {secciones.map((s) => (
           <button key={s.id} type="button" role="tab" aria-selected={s.id === sec.id} onClick={() => setSeccion(s.id)}>{s.nombre}</button>
         ))}
       </div>
+      {sec.deposito && (
+        <div className="sala8-grilla">
+          {inv.filter((e) => e.ubicacion === sec.deposito || (sec.deposito === "BODEGA" && e.ubicacion === "PASILLO")).map((e) => (
+            <button key={e.nombre} type="button" className="sala8-cama" aria-label={`${sec.nombre} · ${e.nombre}`} onClick={() => setDeUnidad(e)}>
+              <span className="sala8-n">{e.ubicacion === "PASILLO" ? "Pasillo" : sec.nombre}</span>
+              <Sprite8 modelo={e.nombre} px={56} />
+              <span className="sala8-eq">{e.nombre}</span>
+            </button>
+          ))}
+          {!inv.some((e) => e.ubicacion === sec.deposito) && <p className="small muted" style={{ margin: 0 }}>Nada en {sec.nombre.toLowerCase()}.</p>}
+        </div>
+      )}
       <div className="sala8-grilla">
         {sec.camas.map((cama) => {
           const r = porCama.get(cama);
-          if (!r) return <div key={cama} className="sala8-cama libre" aria-label={`${nombreCama(cama)} libre`}><span className="sala8-n">{nombreCama(cama)}</span><span className="sala8-eq">Libre</span></div>;
+          if (!r) {
+            // Cama libre (25-nov-2026): los ventiladores habitan la cama aunque no haya paciente.
+            const aqui = inv.filter((e) => e.cama === camaRce(cama)).slice(0, MAX_EQUIPOS_SALA).map((e) => equipoDeInventario(e, false));
+            const sg = segmentosSala(aqui.length);
+            return (
+              <button key={cama} type="button" className="sala8-cama libre" aria-label={`Sala · ${nombreCama(cama)} libre`} onClick={() => setLibre(cama)}>
+                <span className="sala8-n">{nombreCama(cama)} · libre</span>
+                {aqui.length ? <span className={`sala8-segs s${sg}`}>{aqui.map((e) => <span key={e.modelo} className="sala8-seg"><Sprite8 modelo={e.modelo} px={sg === 1 ? 56 : sg === 2 ? 40 : 30} /><span className="sala8-eq">{e.modelo}</span></span>)}</span>
+                  : <><span className="sala8-mas" aria-hidden>+</span><span className="sala8-eq">Sin equipo</span></>}
+              </button>
+            );
+          }
           // Si el celular aún no anotó equipos en esta cama, se muestran los que el RCE tiene ahí.
           const delRce = r.ep.equipos.length ? [] : inv.filter((e) => e.cama === camaRce(cama)).map((e) => equipoDeInventario(e, e.enUso));
           const eq = equipoParaDibujar(r.ep.equipos.length ? r.ep.equipos : delRce);
@@ -145,12 +182,14 @@ export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
                 </span>
               ) : (<><span className="sala8-mas" aria-hidden>+</span><span className="sala8-eq">Sin equipo</span></>)}
               {delRce.length > 0 && <span className="sala8-rce">según RCE · confirmar</span>}
+              {!lista.some((e) => e.tipo === "VENTILADOR") && <span className="sala8-rce">sin ventilador</span>}
               {porCambiar > 0 && <span className="sala8-venc">{porCambiar} por cambiar</span>}
             </button>
           );
         })}
       </div>
       <p className="small muted" style={{ margin: 0 }}>{inv.length ? `Equipos del RCE: ${inv.length}. ` : "Sin el inventario del RCE (sin señal o sin enlace): se usa el catálogo. "}Las secciones son provisorias (camas en orden de 6 en 6) hasta definir cuáles van adelante, al medio y atrás.</p>
+      {(libre || deUnidad) && <UbicarSheet cama={libre} unidad={deUnidad} resumen={resumen} inv={inv} rutAutor={rutAutor} onCerrar={() => { setLibre(null); setDeUnidad(null); }} />}
       {actual && inv.length > 0 && <SalaCama key={actual.ep.id} r={actual} resumen={resumen} inv={inv} ahora={ahora} rutAutor={rutAutor} onCerrar={() => setEligiendo(null)} onRevisar={() => { setEligiendo(null); onRevisar(actual.ep.id); }} />}
       {actual && inv.length === 0 && <ElegirEquipo key={actual.ep.id} r={actual} ahora={ahora} rutAutor={rutAutor} onCerrar={() => setEligiendo(null)} onRevisar={() => { setEligiendo(null); onRevisar(actual.ep.id); }} />}
     </div>
@@ -268,9 +307,10 @@ const dondeEsta = (e: EquipoRce): string => (e.cama !== null ? `Cama ${e.cama}${
 function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
   r: ResumenCama; resumen: readonly ResumenCama[]; inv: readonly EquipoRce[]; ahora: Date; rutAutor: string; onCerrar: () => void; onRevisar: () => void;
 }) {
-  const { repo } = useServicios();
+  const { repo, api } = useServicios();
   const avisar = useApp((s) => s.avisar);
   const ubicar = useInventarioRce((x) => x.ubicar);
+  const ubicarDep = useInventarioRce((x) => x.ubicarEn);
   const { ep, controles, eventos } = r;
   const n = camaRce(ep.cama);
   const delRce = inv.filter((e) => e.cama === n).map((e) => equipoDeInventario(e, e.enUso));
@@ -319,7 +359,13 @@ function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
   });
   const usar = (eq: EquipoEnSala): Promise<void> => hacer(() => aqui(usarEnSala(sala, eq), `${nombreRce(eq)} en uso.`));
   const sinUso = (eq: EquipoEnSala): Promise<void> => hacer(() => aqui(sala.map((x) => (x === eq ? { ...x, enUso: false } : x)), `${nombreRce(eq)} sin uso.`));
-  const alPasillo = (eq: EquipoEnSala): Promise<void> => hacer(() => aqui(sala.filter((x) => x !== eq), `${nombreRce(eq)} al pasillo.`));
+  const aDeposito = (eq: EquipoEnSala, tipo: string, nombre: string): Promise<void> => hacer(async () => {
+    if (!(await aqui(sala.filter((x) => x !== eq), `${nombreRce(eq)} a ${nombre.toLowerCase()}.`))) return false;
+    // El RCE lo dejaría en el pasillo: se le dice a dónde fue (si no hay señal, queda en el pasillo).
+    const r = await api.ubicarEquipos(rutAutor, [{ equipo: nombreRce(eq), tipo }]).catch(() => null);
+    if (r && r.ok) ubicarDep(nombreRce(eq), tipo, null);
+    return true;
+  });
   const mover = (eq: EquipoEnSala, destino: ResumenCama): Promise<void> => hacer(async () => {
     const enDestino = destino.ep.equipos;
     const u = destino.controles[destino.controles.length - 1] ?? null;
@@ -375,7 +421,7 @@ function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
                   {esSoporteRespiratorio(eq.tipo) && !eq.enUso && <button type="button" className="btn primary" disabled={ocupado} onClick={() => void usar(eq)}>Poner en uso</button>}
                   {esSoporteRespiratorio(eq.tipo) && eq.enUso && <button type="button" className="btn" disabled={ocupado} onClick={() => void sinUso(eq)}>Dejar sin uso</button>}
                   <button type="button" className="btn" disabled={ocupado} onClick={() => setMoviendo((m) => !m)}>Mover a otra cama</button>
-                  <button type="button" className="btn" disabled={ocupado} onClick={() => void alPasillo(eq)}>Sacar al pasillo</button>
+                  {DEPOSITOS.map((d) => <button key={d.tipo} type="button" className="btn" disabled={ocupado} onClick={() => void aDeposito(eq, d.tipo, d.nombre)}>A {d.nombre.toLowerCase()}</button>)}
                   {moviendo && (
                     <div className="sala8-destinos">
                       {otras.map((x) => <button key={x.ep.id} type="button" className="ch-cama" disabled={ocupado} onClick={() => void mover(eq, x)}>{nombreCama(x.ep.cama)}</button>)}
@@ -406,6 +452,108 @@ function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
         <div className="pie-inf" style={{ flexDirection: "column" }}>
           <button type="button" className="btn primary" disabled={ocupado} onClick={() => void confirmar()}>✓ Sigue igual · confirmar {nombreCama(ep.cama)}</button>
           <button type="button" className="btn" onClick={onRevisar}>Filtros y hallazgos ›</button>
+        </div>
+      </div>
+    </div>,
+    document.querySelector(".app-cel") ?? document.body
+  );
+}
+
+/**
+ * Mover equipos SIN paciente de por medio (25-nov-2026): los de una cama libre o los de un depósito.
+ * Se le pide al RCE directo (necesita señal). Si el destino es una cama con paciente, se anota como
+ * cambio de equipos de ese paciente (queda en la cola).
+ */
+function UbicarSheet({ cama, unidad, resumen, inv, rutAutor, onCerrar }: {
+  cama: string | null; unidad: EquipoRce | null; resumen: readonly ResumenCama[]; inv: readonly EquipoRce[]; rutAutor: string; onCerrar: () => void;
+}) {
+  const { api, repo } = useServicios();
+  const avisar = useApp((s) => s.avisar);
+  const ubicarEn = useInventarioRce((x) => x.ubicarEn);
+  const [sel, setSel] = useState<EquipoRce | null>(unidad);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useAtras(true, onCerrar);
+  const n = cama ? camaRce(cama) : null;
+  const enCama = n !== null ? inv.filter((e) => e.cama === n) : [];
+  const disponibles = inv.filter((e) => e.cama === null);
+  const ocupadas = new Map(resumen.map((r) => [camaRce(r.ep.cama), r] as const));
+  const todasCamas = SECCIONES_SALA.flatMap((s) => s.camas);
+
+  const remoto = async (e: EquipoRce, tipo: string, detalle?: number): Promise<boolean> => {
+    const r = await api.ubicarEquipos(rutAutor, [{ equipo: e.nombre, tipo, ...(detalle !== undefined ? { detalle } : {}) }]).catch(() => null);
+    if (!r || !r.ok) { setError(r && !r.ok ? `El RCE no lo aceptó (${r.error}).` : "Sin señal: mover equipos sin paciente necesita conexión."); return false; }
+    if (r.avisos.length) { setError(r.avisos.join(" · ")); return false; }
+    ubicarEn(e.nombre, tipo, detalle ?? null);
+    return true;
+  };
+  const aCama = async (e: EquipoRce, destino: string): Promise<void> => {
+    if (ocupado) return;
+    setOcupado(true); setError(null);
+    try {
+      const c = camaRce(destino)!;
+      const pac = ocupadas.get(c);
+      if (pac) {
+        const lista = dejarEnSala(pac.ep.equipos, e, pac.ep.viaAereaActual, false);
+        if (lista === pac.ep.equipos) { setError(`${nombreCama(destino)} ya tiene ${MAX_EQUIPOS_SALA} equipos o ya tiene este.`); return; }
+        await repo.registrarEvento({ ...baseEvento(pac.ep, rutAutor, new Date()), tipo: "CAMBIO_EQUIPOS", equipos: lista });
+        ubicarEn(e.nombre, "CAMA", c);
+      } else if (!(await remoto(e, "CAMA", c))) return;
+      avisar(`${e.nombre} queda en ${nombreCama(destino)}.`);
+      onCerrar();
+    } finally { setOcupado(false); }
+  };
+  const aDep = async (e: EquipoRce, tipo: string, nombre: string): Promise<void> => {
+    if (ocupado) return;
+    setOcupado(true); setError(null);
+    try { if (await remoto(e, tipo)) { avisar(`${e.nombre} a ${nombre.toLowerCase()}.`); onCerrar(); } } finally { setOcupado(false); }
+  };
+
+  return createPortal(
+    <div className="ev-capa">
+      <div className="ev-pantalla" role="dialog" aria-modal="true" aria-label={cama ? `Equipo · ${nombreCama(cama)} libre` : `Equipo · ${unidad?.nombre ?? ""}`}>
+        <header className="ev-cabeza">
+          <button type="button" className="ev-volver" aria-label="Volver a la sala" onClick={onCerrar}><ChevronLeft size={22} aria-hidden />Sala</button>
+          <b>{cama ? `${nombreCama(cama)} · libre` : unidad?.nombre}</b>
+        </header>
+        <div className="pf-cuerpo">
+          {cama && (
+            <section className="ronda-sec">
+              <h3>En la cama <span className="small muted">· sin paciente, los equipos quedan sin uso</span></h3>
+              <div className="sala8-tipos">
+                {enCama.map((e) => (
+                  <button key={e.nombre} type="button" className={`sala8-tipo${sel?.nombre === e.nombre ? " sel" : ""}`} aria-label={`En la cama · ${e.nombre}`} onClick={() => setSel(sel?.nombre === e.nombre ? null : e)}>
+                    <Sprite8 modelo={e.nombre} px={44} /><span>{e.nombre}</span>
+                  </button>
+                ))}
+                {!enCama.length && <p className="small muted" style={{ margin: 0 }}>Nada en esta cama.</p>}
+              </div>
+            </section>
+          )}
+          {sel && (
+            <section className="ronda-sec">
+              <h3>¿Dónde va {sel.nombre}?</h3>
+              <div className="sala8-acciones">
+                {DEPOSITOS.filter((d) => d.tipo !== sel.ubicacion).map((d) => <button key={d.tipo} type="button" className="btn" disabled={ocupado} onClick={() => void aDep(sel, d.tipo, d.nombre)}>A {d.nombre.toLowerCase()}</button>)}
+              </div>
+              <div className="sala8-destinos">
+                {todasCamas.filter((c) => camaRce(c) !== sel.cama).map((c) => <button key={c} type="button" className="ch-cama" disabled={ocupado} onClick={() => void aCama(sel, c)}>{nombreCama(c)}{ocupadas.has(camaRce(c)) ? "" : " · libre"}</button>)}
+              </div>
+            </section>
+          )}
+          {cama && !sel && (
+            <section className="ronda-sec">
+              <h3>Agregar a la cama <span className="small muted">· {enCama.length} de {MAX_EQUIPOS_SALA}</span></h3>
+              <div className="sala8-tipos">
+                {disponibles.map((e) => (
+                  <button key={e.nombre} type="button" className="sala8-tipo" disabled={ocupado || enCama.length >= MAX_EQUIPOS_SALA} aria-label={`Agregar · ${e.nombre}`} onClick={() => void aCama(e, cama)}>
+                    <Sprite8 modelo={e.nombre} px={40} /><span>{e.nombre}</span><small className="muted">{dondeEsta(e)}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          {error && <p className="aviso-etiqueta" role="alert">{error}</p>}
         </div>
       </div>
     </div>,

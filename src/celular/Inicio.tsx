@@ -179,7 +179,9 @@ const PESTANAS: readonly (readonly [VistaCelular, string, typeof BedDouble])[] =
   ["controles", "Controles", History]
 ];
 const PESTANAS_2: readonly (readonly [VistaCelular | "evaluar", string, typeof BedDouble])[] = [
-  ["evaluar", "Evaluaciones", ClipboardList],
+  // 25-nov-2026 (Diego): la Ronda de ventiladores reemplaza a Evaluaciones en la barra; las evaluaciones
+  // se abren desde la tarjeta de la cama.
+  ["ronda", "Ronda", Wrench],
   // «Entrega» reemplaza a «Ayuda» en la barra (Diego, 22-nov-2026); la ayuda vive en el panel de la cuenta.
   ["entrega", "Entrega", ClipboardCheck]
 ];
@@ -189,7 +191,7 @@ export function BarraInferior({ vista, oculta, soloLectura = false, onIr, onMas,
   if (soloLectura) {
     return (
       <nav className={`barra-inf solo-lectura${oculta ? " oculta" : ""}`} aria-label="Navegación">
-        {[...PESTANAS, ...PESTANAS_2.filter(([k]) => k !== "evaluar")].map(([k, t, Icono]) => (
+        {[...PESTANAS, ...PESTANAS_2.filter(([k]) => k !== "evaluar" && k !== "ronda")].map(([k, t, Icono]) => (
           <button key={k} type="button" aria-current={vista === k ? "page" : undefined} onClick={() => onIr(k as VistaCelular)}>
             <Icono size={21} aria-hidden /> {t}
           </button>

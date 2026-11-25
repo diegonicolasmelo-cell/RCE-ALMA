@@ -600,6 +600,12 @@ export type EventoClinico =
    */
   | (EventoBase & { readonly tipo: "RONDA_EQUIPOS"; readonly hallazgos: readonly HallazgoRonda[] })
   /**
+   * Coordinación anula un evento mal anotado (25-nov-2026, Diego: «no tengo la capacidad de corregir
+   * eventos», la cama 1 con reintubaciones que no ocurrieron). No se borra nada: el evento queda, y esta
+   * marca dice quién lo anuló, cuándo y por qué. Un evento anulado deja de contar en todas partes.
+   */
+  | (EventoBase & { readonly tipo: "ANULACION_EVENTO"; readonly anulaId: Uuid; readonly motivo: string })
+  /**
    * Desvinculacion o reconexion del soporte, deducida del modo del control anterior y el
    * nuevo (p. ej. CPAP+PS -> tubo T / HME). `hora` y `realizadaEn` son la hora REAL del
    * cambio, que puede ser antes del control que lo registra.

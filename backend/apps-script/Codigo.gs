@@ -142,6 +142,8 @@ function procesarPost(cuerpo) {
       return historiasDesdeRce(cuerpo.camas);
     case "inventario":
       return inventarioDesdeRce();
+    case "ubicarEquipos":
+      return ubicarEquiposEnRce(cuerpo.correo, cuerpo.movimientos);
     default:
       return { ok: false, error: "ACCION_DESCONOCIDA" };
   }
@@ -679,6 +681,38 @@ function inventarioDesdeRce() {
       cama: e.cama === null || e.cama === undefined ? null : Number(e.cama), enUso: e.enUso === true, estado: String(e.estado || "") });
   }
   return { ok: true, equipos: out };
+}
+
+/**
+ * Mueve equipos en el RCE sin pasar por un paciente (25-nov-2026): cama libre, bodega, equipos medicos
+ * o prestamo. Solo nombre del equipo, destino y si queda en uso. La firma va por iniciales.
+ */
+function ubicarEquiposEnRce(correo, movimientos) {
+  var enlace = enlaceRce_();
+  if (!enlace) return { ok: false, error: "RCE_ENLACE_APAGADO" };
+  var lista = [];
+  if (Object.prototype.toString.call(movimientos) === "[object Array]") {
+    for (var i = 0; i < movimientos.length && lista.length < 12; i++) {
+      var m = movimientos[i] || {};
+      if (!m.equipo || !m.tipo) continue;
+      lista.push({ equipo: String(m.equipo).slice(0, 40), tipo: String(m.tipo).toUpperCase().slice(0, 10), detalle: m.detalle === undefined || m.detalle === null ? "" : String(m.detalle).slice(0, 40), enUso: m.enUso === true });
+    }
+  }
+  if (!lista.length) return { ok: true, movidos: 0, avisos: [] };
+  var firma = "";
+  try { var u = leerDotacion().filter(function (x) { return x.correo === normalizarCorreo(correo); })[0]; if (u) firma = inicialesRce_(u.nombre); } catch (e) { firma = ""; }
+  var r = UrlFetchApp.fetch(enlace.url, {
+    method: "post",
+    contentType: "text/plain;charset=utf-8",
+    payload: JSON.stringify({ accion: "ubicarEquipos", token: enlace.token, autor: normalizarCorreo(correo), firma: firma, movimientos: lista }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  var resp = null;
+  if (r.getResponseCode() === 200) { try { resp = JSON.parse(r.getContentText()); } catch (e) { resp = null; } }
+  if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA" };
+  if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
+  return { ok: true, movidos: Number(resp.movidos) || 0, avisos: resp.avisos || [] };
 }
 
 function historiasDesdeRce(camas) {

@@ -5,7 +5,7 @@
  * modo que nunca queda un dato guardado sin su subida pendiente (ni al reves).
  */
 
-import { aplicarEventoAEpisodio, equiposDeLaCama, equiposDelTraslado, eventosAutomaticosDelControl } from "@core/index";
+import { aplicarEventoAEpisodio, equiposDeLaCama, equiposDelTraslado, eventosAutomaticosDelControl, sinAnulados } from "@core/index";
 import { camasPruebaVisibles, esCamaPrueba, normalizarControl } from "@core/index";
 import type { Control, Episodio, EventoClinico, MotivoEgreso, ValidacionApk } from "@core/index";
 import type { BaseLocal } from "./db";
@@ -135,7 +135,8 @@ export class Repositorio {
 
   async eventosDe(episodioId: string): Promise<readonly EventoClinico[]> {
     const e = await this.db.eventos.where("episodioId").equals(episodioId).toArray();
-    return e.sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
+    // Lo anulado por coordinación no cuenta en ninguna pantalla ni cifra.
+    return sinAnulados(e).slice().sort((a, b) => a.registradoEn.localeCompare(b.registradoEn));
   }
 
   async apkDe(episodioId: string): Promise<readonly ValidacionApk[]> {

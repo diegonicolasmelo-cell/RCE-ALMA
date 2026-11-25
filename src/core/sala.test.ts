@@ -75,3 +75,13 @@ describe("la vía aérea manda sobre el uso, no al revés (25-nov-2026)", () => 
     expect([0, 1, 2, 3, 4].map(segmentosSala)).toEqual([1, 1, 2, 4, 4]);
   });
 });
+
+describe("anular un evento (coordinación, 25-nov-2026)", () => {
+  it("el evento anulado y la marca dejan de contar; los demás quedan", async () => {
+    const { sinAnulados } = await import("./eventos");
+    const reint = unEvento({ id: "ev-r", tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22" } as never);
+    const otra = unEvento({ id: "ev-k", tipo: "IMT" } as never);
+    const anula = unEvento({ id: "ev-a", tipo: "ANULACION_EVENTO", anulaId: "ev-r", motivo: "anotada por error" } as never);
+    expect(sinAnulados([reint, otra, anula]).map((e) => e.id)).toEqual(["ev-k"]);
+  });
+});

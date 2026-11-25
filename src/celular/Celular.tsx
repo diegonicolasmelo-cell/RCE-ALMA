@@ -24,6 +24,9 @@ import {
   horasDeVm,
   textoVm,
   buscarProfesional,
+  firmarApk,
+  inicialesDe,
+  marcasPorDefecto,
   mostrarCamasPrueba
 } from "@core/index";
 import type { BorradorControl, Episodio } from "@core/index";
@@ -62,11 +65,11 @@ import { TabKine } from "./TabKine";
 import { TabPve } from "./TabPve";
 import { useCargarPacientesRce } from "./pacientesRce";
 
+// 25-nov-2026 (Diego): el control es SOLO control. Secreciones, tos y deglución van al final del control (también
+// en ventilados), la auscultación sale y los eventos se registran en su pantalla (tarjeta → Eventos, o el «+»).
 const TABS: readonly (readonly [TabCelular, string])[] = [
   ["control", "Control"],
-  ["kine", "Kine resp. · APK"],
-  // La terapia fisica (KTM) ya no va en el control: se registra como evento (pestaña Eventos).
-  ["eventos", "Eventos"]
+  ["kine", "APK"]
 ];
 
 export function Celular() {
@@ -391,12 +394,17 @@ export function Celular() {
   const prono = estadoProno(eventos, ahora);
 
   const guardar = async (ir: "camas" | "siguiente" | "anterior" = "camas"): Promise<void> => {
+    // «Guardar y firmar APK» (25-nov-2026, Diego): si quien guarda no la firmó en este turno, al guardar
+    // se firma sola (todo en 1, como el botón de la APK) y se avisa «APK firmada». Una APK que NO cumple
+    // se sigue marcando a mano en la pestaña APK.
+    const apkActual = apkVigente(apks, ep.id, new Date(), sesion.rut);
+    const sinApk = apkActual === null;
     const problemas = validarBorrador(b, {
-      apkVigente: apkVigente(apks, ep.id, new Date(), sesion.rut),
+      apkVigente: apkActual,
       viaAerea: ep.viaAereaActual,
       modalidadAnterior: ultimo?.ventilacion.modalidad ?? null,
       ahora: new Date()
-    });
+    }).filter((p) => !(sinApk && p.campo === "apk" && /firmar la APK/.test(p.mensaje)));
     if (problemas.length > 0) {
       // Un valor imposible no «falta»: está en la casilla equivocada (24-nov-2026). Se va primero a esa.
       const imposibles = problemas.filter((p) => p.mensaje.includes("no es posible"));
@@ -413,6 +421,12 @@ export function Celular() {
       return;
     }
     const t = new Date();
+    let apkRecien = false;
+    if (sinApk) {
+      const prof = buscarProfesional(sesion.rut);
+      await repo.firmarApk(firmarApk({ id: nuevoId(), episodioId: ep.id, rutAutor: sesion.rut, siglas: inicialesDe(prof?.nombre ?? ""), ahora: t, marcas: marcasPorDefecto(ep.viaAereaActual) }));
+      apkRecien = true;
+    }
     // La hora que vale es la REAL del control (puede ser unos minutos antes de guardarlo).
     const horaReal = momentoDeEvaluacion(b.horaControl || horaDe(t), t);
     const realControl = horaReal ? momentoPreciso(horaReal, t) : t;
@@ -438,7 +452,8 @@ export function Celular() {
     const conEvento = (tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "") +
       (automaticos.length ? ` Registrado solo: ${automaticos.map((e) => (e.tipo === "FIN_BNM" ? "suspensión de BNM" : e.tipo === "SUSPENSION_DVA" ? "suspensión de DVA" : "suspensión de sedación")).join(" y ")}.` : "");
     const sigue = destino ? ` Sigue ${nombreCama(destino.cama)}.` : "";
-    avisar(online ? `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue}` : `Guardado ${ep.cama} ${control.hora}.${conEvento}${sigue} Sin señal: se sube cuando vuelva la conexión.`);
+    const apkTxt = apkRecien ? " APK firmada." : "";
+    avisar(online ? `Guardado ${ep.cama} ${control.hora}.${apkTxt}${conEvento}${sigue}` : `Guardado ${ep.cama} ${control.hora}.${apkTxt}${conEvento}${sigue} Sin señal: se sube cuando vuelva la conexión.`);
     void sync.ciclo();
   };
 

@@ -1771,9 +1771,10 @@ async function esperarServidor() {
       await cel.waitForSelector(".ronda-cel");
       // Arriba, todo lo que vence hoy en la unidad (lo que antes se copiaba del cuaderno).
       assert.match(await cel.textContent(".vence-hoy summary"), /Vence hoy en la unidad/);
-      // Con la lista abierta arriba, la fila puede quedar detrás de la barra: se lleva al centro, como al desplazar.
-      await cel.locator('.ronda-fila:has-text("Cama 2")').evaluate((el) => el.scrollIntoView({ block: "center" }));
-      await cel.click('.ronda-fila:has-text("Cama 2")');
+      // 25-nov-2026: la ronda ES la sala en 8 bits. Desde la cama se abren filtros y hallazgos.
+      await cel.locator('button[aria-label="Sala · Cama 2"]').evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await cel.click('button[aria-label="Sala · Cama 2"]');
+      await cel.click('[role=dialog][aria-label="Equipo · Cama 2"] button:has-text("Revisar filtros y hallazgos")');
       const dlg = cel.locator('[role=dialog][aria-label="Ronda · Cama 2"]');
       await dlg.waitFor();
       // La etiqueta del HME dice hace 4 días: está vencido aunque lo anotado diga otra cosa.
@@ -1782,14 +1783,13 @@ async function esperarServidor() {
       await dlg.locator('.ronda-hall:has-text("Filtro HME vencido")').waitFor();
       await dlg.locator('button:has-text("Revisada y volver")').click();
       await dlg.waitFor({ state: "detached" });
-      assert.match(await cel.textContent('.ronda-fila:has-text("Cama 2")'), /1 hallazgo/);
+      assert.match(await cel.textContent('button[aria-label="Sala · Cama 2"] .sala8-n'), /✓/);
       // Cama 2 es de Diego (01–06): la campana le avisa.
       await cel.click('button.bt-cab[aria-label^="Avisos"]');
       await cel.waitForSelector('[role=dialog][aria-label="Avisos"]');
       assert.match(await cel.textContent('[role=dialog][aria-label="Avisos"]'), /Cama 2 · Ronda[\s\S]*Filtro HME vencido/);
       await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
       // La sala en 8 bits (25-nov-2026): secciones de 6 camas, tipo con su dibujo y teclado del número.
-      await cel.click('.seg-ronda button:text-is("Sala")');
       await cel.waitForSelector(".sala8-grilla");
       assert.deepEqual(await cel.locator(".sala8-secs button").allTextContents(), ["Adelante", "Medio", "Atrás"]);
       assert.equal(await cel.locator(".sala8-cama").count(), 6);
@@ -1808,7 +1808,6 @@ async function esperarServidor() {
       assert.match(await cel.textContent('button[aria-label="Sala · Cama 2"]'), /Vela 3/);
       assert.equal(await cel.locator('button[aria-label="Sala · Cama 2"] canvas.sprite8').count(), 1, "se dibuja el ventilador");
       if (process.env.FOTO_SALA) await cel.screenshot({ path: process.env.FOTO_SALA });
-      await cel.click('.seg-ronda button:text-is("Lista")');
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
     });

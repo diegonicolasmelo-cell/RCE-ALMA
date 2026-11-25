@@ -1,4 +1,4 @@
-import type { HistoriaEntrega, ItemParaRce, PacienteRce } from "@core/index";
+import type { EquipoRce, HistoriaEntrega, ItemParaRce, PacienteRce } from "@core/index";
 /**
  * Cliente de la API (Google Apps Script sobre Sheets).
  *
@@ -67,6 +67,8 @@ export interface ClienteApi {
    * y no las guarda. El celular tampoco: viven solo en la pantalla abierta (Diego, 22-nov-2026).
    */
   leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string; pacientes?: readonly PacienteRce[] }>>;
+  /** Inventario de equipos del RCE (25-nov-2026): la sala en 8 bits elige de aquí. */
+  leerInventario(): Promise<Resultado<{ equipos: readonly EquipoRce[]; estado?: string }>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -226,6 +228,20 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       };
     },
 
+    async leerInventario() {
+      const r = await post({ token: cfg.appToken, accion: "inventario" });
+      if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
+      const lista = Array.isArray(r["equipos"]) ? (r["equipos"] as Obj[]) : [];
+      return {
+        ok: true,
+        ...(typeof r["estado"] === "string" ? { estado: r["estado"] } : {}),
+        equipos: lista.filter((e) => typeof e["nombre"] === "string" && e["nombre"]).map((e): EquipoRce => ({
+          nombre: String(e["nombre"]).slice(0, 40), categoria: String(e["categoria"] ?? "VM"), ubicacion: String(e["ubicacion"] ?? "BODEGA"),
+          cama: Number.isFinite(Number(e["cama"])) && e["cama"] !== null ? Number(e["cama"]) : null, enUso: e["enUso"] === true, estado: String(e["estado"] ?? "")
+        }))
+      };
+    },
+
     async leerReferencias() {
       if (!cfg.stationToken) return { ok: false, error: "SIN_TOKEN_ESTACION" };
       const r = await get({ recurso: "referencia", token: cfg.stationToken });
@@ -286,6 +302,14 @@ export function crearApiLocal(): ClienteApi {
     async leerHistorias() {
       // Sin servidor no hay RCE al que pedirle historias.
       return { ok: true, historias: [] };
+    },
+    async leerInventario() {
+      // Sin servidor (demo): un inventario de ejemplo, todo en bodega, para usar la sala igual.
+      const b = (nombre: string, categoria: string): EquipoRce => ({ nombre, categoria, ubicacion: "BODEGA", cama: null, enUso: false, estado: "Operativo" });
+      return { ok: true, equipos: [
+        ...[1, 2, 3, 4].map((n) => b(`Savina ${n}`, "VM")), ...[1, 2, 3, 4, 5, 6].map((n) => b(`Mek ${n}`, "VM")), ...[1, 2, 3].map((n) => b(`Vela ${n}`, "VM")),
+        b("Servo U", "VM"), b("PB 1", "VM"), b("PB 2", "VM"), b("V60 Nº1", "VNI"), b("V60 Nº2", "VNI"), b("Airvo 1", "CNAF"), b("Airvo 2", "CNAF"), b("MR850 1", "APOYO")
+      ] };
     },
     async leerReferencias() {
       return { ok: true, referencias: [...referencias.values()] };

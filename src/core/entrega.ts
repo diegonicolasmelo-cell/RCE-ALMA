@@ -8,6 +8,18 @@ import type { Episodio, EventoClinico } from "./tipos";
 
 /** Historia de la entrega: la escribe el RCE (PC), sin nombre ni RUT; el celular solo la muestra. */
 /** Nombre y edad del paciente de una cama, desde el RCE (solo en memoria; 24-nov-2026). */
+/** Un equipo del inventario del RCE (hoja VENTILADORES). `cama` solo si está en una cama. */
+export interface EquipoRce {
+  readonly nombre: string;
+  /** VM · VNI · CNAF · APOYO */
+  readonly categoria: string;
+  /** CAMA · BODEGA · PASILLO · PRESTAMO */
+  readonly ubicacion: string;
+  readonly cama: number | null;
+  readonly enUso: boolean;
+  readonly estado: string;
+}
+
 export interface PacienteRce {
   readonly cama: number;
   readonly nombre: string;

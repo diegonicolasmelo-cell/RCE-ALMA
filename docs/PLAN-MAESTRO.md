@@ -961,6 +961,16 @@ ventilador, el motivo. Escribe el mismo `CAMBIO_EQUIPOS`. Los dibujos son provis
 colores por modelo) hasta que lleguen los de Diego. **Falta**: qué camas van en cada sección, y
 Pasillo / Bodega / Equipos médicos (equipos que no están en una cama: hay que decidir dónde se anotan).
 
+**25-nov-2026 (tarde) · la sala usa el inventario REAL del RCE.** Diego: «no puedo guardar los VM…
+tiene que tener integración con el panel del RCE». Causa: el RCE solo acepta un equipo si el nombre
+coincide con su hoja VENTILADORES («Mek 12», «PB 1»), y Kaptus mandaba su catálogo («Meckis 12», «PB 840
+2»): el RCE lo descartaba con un aviso que nadie veía. Ahora Kaptus pide el inventario
+(`inventarioDesdeRce` → RCE `kaptusInventarioEquipos`) y la sala elige de ahí. Uso: tocar un equipo de
+«Agregar» lo deja en la sala (sin uso; en uso solo si la cama lo necesita), tocarlo en la sala ofrece
+«Poner en uso / Dejar sin uso / Mover a otra cama / Sacar al pasillo». Cada toque es un CAMBIO_EQUIPOS
+en la cola. «✓ Sigue igual» confirma la ronda de la cama (si la sala venía del RCE, la anota primero).
+Sin enlace (demo) se usa un inventario de ejemplo; sin inventario, el catálogo de antes.
+
 ## 28. Filtros: reglas por equipo, día 0 y fecha escrita a mano (Diego, 24-nov-2026 · PROGRAMADO)
 
 - **HEPA es del ventilador** (filtro viral-bacteriano, rama espiratoria): solo con un ventilador

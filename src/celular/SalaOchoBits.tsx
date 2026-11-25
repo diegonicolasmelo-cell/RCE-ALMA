@@ -22,7 +22,9 @@ import {
   hallazgosSugeridos,
   salaAlElegir
 } from "@core/index";
-import type { MotivoCambioEquipo } from "@core/index";
+import { camaRce, dejarEnSala, equipoDeInventario, nombreRce, usarEnSala } from "@core/index";
+import type { EquipoEnSala, EquipoRce, MotivoCambioEquipo } from "@core/index";
+import { useCargarInventarioRce, useInventarioRce } from "./inventarioRce";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
 import { baseEvento } from "./eventos-ui";
@@ -46,12 +48,22 @@ const COLORES: Readonly<Record<string, readonly [string, string]>> = {
   "Airvo 2": ["#173c46", "#5fd3c4"], "Humidificador MR850": ["#3a3a3a", "#f4f7f9"], "NBZ Aerogen": ["#26323a", "#c9d6de"]
 };
 
+const ALIAS: readonly [RegExp, string][] = [
+  [/^servo/i, "Servo U"], [/^savina/i, "Savina"], [/^vela/i, "Vela"], [/^avea/i, "Avea"], [/^me(c?k|ck)/i, "Meckis"],
+  [/^pb\s*9/i, "PB 980"], [/^pb|puritan/i, "PB 840"], [/^v\s?60/i, "V60"], [/^airvo/i, "Airvo 2"], [/^mr|humid/i, "Humidificador MR850"], [/aerogen|nbz/i, "NBZ Aerogen"]
+];
+function colorDe(modelo: string): readonly [string, string] {
+  if (COLORES[modelo]) return COLORES[modelo]!;
+  const a = ALIAS.find(([re]) => re.test(modelo.trim()));
+  return (a && COLORES[a[1]]) || ["#33404a", "#9fb3bf"];
+}
+
 export function Sprite8({ modelo, px = 64 }: { modelo: string; px?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const ctx = ref.current?.getContext("2d");
     if (!ctx) return;
-    const [pant, base] = COLORES[modelo] ?? ["#33404a", "#9fb3bf"];
+    const [pant, base] = colorDe(modelo);
     ctx.clearRect(0, 0, 16, 16);
     SILUETA.forEach((fila, y) => [...fila].forEach((ch, x) => {
       const col = ch === "S" ? pant : ch === "A" ? base : PAL[ch];
@@ -68,6 +80,8 @@ export function Sprite8({ modelo, px = 64 }: { modelo: string; px?: number }) {
 export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
   resumen: readonly ResumenCama[]; ahora: Date; rutAutor: string; onRevisar: (episodioId: string) => void;
 }) {
+  useCargarInventarioRce();
+  const inv = useInventarioRce((x) => x.equipos);
   const [seccion, setSeccion] = useState(SECCIONES_SALA[0]!.id);
   const [eligiendo, setEligiendo] = useState<string | null>(null);
   const sec = SECCIONES_SALA.find((s) => s.id === seccion) ?? SECCIONES_SALA[0]!;
@@ -85,7 +99,9 @@ export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
         {sec.camas.map((cama) => {
           const r = porCama.get(cama);
           if (!r) return <div key={cama} className="sala8-cama libre" aria-label={`${nombreCama(cama)} libre`}><span className="sala8-n">{nombreCama(cama)}</span><span className="sala8-eq">Libre</span></div>;
-          const eq = equipoParaDibujar(r.ep.equipos);
+          // Si el celular aún no anotó equipos en esta cama, se muestran los que el RCE tiene ahí.
+          const delRce = r.ep.equipos.length ? [] : inv.filter((e) => e.cama === camaRce(cama)).map((e) => equipoDeInventario(e, e.enUso));
+          const eq = equipoParaDibujar(r.ep.equipos.length ? r.ep.equipos : delRce);
           const ronda = rondaDelTurno(r.eventos, ahora);
           const porCambiar = !ronda && esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles)).length : 0;
           return (
@@ -93,14 +109,16 @@ export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
               <span className="sala8-n">{nombreCama(cama)}{ronda ? <span className="sala8-ok" title="Revisada en este turno"> ✓</span> : null}</span>
               {eq ? <Sprite8 modelo={eq.modelo} /> : <span className="sala8-mas" aria-hidden>+</span>}
               <span className="sala8-eq">{eq ? etiquetaEquipo(eq) : "Sin equipo"}</span>
+              {delRce.length > 0 && <span className="sala8-rce">según RCE · confirmar</span>}
               {eq && esSoporteRespiratorio(eq.tipo) && <span className={`sala8-uso ${eq.enUso ? "si" : "no"}`}>{eq.enUso ? "en uso" : "sin uso"}</span>}
               {porCambiar > 0 && <span className="sala8-venc">{porCambiar} por cambiar</span>}
             </button>
           );
         })}
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Las secciones son provisorias (camas en orden de 6 en 6) hasta definir cuáles van adelante, al medio y atrás.</p>
-      {actual && <ElegirEquipo key={actual.ep.id} r={actual} ahora={ahora} rutAutor={rutAutor} onCerrar={() => setEligiendo(null)} onRevisar={() => { setEligiendo(null); onRevisar(actual.ep.id); }} />}
+      <p className="small muted" style={{ margin: 0 }}>{inv.length ? `Equipos del RCE: ${inv.length}. ` : "Sin el inventario del RCE (sin señal o sin enlace): se usa el catálogo. "}Las secciones son provisorias (camas en orden de 6 en 6) hasta definir cuáles van adelante, al medio y atrás.</p>
+      {actual && inv.length > 0 && <SalaCama key={actual.ep.id} r={actual} resumen={resumen} inv={inv} ahora={ahora} rutAutor={rutAutor} onCerrar={() => setEligiendo(null)} onRevisar={() => { setEligiendo(null); onRevisar(actual.ep.id); }} />}
+      {actual && inv.length === 0 && <ElegirEquipo key={actual.ep.id} r={actual} ahora={ahora} rutAutor={rutAutor} onCerrar={() => setEligiendo(null)} onRevisar={() => { setEligiendo(null); onRevisar(actual.ep.id); }} />}
     </div>
   );
 }
@@ -199,6 +217,161 @@ function ElegirEquipo({ r, ahora, rutAutor, onCerrar, onRevisar }: { r: ResumenC
             </button>
           </div>
         )}
+      </div>
+    </div>,
+    document.querySelector(".app-cel") ?? document.body
+  );
+}
+
+const CATS: readonly { id: string; t: string }[] = [{ id: "VM", t: "VM" }, { id: "VNI", t: "VNI" }, { id: "CNAF", t: "Alto flujo" }, { id: "APOYO", t: "Apoyo" }];
+const dondeEsta = (e: EquipoRce): string => (e.cama !== null ? `Cama ${e.cama}${e.enUso ? " · en uso" : ""}` : e.ubicacion === "BODEGA" ? "Bodega" : e.ubicacion === "PRESTAMO" ? "Préstamo" : "Pasillo");
+
+/**
+ * La sala de una cama con el inventario real (25-nov-2026, Diego): «hacer click, seleccionar y dejarlo
+ * en la sala; hacer click y ponerlo en uso»; mover fácil; varios movimientos se suman a la cola; y en
+ * la ronda, si sigue el mismo, se confirma. Cada toque se guarda al tiro (CAMBIO_EQUIPOS en la cola).
+ */
+function SalaCama({ r, resumen, inv, ahora, rutAutor, onCerrar, onRevisar }: {
+  r: ResumenCama; resumen: readonly ResumenCama[]; inv: readonly EquipoRce[]; ahora: Date; rutAutor: string; onCerrar: () => void; onRevisar: () => void;
+}) {
+  const { repo } = useServicios();
+  const avisar = useApp((s) => s.avisar);
+  const ubicar = useInventarioRce((x) => x.ubicar);
+  const { ep, controles, eventos } = r;
+  const n = camaRce(ep.cama);
+  const delRce = inv.filter((e) => e.cama === n).map((e) => equipoDeInventario(e, e.enUso));
+  const [sala, setSala] = useState<readonly EquipoEnSala[]>(ep.equipos.length ? ep.equipos : delRce);
+  const [sel, setSel] = useState<string | null>(null);
+  const [moviendo, setMoviendo] = useState(false);
+  const [cat, setCat] = useState("VM");
+  const [error, setError] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  useAtras(true, onCerrar);
+  const ultimo = controles[controles.length - 1] ?? null;
+  const conectado = (via: string, u: typeof ultimo): boolean => via !== "NATURAL" && (u ? conSoporte(u.ventilacion.modalidad) : via === "TET");
+  const ronda = rondaDelTurno(eventos, ahora);
+
+  /** Guarda la sala de una cama (este paciente u otro) y refleja el inventario al tiro. */
+  const guardarSala = async (quien: ResumenCama, lista: readonly EquipoEnSala[], antes: readonly EquipoEnSala[]): Promise<boolean> => {
+    const u = quien.controles[quien.controles.length - 1] ?? null;
+    const p = problemaEquipos(lista, quien.ep.viaAereaActual, conectado(quien.ep.viaAereaActual, u));
+    if (p) { setError(`${nombreCama(quien.ep.cama)}: ${p}`); return false; }
+    await repo.registrarEvento({ ...baseEvento(quien.ep, rutAutor, new Date()), tipo: "CAMBIO_EQUIPOS", equipos: lista });
+    const c = camaRce(quien.ep.cama);
+    lista.forEach((e) => ubicar(nombreRce(e), c, e.enUso));
+    antes.filter((a) => !lista.some((b) => nombreRce(b) === nombreRce(a))).forEach((a) => ubicar(nombreRce(a), null, false));
+    return true;
+  };
+  const hacer = async (f: () => Promise<boolean>): Promise<void> => {
+    if (ocupado) return;
+    setOcupado(true); setError(null);
+    try { if (await f()) { setSel(null); setMoviendo(false); } } finally { setOcupado(false); }
+  };
+  const aqui = async (lista: readonly EquipoEnSala[], msg: string): Promise<boolean> => {
+    if (!(await guardarSala(r, lista, sala))) return false;
+    setSala(lista); avisar(msg); return true;
+  };
+  const otraCama = (nombre: string): ResumenCama | null => resumen.find((x) => x.ep.id !== ep.id && x.ep.equipos.some((e) => nombreRce(e).toLowerCase() === nombre.toLowerCase())) ?? null;
+
+  const agregar = (e: EquipoRce): Promise<void> => hacer(async () => {
+    const de = otraCama(e.nombre);
+    if (de) {
+      const suyo = de.ep.equipos.find((x) => nombreRce(x).toLowerCase() === e.nombre.toLowerCase())!;
+      if (suyo.enUso && esSoporteRespiratorio(suyo.tipo)) { setError(`${e.nombre} está en uso en ${nombreCama(de.ep.cama)}: cámbialo allá primero.`); return false; }
+      if (!(await guardarSala(de, de.ep.equipos.filter((x) => x !== suyo), de.ep.equipos))) return false;
+    }
+    return aqui(dejarEnSala(sala, e, ep.viaAereaActual, conectado(ep.viaAereaActual, ultimo)), `${e.nombre} queda en la sala de ${nombreCama(ep.cama)}.`);
+  });
+  const usar = (eq: EquipoEnSala): Promise<void> => hacer(() => aqui(usarEnSala(sala, eq), `${nombreRce(eq)} en uso.`));
+  const sinUso = (eq: EquipoEnSala): Promise<void> => hacer(() => aqui(sala.map((x) => (x === eq ? { ...x, enUso: false } : x)), `${nombreRce(eq)} sin uso.`));
+  const alPasillo = (eq: EquipoEnSala): Promise<void> => hacer(() => aqui(sala.filter((x) => x !== eq), `${nombreRce(eq)} al pasillo.`));
+  const mover = (eq: EquipoEnSala, destino: ResumenCama): Promise<void> => hacer(async () => {
+    const enDestino = destino.ep.equipos;
+    const u = destino.controles[destino.controles.length - 1] ?? null;
+    const comoRce: EquipoRce = { nombre: nombreRce(eq), categoria: eq.tipo === "VMNI" ? "VNI" : eq.tipo === "ALTO_FLUJO" ? "CNAF" : eq.tipo === "VENTILADOR" ? "VM" : "APOYO", ubicacion: "CAMA", cama: null, enUso: false, estado: "" };
+    const nuevaDestino = dejarEnSala(enDestino, comoRce, destino.ep.viaAereaActual, conectado(destino.ep.viaAereaActual, u));
+    const sinEl = sala.filter((x) => x !== eq);
+    if (problemaEquipos(sinEl, ep.viaAereaActual, conectado(ep.viaAereaActual, ultimo))) { setError(`Si sale ${nombreRce(eq)}, ${nombreCama(ep.cama)} queda sin soporte: pon otro en uso primero.`); return false; }
+    if (!(await guardarSala(destino, nuevaDestino, enDestino))) return false;
+    return aqui(sinEl, `${nombreRce(eq)} pasa a ${nombreCama(destino.ep.cama)}.`);
+  });
+  const confirmar = (): Promise<void> => hacer(async () => {
+    // Si la sala venía del RCE (el celular no la había anotado), se anota primero.
+    if (!ep.equipos.length && sala.length && !(await guardarSala(r, sala, []))) return false;
+    const hall = esViaAereaArtificial(ep.viaAereaActual) ? hallazgosSugeridos(eventos, ahora, contextoFiltros(ep, controles)) : [];
+    await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), tipo: "RONDA_EQUIPOS", hallazgos: hall });
+    avisar(`${nombreCama(ep.cama)}: confirmado, sigue igual${hall.length ? ` · ${hall.length} filtro(s) por cambiar` : ""}.`);
+    onCerrar();
+    return true;
+  });
+
+  const nombres = new Set(sala.map((x) => nombreRce(x).toLowerCase()));
+  const disponibles = inv.filter((e) => !nombres.has(e.nombre.toLowerCase()) && e.categoria.toUpperCase() === cat);
+  const otras = resumen.filter((x) => x.ep.id !== ep.id).sort((a, b) => a.ep.cama.localeCompare(b.ep.cama, "es", { numeric: true }));
+
+  return createPortal(
+    <div className="ev-capa">
+      <div className="ev-pantalla" role="dialog" aria-modal="true" aria-label={`Equipo · ${nombreCama(ep.cama)}`}>
+        <header className="ev-cabeza">
+          <button type="button" className="ev-volver" aria-label="Volver a la sala" onClick={onCerrar}><ChevronLeft size={22} aria-hidden />Sala</button>
+          <b>{nombreCama(ep.cama)}</b>
+        </header>
+        <div className="pf-cuerpo">
+          <section className="ronda-sec">
+            <h3>En la sala {ronda ? <span className="small muted">· confirmada este turno</span> : null}</h3>
+            {!ep.equipos.length && sala.length > 0 && <p className="small muted" style={{ margin: 0 }}>Según el RCE. Si sigue igual, confírmalo abajo.</p>}
+            {sala.length === 0 && <p className="small muted" style={{ margin: 0 }}>Nada anotado. Toca un equipo de abajo para dejarlo en la sala.</p>}
+            <div className="sala8-tipos">
+              {sala.map((eq) => {
+                const nom = nombreRce(eq), abierto = sel === nom;
+                return (
+                  <button key={nom} type="button" className={`sala8-tipo${abierto ? " sel" : ""}${eq.enUso && esSoporteRespiratorio(eq.tipo) ? " uso" : ""}`} aria-label={`En la sala · ${nom}`} onClick={() => { setSel(abierto ? null : nom); setMoviendo(false); }}>
+                    <Sprite8 modelo={eq.modelo} px={48} />
+                    <span>{nom}</span>
+                    {esSoporteRespiratorio(eq.tipo) && <span className={`sala8-uso ${eq.enUso ? "si" : "no"}`}>{eq.enUso ? "en uso" : "sin uso"}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {sel && (() => {
+              const eq = sala.find((x) => nombreRce(x) === sel); if (!eq) return null;
+              return (
+                <div className="sala8-acciones" role="group" aria-label={`Qué hacer con ${sel}`}>
+                  {esSoporteRespiratorio(eq.tipo) && !eq.enUso && <button type="button" className="btn primary" disabled={ocupado} onClick={() => void usar(eq)}>Poner en uso</button>}
+                  {esSoporteRespiratorio(eq.tipo) && eq.enUso && <button type="button" className="btn" disabled={ocupado} onClick={() => void sinUso(eq)}>Dejar sin uso</button>}
+                  <button type="button" className="btn" disabled={ocupado} onClick={() => setMoviendo((m) => !m)}>Mover a otra cama</button>
+                  <button type="button" className="btn" disabled={ocupado} onClick={() => void alPasillo(eq)}>Sacar al pasillo</button>
+                  {moviendo && (
+                    <div className="sala8-destinos">
+                      {otras.map((x) => <button key={x.ep.id} type="button" className="ch-cama" disabled={ocupado} onClick={() => void mover(eq, x)}>{nombreCama(x.ep.cama)}</button>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {error && <p className="aviso-etiqueta" role="alert">{error}</p>}
+          </section>
+          <section className="ronda-sec">
+            <h3>Agregar a la sala</h3>
+            <div className="sala8-secs" role="tablist" aria-label="Tipo de equipo">
+              {CATS.map((c) => <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} onClick={() => setCat(c.id)}>{c.t}</button>)}
+            </div>
+            <div className="sala8-tipos">
+              {disponibles.map((e) => (
+                <button key={e.nombre} type="button" className="sala8-tipo" disabled={ocupado} aria-label={`Agregar · ${e.nombre}`} onClick={() => void agregar(e)}>
+                  <Sprite8 modelo={e.nombre} px={44} />
+                  <span>{e.nombre}</span>
+                  <small className="muted">{dondeEsta(e)}</small>
+                </button>
+              ))}
+              {disponibles.length === 0 && <p className="small muted" style={{ margin: 0 }}>No hay más equipos de este tipo en el inventario.</p>}
+            </div>
+          </section>
+        </div>
+        <div className="pie-inf" style={{ flexDirection: "column" }}>
+          <button type="button" className="btn primary" disabled={ocupado} onClick={() => void confirmar()}>✓ Sigue igual · confirmar {nombreCama(ep.cama)}</button>
+          <button type="button" className="btn" onClick={onRevisar}>Filtros y hallazgos ›</button>
+        </div>
       </div>
     </div>,
     document.querySelector(".app-cel") ?? document.body

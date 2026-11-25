@@ -1774,7 +1774,7 @@ async function esperarServidor() {
       // 25-nov-2026: la ronda ES la sala en 8 bits. Desde la cama se abren filtros y hallazgos.
       await cel.locator('button[aria-label="Sala · Cama 2"]').evaluate((el) => el.scrollIntoView({ block: "center" }));
       await cel.click('button[aria-label="Sala · Cama 2"]');
-      await cel.click('[role=dialog][aria-label="Equipo · Cama 2"] button:has-text("Revisar filtros y hallazgos")');
+      await cel.click('[role=dialog][aria-label="Equipo · Cama 2"] button:has-text("iltros y hallazgos")');
       const dlg = cel.locator('[role=dialog][aria-label="Ronda · Cama 2"]');
       await dlg.waitFor();
       // La etiqueta del HME dice hace 4 días: está vencido aunque lo anotado diga otra cosa.
@@ -1789,24 +1789,31 @@ async function esperarServidor() {
       await cel.waitForSelector('[role=dialog][aria-label="Avisos"]');
       assert.match(await cel.textContent('[role=dialog][aria-label="Avisos"]'), /Cama 2 · Ronda[\s\S]*Filtro HME vencido/);
       await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
-      // La sala en 8 bits (25-nov-2026): secciones de 6 camas, tipo con su dibujo y teclado del número.
+      // La sala en 8 bits con el inventario del RCE (25-nov-2026): tocar deja en la sala, otro toque pone
+      // en uso o mueve, y «sigue igual» confirma la ronda. Cada toque se guarda (la cola los sube).
       await cel.waitForSelector(".sala8-grilla");
       assert.deepEqual(await cel.locator(".sala8-secs button").allTextContents(), ["Adelante", "Medio", "Atrás"]);
       assert.equal(await cel.locator(".sala8-cama").count(), 6);
-      await cel.click('button[aria-label="Sala · Cama 2"]');
-      const eqDlg = cel.locator('[role=dialog][aria-label="Equipo · Cama 2"]');
-      await eqDlg.waitFor();
-      await eqDlg.locator('.sala8-tipo:has-text("Vela")').click();
-      for (const t of ["1", "2"]) await eqDlg.locator(`.sala8-teclado button[aria-label="${t}"]`).click();
-      assert.match(await eqDlg.textContent(".aviso-etiqueta"), /Vela va del 1 al 10/);
-      await eqDlg.locator('.sala8-teclado button[aria-label="Borrar"]').click();
-      await eqDlg.locator('.sala8-teclado button[aria-label="Borrar"]').click();
-      await eqDlg.locator('.sala8-teclado button[aria-label="3"]').click();
-      if (await eqDlg.locator(".sala8-motivo").count()) await eqDlg.locator('.sala8-motivo button:has-text("Mantención")').click();
-      await eqDlg.locator('button:has-text("Anotar Vela 3 en Cama 2")').click();
-      await eqDlg.waitFor({ state: "detached" });
-      assert.match(await cel.textContent('button[aria-label="Sala · Cama 2"]'), /Vela 3/);
-      assert.equal(await cel.locator('button[aria-label="Sala · Cama 2"] canvas.sprite8').count(), 1, "se dibuja el ventilador");
+      await cel.click('button[aria-label="Sala · Cama 4"]');
+      const sDlg = cel.locator('[role=dialog][aria-label="Equipo · Cama 4"]');
+      await sDlg.waitFor();
+      await sDlg.locator('button[aria-label="Agregar · Savina 3"]').click();
+      await sDlg.locator('button[aria-label="En la sala · Savina 3"]').waitFor();
+      await sDlg.locator('button[aria-label="En la sala · Savina 3"]').click();
+      if (await sDlg.locator('.sala8-acciones button:text-is("Poner en uso")').count()) await sDlg.locator('.sala8-acciones button:text-is("Poner en uso")').click();
+      await sDlg.locator('button[aria-label="En la sala · Savina 3"] .sala8-uso.si').waitFor();
+      // Un segundo equipo y se mueve a otra cama: varios movimientos seguidos.
+      await sDlg.locator('.sala8-secs button:text-is("VNI")').click();
+      await sDlg.locator('button[aria-label="Agregar · V60 Nº1"]').click();
+      await sDlg.locator('button[aria-label="En la sala · V60 Nº1"]').click();
+      await sDlg.locator('.sala8-acciones button:text-is("Mover a otra cama")').click();
+      await sDlg.locator('.sala8-destinos button:text-is("Cama 5")').click();
+      await cel.waitForTimeout(300);
+      assert.equal(await sDlg.locator('button[aria-label="En la sala · V60 Nº1"]').count(), 0, "el V60 salió de la cama 4");
+      await sDlg.locator('button:has-text("Sigue igual")').click();
+      await sDlg.waitFor({ state: "detached" });
+      assert.match(await cel.textContent('button[aria-label="Sala · Cama 4"]'), /Savina 3/);
+      assert.match(await cel.textContent('button[aria-label="Sala · Cama 4"] .sala8-n'), /✓/);
       if (process.env.FOTO_SALA) await cel.screenshot({ path: process.env.FOTO_SALA });
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');

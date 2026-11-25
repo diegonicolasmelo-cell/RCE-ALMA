@@ -12,7 +12,8 @@
  */
 import { CATALOGO_EQUIPOS, CAMAS_UNIDAD } from "./catalogos";
 import { esSoporteRespiratorio, puedeEstarEnUso, quitarEquipo } from "./equipos";
-import type { EquipoEnSala, ViaAerea } from "./tipos";
+import type { EquipoRce } from "./entrega";
+import type { EquipoEnSala, TipoEquipo, ViaAerea } from "./tipos";
 
 export interface SeccionSala {
   readonly id: string;
@@ -64,3 +65,47 @@ export function salaAlElegir(lista: readonly EquipoEnSala[], modelo: string, num
 export function equipoParaDibujar(lista: readonly EquipoEnSala[]): EquipoEnSala | null {
   return lista.find((e) => esSoporteRespiratorio(e.tipo) && e.enUso) ?? lista.find((e) => esSoporteRespiratorio(e.tipo)) ?? lista[0] ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Inventario del RCE (25-nov-2026, Diego: «no puedo guardar los VM… tiene que tener integración con
+// el panel del RCE»). La sala elige los equipos REALES de la unidad: su nombre es el del RCE, así el
+// RCE los encuentra al recibir el CAMBIO_EQUIPOS. Sin inventario (sin enlace), queda el catálogo.
+// ---------------------------------------------------------------------------
+
+
+/** VM · VNI · CNAF · APOYO del RCE → el tipo de Kaptus. */
+export function tipoDeCategoria(categoria: string, nombre = ""): TipoEquipo {
+  const c = categoria.toUpperCase();
+  if (c === "VNI") return "VMNI";
+  if (c === "CNAF") return "ALTO_FLUJO";
+  if (c === "APOYO") return /aerogen|nbz|nebul/i.test(nombre) ? "NEBULIZADOR" : "HUMIDIFICADOR";
+  return "VENTILADOR";
+}
+
+/** Un equipo del inventario como equipo de la sala: el modelo ES el nombre del RCE (sin número aparte). */
+export function equipoDeInventario(e: EquipoRce, enUso = false): EquipoEnSala {
+  const tipo = tipoDeCategoria(e.categoria, e.nombre);
+  return { tipo, modelo: e.nombre, numero: null, enUso: esSoporteRespiratorio(tipo) ? enUso : true };
+}
+
+const mismoNombre = (a: EquipoEnSala, nombre: string): boolean => (a.numero === null ? a.modelo : `${a.modelo} ${a.numero}`).toLowerCase() === nombre.toLowerCase();
+
+/**
+ * Deja un equipo en la sala (Diego: «hacer click, seleccionar y dejarlo en la sala»). Entra SIN USO,
+ * salvo que la cama necesite un soporte en uso y no tenga ninguno (TET conectado): ahí entra en uso.
+ */
+export function dejarEnSala(lista: readonly EquipoEnSala[], e: EquipoRce, via: ViaAerea, conectado: boolean): readonly EquipoEnSala[] {
+  if (lista.some((x) => mismoNombre(x, e.nombre))) return lista;
+  const nuevo = equipoDeInventario(e, false);
+  const falta = via !== "NATURAL" && conectado && esSoporteRespiratorio(nuevo.tipo) && puedeEstarEnUso(nuevo.tipo, via) && !lista.some((x) => esSoporteRespiratorio(x.tipo) && x.enUso);
+  return [...lista, falta ? { ...nuevo, enUso: true } : nuevo];
+}
+
+/** «Hacer click y ponerlo en uso»: ese queda en uso y los demás soportes de la sala, sin uso. */
+export function usarEnSala(lista: readonly EquipoEnSala[], equipo: EquipoEnSala): readonly EquipoEnSala[] {
+  if (!esSoporteRespiratorio(equipo.tipo)) return lista;
+  return lista.map((x) => (esSoporteRespiratorio(x.tipo) ? { ...x, enUso: x.modelo === equipo.modelo && x.numero === equipo.numero } : x));
+}
+
+/** El nombre con que el RCE conoce a un equipo de la sala. */
+export const nombreRce = (e: EquipoEnSala): string => (e.numero === null ? e.modelo : `${e.modelo} ${e.numero}`);

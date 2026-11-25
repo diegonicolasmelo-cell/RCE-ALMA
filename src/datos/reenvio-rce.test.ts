@@ -34,7 +34,7 @@ function servidorKaptus(props: Record<string, string>, rce: (cuerpo: Record<stri
     Logger: { log: () => {} }, Utilities: {}, ContentService: {}, HtmlService: {}
   };
   const codigo = readFileSync("backend/apps-script/Codigo.gs", "utf8");
-  const fn = new Function(...Object.keys(g), `${codigo}\nreturn { sincronizar, historiasDesdeRce };`) as (...a: unknown[]) => { sincronizar: (c: unknown) => Record<string, unknown>; historiasDesdeRce: (c: unknown) => Record<string, unknown> };
+  const fn = new Function(...Object.keys(g), `${codigo}\nreturn { sincronizar, historiasDesdeRce, inventarioDesdeRce };`) as (...a: unknown[]) => { sincronizar: (c: unknown) => Record<string, unknown>; historiasDesdeRce: (c: unknown) => Record<string, unknown>; inventarioDesdeRce: () => Record<string, unknown> };
   return { ...fn(...Object.values(g)), hojas, llamadas };
 }
 
@@ -69,6 +69,22 @@ describe("RCE by Kaptus: el servidor de Kaptus reenvía al RCE al tiro", () => {
     const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true } }));
     const malo = { ...lote([]), paraRce: [{ ...item("x"), datos: { nombre: "X" } }] };
     expect(s.sincronizar(malo)).toMatchObject({ ok: false, error: "PAYLOAD_CON_IDENTIDAD" });
+    expect(s.llamadas).toHaveLength(0);
+  });
+});
+
+describe("inventario de equipos del RCE para la sala en 8 bits (25-nov-2026)", () => {
+  it("pide el inventario con la llave y devuelve solo nombre, tipo y ubicación", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, equipos: [
+      { nombre: "Mek 12", categoria: "VM", ubicacion: "CAMA", cama: 3, enUso: true, estado: "Operativo", extra: "x" }
+    ] } }));
+    const r = s.inventarioDesdeRce();
+    expect(s.llamadas[0]).toMatchObject({ accion: "inventarioEquipos", token: "LLAVE" });
+    expect(r).toEqual({ ok: true, equipos: [{ nombre: "Mek 12", categoria: "VM", ubicacion: "CAMA", cama: 3, enUso: true, estado: "Operativo" }] });
+  });
+  it("sin enlace no llama a nadie", () => {
+    const s = servidorKaptus({}, () => ({ code: 200 }));
+    expect(s.inventarioDesdeRce()).toEqual({ ok: true, equipos: [], estado: "apagado" });
     expect(s.llamadas).toHaveLength(0);
   });
 });

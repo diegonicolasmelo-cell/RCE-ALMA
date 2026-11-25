@@ -140,6 +140,8 @@ function procesarPost(cuerpo) {
       return sincronizar(cuerpo);
     case "historias":
       return historiasDesdeRce(cuerpo.camas);
+    case "inventario":
+      return inventarioDesdeRce();
     default:
       return { ok: false, error: "ACCION_DESCONOCIDA" };
   }
@@ -648,6 +650,37 @@ function reenviarAlRce_(nuevos) {
  * piden al RCE en ese momento y se devuelven SIN guardarlas aqui. El RCE ya las entrega sin nombre
  * ni RUT; igual se descarta cualquier texto con forma de RUT antes de mandarlo al telefono.
  */
+/**
+ * Inventario de equipos del RCE para la sala en 8 bits (25-nov-2026). La sala elige de AQUI, asi el
+ * nombre que vuelve en CAMBIO_EQUIPOS es el del RCE. Solo nombre, tipo y ubicacion: nada de pacientes.
+ */
+function inventarioDesdeRce() {
+  var enlace = enlaceRce_();
+  if (!enlace) return { ok: true, equipos: [], estado: "apagado" };
+  var r = UrlFetchApp.fetch(enlace.url, {
+    method: "post",
+    contentType: "text/plain;charset=utf-8",
+    payload: JSON.stringify({ accion: "inventarioEquipos", token: enlace.token }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  var resp = null;
+  if (r.getResponseCode() === 200) {
+    try { resp = JSON.parse(r.getContentText()); } catch (e) { resp = null; }
+  }
+  if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA", http: r.getResponseCode() };
+  if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
+  var out = [];
+  var lista = resp.equipos || [];
+  for (var i = 0; i < lista.length && out.length < 200; i++) {
+    var e = lista[i] || {};
+    if (!e.nombre) continue;
+    out.push({ nombre: String(e.nombre).slice(0, 40), categoria: String(e.categoria || "VM"), ubicacion: String(e.ubicacion || "BODEGA"),
+      cama: e.cama === null || e.cama === undefined ? null : Number(e.cama), enUso: e.enUso === true, estado: String(e.estado || "") });
+  }
+  return { ok: true, equipos: out };
+}
+
 function historiasDesdeRce(camas) {
   var enlace = enlaceRce_();
   if (!enlace) return { ok: true, historias: [], estado: "apagado" };

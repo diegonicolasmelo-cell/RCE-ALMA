@@ -1341,3 +1341,11 @@ html.celular .sabana-cel-cuerpo{overflow-x:auto}
 .sala8-motivo button{border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:7px 12px;font:600 13px/1 var(--font-ui);color:var(--ink);cursor:pointer}
 .sala8-motivo button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
 .sala8-venc{font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:var(--warn-bg,#fff3dc);color:var(--warn,#a86200)}
+.sala8-rce{font-size:10.5px;font-weight:600;color:var(--warn,#a86200)}
+.sala8-tipo.sel{outline:2px solid var(--accent);outline-offset:1px}
+.sala8-tipo.uso{border-color:var(--accent)}
+.sala8-tipo small{font-size:11px;font-weight:500}
+.sala8-acciones{display:flex;flex-wrap:wrap;gap:6px}
+.sala8-acciones .btn{flex:1 1 auto;min-height:40px}
+.sala8-destinos{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.ch-cama{border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:600 13px/1 var(--font-ui);padding:8px 12px;cursor:pointer}

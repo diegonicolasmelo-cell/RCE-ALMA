@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SECCIONES_SALA, equipoParaDibujar, numeroValido, rangoNumeroEquipo, salaAlElegir } from "./sala";
+import { SECCIONES_SALA, dejarEnSala, equipoDeInventario, equipoParaDibujar, nombreRce, numeroValido, rangoNumeroEquipo, salaAlElegir, tipoDeCategoria, usarEnSala } from "./sala";
 import type { EquipoEnSala } from "./tipos";
 
 const savina = (n: number, enUso = true): EquipoEnSala => ({ tipo: "VENTILADOR", modelo: "Savina", numero: n, enUso });
@@ -30,5 +30,24 @@ describe("sala en 8 bits", () => {
   it("se dibuja el que da el soporte", () => {
     expect(equipoParaDibujar([savina(1, false), savina(2)])?.numero).toBe(2);
     expect(equipoParaDibujar([])).toBeNull();
+  });
+});
+
+describe("sala con el inventario del RCE (25-nov-2026)", () => {
+  const mek = { nombre: "Mek 12", categoria: "VM", ubicacion: "BODEGA", cama: null, enUso: false, estado: "Operativo" };
+  const v60 = { nombre: "V60 Nº1", categoria: "VNI", ubicacion: "PASILLO", cama: null, enUso: false, estado: "Operativo" };
+  it("el equipo de la sala lleva el nombre EXACTO del RCE", () => {
+    expect(equipoDeInventario(mek)).toEqual({ tipo: "VENTILADOR", modelo: "Mek 12", numero: null, enUso: false });
+    expect(nombreRce(equipoDeInventario(v60))).toBe("V60 Nº1");
+    expect(tipoDeCategoria("APOYO", "Aerogen 2")).toBe("NEBULIZADOR");
+  });
+  it("tocar lo deja en la sala sin uso; con TET conectado y sin soporte, entra en uso", () => {
+    expect(dejarEnSala([], mek, "TQT", false)[0]!.enUso).toBe(false);
+    expect(dejarEnSala([], mek, "TET", true)[0]!.enUso).toBe(true);
+    expect(dejarEnSala([equipoDeInventario(mek)], mek, "TET", true)).toHaveLength(1);
+  });
+  it("otro toque lo pone en uso y apaga los demás soportes", () => {
+    const sala = [equipoDeInventario(mek, true), { tipo: "VENTILADOR" as const, modelo: "Savina 2", numero: null, enUso: false }];
+    expect(usarEnSala(sala, sala[1]!).map((x) => x.enUso)).toEqual([false, true]);
   });
 });

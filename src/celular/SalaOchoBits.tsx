@@ -17,6 +17,9 @@ import {
   problemaEquipos,
   rangoNumeroEquipo,
   rondaDelTurno,
+  contextoFiltros,
+  esViaAereaArtificial,
+  hallazgosSugeridos,
   salaAlElegir
 } from "@core/index";
 import type { MotivoCambioEquipo } from "@core/index";
@@ -84,12 +87,14 @@ export function SalaOchoBits({ resumen, ahora, rutAutor, onRevisar }: {
           if (!r) return <div key={cama} className="sala8-cama libre" aria-label={`${nombreCama(cama)} libre`}><span className="sala8-n">{nombreCama(cama)}</span><span className="sala8-eq">Libre</span></div>;
           const eq = equipoParaDibujar(r.ep.equipos);
           const ronda = rondaDelTurno(r.eventos, ahora);
+          const porCambiar = !ronda && esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles)).length : 0;
           return (
             <button key={cama} type="button" className={`sala8-cama${eq ? "" : " vacia"}`} aria-label={`Sala · ${nombreCama(cama)}`} onClick={() => setEligiendo(r.ep.id)}>
               <span className="sala8-n">{nombreCama(cama)}{ronda ? <span className="sala8-ok" title="Revisada en este turno"> ✓</span> : null}</span>
               {eq ? <Sprite8 modelo={eq.modelo} /> : <span className="sala8-mas" aria-hidden>+</span>}
               <span className="sala8-eq">{eq ? etiquetaEquipo(eq) : "Sin equipo"}</span>
               {eq && esSoporteRespiratorio(eq.tipo) && <span className={`sala8-uso ${eq.enUso ? "si" : "no"}`}>{eq.enUso ? "en uso" : "sin uso"}</span>}
+              {porCambiar > 0 && <span className="sala8-venc">{porCambiar} por cambiar</span>}
             </button>
           );
         })}

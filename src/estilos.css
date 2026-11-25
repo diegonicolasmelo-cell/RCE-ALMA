@@ -1340,3 +1340,4 @@ html.celular .sabana-cel-cuerpo{overflow-x:auto}
 .sala8-motivo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .sala8-motivo button{border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:7px 12px;font:600 13px/1 var(--font-ui);color:var(--ink);cursor:pointer}
 .sala8-motivo button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.sala8-venc{font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:var(--warn-bg,#fff3dc);color:var(--warn,#a86200)}

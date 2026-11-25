@@ -4,7 +4,6 @@ import { ChevronLeft } from "lucide-react";
 import {
   ETIQUETA_ELEMENTO,
   esViaAereaArtificial,
-  etiquetaEquipo,
   hallazgosSugeridos,
   contextoFiltros,
   filtrosPorCambiar,
@@ -24,8 +23,6 @@ import { useAtras } from "./Inicio";
 import { SalaOchoBits } from "./SalaOchoBits";
 
 const ddmm = (ymd: string | null): string => (ymd ? `${ymd.slice(8, 10)}-${ymd.slice(5, 7)}` : "—");
-const hhmm = (iso: string): string => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-const iniciales = (correo: string): string => correo.split("@")[0]!.split(/[._-]/).map((p) => p.charAt(0).toUpperCase()).join("").slice(0, 3);
 const ELEMENTOS: readonly ElementoCircuito[] = ["HME", "TRACHCARE", "HEPA"];
 /** Quién tiene la cama (el titular del episodio), para preguntarle si ya lo cambió. */
 const titularDe = (correo: string): string => buscarProfesional(correo)?.nombre ?? "";
@@ -38,9 +35,7 @@ const titularDe = (correo: string): string => buscarProfesional(correo)?.nombre 
  */
 export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly ResumenCama[]; ahora: Date; rutAutor: string }) {
   const [abierta, setAbierta] = useState<string | null>(null);
-  // Dos formas de ver lo mismo (25-nov-2026): la lista de camas o la sala dibujada en 8 bits.
-  const [vista, setVista] = useState<"lista" | "sala">(() => { try { return localStorage.getItem("ronda-vista") === "sala" ? "sala" : "lista"; } catch { return "lista"; } });
-  const verComo = (v: "lista" | "sala"): void => { setVista(v); try { localStorage.setItem("ronda-vista", v); } catch { /* sin almacenamiento */ } };
+
   const orden = [...resumen].sort((a, b) => a.ep.cama.localeCompare(b.ep.cama, "es", { numeric: true }));
   const actual = abierta ? orden.find((r) => r.ep.id === abierta) ?? null : null;
   const siguiente = actual ? orden[orden.indexOf(actual) + 1] ?? null : null;
@@ -53,7 +48,7 @@ export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly Resum
   return (
     <div className="cel-cuerpo ronda-cel" aria-label="Ronda de equipos">
       <p className="small muted" style={{ margin: 0 }}>
-        {revisadas} de {orden.length} camas revisadas en este turno. Toca una cama: equipos de la sala y fecha de etiqueta de los filtros.
+        {revisadas} de {orden.length} camas revisadas en este turno. Toca una cama para anotar su equipo, o revisar filtros y hallazgos.
       </p>
       <details className="card vence-hoy" open={vencen.length > 0}>
         <summary><b>Vence hoy en la unidad</b> <span className="small muted">{vencen.length ? `${vencen.length} por cambiar` : "nada por cambiar"}</span></summary>
@@ -68,27 +63,9 @@ export function RondaCel({ resumen, ahora, rutAutor }: { resumen: readonly Resum
           </ul>
         )}
       </details>
-      <div className="seg-ronda" role="tablist" aria-label="Ver la ronda como">
-        <button type="button" role="tab" aria-selected={vista === "lista"} onClick={() => verComo("lista")}>Lista</button>
-        <button type="button" role="tab" aria-selected={vista === "sala"} onClick={() => verComo("sala")}>Sala</button>
-      </div>
-      {vista === "sala" && <SalaOchoBits resumen={orden} ahora={ahora} rutAutor={rutAutor} onRevisar={setAbierta} />}
-      {vista === "lista" && <div className="evgrid ev-lista">
-        {orden.map((r) => {
-          const ronda = rondaDelTurno(r.eventos, ahora);
-          const vencidos = esViaAereaArtificial(r.ep.viaAereaActual) ? hallazgosSugeridos(r.eventos, ahora, contextoFiltros(r.ep, r.controles)) : [];
-          const enUso = r.ep.equipos.find((e) => e.enUso);
-          return (
-            <button key={r.ep.id} type="button" className="ev-fila ronda-fila" onClick={() => setAbierta(r.ep.id)}>
-              <b>{nombreCama(r.ep.cama)}</b>
-              <span className="small muted">{enUso ? etiquetaEquipo(enUso) : r.ep.equipos.length ? `${r.ep.equipos.length} equipo(s), ninguno en uso` : "Sin equipos anotados"}</span>
-              <span className={`ronda-est ${ronda ? (ronda.hallazgos.length ? "hall" : "ok") : vencidos.length ? "venc" : ""}`}>
-                {ronda ? (ronda.hallazgos.length ? `⚠ ${ronda.hallazgos.length} hallazgo(s) · ${hhmm(ronda.registradoEn)}` : `✓ Revisada ${hhmm(ronda.registradoEn)} · ${iniciales(ronda.rutAutor)}`) : vencidos.length ? `Sin revisar · ${vencidos.length} por cambiar` : "Sin revisar"}
-              </span>
-            </button>
-          );
-        })}
-      </div>}
+      {/* 25-nov-2026 (Diego: «en reemplazo de la ronda que ya está»): la ronda ES la sala en 8 bits.
+          Cada cama: su equipo dibujado; tocarla anota el equipo o abre filtros y hallazgos. */}
+      <SalaOchoBits resumen={orden} ahora={ahora} rutAutor={rutAutor} onRevisar={setAbierta} />
       {actual && (
         <RondaCama
           key={actual.ep.id}

@@ -88,6 +88,9 @@ export function soporteRce(via: ViaAerea, m: Modalidad, flujoO2: number | null):
   }
 }
 
+/** Nombre de cada sedante en los botones del RCE (lorazepam no está allá: no se manda). */
+const SEDANTE_RCE: Readonly<Record<string, string>> = { fentanilo: "Fentanyl", propofol: "Propofol", midazolam: "Midazolam", dexmedetomidina: "Precedex" };
+
 /** Solo lo que tiene dato (el RCE descarta el resto). */
 function limpio(o: Record<string, string | number | boolean | null | undefined>): Record<string, string | number | boolean> {
   const out: Record<string, string | number | boolean> = {};
@@ -106,6 +109,12 @@ export function controlParaRce(c: Control, ep: Episodio, eventos: readonly Event
   const o2 = s.soporte !== "VM" && s.soporte !== "VNI";
   const g = c.glasgow ? calcularGlasgow(c.glasgow, c.viaAerea) : null;
   const dva = [...infusionesActivas(c.infusiones, "DVA"), ...infusionesActivas(c.infusiones, "INOTROPO")];
+  // Sedación (25-nov-2026, Diego: «que pase fármacos y escalón»): los sedantes en curso con los
+  // nombres del RCE y el escalón más alto; sin escalón (dosis libre) es «Fuera de escalón».
+  // Sin sedantes en el control es «Sin sedación»: el control siempre declara las infusiones.
+  const sed = infusionesActivas(c.infusiones, "SEDANTE");
+  const sedTipo = !sed.length ? "Sin sedación" : sed.some((x) => x.escalon === null) ? "Fuera de escalón" : `Escalón ${Math.max(...sed.map((x) => x.escalon ?? 0))}`;
+  const sedFarmacos = sed.map((x) => SEDANTE_RCE[x.id]).filter((x): x is string => !!x);
   const aspecto = c.kineResp.aspecto ? ASPECTOS_SECRECIONES.find((a) => a.val === c.kineResp.aspecto)?.label ?? "" : "";
   const datos = limpio({
     VENT_VIA_AEREA: s.va, VENT_SOPORTE: s.soporte, VENT_MODO: s.modo,
@@ -119,7 +128,7 @@ export function controlParaRce(c: Control, ep: Episodio, eventos: readonly Event
     VENT_FIO2: v.fio2, VENT_SPO2: c.spo2, VENT_LITROS: o2 ? v.flujo : null, VENT_TEMP: v.temperatura,
     CALC_ML_KG: d.mlKgGuia, CALC_DP: d.drivingPressure, CALC_CESR: d.compliance, CALC_IE: d.relacionIE, CALC_TOBIN: d.tobin, CALC_VOL_MIN: d.volumenMinuto,
     SED_GCS_TOT: g ? g.display : null, SED_GCS_O: c.glasgow?.ocular, SED_GCS_V: g ? (g.intubado ? "T" : c.glasgow?.verbal) : null, SED_GCS_M: c.glasgow?.motora,
-    SED_SAS: c.sas,
+    SED_SAS: c.sas, SED_TIPO: sedTipo, SED_FARMACOS: sedFarmacos.length ? sedFarmacos.join(", ") : null,
     HEMO_DVA: dva.length ? "Sí" : null, HEMO_NUM_DVA: dva.length || null,
     KAP_FC: c.fc, KAP_PAS: c.pas, KAP_PAD: c.pad, KAP_PAM: d.pam,
     RESP_SECR_CAR: aspecto || null, RESP_SECR_REOL: c.kineResp.reologia?.toLowerCase() ?? null, RESP_SECR_QTY: c.kineResp.cantidad?.toLowerCase() ?? null

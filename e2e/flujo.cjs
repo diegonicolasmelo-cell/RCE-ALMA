@@ -893,13 +893,13 @@ async function esperarServidor() {
       await cel.waitForSelector('article[aria-label^="Cama"], .ctl-cabeza');
     });
 
-    await prueba("evaluaciones en cuatro pestañas: cada bloque cabe en la pantalla, con hora real, botones y correccion del dato previo", async () => {
+    await prueba("evaluaciones en cinco pestañas: cada bloque cabe en la pantalla, con hora real, botones y correccion del dato previo", async () => {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       await cel.waitForSelector('article[aria-label="Cama UCI-03"]');
       assert.ok((await cel.evaluate(() => document.documentElement.scrollWidth)) <= 391, "la lista de camas no desborda");
       await cel.click('article[aria-label="Cama UCI-03"] button:has-text("Evaluaciones")');
-      assert.deepEqual(await cel.locator(".pestanas-ev button").allTextContents(), ["Previa a la UCI", "Fuerza y función", "PVE y extubación", "Imagen"]);
-      for (const p of ["Previa a la UCI", "Fuerza y función", "PVE y extubación", "Imagen"]) {
+      assert.deepEqual(await cel.locator(".pestanas-ev button").allTextContents(), ["Previa a la UCI", "Delirio", "Fuerza y función", "PVE y extubación", "Imagen"]);
+      for (const p of ["Previa a la UCI", "Delirio", "Fuerza y función", "PVE y extubación", "Imagen"]) {
         await cel.click(`.pestanas-ev button:text-is("${p}")`);
         const sobra = await cel.evaluate(() => { const c = document.querySelector(".cel-cuerpo"); return c ? c.scrollHeight - c.clientHeight : 0; });
         assert.ok(sobra <= 4, `${p}: el bloque cabe sin scroll (sobran ${sobra} px)`);
@@ -935,6 +935,18 @@ async function esperarServidor() {
       await cel.click('button:has-text("Guardar MRC-ss")');
       await cel.waitForTimeout(400);
       assert.match(await cel.textContent('[data-escala="MRC_SS"]'), /MRC-ss 48\/60/);
+      // CAM-ICU (25-nov-2026): el delirio es una evaluación con sus cuatro rasgos.
+      await cel.click('.pestanas-ev button:text-is("Delirio")');
+      await cel.click('[data-escala="CAM_ICU"]');
+      await cel.locator('[aria-label="¿Se puede evaluar?"] button:text-is("Sí")').click();
+      await cel.locator('[aria-label="1. Cambio agudo o curso fluctuante del estado mental"] button:text-is("Sí")').click();
+      await cel.locator('[aria-label="2. Inatención (más de 2 errores)"] button:text-is("Sí")').click();
+      await cel.locator('[aria-label="3. Nivel de conciencia alterado (SAS distinto de 4)"] button:text-is("No")').click();
+      await cel.locator('[aria-label="4. Pensamiento desorganizado"] button:text-is("Sí")').click();
+      assert.match(await cel.textContent(".ev-res"), /CAM-ICU positivo/);
+      await cel.click('button:has-text("Guardar CAM-ICU")');
+      await cel.waitForTimeout(400);
+      assert.match(await cel.textContent('[data-escala="CAM_ICU"]'), /CAM-ICU positivo/);
       // Fragilidad: dato unico del episodio; volver a registrarla la corrige.
       await cel.click('.pestanas-ev button:text-is("Previa a la UCI")');
       await cel.click('[data-escala="FRAGILIDAD"]');
@@ -1039,12 +1051,26 @@ async function esperarServidor() {
       if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
       const boton = cel.locator('article[aria-label^="Cama"] button[aria-label^="Sábana · "]').first();
       await boton.waitFor();
+      // Día de estadía en la tarjeta (25-nov-2026): el día del ingreso es el día 1.
+      assert.match(await cel.locator('article[aria-label^="Cama"] .dia-estadia').first().textContent(), /^Día \d+ · $/);
       const cama = (await boton.getAttribute("aria-label")).replace("Sábana · ", "");
       await boton.click();
       const capa = cel.locator(".sabana-cel[role=dialog]");
       await capa.waitFor();
       assert.equal(await capa.locator(".sabana-cel-cab h2").textContent(), `Sábana · ${cama}`);
       assert.equal(await capa.locator('[role=tab][aria-selected="true"]').textContent(), "Sábana");
+      // 25-nov-2026: el tamaño se cambia con dos dedos o con − / +; el resto de la app no tiene zoom.
+      await capa.locator('button[aria-label="Acercar"]').click();
+      assert.equal(await capa.locator('button[aria-label="Tamaño normal"]').textContent(), "125 %");
+      assert.equal(await capa.locator(".sabana-zoom").evaluate((e) => e.style.zoom), "1.25");
+      await capa.locator('button[aria-label="Tamaño normal"]').click();
+      assert.equal(await capa.locator(".sabana-zoom").evaluate((e) => e.style.zoom), "1");
+      // Con el teléfono girado la sábana sigue entera.
+      const vp = cel.viewportSize();
+      await cel.setViewportSize({ width: vp.height, height: vp.width });
+      await cel.waitForTimeout(200);
+      assert.ok(await capa.locator(".sabana-cel-cab h2").isVisible(), "en horizontal se ve la cabecera");
+      await cel.setViewportSize(vp);
       const sig = capa.locator('button[aria-label^="Cama siguiente"]');
       if (await sig.isEnabled()) {
         await sig.click();
@@ -1762,6 +1788,27 @@ async function esperarServidor() {
       await cel.waitForSelector('[role=dialog][aria-label="Avisos"]');
       assert.match(await cel.textContent('[role=dialog][aria-label="Avisos"]'), /Cama 2 · Ronda[\s\S]*Filtro HME vencido/);
       await cel.click(".velo-inicio", { position: { x: 20, y: 20 } });
+      // La sala en 8 bits (25-nov-2026): secciones de 6 camas, tipo con su dibujo y teclado del número.
+      await cel.click('.seg-ronda button:text-is("Sala")');
+      await cel.waitForSelector(".sala8-grilla");
+      assert.deepEqual(await cel.locator(".sala8-secs button").allTextContents(), ["Adelante", "Medio", "Atrás"]);
+      assert.equal(await cel.locator(".sala8-cama").count(), 6);
+      await cel.click('button[aria-label="Sala · Cama 2"]');
+      const eqDlg = cel.locator('[role=dialog][aria-label="Equipo · Cama 2"]');
+      await eqDlg.waitFor();
+      await eqDlg.locator('.sala8-tipo:has-text("Vela")').click();
+      for (const t of ["1", "2"]) await eqDlg.locator(`.sala8-teclado button[aria-label="${t}"]`).click();
+      assert.match(await eqDlg.textContent(".aviso-etiqueta"), /Vela va del 1 al 10/);
+      await eqDlg.locator('.sala8-teclado button[aria-label="Borrar"]').click();
+      await eqDlg.locator('.sala8-teclado button[aria-label="Borrar"]').click();
+      await eqDlg.locator('.sala8-teclado button[aria-label="3"]').click();
+      if (await eqDlg.locator(".sala8-motivo").count()) await eqDlg.locator('.sala8-motivo button:has-text("Mantención")').click();
+      await eqDlg.locator('button:has-text("Anotar Vela 3 en Cama 2")').click();
+      await eqDlg.waitFor({ state: "detached" });
+      assert.match(await cel.textContent('button[aria-label="Sala · Cama 2"]'), /Vela 3/);
+      assert.equal(await cel.locator('button[aria-label="Sala · Cama 2"] canvas.sprite8').count(), 1, "se dibuja el ventilador");
+      if (process.env.FOTO_SALA) await cel.screenshot({ path: process.env.FOTO_SALA });
+      await cel.click('.seg-ronda button:text-is("Lista")');
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
     });

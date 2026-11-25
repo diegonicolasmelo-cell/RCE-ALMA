@@ -932,7 +932,7 @@ de Entrega**. Nada programado.
 - **Orden sugerido**: 1) ronda de ventiladores (más impacto en la calidad del dato, y los datos ya
   existen), 2) pauta de aspiración, 3) pauta NAVM (depende del documento original).
 
-### 27.3 Ronda «en 8 bits»: la sala dibujada (IDEA de Diego, 24-nov-2026 · GUARDADA, sin programar)
+### 27.3 Ronda «en 8 bits»: la sala dibujada (IDEA de Diego, 24-nov-2026 · PROGRAMADA la parte de camas el 25-nov)
 Diego tenía un proyecto de ventiladores dibujados en 8 bits y quiere usarlo para que la ronda sea
 sencilla de llenar:
 - **Secciones con botones rápidos** arriba: Adelante · Medio · Atrás · Pasillo · Bodega · Equipos
@@ -952,6 +952,14 @@ sencilla de llenar:
   viajan al RCE, y la ronda de equipos del celular (v7.15). Sería otra forma de ver y llenar lo mismo,
   no un registro nuevo. Mockup: `scratchpad/mockups/ronda-8bits.html` (24-nov).
 
+
+**Programado el 25-nov-2026** («con la ronda de equipos avanza con los bloques y grillas de VM 8 bit
+por ahora»): en la Ronda, un selector **Lista | Sala**. La sala tiene secciones **Adelante · Medio ·
+Atrás** (PROVISORIAS: camas 1–6, 7–12, 13–18, en `core/sala.ts`), grilla 2×3, dibujo 8 bits del
+equipo en uso, tipo → teclado (Meckis 1–20, el resto 1–10, Servo U sin número) y, si se cambia un
+ventilador, el motivo. Escribe el mismo `CAMBIO_EQUIPOS`. Los dibujos son provisorios (una silueta con
+colores por modelo) hasta que lleguen los de Diego. **Falta**: qué camas van en cada sección, y
+Pasillo / Bodega / Equipos médicos (equipos que no están en una cama: hay que decidir dónde se anotan).
 
 ## 28. Filtros: reglas por equipo, día 0 y fecha escrita a mano (Diego, 24-nov-2026 · PROGRAMADO)
 

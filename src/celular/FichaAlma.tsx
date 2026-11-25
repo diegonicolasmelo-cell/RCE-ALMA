@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { ETIQUETA_MODALIDAD, calcularDerivados, calcularGlasgow, calcularPbw, claseModoAlma, describirEvento, nombreCama, sedoanalgesiaActiva, turnoDe } from "@core/index";
 import type { Control, Episodio, EventoClinico } from "@core/index";
 import { SabanaVista } from "../estacion/SabanaVista";
+import { usePellizco } from "./pellizco";
 import { ventilacionDeLaHoja } from "../estacion/sabana";
 import { iniciales } from "../estacion/util";
 
@@ -51,6 +52,7 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = 
   const [idx, setIdx] = useState(() => Math.max(0, camas.findIndex((p) => p.ep.id === inicial.episodioId)));
   const [hechos, setHechos] = useState<ReadonlySet<number>>(new Set());
   const [vista, setVista] = useState<"control" | "sabana" | "evaluaciones">(vistaInicial);
+  const pellizco = usePellizco<HTMLDivElement>(vista !== "control");
   // Control elegido a mano en la fila «C1 · C2 · C3…» (sugerencia de Alvaro, 20-nov-2026); al cambiar de cama se suelta.
   const [ctlElegido, setCtlElegido] = useState<string | null>(null);
   const pac = camas[idx];
@@ -103,8 +105,16 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = 
           <h2>{titulo} · {nombreCama(ep.cama)}</h2>
         </div>
         {pestanas}
-        <div className="sabana-cel-cuerpo">
-          <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} resaltar={c.id} fija={vista} />
+        <div className="sabana-cel-cuerpo" ref={pellizco.ref}>
+          {/* Dos dedos acercan o alejan; el resto de la app no tiene zoom. */}
+          <div className="sabana-zoom" style={{ zoom: pellizco.zoom }}>
+            <SabanaVista ep={ep} controles={controles} eventos={eventos} ahora={ahora} resaltar={c.id} fija={vista} />
+          </div>
+          <div className="zoom-ctrl" role="group" aria-label="Tamaño">
+            <button type="button" aria-label="Alejar" onClick={() => pellizco.setZoom(pellizco.zoom - 0.25)}>−</button>
+            <button type="button" aria-label="Tamaño normal" onClick={() => pellizco.setZoom(1)}>{Math.round(pellizco.zoom * 100)} %</button>
+            <button type="button" aria-label="Acercar" onClick={() => pellizco.setZoom(pellizco.zoom + 0.25)}>+</button>
+          </div>
         </div>
         {/* Tambien aqui se pasa de cama en cama (Diego, 21-nov-2026: la sabana de cualquier cama, para la entrega). */}
         {camas.length > 1 && pieCamas}

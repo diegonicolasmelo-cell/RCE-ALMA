@@ -32,6 +32,16 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
     expect(texto).not.toMatch(/nombre|rut"|Paciente/i);
   });
 
+  it("la sedación viaja con los fármacos del RCE y el escalón más alto (25-nov)", () => {
+    const ep = unEpisodio({ cama: "UCI-04" });
+    const con = (infusiones: object) => controlParaRce(unControl({ infusiones } as never), ep)!.datos;
+    expect(con({})).toMatchObject({ SED_TIPO: "Sin sedación" });
+    expect(con({}).SED_FARMACOS).toBeUndefined();
+    expect(con({ fentanilo: { dosis: 1.2, escalon: 2 }, propofol: { dosis: 1.5, escalon: 3 } })).toMatchObject({ SED_TIPO: "Escalón 3", SED_FARMACOS: "Fentanyl, Propofol" });
+    expect(con({ midazolam: { dosis: 0.2, escalon: null } })).toMatchObject({ SED_TIPO: "Fuera de escalón", SED_FARMACOS: "Midazolam" });
+    expect(con({ dexmedetomidina: { dosis: 0.4, escalon: 1 } })).toMatchObject({ SED_TIPO: "Escalón 1", SED_FARMACOS: "Precedex" });
+  });
+
   it("los eventos de la primera tanda viajan con su código; los demás no", () => {
     const ep = unEpisodio({ cama: "UCI-02" });
     const ext = unEvento<EventoClinico>({ tipo: "EXTUBACION_PROGRAMADA", dispositivo: "CNAF", registradoEn: new Date(2026, 10, 22, 10, 40).toISOString(), hora: "10:40" } as never);

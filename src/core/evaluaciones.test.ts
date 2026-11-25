@@ -4,14 +4,30 @@ import { ESCALAS, NE, calcularEscala, camposVisibles, claveChk, escalaDe, escala
 const todos = (id: Parameters<typeof escalaDe>[0], v: number) => Object.fromEntries(escalaDe(id).campos.map((c) => [c.id, v]));
 
 describe("pestañas", () => {
-  it("cuatro bloques: previa a la UCI, fuerza y función, PVE y extubación, imagen", () => {
+  it("cinco bloques: previa a la UCI, delirio, fuerza y función, PVE y extubación, imagen", () => {
     expect(escalasDePestana("PREVIA").map((e) => e.id)).toEqual(["FRAGILIDAD", "BARTHEL", "CHARLSON"]);
+    expect(escalasDePestana("CONCIENCIA").map((e) => e.id)).toEqual(["CAM_ICU"]);
     expect(escalasDePestana("FUERZA").map((e) => e.id)).toEqual(["MRC_SS", "FSS_ICU", "CPAX", "IMS", "DINAMOMETRIA", "FUERZA_RESPIRATORIA"]);
     expect(escalasDePestana("PVE").map((e) => e.id)).toEqual(["TOS_DEGLUCION", "VISAGE", "VIA_AEREA"]);
     expect(escalasDePestana("IMAGEN").map((e) => e.id)).toEqual(["ECOGRAFIA"]);
   });
   it("fragilidad, Barthel y Charlson son datos únicos del episodio", () => {
     expect(ESCALAS.filter((e) => e.unico).map((e) => e.id)).toEqual(["FRAGILIDAD", "BARTHEL", "CHARLSON"]);
+  });
+});
+
+describe("CAM-ICU (25-nov-2026)", () => {
+  it("positivo = rasgos 1 y 2 y (3 o 4)", () => {
+    expect(calcularEscala("CAM_ICU", { ne: 0, r1: 1, r2: 1, r3: 0, r4: 1 })).toMatchObject({ total: 1, interpretacion: "Delirio", completa: true });
+    expect(calcularEscala("CAM_ICU", { ne: 0, r1: 1, r2: 1, r3: 0, r4: 0 })).toMatchObject({ total: 0, completa: true });
+  });
+  it("sin rasgo 1 es negativo aunque falten los otros", () => {
+    expect(calcularEscala("CAM_ICU", { ne: 0, r1: 0 })).toMatchObject({ total: 0, interpretacion: "Sin delirio", completa: true });
+  });
+  it("no evaluable se guarda sin total; sin decir si se evaluó no se guarda", () => {
+    expect(calcularEscala("CAM_ICU", { ne: 1 })).toMatchObject({ total: null, completa: true, interpretacion: "No evaluable" });
+    expect(calcularEscala("CAM_ICU", {}).completa).toBe(false);
+    expect(calcularEscala("CAM_ICU", { ne: 0, r1: 1, r2: 1 }).completa).toBe(false);
   });
 });
 

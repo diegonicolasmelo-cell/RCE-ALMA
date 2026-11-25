@@ -16,9 +16,10 @@
 import type { IdEscala, Sexo, ViaAerea } from "./tipos";
 
 /** Las cuatro pestanas de Evaluaciones: cada bloque cabe en la pantalla, sin scroll. */
-export type PestanaEval = "PREVIA" | "FUERZA" | "PVE" | "IMAGEN";
+export type PestanaEval = "PREVIA" | "CONCIENCIA" | "FUERZA" | "PVE" | "IMAGEN";
 export const PESTANAS_EVAL: readonly { readonly id: PestanaEval; readonly nombre: string }[] = [
   { id: "PREVIA", nombre: "Previa a la UCI" },
+  { id: "CONCIENCIA", nombre: "Delirio" },
   { id: "FUERZA", nombre: "Fuerza y función" },
   { id: "PVE", nombre: "PVE y extubación" },
   { id: "IMAGEN", nombre: "Imagen" }
@@ -165,6 +166,15 @@ export const ESCALAS: readonly DefEscala[] = [
     campos: BARTHEL.map(([l, ops], i) => ({ id: `b${i + 1}`, etiqueta: `${i + 1}. ${l}`, tipo: "ops" as const, opciones: ops.map(([v, t]) => ({ val: v, label: String(v), desc: t })) })) },
   { id: "CHARLSON", nombre: "Comorbilidad de Charlson", corto: "Charlson", pestana: "PREVIA", unico: true,
     campos: [{ id: "c", etiqueta: "Comorbilidades (tocar las que tiene)", tipo: "chk", opciones: CHARLSON }] },
+  // --- Delirio (25-nov-2026): CAM-ICU como evaluación, no como casilla del turno ---
+  { id: "CAM_ICU", nombre: "Delirio · CAM-ICU", corto: "CAM-ICU", pestana: "CONCIENCIA",
+    campos: [
+      { id: "ne", etiqueta: "¿Se puede evaluar?", tipo: "ops", opciones: [{ val: 0, label: "Sí" }, { val: 1, label: "No evaluable", desc: "Sedación profunda o coma (SAS 1-2)" }] },
+      { id: "r1", etiqueta: "1. Cambio agudo o curso fluctuante del estado mental", tipo: "ops", opciones: SINO },
+      { id: "r2", etiqueta: "2. Inatención (más de 2 errores)", tipo: "ops", opciones: SINO },
+      { id: "r3", etiqueta: "3. Nivel de conciencia alterado (SAS distinto de 4)", tipo: "ops", opciones: SINO },
+      { id: "r4", etiqueta: "4. Pensamiento desorganizado", tipo: "ops", opciones: SINO }
+    ] },
   // --- Fuerza y funcion ---
   { id: "MRC_SS", nombre: "Fuerza muscular MRC-ss", corto: "MRC-ss", pestana: "FUERZA",
     campos: MRC_MOV.flatMap((m, i) => [
@@ -290,6 +300,18 @@ export function calcularEscala(id: IdEscala, valores: Valores, ctx: ContextoEsca
       const n = sel.filter((x) => x > 0).length;
       const ip: [string, NivelInterpretacion] = tot <= 1 ? ["Sin comorbilidad relevante", "good"] : tot === 2 ? ["Comorbilidad baja", "warn"] : ["Comorbilidad alta", "crit"];
       return r({ total: tot, lineas: [`Charlson ${tot} ${tot === 1 ? "pt" : "pts"} sin edad`, `${n} ${n === 1 ? "comorbilidad" : "comorbilidades"}; la edad suma +1 por década desde los 50 y se agrega en el PC`], interpretacion: ip[0], nivel: ip[1] });
+    }
+    case "CAM_ICU": {
+      // Positivo = rasgo 1 Y rasgo 2 Y (rasgo 3 O rasgo 4). Total: 1 positivo, 0 negativo.
+      if (v("ne") === 1) return r({ lineas: ["CAM-ICU no evaluable"], interpretacion: "No evaluable" });
+      if (v("ne") === null) return incompleto("si se puede evaluar");
+      const [a, b, c, d] = ["r1", "r2", "r3", "r4"].map(v);
+      const neg = r({ total: 0, lineas: ["CAM-ICU negativo"], interpretacion: "Sin delirio", nivel: "good" });
+      if (a === 0 || b === 0) return neg;
+      if (a === null || b === null) return incompleto("los rasgos 1 y 2");
+      if (c === 1 || d === 1) return r({ total: 1, lineas: ["CAM-ICU positivo"], interpretacion: "Delirio", nivel: "crit" });
+      if (c === 0 && d === 0) return neg;
+      return incompleto("los rasgos 3 y 4");
     }
     case "MRC_SS": {
       const d = ids(/d$/), i = ids(/i$/);

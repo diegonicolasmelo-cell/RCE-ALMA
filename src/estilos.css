@@ -1260,6 +1260,11 @@ body.dictando .cel-pie{visibility:hidden}
 .ent-historia{margin:4px 0 0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-left:4px solid var(--accent);border-radius:8px;background:var(--accent-soft);font-size:15px;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
 .ent-historia b{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
 .ent-historia small{align-self:flex-end;color:var(--muted);font-size:12px}
+.ent-escribir{align-self:flex-start;margin-top:6px}
+.ent-editor{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.ent-editor textarea{width:100%;font:inherit;font-size:16px;line-height:1.45;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical;min-height:150px}
+.ent-editor-pie{display:flex;gap:8px;align-items:center}
+.ent-editor-pie .small{margin-right:auto}
 .ent-hitos-pl{margin-top:8px}
 .ent-hitos-pl summary{cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:6px 0}
 .ent-hitos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:14px}

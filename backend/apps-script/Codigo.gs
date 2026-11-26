@@ -146,6 +146,8 @@ function procesarPost(cuerpo) {
       return ubicarEquiposEnRce(cuerpo.correo, cuerpo.movimientos);
     case "misCamas":
       return misCamasEnRce(cuerpo.correo, cuerpo.camas);
+    case "guardarHistoria":
+      return historiaHaciaRce(cuerpo.correo, cuerpo.cama, cuerpo.texto);
     default:
       return { ok: false, error: "ACCION_DESCONOCIDA" };
   }
@@ -745,6 +747,35 @@ function misCamasEnRce(correo, camas) {
   if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA" };
   if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
   return { ok: true, firma: String(resp.firma || ""), turno: String(resp.turno || "") };
+}
+
+/**
+ * Historia clínica escrita (o dictada) en el celular (Diego, 26-nov-2026: «se puede dictar en cualquier
+ * momento»). Pasa al RCE sin guardarse aquí. Un RUT dentro del texto se borra antes de salir; el RCE
+ * además reemplaza el nombre del paciente. Tope: 1000 letras, el mismo del RCE.
+ */
+function historiaHaciaRce(correo, cama, texto) {
+  var enlace = enlaceRce_();
+  if (!enlace) return { ok: false, error: "RCE_ENLACE_APAGADO" };
+  var n = parseInt(cama, 10);
+  if (!(n > 0 && n <= 40)) return { ok: false, error: "CAMA_INVALIDA" };
+  var t = String(texto || "").replace(/\b\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]\b/g, "").trim();
+  if (!t) return { ok: false, error: "HISTORIA_VACIA" };
+  if (t.length > 1000) return { ok: false, error: "HISTORIA_LARGA" };
+  var firma = "";
+  try { var u = leerDotacion().filter(function (x) { return x.correo === normalizarCorreo(correo); })[0]; if (u) firma = inicialesRce_(u.nombre); } catch (e) { firma = ""; }
+  var r = UrlFetchApp.fetch(enlace.url, {
+    method: "post",
+    contentType: "text/plain;charset=utf-8",
+    payload: JSON.stringify({ accion: "guardarHistoria", token: enlace.token, autor: normalizarCorreo(correo), firma: firma, cama: n, texto: t }),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+  var resp = null;
+  if (r.getResponseCode() === 200) { try { resp = JSON.parse(r.getContentText()); } catch (e) { resp = null; } }
+  if (!resp) return { ok: false, error: "RCE_SIN_RESPUESTA" };
+  if (resp.ok !== true) return { ok: false, error: "RCE_" + String(resp.error || "ERROR") };
+  return { ok: true, cama: n, texto: String(resp.texto || "").slice(0, 1000), firma: String(resp.firma || ""), fecha: String(resp.fecha || "") };
 }
 
 function historiasDesdeRce(camas) {

@@ -76,6 +76,8 @@ export interface ClienteApi {
   leerInventario(): Promise<Resultado<{ equipos: readonly EquipoRce[]; estado?: string }>>;
   /** «Mis camas» del turno (25-nov-2026, Diego): las mismas quedan pintadas a su firma en el reparto del RCE. */
   informarMisCamas(correo: string, camas: readonly number[]): Promise<Resultado<{ firma: string; turno: string }>>;
+  /** Historia clínica escrita o dictada en el celular (26-nov-2026): va al RCE y no se guarda aquí. */
+  guardarHistoria(correo: string, cama: number, texto: string): Promise<Resultado<{ historia: HistoriaEntrega }>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +242,11 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
       return { ok: true, movidos: Number(r["movidos"]) || 0, avisos: Array.isArray(r["avisos"]) ? (r["avisos"] as unknown[]).map(String) : [] };
     },
+    async guardarHistoria(correo, cama, texto) {
+      const r = await post({ token: cfg.appToken, accion: "guardarHistoria", correo, cama, texto });
+      if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
+      return { ok: true, historia: { cama: Number(r["cama"]) || cama, texto: String(r["texto"] ?? ""), firma: String(r["firma"] ?? ""), fecha: String(r["fecha"] ?? "") } };
+    },
     async informarMisCamas(correo, camas) {
       const r = await post({ token: cfg.appToken, accion: "misCamas", correo, camas: [...camas] });
       if (r["ok"] !== true) return { ok: false, error: errorDe(r) };
@@ -323,6 +330,10 @@ export function crearApiLocal(): ClienteApi {
     async ubicarEquipos(_correo, movimientos) {
       // Sin servidor (demo): se da por hecho; el inventario de ejemplo se ajusta en la pantalla.
       return { ok: true, movidos: movimientos.length, avisos: [] };
+    },
+    async guardarHistoria(_correo, cama, texto) {
+      // Sin servidor (demo): se muestra como guardada, sin RCE detrás.
+      return { ok: true, historia: { cama, texto: texto.trim(), firma: "DEMO", fecha: new Date().toISOString().slice(0, 10) } };
     },
     async informarMisCamas() {
       // Sin servidor (demo): no hay RCE al que avisar.

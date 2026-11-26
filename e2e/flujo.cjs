@@ -205,8 +205,18 @@ async function esperarServidor() {
       await cel.waitForTimeout(600); // lo que dura el giro
       await primera.locator(".ent-hitos-pl summary").click();
       assert.equal(await primera.getAttribute("aria-pressed"), "true", "abrir los hitos no da vuelta la tarjeta");
-      assert.match(await primera.locator(".ent-atras").textContent(), /Nadie ha guardado la historia|La historia se ve con conexión/, "sin RCE, lo dice");
-      await primera.click();
+      assert.match(await primera.locator(".ent-atras").textContent(), /Nadie ha escrito la historia|La historia se ve con conexión/, "sin RCE, lo dice");
+      // La historia se escribe (o dicta con el teclado) desde el celular, en cualquier momento (26-nov-2026).
+      await primera.locator(".ent-escribir").click();
+      assert.equal(await primera.getAttribute("aria-pressed"), "true", "abrir el editor no da vuelta la tarjeta");
+      await primera.locator(".ent-editor textarea").fill("Ingresa por neumonía grave. RUT 12.345.678-5.");
+      await primera.locator(".ent-editor textarea").press(" ");
+      assert.equal(await primera.getAttribute("aria-pressed"), "true", "escribir un espacio no da vuelta la tarjeta");
+      await primera.locator('.ent-editor button:text-is("Guardar")').click();
+      await primera.locator(".ent-historia").waitFor();
+      assert.match(await primera.locator(".ent-historia").textContent(), /Ingresa por neumonía grave/, "queda a la vista al guardar");
+      assert.match(await primera.locator(".ent-escribir").textContent(), /Editar historia/);
+      await primera.locator(".ent-giro").last().click();
       assert.equal(await primera.getAttribute("aria-pressed"), "false", "vuelve a la cara de hoy");
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
@@ -1666,6 +1676,7 @@ async function esperarServidor() {
       await m.click('nav[aria-label="Navegación"] button:has-text("Entrega")');
       await m.waitForSelector('.ctl-cabeza h1:text-is("Entrega")');
       assert.ok(await m.locator(".ent-tarjeta").count() > 0, "la Entrega de todas las camas");
+      assert.equal(await m.locator(".ent-escribir").count(), 0, "el médico no escribe la historia");
       await m.click('[aria-label="Mi cuenta"]');
       assert.match(await m.textContent('aside[aria-label="Mi cuenta"]'), /Médico UCI · solo lectura/);
       await c.close();

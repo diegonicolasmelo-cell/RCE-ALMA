@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { camaRce, hitosDelEpisodio, horasDeVm, nombreCama } from "@core/index";
+import { camaRce, hitosDelEpisodio, horasDeVm, nombreCama, soloLectura } from "@core/index";
 import type { HistoriaEntrega } from "@core/index";
 import { usePacientesRce } from "./pacientesRce";
 import { useServicios } from "../app/contexto";
@@ -13,6 +13,52 @@ const fechaHora = (iso: string): string => { const d = new Date(iso); return `${
 const ddmm = (yyyymmdd: string): string => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(yyyymmdd); return m ? `${m[3]}-${m[2]}` : yyyymmdd; };
 
 type EstadoHistorias = "cargando" | { readonly error: string } | ReadonlyMap<number, HistoriaEntrega>;
+const HISTORIA_MAX = 1000;
+
+/** Qué decir si la historia no se pudo guardar. */
+function textoNoGuardada(error: string): string {
+  if (/HISTORIA_VACIA/.test(error)) return "Escribe algo antes de guardar.";
+  if (/HISTORIA_LARGA/.test(error)) return `Pasa de ${HISTORIA_MAX} letras: acórtala.`;
+  if (/CAMA_VACIA/.test(error)) return "El RCE no tiene paciente en esa cama.";
+  if (/ENLACE_APAGADO/.test(error)) return "El enlace con el RCE está apagado.";
+  return "No se pudo guardar. Revisa la señal e inténtalo de nuevo; el texto sigue aquí.";
+}
+
+/**
+ * Escribir o dictar la historia desde el celular (Diego, 26-nov-2026: «se puede dictar en cualquier
+ * momento; de hecho es mejor después, porque uno está preocupado más de controlar»). El dictado es el
+ * micrófono del teclado del teléfono: no hay botón propio. Va al RCE y no se guarda en el celular.
+ */
+function EditorHistoria({ cama, inicial, onGuardada, onCerrar }: {
+  cama: number; inicial: string; onGuardada: (h: HistoriaEntrega) => void; onCerrar: () => void;
+}) {
+  const { api } = useServicios();
+  const sesion = useApp((s) => s.sesion)!;
+  const [texto, setTexto] = useState(inicial);
+  const [guardando, setGuardando] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const guardar = async (): Promise<void> => {
+    setGuardando(true); setAviso("");
+    const r = await api.guardarHistoria(sesion.rut, cama, texto).catch(() => null);
+    setGuardando(false);
+    if (r && r.ok) { onGuardada(r.historia); return; }
+    setAviso(textoNoGuardada(r && !r.ok ? r.error : "SIN_CONEXION"));
+  };
+  return (
+    <div className="ent-editor" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <label className="small" htmlFor={`hist-${cama}`}><b>Historia clínica</b> · toca el micrófono del teclado para dictar</label>
+      <textarea id={`hist-${cama}`} value={texto} maxLength={HISTORIA_MAX} rows={7} onChange={(e) => setTexto(e.target.value)}
+        placeholder="Ej.: ingresa por neumonía grave con falla respiratoria; intubado el 23-10; dos PVE fracasadas por taquipnea." />
+      <div className="ent-editor-pie">
+        <span className="small muted">{texto.length} / {HISTORIA_MAX}</span>
+        <button type="button" className="btn" onClick={onCerrar} disabled={guardando}>Cancelar</button>
+        <button type="button" className="btn primary" onClick={() => void guardar()} disabled={guardando || !texto.trim()}>{guardando ? "Guardando…" : "Guardar"}</button>
+      </div>
+      {aviso && <p className="small" role="alert" style={{ margin: 0, color: "var(--rojo, #b3261e)" }}>{aviso}</p>}
+      <p className="small muted" style={{ margin: 0 }}>Queda en el RCE con tu firma. Un RUT escrito en el texto se borra al guardar.</p>
+    </div>
+  );
+}
 
 /** Qué decir cuando la historia no llega: cada eslabón tiene su arreglo (Diego, 23-nov-2026). */
 function textoSinHistoria(error: string): string {
@@ -40,6 +86,17 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
   const pacientes = usePacientesRce((s) => s.porCama);
   const [historias, setHistorias] = useState<EstadoHistorias>("cargando");
   const [vueltas, setVueltas] = useState<ReadonlySet<string>>(new Set());
+  const [editando, setEditando] = useState<string | null>(null);
+  const lectura = soloLectura(useApp((s) => s.sesion)?.rol);
+  const guardada = (h: HistoriaEntrega): void => {
+    setHistorias((prev) => {
+      const m = new Map(prev instanceof Map ? prev : []);
+      const antes = m.get(h.cama);
+      m.set(h.cama, { ...antes, ...h, pendientes: antes?.pendientes ?? [], ...(antes?.plan ? { plan: antes.plan } : {}) });
+      return m;
+    });
+    setEditando(null);
+  };
   const camas = resumen.map((r) => camaRce(r.ep.cama)).filter((n): n is number => n !== null);
   const clave = camas.join(",");
   useEffect(() => {
@@ -106,10 +163,17 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
               </section>
               <section className="ent-cara ent-atras" aria-hidden={!vuelta}>
                 <header className="ent-cab"><b>{nombreCama(ep.cama)} · historia</b></header>
-                {historias === "cargando" ? <p className="small muted">Buscando la historia…</p>
-                  : "error" in historias ? <p className="small muted">{textoSinHistoria((historias as { error: string }).error)}</p>
-                    : h ? <blockquote className="ent-historia"><b>Historia escrita en el RCE</b>{h.texto}<small>{h.firma} · {ddmm(h.fecha)}</small></blockquote>
-                      : <p className="small muted">Nadie ha guardado la historia de este paciente. Se agrega desde el RCE, en el PC.</p>}
+                {editando === ep.id && n !== null
+                  ? <EditorHistoria cama={n} inicial={h?.texto ?? ""} onGuardada={guardada} onCerrar={() => setEditando(null)} />
+                  : historias === "cargando" ? <p className="small muted">Buscando la historia…</p>
+                    : "error" in historias ? <p className="small muted">{textoSinHistoria((historias as { error: string }).error)}</p>
+                      : h && h.texto ? <blockquote className="ent-historia"><b>Historia</b>{h.texto}<small>{h.firma} · {ddmm(h.fecha)}</small></blockquote>
+                        : <p className="small muted">Nadie ha escrito la historia de este paciente.</p>}
+                {!lectura && editando !== ep.id && n !== null && historias !== "cargando" && !(typeof historias === "object" && "error" in historias && (historias as { error: string }).error === "APAGADO") && (
+                  <button type="button" className="btn ent-escribir" onClick={(e) => { e.stopPropagation(); setEditando(ep.id); }}>
+                    {h && h.texto ? "Editar historia" : "Escribir o dictar la historia"}
+                  </button>
+                )}
                 {/* Los hitos van plegados: lo que se lee primero es la historia (Diego, 23-nov-2026).
                     Abrirlos no da vuelta la tarjeta. */}
                 <details className="ent-hitos-pl" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>

@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ClipboardList, LogOut, Sheet, Stethoscope, Timer, Zap } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, LogOut, Printer, Sheet, Stethoscope, Timer, Zap } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import {
   diaDeEstadia,
@@ -17,8 +17,14 @@ import {
   bnmVigente,
   ETIQUETA_ELEMENTO,
   horasDeVm,
-  eventosSinMonitorizar
+  eventosSinMonitorizar,
+  columnasApk,
+  documentoApkHtml,
+  listaDelDiaHtml,
+  turnoDe,
+  ETIQUETA_MODALIDAD
 } from "@core/index";
+import type { FilaListaDia } from "@core/index";
 import type { Control, Episodio, EventoClinico, HorasVm, ValidacionApk } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta } from "../app/hooks";
@@ -28,6 +34,7 @@ import { CompletarRem, IngresoRapido } from "./IngresoRapido";
 import { TrasladoCama } from "./TrasladoCama";
 import { useAtras } from "./Inicio";
 import { FichaAlma } from "./FichaAlma";
+import { VisorHoja } from "./VisorHoja";
 import { usePacientesRce } from "./pacientesRce";
 import type { PacienteFicha } from "./FichaAlma";
 
@@ -58,7 +65,9 @@ export function ListaCamas() {
   const pedirEvento = useApp((s) => s.pedirEvento);
   /** Sabana abierta desde la tarjeta de una cama (Diego, 21-nov-2026: la de CUALQUIER cama, para la entrega). */
   const [sabana, setSabana] = useState<{ pacientes: readonly PacienteFicha[]; episodioId: string; controlId: string } | null>(null);
-  useAtras(ingresando !== null || trasladando !== null || remDe !== null || sabana !== null, () => { setIngresando(null); setTrasladando(null); setRemDe(null); setSabana(null); });
+  /** Hoja abierta para mirar e imprimir: la APK de un paciente o la lista del día (28-nov-2026). */
+  const [hoja, setHoja] = useState<{ titulo: string; html: string } | null>(null);
+  useAtras(ingresando !== null || trasladando !== null || remDe !== null || sabana !== null || hoja !== null, () => { setIngresando(null); setTrasladando(null); setRemDe(null); setSabana(null); setHoja(null); });
   const abrirSabana = async (ep: Episodio): Promise<void> => {
     const episodios = await repo.episodiosActivos();
     const pacientes = (await Promise.all(episodios.map(async (e) => ({ ep: e, controles: await repo.controlesDe(e.id), eventos: await repo.eventosDe(e.id) }))))
@@ -113,6 +122,32 @@ export function ListaCamas() {
   const orden = [...CAMAS_UNIDAD.filter(esMiaCama), ...CAMAS_UNIDAD.filter((c) => !esMiaCama(c))];
   const nMias = orden.filter(esMiaCama).length;
 
+  const listaDelDia = (): string => {
+    const t = turnoDe(ahora);
+    const filasHoja: FilaListaDia[] = CAMAS_UNIDAD.map((c) => porCama.get(c)).filter((f): f is Fila => !!f).map(({ ep, ultimo, eventos, apks }) => {
+      const pac = pacientesRce.get(Number(camaRce(ep.cama)));
+      const a = apkVigente(apks, ep.id, ahora);
+      const v = ultimo?.ventilacion;
+      const partes = ultimo ? [ultimo.hora, v ? ETIQUETA_MODALIDAD[v.modalidad] : null, v?.fio2 != null ? `FiO2 ${v.fio2}` : null, v?.peep != null ? `PEEP ${v.peep}` : null, ultimo.spo2 != null ? `SpO2 ${ultimo.spo2}` : null] : [];
+      const flujo = estadoFlujoPve(eventos, ahora);
+      const prono = estadoProno(eventos, ahora);
+      const alertas = [
+        flujo.fase === "EN_CURSO" ? "PVE en curso" : null,
+        prono.enProno ? `Prono ${prono.horasAcumuladas} h` : null,
+        bnmVigente(eventos) || bnmEnCurso(ultimo?.infusiones) ? "BNM" : null
+      ].filter((x): x is string => !!x);
+      return {
+        cama: nombreCama(ep.cama), nombre: pac?.nombre ?? "", edad: pac?.edad ?? null, diaEstadia: diaDeEstadia(ep.ingresadoEn, ahora),
+        via: textoViaCama(ep, horasDeVm(ep, eventos, null, ahora)),
+        ultimo: partes.length ? partes.filter(Boolean).join(" · ") : "sin controles",
+        apk: a ? `${a.resultado === "CUMPLE" ? "Cumple" : "No cumple"} ${a.hora} ${a.siglas}` : "Pendiente",
+        alertas
+      };
+    });
+    const [yy, mm, dd] = t.fecha.split("-");
+    return listaDelDiaHtml(filasHoja, `${dd}-${mm}-${yy}`, t.tipo === "DIA" ? "día" : "noche");
+  };
+
   if (!filas) return <div className="cel-cuerpo"><p className="muted">Cargando camas…</p></div>;
   const enCama = trasladando ? porCama.get(trasladando.cama)?.ep ?? trasladando : null;
 
@@ -121,8 +156,14 @@ export function ListaCamas() {
       {ingresando && <IngresoRapido key={ingresando} cama={ingresando} onCancelar={() => setIngresando(null)} />}
       {remDe && <CompletarRem ep={remDe} onCerrar={() => setRemDe(null)} />}
       {enCama && <TrasladoCama ep={enCama} ocupadas={new Set(porCama.keys())} onCerrar={() => setTrasladando(null)} />}
+      {hoja && <VisorHoja titulo={hoja.titulo} html={hoja.html} onCerrar={() => setHoja(null)} />}
       {lectura ? (
-        <p className="small muted" style={{ margin: 0 }}>Camas de la unidad. Toca «Sábana» para ver los signos vitales y la ventilación; la historia y el plan están en Entrega.</p>
+        <>
+        <p className="small muted" style={{ margin: 0 }}>Camas de la unidad. Toca «Sábana» para ver los signos vitales y la ventilación, y la APK para ver la pauta; la historia y el plan están en Entrega.</p>
+        <button type="button" className="btn imprimir-lista" onClick={() => setHoja({ titulo: "Lista de pacientes del día", html: listaDelDia() })}>
+          <Printer size={15} aria-hidden /> Lista del día para imprimir
+        </button>
+        </>
       ) : (
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h3 style={{ margin: 0 }}>Mis camas ({nMias})</h3>
@@ -202,7 +243,12 @@ export function ListaCamas() {
               </button>
             )}
             <div className="row" style={{ gap: 6 }}>
-              <Pildora tipo={apk ? (apk.resultado === "CUMPLE" ? "good" : "crit") : ""}>{apk ? (apk.resultado === "CUMPLE" ? "APK firmada" : "APK no cumple") : "APK pendiente"}</Pildora>
+              {/* La pauta APK se abre al tocarla (28-nov-2026, Diego: el médico «solo mira el APK»). */}
+              {apks.length > 0 ? (
+                <button type="button" className="pildora-btn" aria-label={`Ver APK · ${nombreCama(ep.cama)}`} onClick={() => setHoja({ titulo: `APK · ${nombreCama(ep.cama)}`, html: documentoApkHtml({ apks: columnasApk(apks, ep.id), runPaciente: "", servicio: "UCI Adulto" }) })}>
+                  <Pildora tipo={apk ? (apk.resultado === "CUMPLE" ? "good" : "crit") : ""}>{apk ? (apk.resultado === "CUMPLE" ? "APK firmada" : "APK no cumple") : "APK pendiente"} ›</Pildora>
+                </button>
+              ) : <Pildora tipo="">APK pendiente</Pildora>}
               {flujo.fase === "EN_CURSO" && <Pildora tipo="acc">PVE {flujo.pve.minutosTranscurridos}/{flujo.pve.duracionMin} min</Pildora>}
               {duePost && <Pildora tipo="warn">Post extub. {duePost.etiqueta}</Pildora>}
               {prono.enProno && <Pildora tipo="warn">Prono {prono.horasAcumuladas} h</Pildora>}

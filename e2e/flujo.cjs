@@ -1697,6 +1697,18 @@ async function esperarServidor() {
       // Las tarjetas no ofrecen registrar: ni monitorización, ni eventos, ni alta, ni ingresar.
       for (const t of ["Monitorización", "Eventos", "Dar de alta", "Ingresar"]) assert.equal(await m.locator(`article button:has-text("${t}")`).count(), 0, "sin " + t);
       assert.ok(await m.locator('article button:has-text("Sábana")').count() > 0, "con sábana");
+      // 28-nov-2026: la lista del día para imprimir (con la columna de notas en blanco) y la APK de cada cama.
+      await m.click('button:has-text("Lista del día para imprimir")');
+      const marco = m.frameLocator(".visor-hoja-marco");
+      await marco.locator("text=Pacientes UCI").waitFor();
+      assert.ok(await marco.locator("td.nota").count() > 0, "una fila por cama ocupada, con notas en blanco");
+      await m.click('.visor-hoja [aria-label="Cerrar"]');
+      const verApk = m.locator('button[aria-label^="Ver APK"]').first();
+      if (await verApk.count()) {
+        await verApk.click();
+        await m.frameLocator(".visor-hoja-marco").locator("text=PAUTA DE COTEJO").waitFor();
+        await m.click('.visor-hoja [aria-label="Cerrar"]');
+      }
       await m.click('nav[aria-label="Navegación"] button:has-text("Entrega")');
       await m.waitForSelector('.ctl-cabeza h1:text-is("Entrega")');
       assert.ok(await m.locator(".ent-tarjeta").count() > 0, "la Entrega de todas las camas");

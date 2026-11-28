@@ -99,6 +99,21 @@ describe("cola de subida", () => {
     expect(JSON.stringify(paraRce)).not.toMatch(/nombre|rut"/i);
   });
 
+  it("RCE by Kaptus: la pauta APK también va traducida para el RCE (evento APK con sus marcas)", async () => {
+    const { api, paraRce } = servidorFalso();
+    const sync = new Sincronizador(db, api, () => reloj);
+    const ep = unEpisodio({ cama: "UCI-04" });
+    await db.episodios.put(ep);
+    await new Repositorio(db, sync).firmarApk({
+      id: "apk-sync-1", episodioId: ep.id, turno: "DIA" as never, fecha: "2026-11-28", hora: "09:40",
+      registradoEn: new Date(2026, 10, 28, 9, 41).toISOString(), rutAutor: "kine@hsp.cl", siglas: "DM",
+      versionPauta: "HSP-APK-1.2-2017", marcas: ["1", "1", "1", "1", "1", "1", "1", "1"], resultado: "CUMPLE", observacion: ""
+    });
+    await sync.empujar();
+    expect(paraRce).toHaveLength(1);
+    expect(paraRce[0]).toMatchObject({ tipo: "EVENTO", evento: "APK", cama: 4, datos: { resultado: "CUMPLE", marcas: "1,1,1,1,1,1,1,1" } });
+  });
+
   it("sin conexión conserva todo y reintenta más tarde con espera creciente", async () => {
     const { api, estado } = servidorFalso();
     estado.falla = "SIN_CONEXION";

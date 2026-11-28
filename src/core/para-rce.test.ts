@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { unControl, unEpisodio, unEvento, unaVentilacion } from "./fixtures";
-import { camaRce, controlParaRce, eventoParaRce, horaLocal, soporteRce } from "./para-rce";
-import type { EventoClinico } from "./tipos";
+import { apkParaRce, camaRce, controlParaRce, eventoParaRce, horaLocal, soporteRce } from "./para-rce";
+import type { EventoClinico, ValidacionApk } from "./tipos";
 
 describe("RCE by Kaptus: traducción al idioma del RCE", () => {
   it("las camas: «UCI-03» de Kaptus es la cama 3 del RCE", () => {
@@ -92,5 +92,18 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
 
   it("la hora va en hora local", () => {
     expect(horaLocal(new Date(2026, 0, 5, 4, 7).toISOString())).toBe("2026-01-05 04:07");
+  });
+  it("la pauta APK viaja como evento APK con las marcas en el orden del papel, sin identidad", () => {
+    const ep = unEpisodio({ cama: "UCI-06" });
+    const a: ValidacionApk = {
+      id: "apk-000001", episodioId: ep.id, turno: "DIA" as never, fecha: "2026-11-28", hora: "10:15",
+      registradoEn: new Date(2026, 10, 28, 10, 16).toISOString(), rutAutor: "kine@hsp.cl", siglas: "DM",
+      versionPauta: "HSP-APK-1.2-2017", marcas: ["1", "1", "0", "1", "1", "1", "NA", "NA"], resultado: "NO_CUMPLE", observacion: "Sin aspiración"
+    };
+    const it = apkParaRce(a, ep);
+    expect(it).toMatchObject({ id: "apk-000001", tipo: "EVENTO", evento: "APK", cama: 6, horaToma: "2026-11-28 10:15",
+      datos: { marcas: "1,1,0,1,1,1,NA,NA", resultado: "NO_CUMPLE", siglas: "DM", descripcion: "Sin aspiración" } });
+    expect(JSON.stringify(it)).not.toMatch(/nombre|rut"/i);
+    expect(apkParaRce(a, unEpisodio({ cama: "Pasillo" }))).toBeNull();
   });
 });

@@ -1380,3 +1380,9 @@ html.celular .sabana-cel-cuerpo{overflow-x:auto}
 .extubar-modo{display:flex;flex-direction:column;gap:6px;margin:4px 12px 10px;padding:10px 12px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;background:var(--accent-soft)}
 .extubar-modo select,.extubar-modo input{font:inherit;font-size:16px;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:var(--panel)}
 .extubar-ops{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Hoja para mirar e imprimir (APK, lista del día del médico; 28-nov-2026). */
+.visor-hoja{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg, #fff)}
+.visor-hoja-cab{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line, #ddd)}
+.visor-hoja-marco{flex:1;width:100%;border:0;background:#fff}
+.pildora-btn{border:0;background:none;padding:0;cursor:pointer;font:inherit}

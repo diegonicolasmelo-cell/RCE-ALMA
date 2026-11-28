@@ -15,7 +15,7 @@ import { infusionesActivas, semaforoDva } from "./infusiones";
 import { calcularPbw } from "./fisiologia";
 import { ASPECTOS_SECRECIONES } from "./catalogos";
 import { etiquetaEquipo } from "./equipos";
-import type { Control, Episodio, EquipoEnSala, EventoClinico, Modalidad, ViaAerea } from "./tipos";
+import type { Control, Episodio, EquipoEnSala, EventoClinico, Modalidad, ValidacionApk, ViaAerea } from "./tipos";
 
 /** Un control o un evento listo para el RCE. */
 export interface ItemParaRce {
@@ -243,4 +243,21 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
   }
   const equipos = e.tipo === "CAMBIO_EQUIPOS" ? { equipos: equiposRce(e.equipos) } : e.tipo === "TRASLADO_CAMA" ? { equipos: equiposRce(ep.equipos) } : {};
   return { id: e.id, tipo: "EVENTO", cama, horaToma: horaLocal(real), autor: e.rutAutor, evento, datos, ...equipos };
+}
+
+/**
+ * La pauta de cotejo APK en el idioma del RCE (28-nov-2026, Diego: «el APK en ambos»). Viaja como un
+ * evento más («APK»): el RCE la guarda con los eventos del teléfono, la nombra en la sábana y la
+ * imprime en su hoja APK con las marcas ya puestas. Las marcas van en el orden del papel, separadas
+ * por coma («1,1,0,NA,…»). La observación viaja como descripción (el RCE la corta a 140).
+ */
+export function apkParaRce(a: ValidacionApk, ep: Episodio): ItemParaRce | null {
+  const cama = camaRce(ep.cama);
+  if (cama === null) return null;
+  const fechaHora = /^\d{4}-\d{2}-\d{2}$/.test(a.fecha) && /^\d{2}:\d{2}$/.test(a.hora) ? `${a.fecha} ${a.hora}` : horaLocal(a.registradoEn);
+  const datos = limpio({
+    hora: a.hora, fecha: a.fecha, resultado: a.resultado, marcas: a.marcas.join(","),
+    siglas: a.siglas.slice(0, 8), version: a.versionPauta.slice(0, 40), descripcion: a.observacion ? a.observacion.slice(0, 140) : null
+  });
+  return { id: a.id, tipo: "EVENTO", cama, horaToma: fechaHora, autor: a.rutAutor, evento: "APK", datos };
 }

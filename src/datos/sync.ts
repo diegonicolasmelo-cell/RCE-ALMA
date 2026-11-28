@@ -12,7 +12,7 @@
 import { borrarMeta, leerMeta, guardarMeta } from "./db";
 import type { BaseLocal, EntradaCola } from "./db";
 import type { ClienteApi, LoteSync } from "./api";
-import { controlParaRce, conViaDe, eventoParaRce, normalizarControl, viaMasReciente } from "@core/index";
+import { apkParaRce, controlParaRce, conViaDe, eventoParaRce, normalizarControl, viaMasReciente } from "@core/index";
 import type { ItemParaRce } from "@core/index";
 import {
   apkDeNube,
@@ -135,6 +135,14 @@ export class Sincronizador {
     try {
       const paraRce: ItemParaRce[] = [];
       for (const e of lista) {
+        if (e.tipo === "apk") {
+          // La pauta APK también va al RCE (28-nov-2026): la imprime con las marcas puestas.
+          const a = await this.db.apk.get(e.registroId);
+          const ep = a ? await this.db.episodios.get(a.episodioId) : undefined;
+          const it = a && ep ? apkParaRce(a, ep) : null;
+          if (it) paraRce.push(it);
+          continue;
+        }
         if (e.tipo !== "control" && e.tipo !== "evento") continue;
         if (e.tipo === "control") {
           const c = await this.db.controles.get(e.registroId);
@@ -324,6 +332,10 @@ export class Sincronizador {
       for (const ev of evs) {
         const it = eventoParaRce(ev, ep);
         if (it && !SIN_RELLENO.has(String(it.evento ?? ""))) { const { equipos: _sinEquipos, ...resto } = it; void _sinEquipos; items.push({ ...resto, relleno: true }); }
+      }
+      for (const a of await this.db.apk.where("episodioId").equals(ep.id).toArray()) {
+        const it = apkParaRce(a, ep);
+        if (it) items.push({ ...it, relleno: true });
       }
     }
     for (let i = 0; i < items.length; i += RELLENO_POR_ENVIO) {

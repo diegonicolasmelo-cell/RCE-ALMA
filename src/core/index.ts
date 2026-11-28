@@ -40,3 +40,4 @@ export * from "./para-rce";
 export * from "./entrega";
 export * from "./ronda";
 export * from "./automaticos";
+export * from "./lista-dia";

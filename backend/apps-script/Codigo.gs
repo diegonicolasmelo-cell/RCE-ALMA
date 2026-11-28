@@ -1005,6 +1005,13 @@ function traerCorreccionesRce_() {
     if (String(c.recibido || "") > cursor) cursor = String(c.recibido);
     var ep = episodioDe[String(c.corrige || "")];
     if (!ep || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(c.en || ""))) continue;
+    // Anulada en el RCE (28-nov-2026): llega como una anulación más, igual que si coordinación anulara en el celular.
+    if (c.anula === true) {
+      nuevos.push({ id: "anul-rce-" + String(c.id).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60), episodioId: ep, tipo: "ANULACION_EVENTO",
+        anulaId: String(c.corrige), motivo: String(c.motivo || "").slice(0, 200), origen: "RCE",
+        hora: String(c.en).slice(11, 16), registradoEn: ahora, rutAutor: "rce:" + String(c.firma || "").slice(0, 8), comentario: "" });
+      continue;
+    }
     var en = Utilities.parseDate(String(c.en), "America/Santiago", "yyyy-MM-dd HH:mm");
     nuevos.push({
       id: "corr-rce-" + String(c.id).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60), episodioId: ep, tipo: "CORRECCION_EVENTO",

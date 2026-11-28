@@ -263,6 +263,14 @@ describe("eventos que se monitorizan con un control", async () => {
   it("un procedimiento sin control despues queda sin monitorizacion; un cambio de filtro no la pide", () => {
     expect(eventosSinMonitorizar([puncion, filtro], [previo]).map((e) => e.id)).toEqual([puncion.id]);
   });
+  it("ajustar el tubo y cambiar HME, TrachCare o HEPA no piden monitorizacion (Diego, 26-nov-2026)", () => {
+    const otros = [
+      unEvento({ tipo: "AJUSTE_TUBO", fijacionCm: "23", motivo: "CONTROL_RADIOLOGICO", registradoEn: "2026-11-13T10:42:00.000Z" } as never),
+      unEvento({ tipo: "CAMBIO_HMEF", registradoEn: "2026-11-13T10:43:00.000Z" } as never),
+      unEvento({ tipo: "CAMBIO_FILTRO", elemento: "TRACHCARE", registradoEn: "2026-11-13T10:44:00.000Z" } as never)
+    ];
+    expect(eventosSinMonitorizar([...otros, filtro], [previo])).toEqual([]);
+  });
   it("con su control ligado (o uno posterior) ya no", () => {
     expect(eventosSinMonitorizar([puncion], [previo, unControl({ id: "c1", registradoEn: "2026-11-13T10:45:00.000Z", eventoId: puncion.id })])).toEqual([]);
   });
@@ -295,5 +303,31 @@ describe("motivo de la reintubación (24-nov-2026, la lista del RCE)", () => {
     const reint = unEvento<Extract<EventoClinico, { tipo: "REINTUBACION" }>>({ tipo: "REINTUBACION", via: "TET", calibre: "7.5", fijacionCm: "22", motivo: "Edema laríngeo post extubación", hora: "14:00", registradoEn: "2026-11-24T17:00:00.000Z" });
     expect(narrarEventos([reint], [ext, reint], [], 60).join(" ")).toMatch(/reintubación a las 14:00 hrs con TOT N° 7,5 a 22 cm de arcada dental, por edema laríngeo post extubación/);
     expect(describirEvento(reint, [ext, reint])).toMatch(/· Edema laríngeo post extubación$/);
+  });
+});
+
+describe("correcciones de hora de coordinación (26-nov-2026)", async () => {
+  const { sinAnulados, estadoProno } = await import("./eventos");
+  const { eventoParaRce } = await import("./para-rce");
+  const { unEvento, unEpisodio } = await import("./fixtures");
+  const prono = unEvento({ id: "p1", tipo: "INICIO_PRONO", hora: "00:00", registradoEn: "2026-11-13T03:00:00.000Z" } as never);
+  const supino = unEvento({ id: "s1", tipo: "SUPINACION", hora: "12:00", registradoEn: "2026-11-13T15:00:00.000Z" } as never);
+  const corr = (id: string, en: string, registradoEn: string, extra = {}) => unEvento({ id, tipo: "CORRECCION_EVENTO", corrigeId: "s1", en, motivo: "se supinó antes", registradoEn, ...extra } as never);
+  it("la hora corregida manda en el cálculo de horas de prono y la marca no se ve", () => {
+    const ahora = new Date("2026-11-13T20:00:00.000Z");
+    expect(estadoProno(sinAnulados([prono, supino]), ahora).horasAcumuladas).toBe(12);
+    const ev = sinAnulados([prono, supino, corr("c1", "2026-11-13T11:00:00.000Z", "2026-11-13T16:00:00.000Z")]);
+    expect(ev.map((e) => e.id)).toEqual(["p1", "s1"]);
+    expect(estadoProno(ev, ahora).horasAcumuladas).toBe(8);
+  });
+  it("vale la última corrección", () => {
+    const ev = sinAnulados([prono, supino, corr("c2", "2026-11-13T12:00:00.000Z", "2026-11-13T17:00:00.000Z"), corr("c1", "2026-11-13T11:00:00.000Z", "2026-11-13T16:00:00.000Z")]);
+    expect(ev.find((e) => e.id === "s1")?.registradoEn).toBe("2026-11-13T12:00:00.000Z");
+  });
+  it("la del celular va al RCE; la que vino del RCE no se le devuelve; la nota de la entrega no sale", () => {
+    const ep = unEpisodio({ cama: "UCI-03" } as never);
+    expect(eventoParaRce(corr("c1", "2026-11-13T11:00:00.000Z", "2026-11-13T16:00:00.000Z"), ep)?.evento).toBe("CORRECCION");
+    expect(eventoParaRce(corr("c3", "2026-11-13T11:00:00.000Z", "2026-11-13T16:00:00.000Z", { origen: "RCE" }), ep)).toBeNull();
+    expect(eventoParaRce(unEvento({ tipo: "NOTA_ENTREGA", texto: "pendiente GSA" } as never), ep)).toBeNull();
   });
 });

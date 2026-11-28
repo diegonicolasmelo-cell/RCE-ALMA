@@ -5,7 +5,7 @@
  */
 
 import { Mic, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import {
   ASPECTOS_SECRECIONES,
@@ -24,6 +24,7 @@ import {
   calcularPpc,
   cambiarModalidad,
   camposSugeribles,
+  ieDelAnterior,
   conSoporte,
   esModalidadControlada,
   esViaAereaArtificial,
@@ -151,6 +152,16 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
   const bloqueado = b.asincronico && controlada;
   const campos = CAMPOS_POR_MODALIDAD[b.modalidad];
   const sugeribles = camposSugeribles(b, ultimo);
+  // I:E prellenado si la ventilación programada es la misma del control anterior (26-nov-2026). Si después
+  // cambia el TI, el flujo, el Vt o la FR, el I:E que puso la app se borra; el que escribió el colega no.
+  const ieSug = ieDelAnterior(b, ultimo);
+  const ieAuto = useRef<string | null>(null);
+  useEffect(() => {
+    const actual = b.vent.ie.trim();
+    if (ieSug !== null && actual === "") { ieAuto.current = ieSug; setVent("ie", ieSug); }
+    else if (ieSug === null && ieAuto.current !== null && actual === ieAuto.current) { ieAuto.current = null; setVent("ie", ""); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ieSug]);
   const d = calcularDerivados(materializarControl(b, { id: "tmp", numero: 0, ahora: new Date(0), viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo }), pbw);
   const mlKg = (v: string): string => {
     const n = medicionDe(v);
@@ -390,8 +401,11 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
               const bloq = bloqueado && (c.campo === "pPlateau" || c.campo === "compliance");
               const esVt = c.campo === "vtProgramado" || c.campo === "vtEspirado";
               return (
-                <Fila key={c.campo} etiqueta={c.etiqueta} unidad={c.unidad} clase={bloq ? "bloq" : ""} ayuda={esVt ? <span className="esc">{mlKg(b.vent[c.campo])}</span> : undefined} {...vz(c.campo)}>
-                  <Num id={`in-vent-${c.campo}`} campo={c.campo} etiqueta={c.etiqueta} valor={bloq ? "" : b.vent[c.campo]} deshabilitado={bloq} placeholder={bloq ? "bloqueado" : ""} onCambio={(v) => setVent(c.campo, v)} />
+                <Fila key={c.campo} etiqueta={c.etiqueta} {...(c.campo === "ie" ? {} : { unidad: c.unidad })} clase={bloq ? "bloq" : ""}
+                  ayuda={esVt ? <span className="esc">{mlKg(b.vent[c.campo])}</span> : c.campo === "ie" && ieAuto.current !== null && b.vent.ie === ieAuto.current ? "Igual al control anterior" : undefined} {...vz(c.campo)}>
+                  {c.campo === "ie"
+                    ? <span className="ie-par"><span className="ie-uno" aria-hidden>1 :</span><Num id="in-vent-ie" campo="ie" etiqueta="I:E, lo que va después del 1:" valor={b.vent.ie} onCambio={(v) => { ieAuto.current = null; setVent("ie", v); }} /></span>
+                    : <Num id={`in-vent-${c.campo}`} campo={c.campo} etiqueta={c.etiqueta} valor={bloq ? "" : b.vent[c.campo]} deshabilitado={bloq} placeholder={bloq ? "bloqueado" : ""} onCambio={(v) => setVent(c.campo, v)} />}
                 </Fila>
               );
             })}

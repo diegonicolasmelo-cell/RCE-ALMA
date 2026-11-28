@@ -28,7 +28,7 @@ const p2 = (n: number): string => String(n).padStart(2, "0");
 const ddmm = (iso: string): string => { const d = new Date(iso); return `${p2(d.getDate())}-${p2(d.getMonth() + 1)}`; };
 
 /** Pasos internos de un flujo que no se listan como eventos del turno. */
-const INTERNOS = new Set<EventoClinico["tipo"]>(["CONTROL_PVE", "INICIO_PVE", "EVALUACION_PVE", "REEVAL_POST_EXTUB", "EVALUACION_PUNTUAL"]);
+const INTERNOS = new Set<EventoClinico["tipo"]>(["CONTROL_PVE", "INICIO_PVE", "EVALUACION_PVE", "REEVAL_POST_EXTUB", "EVALUACION_PUNTUAL", "NOTA_ENTREGA"]);
 
 export interface FichaEntrega {
   readonly ep: Episodio;

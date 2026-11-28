@@ -964,7 +964,65 @@ function leerHoja(nombre, desde) {
   return salida;
 }
 
+/**
+ * Correcciones de hora hechas por coordinación EN EL RCE (Diego, 26-nov-2026: «se editan en el RCE y esto
+ * repercute en Kaptus»). Se le preguntan al RCE como mucho una vez por minuto y cada una entra aquí como un
+ * evento CORRECCION_EVENTO más (de solo agregar), así que todos los teléfonos la reciben en su próxima
+ * descarga. Si el RCE no responde no pasa nada: se vuelve a preguntar al minuto siguiente.
+ */
+function traerCorreccionesRce_() {
+  var enlace = enlaceRce_();
+  if (!enlace) return 0;
+  var cache = CacheService.getScriptCache();
+  if (cache.get("rce_corr_reciente")) return 0;
+  cache.put("rce_corr_reciente", "1", 60);
+  var props = PropertiesService.getScriptProperties();
+  var desde = props.getProperty("RCE_CORR_DESDE") || "";
+  var resp = null;
+  try {
+    var r = UrlFetchApp.fetch(enlace.url, {
+      method: "post", contentType: "text/plain;charset=utf-8",
+      payload: JSON.stringify({ accion: "correccionesEventos", token: enlace.token, desde: desde }),
+      muteHttpExceptions: true, followRedirects: true
+    });
+    if (r.getResponseCode() === 200) resp = JSON.parse(r.getContentText());
+  } catch (e) { resp = null; }
+  if (!resp || resp.ok !== true) return 0;
+  var lista = resp.correcciones || [];
+  if (!lista.length) return 0;
+  var hoja = hojaPorNombre(HOJAS.EVENTOS);
+  var ultima = hoja.getLastRow();
+  var episodioDe = {};
+  if (ultima >= 2) {
+    var ids = hoja.getRange(2, 1, ultima - 1, 2).getValues();
+    for (var i = 0; i < ids.length; i++) episodioDe[String(ids[i][0])] = String(ids[i][1]);
+  }
+  var ahora = new Date().toISOString();
+  var nuevos = [];
+  var cursor = desde;
+  for (var j = 0; j < lista.length && j < 100; j++) {
+    var c = lista[j] || {};
+    if (String(c.recibido || "") > cursor) cursor = String(c.recibido);
+    var ep = episodioDe[String(c.corrige || "")];
+    if (!ep || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(c.en || ""))) continue;
+    var en = Utilities.parseDate(String(c.en), "America/Santiago", "yyyy-MM-dd HH:mm");
+    nuevos.push({
+      id: "corr-rce-" + String(c.id).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60), episodioId: ep, tipo: "CORRECCION_EVENTO",
+      corrigeId: String(c.corrige), en: en.toISOString(), motivo: String(c.motivo || "").slice(0, 200), origen: "RCE",
+      hora: String(c.en).slice(11, 16), registradoEn: ahora, rutAutor: "rce:" + String(c.firma || "").slice(0, 8), comentario: ""
+    });
+  }
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return 0;
+  try {
+    if (nuevos.length) agregarRegistros(HOJAS.EVENTOS, nuevos);
+    if (cursor) props.setProperty("RCE_CORR_DESDE", cursor);
+  } finally { lock.releaseLock(); }
+  return nuevos.length;
+}
+
 function leer(desde) {
+  try { traerCorreccionesRce_(); } catch (e) { /* el RCE no frena la descarga */ }
   var props = PropertiesService.getScriptProperties();
   var borrados = [];
   try {

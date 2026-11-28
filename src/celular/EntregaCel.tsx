@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { camaRce, hitosDelEpisodio, horasDeVm, nombreCama, soloLectura } from "@core/index";
-import type { HistoriaEntrega } from "@core/index";
+import { buscarProfesional, camaRce, hitosDelEpisodio, horasDeVm, nombreCama, soloLectura } from "@core/index";
+import type { EventoClinico, HistoriaEntrega } from "@core/index";
+import { baseEvento } from "./eventos-ui";
 import { usePacientesRce } from "./pacientesRce";
 import { useServicios } from "../app/contexto";
 import { useApp } from "../app/store";
@@ -14,6 +15,46 @@ const ddmm = (yyyymmdd: string): string => { const m = /^(\d{4})-(\d{2})-(\d{2})
 
 type EstadoHistorias = "cargando" | { readonly error: string } | ReadonlyMap<number, HistoriaEntrega>;
 const HISTORIA_MAX = 1000;
+const NOTA_MAX = 300;
+const RE_RUT = /\b\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]\b/g;
+/** Las notas de quien recibe valen para el turno que empieza: se muestran las de las últimas 14 horas. */
+const HORAS_NOTA = 14;
+
+/**
+ * Lo que anota quien RECIBE el turno (Diego, 26-nov-2026: «si el colega menciona algo que no anotó, él lo
+ * puede anotar directamente en la tarjeta»). Es un evento de solo agregar del episodio: lo ven los dos
+ * celulares, queda con firma y hora, y no va a ninguna cifra ni al RCE.
+ */
+function NotasRecibe({ ep, notas }: { ep: ResumenCama["ep"]; notas: readonly Extract<EventoClinico, { tipo: "NOTA_ENTREGA" }>[] }) {
+  const { repo } = useServicios();
+  const sesion = useApp((s) => s.sesion)!;
+  const lectura = soloLectura(sesion.rol);
+  const [texto, setTexto] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const anotar = async (): Promise<void> => {
+    const t = texto.replace(RE_RUT, "").trim().slice(0, NOTA_MAX);
+    if (!t || guardando) return;
+    setGuardando(true);
+    try {
+      await repo.registrarEvento({ ...baseEvento(ep, sesion.rut, new Date()), tipo: "NOTA_ENTREGA", texto: t });
+      setTexto("");
+    } finally { setGuardando(false); }
+  };
+  if (lectura && notas.length === 0) return null;
+  return (
+    <div className="ent-notas" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <b>Anotado al recibir</b>
+      {notas.map((n) => <span key={n.id} className="ent-nota">{n.texto}<small>{n.hora} · {buscarProfesional(n.rutAutor)?.nombre.split(" ")[0] ?? ""}</small></span>)}
+      {!lectura && (
+        <span className="ent-nota-nueva">
+          <input type="text" value={texto} maxLength={NOTA_MAX} placeholder="Lo que te dijeron y no está anotado…" aria-label={`Anotar al recibir · ${nombreCama(ep.cama)}`}
+            onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void anotar(); } }} />
+          <button type="button" className="btn" disabled={!texto.trim() || guardando} onClick={() => void anotar()}>Anotar</button>
+        </span>
+      )}
+    </div>
+  );
+}
 
 /** Qué decir si la historia no se pudo guardar. */
 function textoNoGuardada(error: string): string {
@@ -159,6 +200,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
                 <span className="ent-sec">Hoy</span>
                 {f.eventos.map((l) => <span key={l} className="ent-linea">{l}</span>)}
                 {pendientes.length > 0 && <div className="ent-pend"><b>Para el que llega</b>{pendientes.map((p) => <span key={p}>{p}</span>)}</div>}
+                <NotasRecibe ep={ep} notas={eventos.filter((x): x is Extract<EventoClinico, { tipo: "NOTA_ENTREGA" }> => x.tipo === "NOTA_ENTREGA" && ahora.getTime() - new Date(x.registradoEn).getTime() < HORAS_NOTA * 3600000)} />
                 <span className="ent-giro">Historia ⟲</span>
               </section>
               <section className="ent-cara ent-atras" aria-hidden={!vuelta}>

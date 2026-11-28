@@ -217,6 +217,13 @@ async function esperarServidor() {
       assert.match(await primera.locator(".ent-historia").textContent(), /Ingresa por neumonía grave/, "queda a la vista al guardar");
       assert.match(await primera.locator(".ent-escribir").textContent(), /Editar historia/);
       await primera.locator(".ent-giro").last().click();
+      // Quien recibe anota en la tarjeta lo que le dijeron y no estaba anotado (26-nov-2026).
+      await cel.waitForTimeout(600);
+      await primera.locator(".ent-nota-nueva input").fill("Pendiente GSA de control a las 14");
+      await primera.locator('.ent-nota-nueva button:text-is("Anotar")').click();
+      await primera.locator(".ent-nota").first().waitFor();
+      assert.match(await primera.locator(".ent-notas").textContent(), /Pendiente GSA de control a las 14/, "la nota queda en la tarjeta");
+      assert.equal(await primera.getAttribute("aria-pressed"), "false", "anotar no da vuelta la tarjeta");
       assert.equal(await primera.getAttribute("aria-pressed"), "false", "vuelve a la cara de hoy");
       await cel.click('nav[aria-label="Navegación"] button:has-text("Pacientes")');
       await cel.waitForSelector('article[aria-label^="Cama"]');
@@ -303,6 +310,7 @@ async function esperarServidor() {
       assert.ok(et.some((t) => t.startsWith("I:E")), "en ACPC se anota la I:E: " + et.join(" | "));
       await cel.selectOption("#in-modo", "ACVC");
       assert.equal(await cel.locator("#in-vent-ie").count(), 1, "en ACVC se anota la I:E");
+      assert.equal(await cel.locator(".fila:has(#in-vent-ie) .ie-uno").textContent(), "1 :", "el «1 :» se ve al lado de la casilla del I:E");
       assert.equal(await cel.locator('.fila:has(.calc):has-text("Relación I:E")').count(), 1, "sin anotarla, la I:E calculada se ve en Calculado (pedido de Álvaro)");
       assert.equal(await cel.locator("#in-vent-compliance").count(), 1, "la compliance estática se anota en su casilla");
       assert.equal(await cel.locator('.fila:has(.calc):has-text("Compliance")').count(), 0, "ya no se calcula");

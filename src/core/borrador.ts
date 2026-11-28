@@ -541,6 +541,28 @@ export function camposSugeribles(b: BorradorControl, ultimo: Control | null): Ca
   return CAMPOS_SUGERIBLES.filter((c) => aplica.has(c) && b.vent[c].trim() === "" && ultimo.ventilacion[c] !== null);
 }
 
+/**
+ * I:E del control anterior cuando la ventilacion programada no cambio (Diego, 26-nov-2026: «si el Vt, el
+ * flujo, el TI y la FR son los mismos, el I:E deberia venir prellenado»). Devuelve el texto a poner, o
+ * null si algun ajuste que define el I:E cambio, falta, o el modo es otro.
+ */
+const CAMPOS_DEFINEN_IE: readonly CampoVent[] = ["frProgramada", "vtProgramado", "flujo", "ti", "presion"];
+export function ieDelAnterior(b: BorradorControl, ultimo: Control | null): string | null {
+  if (!ultimo || ultimo.ventilacion.modalidad !== b.modalidad) return null;
+  const previo = ultimo.ventilacion.ie;
+  if (previo === null || previo === undefined || !(previo > 0)) return null;
+  const aplica = new Set(CAMPOS_POR_MODALIDAD[b.modalidad].map((d) => d.campo));
+  if (!aplica.has("ie")) return null;
+  const define = CAMPOS_DEFINEN_IE.filter((c) => aplica.has(c));
+  if (!define.includes("frProgramada")) return null;
+  for (const c of define) {
+    const ahora = medicionDe(b.vent[c]);
+    const antes = ultimo.ventilacion[c];
+    if (ahora === null || antes === null || antes === undefined || ahora !== antes) return null;
+  }
+  return textoDe(previo);
+}
+
 /** "Usar lo anterior": rellena SOLO los casilleros programados que siguen vacios. */
 export function sugerirAnterior(b: BorradorControl, ultimo: Control | null): BorradorControl {
   const campos = camposSugeribles(b, ultimo);

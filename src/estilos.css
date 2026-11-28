@@ -774,17 +774,15 @@ body.teclado-propio .barra-inf{display:none}
 .fa-t{padding:2px 12px 0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--accent)}
 .fa-campos{flex:1 1 0;min-height:0;list-style:none;margin:0;padding:0 10px;display:flex;flex-direction:column}
 .fa-campos li{flex:1 1 0;min-height:0;max-height:46px;display:flex;border-bottom:1px solid var(--line)}
-.fa-campos button{flex:1;width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;background:none;border:0;padding:0 4px;color:var(--ink);font:inherit;text-align:left;min-height:0}
-.fa-campos button span{font-size:15px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fa-campos button b{font-size:20px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%;text-align:right}
-.fa-campos li.com button b{font-size:13px;white-space:normal;line-height:1.2}
+.fa-campos .fa-par{flex:1;width:100%;display:flex;overflow:hidden;line-height:normal;box-sizing:border-box;justify-content:space-between;align-items:center;gap:10px;background:none;border:0;padding:0 4px;color:var(--ink);font:inherit;text-align:left;min-height:0}
+.fa-campos .fa-par span{font-size:15px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fa-campos .fa-par b{font-size:20px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%;text-align:right}
+.fa-campos li.com .fa-par b{font-size:13px;white-space:normal;line-height:1.2}
 .fa-campos li.blanco b{font-size:13px;font-weight:500;color:var(--muted)}
-.fa-campos li.hecho button span,.fa-campos li.hecho button b{color:var(--muted);text-decoration:line-through}
-.fa-campos li.hecho button span::before{content:"✓ ";color:var(--good);text-decoration:none;display:inline-block}
-.ficha-alma.media .fa-campos button span{font-size:14px}.ficha-alma.media .fa-campos button b{font-size:18px}
+.ficha-alma.media .fa-campos .fa-par span{font-size:14px}.ficha-alma.media .fa-campos .fa-par b{font-size:18px}
 .ficha-alma.compacta .fa-dato b{font-size:22px}
-.ficha-alma.compacta .fa-campos button span{font-size:13px}.ficha-alma.compacta .fa-campos button b{font-size:16px}
-.ficha-alma.grande .fa-campos button b{font-size:24px}
+.ficha-alma.compacta .fa-campos .fa-par span{font-size:13px}.ficha-alma.compacta .fa-campos .fa-par b{font-size:16px}
+.ficha-alma.grande .fa-campos .fa-par b{font-size:24px}
 /* Con la fila «C1 · C2…» arriba, el modo compacto cede esos pixeles en los signos (peor caso: 360 x 640). */
 .ficha-alma.compacta.con-controles .fa-dato{padding:4px 8px 3px}.ficha-alma.compacta.con-controles .fa-dato b{font-size:20px}
 @media (max-height:700px){
@@ -1367,3 +1365,14 @@ html.celular .sabana-cel-cuerpo{overflow-x:auto}
 .anular-ev{margin-left:auto;color:var(--danger,#b3261e)}
 .anular-form{display:flex;flex-wrap:wrap;gap:6px;width:100%;margin-top:6px}
 .anular-form input{flex:1 1 160px;min-width:0}
+/* I:E (Diego, 26-nov-2026): el «1 :» se ve grande al lado de la casilla, para que nadie escriba la relación entera. */
+.ie-par{display:inline-flex;align-items:center;gap:6px}
+.ie-uno{font:700 18px/1 var(--font-data);color:var(--ink);letter-spacing:.02em}
+.ie-par .num{min-width:0}
+/* Lo anotado por quien recibe el turno (26-nov-2026) */
+.ent-notas{display:flex;flex-direction:column;gap:4px;margin-top:6px;padding:8px 10px;border:1px dashed var(--line);border-radius:8px}
+.ent-notas > b{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2)}
+.ent-nota{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.ent-nota small{color:var(--muted);white-space:nowrap}
+.ent-nota-nueva{display:flex;gap:6px}
+.ent-nota-nueva input{flex:1;min-width:0;font:inherit;font-size:16px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}

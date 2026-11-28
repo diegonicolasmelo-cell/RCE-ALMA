@@ -38,6 +38,7 @@ import type {
   Infusiones,
   Medicion,
   Modalidad,
+  MotivoExtubacionSinPve,
   MonitoreoEpisodio,
   Neuromonitoreo,
   ReologiaSecreciones,
@@ -98,6 +99,12 @@ export interface BorradorControl {
   pad: string;
 
   modalidad: Modalidad;
+  /**
+   * Extubación desde el modo (Diego, 28-nov-2026): con TOT se elige un modo de vía aérea natural y el control
+   * pasa a ser la monitorización inmediata post extubación. Solo la programada FUERA de protocolo se registra
+   * aquí (con su motivo del protocolo de weaning); la con protocolo va por la PVE.
+   */
+  extubar?: { readonly motivo: MotivoExtubacionSinPve | ""; readonly hora: string } | null;
   /**
    * Hora REAL (HH:mm) de la desvinculacion o reconexion que deduce el cambio de modo
    * respecto del control anterior. Puede ser antes del control; "" = la de ahora.
@@ -320,6 +327,7 @@ export function validarBorrador(b: BorradorControl, ctx: ContextoValidacion): re
   for (const c of CAMPOS_VITALES) {
     if (medicionDe(b[c]) === null) falta(c, ETIQUETA_VITAL[c]);
   }
+  if (b.extubar && !b.extubar.motivo) falta("extubar", "Motivo de la extubación sin protocolo");
   // Valores imposibles (24-nov-2026): casi siempre un dato escrito en la casilla equivocada (un Vt en la FR).
   const fuera = (campo: string, etiqueta: string, unidad: string, v: number | null): void => {
     const r = RANGOS_CONTROL[campo];

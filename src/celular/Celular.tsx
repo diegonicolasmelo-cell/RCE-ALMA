@@ -29,7 +29,7 @@ import {
   marcasPorDefecto,
   mostrarCamasPrueba
 } from "@core/index";
-import type { BorradorControl, Episodio } from "@core/index";
+import type { BorradorControl, DispositivoPosterior, Episodio, EventoClinico } from "@core/index";
 import { useServicios } from "../app/contexto";
 import { useAhora, useConsulta, useOnline } from "../app/hooks";
 import { leerMeta } from "../datos/db";
@@ -399,9 +399,11 @@ export function Celular() {
     // se sigue marcando a mano en la pestaña APK.
     const apkActual = apkVigente(apks, ep.id, new Date(), sesion.rut);
     const sinApk = apkActual === null;
+    // Extubación desde el modo (28-nov-2026): el control se valida con la vía con que QUEDA el paciente.
+    const extubando = !!b.extubar && ep.viaAereaActual === "TET";
     const problemas = validarBorrador(b, {
       apkVigente: apkActual,
-      viaAerea: ep.viaAereaActual,
+      viaAerea: extubando ? "NATURAL" : ep.viaAereaActual,
       modalidadAnterior: ultimo?.ventilacion.modalidad ?? null,
       ahora: new Date()
     }).filter((p) => !(sinApk && p.campo === "apk" && /firmar la APK/.test(p.mensaje)));
@@ -432,9 +434,28 @@ export function Celular() {
     const realControl = horaReal ? momentoPreciso(horaReal, t) : t;
     // Si se llego aqui desde un evento, este control lo monitoriza y queda ligado a el.
     const pendiente = useApp.getState().eventoMonitorizar;
-    const ligado = pendiente?.episodioId === ep.id ? pendiente : null;
-    const control = { ...materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: realControl, viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo }), ...(ligado ? { eventoId: ligado.eventoId } : {}) };
+    let ligado = pendiente?.episodioId === ep.id ? pendiente : null;
+    // Extubación programada fuera de protocolo, elegida en el modo (Diego, 28-nov-2026: «que quede de forma
+    // inmediata una monitorización»): primero el evento con su motivo y su hora real; el control queda ligado a
+    // él y además cuenta como el control inmediato post extubación de la vigilancia de la PVE.
+    let extEv: EventoClinico | null = null;
+    if (extubando && b.extubar?.motivo) {
+      const realExt = momentoDeEvaluacion(b.extubar.hora || horaDe(t), t) ?? t;
+      const disp: DispositivoPosterior = b.modalidad === "CNAF" ? "CNAF" : b.modalidad === "VNI_CPAP" || b.modalidad === "VNI_ST" ? "VMNI" : b.modalidad === "AIRE_AMBIENTE" ? "AIRE_AMBIENTE" : "O2_CONVENCIONAL";
+      extEv = { ...baseEvento(ep, sesion.rut, realExt), tipo: "EXTUBACION_PROGRAMADA", dispositivo: disp, sinPve: b.extubar.motivo } as EventoClinico;
+      await repo.registrarEvento(extEv);
+      ligado = { episodioId: ep.id, eventoId: extEv.id, texto: "Extubación fuera de protocolo", hora: extEv.hora };
+    }
+    const enControl = extEv && realControl.getTime() <= new Date(extEv.registradoEn).getTime() ? new Date(new Date(extEv.registradoEn).getTime() + 1000) : realControl;
+    const control = { ...materializarControl(b, { id: nuevoId(), numero: controles.length + 1, ahora: enControl, viaAerea: extEv ? "NATURAL" : ep.viaAereaActual, monitoreo: ep.monitoreo }), ...(ligado ? { eventoId: ligado.eventoId } : {}) };
     const automaticos = await repo.guardarControl(control);
+    if (extEv) {
+      const g = control.glasgow;
+      await repo.registrarEvento({ ...baseEvento(ep, sesion.rut, new Date(new Date(control.registradoEn).getTime() + 1)), tipo: "REEVAL_POST_EXTUB", momento: "EXTUB",
+        fc: control.fc, pam: control.pas !== null && control.pad !== null ? Math.round((control.pas + 2 * control.pad) / 3) : null, gcs: null,
+        ...(g && g.ocular !== null && g.verbal !== null && g.motora !== null ? { glasgow: `${g.ocular}-${g.verbal}-${g.motora}` } : {}),
+        fr: control.ventilacion.frTotal, fio2: control.ventilacion.fio2, spo2: control.spo2, trabajoResp: "", manejoSecreciones: "" } as EventoClinico);
+    }
     // Cambio de soporte (p. ej. CPAP+PS a tubo T / HME): desvinculacion o reconexion, con su hora real.
     const tr = transicionSoporte(ultimo?.ventilacion.modalidad ?? null, b.modalidad, ep.viaAereaActual);
     if (tr) {
@@ -449,7 +470,7 @@ export function Celular() {
     const destino = ir === "siguiente" ? siguientePaciente : ir === "anterior" ? anteriorPaciente : null;
     if (destino) irA("cama", destino.id);
     else irA("camas");
-    const conEvento = (tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "") +
+    const conEvento = (extEv ? " Extubación fuera de protocolo registrada: este control es el inmediato post extubación; los de 30, 60 y 120 min se anotan en la PVE." : tr ? ` ${tr.texto} registrada.` : ligado ? ` Ligado a: ${ligado.texto}.` : "") +
       (automaticos.length ? ` Registrado solo: ${automaticos.map((e) => (e.tipo === "FIN_BNM" ? "suspensión de BNM" : e.tipo === "SUSPENSION_DVA" ? "suspensión de DVA" : "suspensión de sedación")).join(" y ")}.` : "");
     const sigue = destino ? ` Sigue ${nombreCama(destino.cama)}.` : "";
     const apkTxt = apkRecien ? " APK firmada." : "";

@@ -1376,3 +1376,7 @@ html.celular .sabana-cel-cuerpo{overflow-x:auto}
 .ent-nota small{color:var(--muted);white-space:nowrap}
 .ent-nota-nueva{display:flex;gap:6px}
 .ent-nota-nueva input{flex:1;min-width:0;font:inherit;font-size:16px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+/* Extubación desde el modo (28-nov-2026) */
+.extubar-modo{display:flex;flex-direction:column;gap:6px;margin:4px 12px 10px;padding:10px 12px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;background:var(--accent-soft)}
+.extubar-modo select,.extubar-modo input{font:inherit;font-size:16px;min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 8px;background:var(--panel)}
+.extubar-ops{display:flex;gap:8px;flex-wrap:wrap}

@@ -17,6 +17,7 @@ import {
   GRUPO_MODALIDAD,
   INFUSIONES,
   MODALIDADES_POR_VIA,
+  ETIQUETA_MOTIVO_SIN_PVE,
   OPCIONES_DEGLUCION,
   bandaProteccion,
   calcularDerivados,
@@ -44,7 +45,7 @@ import {
   transicionSoporte,
   volumenObjetivoMl
 } from "@core/index";
-import type { BorradorControl, CampoVent, GrupoInfusion, IdInfusion, Modalidad, ValorSas } from "@core/index";
+import type { BorradorControl, CampoVent, GrupoInfusion, IdInfusion, Modalidad, MotivoExtubacionSinPve, ValorSas } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
 import { horaDe, textoNum } from "../app/util";
@@ -365,15 +366,45 @@ export function ControlSimple({ ctx }: { ctx: ContextoCama }) {
           {sugeribles.length > 0 && <button type="button" className="peq" onClick={() => editar((x) => sugerirAnterior(x, ultimo))}>Usar lo anterior</button>}
         </h2>
         <Fila etiqueta="Modo" {...vz("modalidad")}>
-          <select id="in-modo" data-campo="modalidad" aria-label="Modo ventilatorio" value={b.modalidad} onChange={(e) => editar((x) => cambiarModalidad(x, e.target.value as Modalidad))}>
-            {!permitidos.includes(b.modalidad) && <option value={b.modalidad}>{ETIQUETA_MODALIDAD[b.modalidad]} (no corresponde)</option>}
+          <select id="in-modo" data-campo="modalidad" aria-label="Modo ventilatorio" value={b.extubar ? `EXT:${b.modalidad}` : b.modalidad}
+            onChange={(e) => {
+              const val = e.target.value;
+              // Extubación desde el modo (28-nov-2026): con TOT, un modo de vía aérea natural abre la extubación.
+              if (val.startsWith("EXT:")) editar((x) => ({ ...cambiarModalidad(x, val.slice(4) as Modalidad), extubar: { motivo: x.extubar?.motivo ?? "", hora: x.extubar?.hora ?? "" } }));
+              else editar((x) => ({ ...cambiarModalidad(x, val as Modalidad), extubar: null }));
+            }}>
+            {!b.extubar && !permitidos.includes(b.modalidad) && <option value={b.modalidad}>{ETIQUETA_MODALIDAD[b.modalidad]} (no corresponde)</option>}
             {grupos.map((g) => (
               <optgroup key={g} label={ETIQUETA_GRUPO_MODALIDAD[g]}>
                 {permitidos.filter((x) => GRUPO_MODALIDAD[x] === g).map((x) => <option key={x} value={x}>{ETIQUETA_MODALIDAD[x]}</option>)}
               </optgroup>
             ))}
+            {ep.viaAereaActual === "TET" && (
+              <optgroup label="Extubar · queda con vía aérea natural">
+                {MODALIDADES_POR_VIA.NATURAL.map((x) => <option key={x} value={`EXT:${x}`}>Extubar → {ETIQUETA_MODALIDAD[x]}</option>)}
+              </optgroup>
+            )}
           </select>
         </Fila>
+        {b.extubar && (
+          <div className="extubar-modo" role="group" aria-label="Extubación">
+            <b>Extubación · queda con {ETIQUETA_MODALIDAD[b.modalidad]}</b>
+            <p className="small" style={{ margin: 0 }}>¿Con protocolo (PVE) o sin protocolo? Este control queda como la monitorización inmediata post extubación.</p>
+            <div className="extubar-ops">
+              <button type="button" className="btn" onClick={() => { editar((x) => ({ ...x, extubar: null, modalidad: ultimo?.ventilacion.modalidad && MODALIDADES_POR_VIA.TET.includes(ultimo.ventilacion.modalidad) ? ultimo.ventilacion.modalidad : "CPAP_PS" })); useApp.getState().irA("pve", ep.id); }}>
+                Con protocolo · abrir la PVE
+              </button>
+            </div>
+            <label className="small" htmlFor="in-ext-motivo"><b>Sin protocolo</b> · programada fuera de protocolo, ¿por qué?</label>
+            <select id="in-ext-motivo" value={b.extubar.motivo} onChange={(e) => editar((x) => ({ ...x, extubar: { hora: x.extubar?.hora ?? "", motivo: e.target.value as MotivoExtubacionSinPve | "" } }))}>
+              <option value="">— elegir —</option>
+              {(Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => <option key={k} value={k}>{ETIQUETA_MOTIVO_SIN_PVE[k].charAt(0).toUpperCase() + ETIQUETA_MOTIVO_SIN_PVE[k].slice(1)}</option>)}
+            </select>
+            <label className="small" htmlFor="in-ext-hora">Hora real de la extubación</label>
+            <input id="in-ext-hora" type="time" value={b.extubar.hora} onChange={(e) => editar((x) => ({ ...x, extubar: { motivo: x.extubar?.motivo ?? "", hora: e.target.value } }))} />
+            <p className="small muted" style={{ margin: 0 }}>Autoextubación o extubación accidental: se anotan en Eventos de la cama.</p>
+          </div>
+        )}
         {transicion && (
           <div className={`evento-soporte ${transicion.tipo.toLowerCase()}`} role="status">
             <b>{transicion.texto}</b> · de {ETIQUETA_MODALIDAD[transicion.desde]} a {ETIQUETA_MODALIDAD[transicion.hasta]}

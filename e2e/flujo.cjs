@@ -301,7 +301,8 @@ async function esperarServidor() {
     await prueba("el modo ofrece solo los de la via aerea y cada modo pide solo sus casillas", async () => {
       const opciones = await cel.locator("#in-modo option").allTextContents();
       assert.ok(opciones.includes("ACPC") && opciones.includes("Tubo T / HME"), opciones.join(" | "));
-      assert.ok(!opciones.some((o) => /CNAF|Naricera|VNI/.test(o)), "con TET no hay oxigenoterapia ni VNI: " + opciones.join(" | "));
+      // Con TET, la oxigenoterapia y la VNI solo aparecen como «Extubar → …» (28-nov-2026): elegirlas es extubar.
+      assert.ok(!opciones.some((o) => /CNAF|Naricera|VNI/.test(o) && !/^Extubar →/.test(o)), "con TET no hay oxigenoterapia ni VNI sin extubar: " + opciones.join(" | "));
       await cel.selectOption("#in-modo", "PCV");
       const et = await cel.locator('section[aria-label="Terapia ventilatoria"] .fila .et').allTextContents();
       assert.ok(et.some((t) => t.startsWith("P. control")) && et.some((t) => t.startsWith("Auto PEEP")), et.join(" | "));
@@ -896,6 +897,13 @@ async function esperarServidor() {
       // Volver a CPAP+PS: ya no hay cambio de soporte.
       await cel.selectOption("#in-modo", "CPAP_PS");
       assert.equal(await cel.locator(".evento-soporte").count(), 0);
+      // Extubar desde el modo (28-nov-2026): con TOT, un modo de vía aérea natural abre la extubación.
+      await cel.selectOption("#in-modo", "EXT:CNAF");
+      assert.match(await cel.textContent(".extubar-modo"), /Extubación · queda con CNAF/);
+      assert.ok((await cel.locator("#in-ext-motivo option").allTextContents()).some((t) => /Menos de 24 h de VM/.test(t)), "los motivos fuera de protocolo del weaning");
+      assert.equal(await cel.locator('.extubar-modo button:has-text("Con protocolo")').count(), 1);
+      await cel.selectOption("#in-modo", "CPAP_PS");
+      assert.equal(await cel.locator(".extubar-modo").count(), 0, "volver a un modo del tubo deshace la extubación");
       // Deja la cama sin guardar: de vuelta a las tarjetas desde cero.
       await cel.reload();
       await cel.waitForSelector('article[aria-label^="Cama"], .ctl-cabeza');
@@ -1903,6 +1911,26 @@ async function esperarServidor() {
       await fila9.locator('button:has-text("Sí, deshacer")').click();
       await pc.waitForSelector('.est-tabla tbody tr:has-text("Cama 9")', { state: "detached" });
       await pc.click('[role=tab]:text-is("Tablero")');
+    });
+
+    await prueba("extubar desde el modo: sin protocolo con su motivo; el control queda como el inmediato post extubación", async () => {
+      if (await cel.locator('button:has-text("‹ Pacientes")').count()) await cel.click('button:has-text("‹ Pacientes")');
+      await cel.waitForSelector('article[aria-label="Cama UCI-06"]');
+      await cel.click('article[aria-label="Cama UCI-06"] button:has-text("Monitorización")');
+      await cel.waitForSelector(".hoja-simple");
+      await cel.selectOption("#in-modo", "EXT:O2_NARICERA");
+      await cel.click('button:has-text("Rellenar signos de ejemplo")');
+      if (await cel.locator("#in-sas").count()) await cel.fill("#in-sas", "4");
+      await cel.click("#btn-guardar-control");
+      assert.match(await aviso(), /Motivo de la extubación sin protocolo/, "sin motivo no se guarda");
+      await cel.selectOption("#in-ext-motivo", "MENOS_24H_VM");
+      if (await cel.locator("#in-vigilia").count()) await cel.selectOption("#in-vigilia", "VIGIL_ALERTA");
+      for (const id of ["in-vent-flujo", "in-vent-fio2"]) if (await cel.locator(`#${id}`).count()) await cel.fill(`#${id}`, id.endsWith("fio2") ? "28" : "3");
+      await cel.click("#btn-guardar-control");
+      await cel.waitForTimeout(600);
+      assert.match(await aviso(), /Extubación fuera de protocolo registrada: este control es el inmediato post extubación/);
+      await cel.waitForSelector('article[aria-label="Cama UCI-06"]');
+      assert.doesNotMatch(await cel.textContent('article[aria-label="Cama UCI-06"]'), /TET 7\.5/, "la cama quedó con vía aérea natural");
     });
 
     await prueba("sin errores en la consola durante todo el recorrido", async () => {

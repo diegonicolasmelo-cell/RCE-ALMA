@@ -14,6 +14,7 @@ import {
   medicionDe,
   sugerirAnterior,
   ieDelAnterior,
+  controlDesdePostExtub,
   suspenderInfusion,
   validarBorrador
 } from "./borrador";
@@ -567,5 +568,15 @@ describe("valores imposibles: casi siempre un dato en la casilla equivocada (24-
   });
   it("también los signos vitales: una SpO2 de 970", () => {
     expect(msj(completo({ spo2: "970" })).some((x) => x.startsWith("spo2"))).toBe(true);
+  });
+});
+
+describe("el control inmediato post extubación de la PVE también es un control normal (28-nov-2026)", () => {
+  it("lleva lo anotado, la vía natural y queda ligado a la extubación", () => {
+    const ep = { ...unEpisodio(), viaAereaActual: "NATURAL" as const };
+    const c = controlDesdePostExtub(ep, null, [], "kine@demo.cl", { fc: 96, fr: 22, spo2: 95, fio2: 40, glasgow: { ocular: 4, verbal: 5, motora: 6 } },
+      { id: "ctl-x", numero: 3, ahora: new Date("2026-11-28T12:00:00Z"), viaAerea: "NATURAL", monitoreo: ep.monitoreo }, "ext-1");
+    expect([c.id, c.viaAerea, c.fc, c.spo2, c.ventilacion.frTotal, c.ventilacion.fio2, c.eventoId]).toEqual(["ctl-x", "NATURAL", 96, 95, 22, 40, "ext-1"]);
+    expect(c.glasgow).toEqual({ ocular: 4, verbal: 5, motora: 6 });
   });
 });

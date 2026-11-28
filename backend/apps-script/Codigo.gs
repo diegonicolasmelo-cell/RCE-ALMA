@@ -599,7 +599,9 @@ function reenviarAlRce_(nuevos) {
   var espera = pendientesRce_();
   var vistos = {};
   var items = [];
-  for (var i = 0; i < nuevos.length; i++) {
+  // Nunca más de RCE_MAX_POR_ENVIO por llamada (28-nov-2026): el RCE rechaza el lote entero si pasa del tope.
+  // Lo que no cabe espera en pendientes_rce y sale con la sincronía siguiente.
+  for (var i = 0; i < nuevos.length && items.length < RCE_MAX_POR_ENVIO; i++) {
     if (nuevos[i] && nuevos[i].id && !vistos[nuevos[i].id]) { vistos[nuevos[i].id] = true; items.push(nuevos[i]); }
   }
   for (var j = 0; j < espera.length && items.length < RCE_MAX_POR_ENVIO; j++) {
@@ -613,18 +615,35 @@ function reenviarAlRce_(nuevos) {
   var entregado = resp && resp.ok === true;
 
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) return { estado: entregado ? "entregado" : "en_espera" };
+  if (!lock.tryLock(30000)) {
+    registrarAuditoria("", "rce_sin_candado", JSON.stringify(nuevos.map(function (x) { return x && x.id; })).slice(0, 4000));
+    return { estado: entregado ? "entregado" : "en_espera" };
+  }
   try {
     // Se relee bajo el candado: otra sincronia pudo mover las filas mientras se llamaba al RCE.
     espera = pendientesRce_();
     if (entregado) {
-      // Todo lo enviado se recibio: se sacan de la espera.
+      // Se sacan de la espera SOLO los que el RCE nombra como recibidos o rechazados (28-nov-2026): una
+      // respuesta incompleta no se lleva por delante lo que no confirmó.
+      var confirmados = {};
+      (resp.recibidos || []).forEach(function (x) { confirmados[String(x)] = true; });
+      (resp.rechazados || []).forEach(function (x) { if (x && x.id) confirmados[String(x.id)] = true; });
       var filas = [];
-      for (var k = 0; k < espera.length; k++) if (vistos[espera[k].item && espera[k].item.id]) filas.push(espera[k].fila);
+      for (var k = 0; k < espera.length; k++) { var idk = espera[k].item && espera[k].item.id; if (vistos[idk] && confirmados[String(idk)]) filas.push(espera[k].fila); }
       borrarFilas_(hoja, filas);
+      // Lo nuevo que el RCE no nombró (respuesta incompleta, o no cupo en este envío) queda en espera.
+      var yaEsperan = {};
+      for (var q = 0; q < espera.length; q++) if (espera[q].item && espera[q].item.id) yaEsperan[String(espera[q].item.id)] = true;
+      var faltan = [];
+      var ahoraE = new Date().toISOString();
+      for (var w = 0; w < nuevos.length; w++) {
+        var nw = nuevos[w];
+        if (nw && nw.id && !confirmados[String(nw.id)] && !yaEsperan[String(nw.id)]) faltan.push([nw.id, ahoraE, JSON.stringify(nw)]);
+      }
+      if (faltan.length) hoja.getRange(hoja.getLastRow() + 1, 1, faltan.length, 3).setValues(faltan);
       var rech = resp.rechazados || [];
       if (rech.length) registrarAuditoria("", "rce_rechazo", JSON.stringify(rech).slice(0, 4000));
-      return { estado: "entregado", enviados: items.length, rechazados: rech.length };
+      return { estado: "entregado", enviados: items.length, rechazados: rech.length, enEspera: faltan.length };
     }
     // Sin respuesta: los nuevos pasan a la espera; los viejos demasiado antiguos se sueltan.
     var ahora = new Date();
@@ -642,7 +661,10 @@ function reenviarAlRce_(nuevos) {
     }
     if (filasNuevas.length) hoja.getRange(hoja.getLastRow() + 1, 1, filasNuevas.length, 3).setValues(filasNuevas);
     if (viejas.length) {
-      registrarAuditoria("", "rce_perdido", viejas.length + " items con mas de " + RCE_MAX_DIAS_PENDIENTE + " dias sin entregarse");
+      // Con los ids y su contenido (28-nov-2026): lo vencido se puede recuperar desde la auditoría.
+      var perdidos = [];
+      for (var v2 = 0; v2 < espera.length; v2++) if (viejas.indexOf(espera[v2].fila) !== -1) perdidos.push(espera[v2].item);
+      registrarAuditoria("", "rce_perdido", (viejas.length + " items con mas de " + RCE_MAX_DIAS_PENDIENTE + " dias sin entregarse: " + JSON.stringify(perdidos)).slice(0, 45000));
       borrarFilas_(hoja, viejas);
     }
     return { estado: "en_espera", pendientes: espera.length - viejas.length + filasNuevas.length };

@@ -24,6 +24,14 @@ export interface PacienteRce {
   readonly cama: number;
   readonly nombre: string;
   readonly edad: number | null;
+  /** RUT (28-nov-2026): solo en memoria, solo para que Synapse y cobas lo copien. Nunca se guarda ni se sube. */
+  readonly rut?: string;
+}
+
+/** Direcciones de Synapse y del laboratorio (cobas), desde la CONFIG del RCE. Vacía = sin botón. */
+export interface EnlacesRce {
+  readonly synapse: string;
+  readonly lis: string;
 }
 
 export interface HistoriaEntrega {

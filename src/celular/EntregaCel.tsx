@@ -148,7 +148,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
         if (!vivo) return;
         if (!r.ok) setHistorias({ error: r.error });
         else if (r.estado === "apagado") setHistorias({ error: "APAGADO" });
-        else { setHistorias(new Map(r.historias.map((h) => [h.cama, h]))); if (r.pacientes) usePacientesRce.getState().poner(r.pacientes); }
+        else { setHistorias(new Map(r.historias.map((h) => [h.cama, h]))); usePacientesRce.getState().poner(r.pacientes ?? [], r.enlaces ?? null); }
       })
       .catch(() => { if (vivo) setHistorias({ error: "SIN_CONEXION" }); });
     return () => { vivo = false; };
@@ -192,7 +192,7 @@ export function EntregaCel({ resumen, ahora }: { resumen: readonly ResumenCama[]
             <div className="ent-in">
               <section className="ent-cara" aria-hidden={vuelta}>
                 <header className="ent-cab"><b>{nombreCama(ep.cama)}</b>{ep.faseClinica && <span className="ent-fase">{ep.faseClinica}</span>}</header>
-                {n !== null && pacientes.get(n) && <span className="ent-paciente">{pacientes.get(n)!.nombre}{pacientes.get(n)!.edad ? ` · ${pacientes.get(n)!.edad} años` : ""}</span>}
+                {n !== null && pacientes.get(n)?.nombre && <span className="ent-paciente">{pacientes.get(n)!.nombre}{pacientes.get(n)!.edad ? ` · ${pacientes.get(n)!.edad} años` : ""}</span>}
                 {f.resumen && <span className="small ink2">{f.resumen}</span>}
                 <span className="ent-sec">Cómo está</span>
                 <span className="ent-linea">{textoViaCama(ep, horasDeVm(ep, eventos, controles[0]?.registradoEn ?? null, ahora))}</span>

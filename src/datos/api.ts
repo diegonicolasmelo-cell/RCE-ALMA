@@ -1,4 +1,4 @@
-import type { EquipoRce, HistoriaEntrega, ItemParaRce, PacienteRce } from "@core/index";
+import type { EnlacesRce, EquipoRce, HistoriaEntrega, ItemParaRce, PacienteRce } from "@core/index";
 
 /** Un movimiento de equipo hacia el RCE. tipo: CAMA (con `detalle` = n° de cama), BODEGA, EQUIPOS, PRESTAMO, PASILLO. */
 export interface MovimientoEquipo { readonly equipo: string; readonly tipo: string; readonly detalle?: string | number; readonly enUso?: boolean }
@@ -69,7 +69,7 @@ export interface ClienteApi {
    * Historias de la entrega de estas camas: el servidor de Kaptus se las pide al RCE en el momento
    * y no las guarda. El celular tampoco: viven solo en la pantalla abierta (Diego, 22-nov-2026).
    */
-  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string; pacientes?: readonly PacienteRce[] }>>;
+  leerHistorias(camas: readonly number[]): Promise<Resultado<{ historias: readonly HistoriaEntrega[]; estado?: string; pacientes?: readonly PacienteRce[]; enlaces?: EnlacesRce }>>;
   /** Mueve equipos en el RCE sin paciente de por medio: cama libre, bodega, equipos médicos, préstamo. */
   ubicarEquipos(correo: string, movimientos: readonly MovimientoEquipo[]): Promise<Resultado<{ movidos: number; avisos: readonly string[] }>>;
   /** Inventario de equipos del RCE (25-nov-2026): la sala en 8 bits elige de aquí. */
@@ -220,13 +220,20 @@ export function crearApiRemota(t: Transporte, cfg: { readonly appToken: string; 
       const lista = Array.isArray(r["historias"]) ? (r["historias"] as Record<string, unknown>[]) : [];
       const pacientes = Array.isArray(r["pacientes"])
         ? (r["pacientes"] as Record<string, unknown>[])
-            .filter((p) => Number.isFinite(Number(p["cama"])) && typeof p["nombre"] === "string" && p["nombre"])
-            .map((p): PacienteRce => ({ cama: Number(p["cama"]), nombre: String(p["nombre"]).slice(0, 80), edad: Number.isFinite(Number(p["edad"])) && p["edad"] !== "" && p["edad"] !== null ? Number(p["edad"]) : null }))
+            .filter((p) => Number.isFinite(Number(p["cama"])) && ((typeof p["nombre"] === "string" && p["nombre"]) || typeof p["rut"] === "string"))
+            .map((p): PacienteRce => {
+              const rut = typeof p["rut"] === "string" && /^\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]$/.test(p["rut"].trim()) ? p["rut"].trim() : "";
+              return { cama: Number(p["cama"]), nombre: String(p["nombre"] ?? "").slice(0, 80), edad: Number.isFinite(Number(p["edad"])) && p["edad"] !== "" && p["edad"] !== null ? Number(p["edad"]) : null, ...(rut ? { rut } : {}) };
+            })
         : [];
+      const en = r["enlaces"] as Record<string, unknown> | undefined;
+      const url = (u: unknown): string => (typeof u === "string" && /^https?:\/\/\S{3,300}$/.test(u.trim()) ? u.trim() : "");
+      const enlaces: EnlacesRce | null = en && (url(en["synapse"]) || url(en["lis"])) ? { synapse: url(en["synapse"]), lis: url(en["lis"]) } : null;
       return {
         ok: true,
         ...(typeof r["estado"] === "string" ? { estado: r["estado"] } : {}),
         ...(pacientes.length ? { pacientes } : {}),
+        ...(enlaces ? { enlaces } : {}),
         historias: lista
           .filter((h) => typeof h["texto"] === "string" && Number.isFinite(Number(h["cama"])))
           .map((h) => ({

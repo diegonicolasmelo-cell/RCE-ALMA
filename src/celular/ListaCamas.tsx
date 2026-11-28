@@ -35,6 +35,7 @@ import { TrasladoCama } from "./TrasladoCama";
 import { useAtras } from "./Inicio";
 import { FichaAlma } from "./FichaAlma";
 import { VisorHoja } from "./VisorHoja";
+import { AbrirConRut } from "./AbrirConRut";
 import { usePacientesRce } from "./pacientesRce";
 import type { PacienteFicha } from "./FichaAlma";
 
@@ -55,6 +56,7 @@ export function ListaCamas() {
   const irA = useApp((s) => s.irA);
   // Nombre y edad (24-nov-2026, Diego: por ahora todos los ven): llegan del RCE y viven en memoria.
   const pacientesRce = usePacientesRce((s) => s.porCama);
+  const enlacesRce = usePacientesRce((s) => s.enlaces);
   const misCamas = useApp((s) => s.misCamas);
   const ahora = useAhora(30_000);
   const [ingresando, setIngresando] = useState<string | null>(null);
@@ -224,12 +226,13 @@ export function ListaCamas() {
                 <LogOut size={15} aria-hidden /> Dar de alta
               </button>}
             </header>
-            {pacientesRce.get(Number(camaRce(ep.cama))) && (
+            {pacientesRce.get(Number(camaRce(ep.cama)))?.nombre && (
               <div className="paciente-rce">
                 <b>{pacientesRce.get(Number(camaRce(ep.cama)))!.nombre}</b>
                 {pacientesRce.get(Number(camaRce(ep.cama)))!.edad ? <span className="small muted"> · {pacientesRce.get(Number(camaRce(ep.cama)))!.edad} años</span> : null}
               </div>
             )}
+            <AbrirConRut rut={pacientesRce.get(Number(camaRce(ep.cama)))?.rut ?? ""} enlaces={enlacesRce} cama={nombreCama(ep.cama)} />
             <div className="small ink2">
               {/* Día de estadía (25-nov-2026, Diego): el día del ingreso es el día 1. */}
               {diaDeEstadia(ep.ingresadoEn, ahora) !== null && <b className="dia-estadia">Día {diaDeEstadia(ep.ingresadoEn, ahora)} · </b>}

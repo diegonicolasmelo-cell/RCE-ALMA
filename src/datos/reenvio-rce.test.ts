@@ -143,11 +143,20 @@ describe("historias de la entrega: se piden al RCE y no se guardan", () => {
     expect(s.sincronizar(lote(["a"]))).toMatchObject({ ok: true });
   });
 
-  it("nombre y edad pasan del RCE al teléfono sin RUT (y sin guardarse en Kaptus)", () => {
+  it("un RUT escondido en el nombre nunca pasa (y sin guardarse en Kaptus)", () => {
     const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, historias: [],
       pacientes: [{ cama: 3, nombre: "Paciente Prueba", edad: 71 }, { cama: 4, nombre: "12.345.678-5", edad: 50 }] } }));
     const r = s.historiasDesdeRce([3, 4]);
     expect(r["pacientes"]).toEqual([{ cama: 3, nombre: "Paciente Prueba", edad: 71 }]);
+    expect(Object.keys(s.hojas)).not.toContain("pacientes");
+  });
+  it("el RUT pasa solo en su campo y con forma de RUT, junto a las direcciones de Synapse y cobas (28-nov-2026)", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, historias: [],
+      pacientes: [{ cama: 3, nombre: "Paciente Prueba", edad: 71, rut: "11.111.111-1" }, { cama: 4, nombre: "", edad: null, rut: "no es rut" }, { cama: 5, nombre: "", edad: null, rut: "22222222-2" }],
+      enlaces: { synapse: "https://visor.ejemplo/", lis: "javascript:alert(1)" } } }));
+    const r = s.historiasDesdeRce([3, 4, 5]);
+    expect(r["pacientes"]).toEqual([{ cama: 3, nombre: "Paciente Prueba", edad: 71, rut: "11.111.111-1" }, { cama: 5, nombre: "", edad: null, rut: "22222222-2" }]);
+    expect(r["enlaces"]).toEqual({ synapse: "https://visor.ejemplo/", lis: "" });
     expect(Object.keys(s.hojas)).not.toContain("pacientes");
   });
 });

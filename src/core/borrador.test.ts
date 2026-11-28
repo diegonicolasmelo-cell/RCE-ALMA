@@ -13,6 +13,7 @@ import {
   materializarControl,
   medicionDe,
   sugerirAnterior,
+  ieDelAnterior,
   suspenderInfusion,
   validarBorrador
 } from "./borrador";
@@ -101,6 +102,17 @@ describe("herencia deliberada de ajustes e infusiones", () => {
   it("del ventilador solo se hereda el modo y la FiO2; el resto de los ajustes nace en blanco", () => {
     expect(b.vent.fio2).toBe("40");
     for (const c of CAMPOS_VENT_PROGRAMADOS.filter((x) => x !== "fio2")) expect(b.vent[c], `"${c}" debe nacer vacio`).toBe("");
+  });
+
+  it("el I:E viene del control anterior solo si el TI, el flujo, el Vt y la FR no cambiaron (26-nov-2026)", () => {
+    const conIe = unControl({ ventilacion: unaVentilacion({ vtProgramado: 600, frProgramada: 16, ti: 1.1, flujo: 55, ie: 2.5 }) });
+    const igual = sugerirAnterior(b, conIe);
+    expect(ieDelAnterior(igual, conIe)).toBe("2.5");
+    expect(ieDelAnterior(b, conIe)).toBeNull(); // sin los ajustes escritos no se sabe si cambiaron
+    expect(ieDelAnterior({ ...igual, vent: { ...igual.vent, ti: "1.3" } }, conIe)).toBeNull();
+    expect(ieDelAnterior({ ...igual, vent: { ...igual.vent, frProgramada: "20" } }, conIe)).toBeNull();
+    expect(ieDelAnterior(igual, previo)).toBeNull(); // el anterior no tenía I:E
+    expect(ieDelAnterior(cambiarModalidad(igual, "PCV"), conIe)).toBeNull();
   });
 
   it("'Usar lo anterior' rellena solo lo que sigue vacío y solo con la misma modalidad", () => {

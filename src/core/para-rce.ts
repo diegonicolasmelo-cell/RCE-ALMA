@@ -185,6 +185,10 @@ export function eventoRceDe(e: EventoClinico): string | null {
     case "EVENTO_LIBRE": return "NOTA";
     // Coordinación anula un evento (25-nov-2026): el RCE lo marca anulado en su copia y deja de contarlo.
     case "ANULACION_EVENTO": return "ANULACION";
+    // Corrección de hora (26-nov-2026). La que vino del RCE no se le devuelve.
+    case "CORRECCION_EVENTO": return e.origen === "RCE" ? null : "CORRECCION";
+    // Lo que anota quien recibe la entrega: es del celular, no va al RCE.
+    case "NOTA_ENTREGA": return null;
     // Cambio de cama (23-nov-2026): el RCE mueve al paciente igual que «mover a cama vacía».
     case "TRASLADO_CAMA": return "TRASLADO";
     // Cambio de ventilador u otro equipo de la sala (23-nov-2026): el RCE lo pone en la cama.
@@ -219,6 +223,7 @@ export function eventoParaRce(e: EventoClinico, ep: Episodio): ItemParaRce | nul
     dirigidaA: simple("dirigidaA"), ems: simple("ems"), procedimiento: simple("procedimiento")
   });
   if (e.tipo === "ANULACION_EVENTO") Object.assign(datos, { anula: e.anulaId, motivo: e.motivo.slice(0, 200) });
+  if (e.tipo === "CORRECCION_EVENTO") Object.assign(datos, { corrige: e.corrigeId, en: horaLocal(e.en), motivo: e.motivo.slice(0, 200) });
   if (e.tipo === "SUSPENSION_SEDACION" || e.tipo === "SUSPENSION_DVA") Object.assign(datos, { farmacos: e.farmacos.join(", ").slice(0, 200) });
   if (e.tipo === "RONDA_EQUIPOS") Object.assign(datos, { hallazgos: e.hallazgos.map((h) => h.texto).join("; ").slice(0, 300) });
   if (e.tipo === "CAMBIO_HMEF" || e.tipo === "CAMBIO_FILTRO") {

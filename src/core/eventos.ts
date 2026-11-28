@@ -96,6 +96,8 @@ export function viaAereaVigente(
       case "IMT":
       case "EDUCACION":
       case "ANULACION_EVENTO":
+      case "CORRECCION_EVENTO":
+      case "NOTA_ENTREGA":
         break;
       default: {
         const _exhaustivo: never = ev;
@@ -290,8 +292,31 @@ export function aplicarEventoAEpisodio(ep: Episodio, ev: EventoClinico): Episodi
 /** Los eventos que cuentan: sin los anulados por coordinación ni las marcas de anulación. */
 export function sinAnulados(eventos: readonly EventoClinico[]): readonly EventoClinico[] {
   const anulados = new Set(eventos.filter((e) => e.tipo === "ANULACION_EVENTO").map((e) => (e as Extract<EventoClinico, { tipo: "ANULACION_EVENTO" }>).anulaId));
-  if (!anulados.size) return eventos;
-  return eventos.filter((e) => e.tipo !== "ANULACION_EVENTO" && !anulados.has(e.id));
+  const vivos = anulados.size ? eventos.filter((e) => e.tipo !== "ANULACION_EVENTO" && !anulados.has(e.id)) : eventos;
+  return conCorrecciones(vivos);
+}
+
+/**
+ * Aplica las correcciones de hora de coordinación (26-nov-2026). Vale la ÚLTIMA corrección de cada evento;
+ * el evento queda con esa hora en `registradoEn`, `hora` y, si la tiene, `realizadaEn` (todo cálculo de
+ * horas —prono, VM, filtros— lee de ahí). Las marcas de corrección no se muestran.
+ */
+export function conCorrecciones(eventos: readonly EventoClinico[]): readonly EventoClinico[] {
+  type Corr = Extract<EventoClinico, { tipo: "CORRECCION_EVENTO" }>;
+  const marcas = eventos.filter((e): e is Corr => e.tipo === "CORRECCION_EVENTO");
+  if (!marcas.length) return eventos;
+  const ultima = new Map<string, Corr>();
+  for (const m of [...marcas].sort((a, b) => a.registradoEn.localeCompare(b.registradoEn))) {
+    if (instante(m.en) !== null) ultima.set(m.corrigeId, m);
+  }
+  return eventos.filter((e) => e.tipo !== "CORRECCION_EVENTO").map((e) => {
+    const c = ultima.get(e.id);
+    if (!c) return e;
+    const d = new Date(c.en);
+    const hora = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const nuevo = { ...e, registradoEn: d.toISOString(), hora } as EventoClinico & { realizadaEn?: string };
+    return ("realizadaEn" in e ? { ...nuevo, realizadaEn: d.toISOString() } : nuevo) as EventoClinico;
+  });
 }
 
 /** De dos copias de un mismo episodio, la vía aérea que vale: la del cambio más reciente. */
@@ -351,10 +376,11 @@ function aplicarEventoBase(ep: Episodio, ev: EventoClinico): Episodio {
  * Casi todo evento se acompana de un control (p. ej. en una puncion lumbar se titula el VM; la
  * aspiracion de un cultivo puede descompensar). Quedan fuera los cambios de filtro y TrachCare,
  * el cambio de cama, la correccion de la via sin evento, las evaluaciones y lo propio de la PVE.
+ * Tampoco el ajuste de la posicion del tubo (Diego, 26-nov-2026: no da origen a una monitorizacion).
  */
 export const TIPOS_CON_CONTROL: ReadonlySet<TipoEvento> = new Set<TipoEvento>([
   "REINTUBACION", "EXTUBACION_PROGRAMADA", "AUTOEXTUBACION", "DECANULACION", "TRAQUEOSTOMIA",
-  "CAMBIO_TUBO", "CAMBIO_CANULA", "AJUSTE_TUBO", "INICIO_PRONO", "SUPINACION", "ASISTENCIA_FBC",
+  "CAMBIO_TUBO", "CAMBIO_CANULA", "INICIO_PRONO", "SUPINACION", "ASISTENCIA_FBC",
   "ASISTENCIA_PROCEDIMIENTO", "TOMA_CULTIVO", "TRASLADO_IMAGEN", "PCR", "EVENTO_CENTINELA", "EVENTO_LIBRE"
 ]);
 

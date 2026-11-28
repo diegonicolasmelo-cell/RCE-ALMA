@@ -136,6 +136,10 @@ export function describirEvento(ev: EventoClinico, eventos?: readonly EventoClin
       return `${ev.tipo === "DESVINCULACION" ? "Desvinculación" : "Reconexión"}: de ${ETIQUETA_MODALIDAD[ev.desde]} a ${ETIQUETA_MODALIDAD[ev.hasta]}`;
     case "ANULACION_EVENTO":
       return `Evento anulado por coordinación: ${ev.motivo}`;
+    case "CORRECCION_EVENTO":
+      return `Hora de un evento corregida por coordinación: ${ev.motivo}`;
+    case "NOTA_ENTREGA":
+      return `Anotado en la entrega: ${ev.texto}`;
     default: {
       const _exhaustivo: never = ev;
       return String(_exhaustivo);

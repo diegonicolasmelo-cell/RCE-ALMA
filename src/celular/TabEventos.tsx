@@ -138,7 +138,7 @@ function momentoDeHora(hhmm: string, ahora: Date): Date | null {
 }
 
 /** Eventos que se registran y siguen con su control (todos menos filtros, TrachCare, cama y PVE). */
-const CON_CONTROL = ["reint", "traq", "autoext", "accext", "decan", "cambioTubo", "cambioCanula", "ajuste", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent", "libre"];
+const CON_CONTROL = ["reint", "traq", "autoext", "accext", "decan", "cambioTubo", "cambioCanula", "prono", "supinar", "fbc", "cult", "img", "asist", "pcr", "cent", "libre"];
 
 const MOTIVOS_SIN_PVE: readonly Opcion[] = (Object.keys(ETIQUETA_MOTIVO_SIN_PVE) as MotivoExtubacionSinPve[]).map((k) => ({
   valor: k,
@@ -503,6 +503,21 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
     avisar("Evento anulado: ya no cuenta en la estadística.");
     setAnulando(null); setMotivoAnula("");
   };
+  // Coordinación corrige la HORA de un evento (26-nov-2026): queda la marca con motivo; el original no se toca.
+  const [corrigiendo, setCorrigiendo] = useState<string | null>(null);
+  const [nuevaEn, setNuevaEn] = useState("");
+  const [motivoCorr, setMotivoCorr] = useState("");
+  const local = (iso: string): string => { const d = new Date(iso); const p = (n: number): string => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+  const corregir = async (id: string): Promise<void> => {
+    const m = motivoCorr.trim();
+    const d = new Date(nuevaEn);
+    if (!nuevaEn || Number.isNaN(d.getTime())) return avisar("Elige la fecha y hora correctas.");
+    if (d.getTime() > Date.now() + 5 * 60000) return avisar("La hora corregida no puede quedar en el futuro.");
+    if (m.length < 4) return avisar("Escribe por qué se corrige (por ejemplo: «se supinó a las 07:30, no se anotó»).");
+    await repo.registrarEvento({ ...baseEvento(ep, rutAutor, new Date()), tipo: "CORRECCION_EVENTO", corrigeId: id, en: d.toISOString(), motivo: m.slice(0, 200) });
+    avisar("Hora corregida: las horas de prono, VM y filtros ya la usan.");
+    setCorrigiendo(null); setMotivoCorr("");
+  };
   const cuando = (iso: string): string => {
     const d = new Date(iso);
     const ayer = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1);
@@ -640,7 +655,16 @@ export function TabEventos({ ctx, onCambioVia }: { ctx: ContextoCama; onCambioVi
           <ol className="linea-tiempo">
             {visibles.map((x) => (
               <li key={x.id}><span className="mono cuando">{cuando(x.en)}</span><span>{x.fuerte ? <b>{x.texto}</b> : x.texto}</span>
-                {esCoord && x.evento && anulando !== x.id && <button type="button" className="linkbtn anular-ev" aria-label={`Anular · ${x.texto}`} onClick={() => { setAnulando(x.id); setMotivoAnula(""); }}>Anular</button>}
+                {esCoord && x.evento && anulando !== x.id && corrigiendo !== x.id && <button type="button" className="linkbtn anular-ev" aria-label={`Corregir hora · ${x.texto}`} onClick={() => { setCorrigiendo(x.id); setNuevaEn(local(x.en)); setMotivoCorr(""); setAnulando(null); }}>Corregir hora</button>}
+                {corrigiendo === x.id && (
+                  <span className="anular-form">
+                    <input type="datetime-local" value={nuevaEn} aria-label="Fecha y hora correctas" onChange={(e) => setNuevaEn(e.target.value)} />
+                    <input type="text" value={motivoCorr} maxLength={200} placeholder="¿Por qué se corrige?" aria-label="Motivo de la corrección" onChange={(e) => setMotivoCorr(e.target.value)} />
+                    <button type="button" className="btn" onClick={() => void corregir(x.id)}>Guardar hora</button>
+                    <button type="button" className="linkbtn" onClick={() => setCorrigiendo(null)}>Cancelar</button>
+                  </span>
+                )}
+                {esCoord && x.evento && anulando !== x.id && corrigiendo !== x.id && <button type="button" className="linkbtn anular-ev" aria-label={`Anular · ${x.texto}`} onClick={() => { setAnulando(x.id); setMotivoAnula(""); }}>Anular</button>}
                 {anulando === x.id && (
                   <span className="anular-form">
                     <input type="text" value={motivoAnula} maxLength={200} placeholder="¿Por qué se anula?" aria-label="Motivo de la anulación" onChange={(e) => setMotivoAnula(e.target.value)} />

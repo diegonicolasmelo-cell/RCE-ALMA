@@ -606,6 +606,14 @@ export type EventoClinico =
    */
   | (EventoBase & { readonly tipo: "ANULACION_EVENTO"; readonly anulaId: Uuid; readonly motivo: string })
   /**
+   * Coordinación corrige la hora de un evento (Diego, 26-nov-2026: «un paciente que se supinó y no se anotó
+   * a qué hora»). De solo agregar: el evento original no se toca, esta marca le pone la hora que vale.
+   * `origen: "RCE"` = la corrección se hizo en el PC y la trajo el servidor (no se reenvía al RCE).
+   */
+  | (EventoBase & { readonly tipo: "CORRECCION_EVENTO"; readonly corrigeId: Uuid; readonly en: string; readonly motivo: string; readonly origen?: "RCE" })
+  /** Lo que anota quien RECIBE el turno en la tarjeta de la Entrega (Diego, 26-nov-2026). Sin cifras. */
+  | (EventoBase & { readonly tipo: "NOTA_ENTREGA"; readonly texto: string })
+  /**
    * Desvinculacion o reconexion del soporte, deducida del modo del control anterior y el
    * nuevo (p. ej. CPAP+PS -> tubo T / HME). `hora` y `realizadaEn` son la hora REAL del
    * cambio, que puede ser antes del control que lo registra.

@@ -28,8 +28,8 @@ function signosAlma(c: Control, pbw: number): readonly { etiqueta: string; valor
 /**
  * Un control en una sola pantalla, para pasarlo a ALMA desde el celular: arriba los signos que
  * se copian (FC, PA, Glasgow, SAS, SpO2 y FiO2) y abajo la ventilacion en el orden de la hoja,
- * solo con lo anotado, para mirarlo y tipearlo a mano en ALMA. Tocar un campo lo tacha (solo en
- * esta pantalla).
+ * solo con lo anotado, para mirarlo y tipearlo a mano en ALMA. (El tachado al tocar un campo se
+ * sacó el 26-nov-2026: Diego, «no me resulta útil».)
  * La sabana completa queda a un toque.
  */
 /** Lo que la ficha necesita de cada paciente. */
@@ -50,7 +50,6 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = 
   // Solo las camas con algun control, en el orden de las camas.
   const camas = pacientes.filter((p) => p.controles.length > 0);
   const [idx, setIdx] = useState(() => Math.max(0, camas.findIndex((p) => p.ep.id === inicial.episodioId)));
-  const [hechos, setHechos] = useState<ReadonlySet<number>>(new Set());
   const [vista, setVista] = useState<"control" | "sabana" | "evaluaciones">(vistaInicial);
   const pellizco = usePellizco<HTMLDivElement>(vista !== "control");
   // Control elegido a mano en la fila «C1 · C2 · C3…» (sugerencia de Alvaro, 20-nov-2026); al cambiar de cama se suelta.
@@ -73,10 +72,8 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = 
   const evento = c.eventoId ? eventos.find((e) => e.id === c.eventoId) : undefined;
   const ir = (d: number): void => {
     setIdx((i) => Math.min(camas.length - 1, Math.max(0, i + d)));
-    setHechos(new Set());
     setCtlElegido(null);
   };
-  const tachar = (i: number): void => setHechos((h) => { const x = new Set(h); if (x.has(i)) x.delete(i); else x.add(i); return x; });
   const anterior = camas[idx - 1];
   const siguiente = camas[idx + 1];
   const capa = (nodo: JSX.Element): JSX.Element => createPortal(nodo, document.querySelector(".app-cel") ?? document.body);
@@ -137,7 +134,7 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = 
       {delDia.length > 1 && (
         <div className="fa-controles" role="group" aria-label="Controles del turno de este paciente">
           {delDia.map((x, i) => (
-            <button key={x.id} type="button" aria-pressed={x.id === c.id} onClick={() => { setCtlElegido(x.id); setHechos(new Set()); }}>
+            <button key={x.id} type="button" aria-pressed={x.id === c.id} onClick={() => setCtlElegido(x.id)}>
               <b>C{i + 1}</b> {x.hora}
             </button>
           ))}
@@ -154,12 +151,12 @@ export function FichaAlma({ pacientes, inicial, ahora, onCerrar, vistaInicial = 
       </div>
       <div className="fa-t">{clase ? "Ventilación mecánica · orden de la hoja" : `${ETIQUETA_MODALIDAD[c.ventilacion.modalidad] ?? "Soporte"} · orden de la hoja`}</div>
       <ul className="fa-campos" aria-label="Ventilación">
-        {campos.map((f, i) => (
-          <li key={f.etiqueta} className={hechos.has(i) ? "hecho" : ""}>
-            <button type="button" aria-pressed={hechos.has(i)} onClick={() => tachar(i)}>
+        {campos.map((f) => (
+          <li key={f.etiqueta}>
+            <div className="fa-par">
               <span>{f.etiqueta}</span>
               <b>{f.valor}</b>
-            </button>
+            </div>
           </li>
         ))}
       </ul>

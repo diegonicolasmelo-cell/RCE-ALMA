@@ -842,18 +842,31 @@ function historiasDesdeRce(camas) {
     out.push({ cama: Number(h.cama), texto: texto, firma: String(h.firma || ""), fecha: String(h.fecha || ""), pendientes: pend, plan: plan });
   }
   // Nombre y edad (24-nov-2026, decisión de Diego mientras se prueba): pasan del RCE al teléfono
-  // SIN guardarse aquí. Nunca un RUT. Se apagan en el RCE (CONFIG.KAPTUS_NOMBRES_CELULAR).
+  // SIN guardarse aquí. Se apagan en el RCE (CONFIG.KAPTUS_NOMBRES_CELULAR).
+  // RUT (28-nov-2026, Diego: «cobas y Synapse copian el RUT que alimentamos al RCE»): solo en su campo
+  // propio y con forma de RUT, para los botones de Synapse y cobas. Tampoco se guarda aquí; el teléfono
+  // lo tiene solo en memoria. Se apaga en el RCE (CONFIG.KAPTUS_RUT_CELULAR).
   var pacientes = [];
   var ps2 = resp.pacientes || [];
+  var soloRut = /^\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK]$/;
   for (var q = 0; q < ps2.length && pacientes.length < 20; q++) {
     var p = ps2[q] || {};
     var nombre = String(p.nombre || "").slice(0, 80);
-    if (!nombre || rut.test(nombre)) continue;
+    if (rut.test(nombre)) nombre = "";
+    var rutP = String(p.rut || "").trim();
+    if (!soloRut.test(rutP)) rutP = "";
+    if (!nombre && !rutP) continue;
     var edad = parseInt(p.edad, 10);
-    pacientes.push({ cama: Number(p.cama), nombre: nombre, edad: edad >= 0 && edad <= 120 ? edad : null });
+    var fila = { cama: Number(p.cama), nombre: nombre, edad: edad >= 0 && edad <= 120 ? edad : null };
+    if (rutP) fila.rut = rutP;
+    pacientes.push(fila);
   }
   var res = { ok: true, historias: out };
   if (pacientes.length) res.pacientes = pacientes;
+  // Las direcciones de Synapse y del laboratorio (cobas) viven en la CONFIG del RCE, nunca en el código.
+  var en = resp.enlaces || {};
+  var url = function (u) { u = String(u || "").trim(); return /^https?:\/\/[^\s"'<>]{3,300}$/.test(u) ? u : ""; };
+  if (url(en.synapse) || url(en.lis)) res.enlaces = { synapse: url(en.synapse), lis: url(en.lis) };
   return res;
 }
 

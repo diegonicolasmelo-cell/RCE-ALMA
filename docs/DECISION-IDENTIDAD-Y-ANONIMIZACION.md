@@ -34,3 +34,13 @@ Diego decidió **separar las dos cosas**:
   el dictado por voz de Chrome en el PC, que envía el audio a Google. Esta decisión se refiere al ritmo
   del trabajo de anonimización, no a abrir canales nuevos hacia afuera.
 - La regla del RCE de que el RUT no sale en el REM, el tablero ni las exportaciones sigue igual.
+
+## Excepción autorizada: el RUT para Synapse y cobas (28-nov-2026)
+
+Diego: «sí, cobas y Synapse copian el RUT que alimentamos al RCE». El RUT de cada cama pasa del RCE al
+celular **solo** para que los botones de Synapse y cobas lo copien al portapapeles:
+
+- viaja en un campo propio y solo si tiene forma de RUT; nunca dentro de la historia;
+- el servidor de Kaptus no lo guarda y el teléfono lo tiene solo en memoria (se borra al cerrar la app);
+- no se muestra en la tarjeta ni en la lista del día del médico;
+- se apaga en el RCE con `CONFIG.KAPTUS_RUT_CELULAR = FALSE`, y sin `SYNAPSE_URL` ni `LIS_URL` no viaja.

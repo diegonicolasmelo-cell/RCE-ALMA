@@ -579,3 +579,25 @@ export function sugerirAnterior(b: BorradorControl, ultimo: Control | null): Bor
   for (const c of campos) vent[c] = textoDe(ultimo.ventilacion[c]);
   return { ...b, vent };
 }
+
+/**
+ * El control inmediato post extubación anotado en la PVE, como un control normal (Diego, 28-nov-2026: «al
+ * hacer la PVE no quedaba monitorización»). Parte del borrador de siempre (el modo con que quedó el paciente,
+ * la FiO2 heredada) y le pone lo que se anotó: FC, FR, SpO2, FiO2 y Glasgow. Queda ligado a la extubación.
+ */
+export function controlDesdePostExtub(
+  episodio: Episodio,
+  ultimo: Control | null,
+  eventos: readonly EventoClinico[],
+  rutAutor: string,
+  anotado: { readonly fc: number | null; readonly fr: number | null; readonly spo2: number | null; readonly fio2: number | null; readonly glasgow?: { ocular: number; verbal: number; motora: number } | null },
+  datos: DatosMaterializacion,
+  extubacionId: Uuid | null
+): Control {
+  const b = crearBorradorNuevoControl(episodio, ultimo, rutAutor, eventos);
+  const t = (n: number | null): string => (n === null || n === undefined ? "" : String(n));
+  const vent = { ...b.vent, frTotal: t(anotado.fr), ...(anotado.fio2 !== null ? { fio2: t(anotado.fio2) } : {}) };
+  const glasgow = anotado.glasgow ? { ocular: anotado.glasgow.ocular, verbal: anotado.glasgow.verbal, motora: anotado.glasgow.motora } : b.glasgow;
+  const c = materializarControl({ ...b, fc: t(anotado.fc), spo2: t(anotado.spo2), vent, glasgow } as BorradorControl, datos);
+  return extubacionId ? { ...c, eventoId: extubacionId } : c;
+}

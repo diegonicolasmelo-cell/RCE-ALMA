@@ -1133,7 +1133,14 @@ async function esperarServidor() {
       // A la cama siguiente, directo desde el control. Solo hay «Siguiente» con dos camas o mas
       // controladas en el turno en curso: recien cambiado el turno (8:00 o 20:00) puede haber una.
       const sig = hoja.locator('.fa-pie button:has-text("Siguiente")');
-      if (camasLista.length > 1) {
+      if (camasLista.length > 1 && (await sig.count()) === 0) {
+        // La tarjeta tocada es la última cama de la lista (28-nov-2026: la PVE ahora deja su control): se va atrás y se vuelve.
+        assert.match(await hoja.locator('.fa-pie button[aria-label="Cama siguiente"]').textContent(), /Última cama/);
+        await hoja.locator('.fa-pie button[aria-label^="Cama anterior"]').click();
+        await cel.waitForFunction((c) => !document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), cama);
+        await hoja.locator('.fa-pie button:has-text("Siguiente")').click();
+        await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), cama);
+      } else if (camasLista.length > 1) {
         const destino = (await sig.textContent()).replace(/^Siguiente: | ›$/g, "");
         await sig.click();
         await cel.waitForFunction((c) => document.querySelector(".ficha-alma .fa-tit b")?.textContent.startsWith(c + " · "), destino);
@@ -1146,7 +1153,8 @@ async function esperarServidor() {
       await hoja.locator('[role=tab]:has-text("Sábana")').click();
       const sab = cel.locator(`[role=dialog][aria-label="Sábana · ${cama}"]`);
       await sab.waitFor();
-      assert.equal(await sab.locator("thead th.sel").textContent(), hora, "la columna del control tocado va destacada");
+      // La columna puede llevar arriba el evento que ese control monitoriza (p. ej. «Extubación s/PVE · 15:09»).
+      assert.ok((await sab.locator("thead th.sel").textContent()).endsWith(hora), "la columna del control tocado va destacada");
       const ancho = await cel.evaluate(() => document.documentElement.scrollWidth);
       const culpables = await cel.evaluate(() => [...document.querySelectorAll(".sabana-cel *")].filter((e) => e.getBoundingClientRect().right > 392 && !e.closest(".scroll-x")).slice(0, 5).map((e) => e.tagName + "." + e.className + " " + Math.round(e.getBoundingClientRect().right)).join(" | ") + " · padre " + (document.querySelector(".sabana-cel").offsetParent?.className) + " " + Math.round(document.querySelector(".sabana-cel").offsetParent?.getBoundingClientRect().width) + " · body " + document.body.scrollWidth + " app " + Math.round(document.querySelector(".app-cel").getBoundingClientRect().width));
       assert.ok(ancho <= 391, `la sabana no desborda la pantalla (${ancho}px): ${culpables}`);

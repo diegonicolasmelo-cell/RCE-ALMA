@@ -19,6 +19,7 @@ import {
   ETIQUETA_DISPOSITIVO,
   ETIQUETA_MOTIVO_SIN_PVE,
   avisoMenos24hVm,
+  controlDesdePostExtub,
   contrastarControlesPve,
   criteriosAptos,
   esViaAereaArtificial,
@@ -32,7 +33,7 @@ import {
 import type { DispositivoPosterior, EventoClinico, LecturasPve, MomentoPostExtub, MotivoExtubacionSinPve } from "@core/index";
 import { useApp } from "../app/store";
 import { useServicios } from "../app/contexto";
-import { horaDe } from "../app/util";
+import { horaDe, nuevoId } from "../app/util";
 import type { ContextoCama } from "./contextoCama";
 import { baseEvento } from "./eventos-ui";
 import { TECLADO_PROPIO, tecladoRango } from "./TecladoPropio";
@@ -241,6 +242,16 @@ export function TabPve({ ctx }: { ctx: ContextoCama }) {
       tipo: "REEVAL_POST_EXTUB", momento: reeval, fc: num(f["fc"]), pam: num(f["pam"]), gcs: null, glasgow: gcsTexto(f["gcsO"], f["gcsV"], f["gcsM"], false) || undefined,
       fr: num(f["fr"]), fio2: num(f["fio2"]), spo2: num(f["spo2"]), trabajoResp: f["trab"] ?? "", manejoSecreciones: f["man"] ?? ""
     }))) return;
+    // El inmediato también queda como un control normal (Diego, 28-nov-2026: «al hacer la PVE no quedaba
+    // monitorización»): se ve en la sábana, viaja al RCE y queda ligado a la extubación.
+    if (reeval === "EXTUB") {
+      const ext = [...eventos].reverse().find((e) => e.tipo === "EXTUBACION_PROGRAMADA" || e.tipo === "AUTOEXTUBACION");
+      const o = num(f["gcsO"]), vv = num(f["gcsV"]), m = num(f["gcsM"]);
+      const ctl = controlDesdePostExtub(ep, ultimo, eventos, rutAutor,
+        { fc: num(f["fc"]), fr: num(f["fr"]), spo2: num(f["spo2"]), fio2: num(f["fio2"]), glasgow: o !== null && vv !== null && m !== null ? { ocular: o, verbal: vv, motora: m } : null },
+        { id: nuevoId(), numero: controles.length + 1, ahora: new Date(), viaAerea: ep.viaAereaActual, monitoreo: ep.monitoreo }, ext?.id ?? null);
+      await repo.guardarControl(ctl);
+    }
     setReeval(null);
     limpiar();
     if (conFalla) {

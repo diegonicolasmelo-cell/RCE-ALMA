@@ -29,7 +29,10 @@ function servidorKaptus(props: Record<string, string>, rce: (cuerpo: Record<stri
       const cuerpo = JSON.parse(o.payload) as Record<string, unknown>;
       llamadas.push(cuerpo);
       const r = rce(cuerpo);
-      return { getResponseCode: () => r.code, getContentText: () => JSON.stringify(r.body ?? {}) };
+      // El RCE real nombra lo que recibió; un {ok:true} pelado del simulador se completa igual que el real.
+      let b = (r.body ?? {}) as Record<string, unknown>;
+      if (b["ok"] === true && !("recibidos" in b) && Array.isArray(cuerpo["items"])) b = { ...b, recibidos: (cuerpo["items"] as { id: string }[]).map((i) => i.id) };
+      return { getResponseCode: () => r.code, getContentText: () => JSON.stringify(b) };
     } },
     Logger: { log: () => {} }, Utilities: {}, ContentService: {}, HtmlService: {}
   };
@@ -65,6 +68,20 @@ describe("RCE by Kaptus: el servidor de Kaptus reenvía al RCE al tiro", () => {
     expect(s.hojas["pendientes_rce"]).toHaveLength(1);
   });
 
+  it("respuesta incompleta: lo que el RCE no nombró queda esperando (revisión externa, 28-nov-2026)", () => {
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true, recibidos: ["a"], rechazados: [] } }));
+    s.sincronizar(lote(["a", "b"]));
+    expect(s.hojas["pendientes_rce"]?.slice(1).map((f) => f[0])).toEqual(["b"]);
+  });
+  it("nunca manda más de 200 en un envío: el 201 espera y sale después", () => {
+    const enviados: number[] = [];
+    const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, (c) => { enviados.push((c["items"] as unknown[]).length); return { code: 200, body: { ok: true } }; });
+    s.sincronizar(lote(Array.from({ length: 201 }, (_, i) => `x${i}`)));
+    expect(enviados).toEqual([200]);
+    expect(s.hojas["pendientes_rce"]?.slice(1).map((f) => f[0])).toEqual(["x200"]);
+    s.sincronizar(lote([]));
+    expect(s.hojas["pendientes_rce"]).toHaveLength(1);
+  });
   it("un item con nombre o RUT se rechaza entero, como el resto del lote", () => {
     const s = servidorKaptus({ RCE_URL: "https://rce/exec", RCE_TOKEN: "LLAVE" }, () => ({ code: 200, body: { ok: true } }));
     const malo = { ...lote([]), paraRce: [{ ...item("x"), datos: { nombre: "X" } }] };

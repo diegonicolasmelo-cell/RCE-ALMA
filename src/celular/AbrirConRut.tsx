@@ -1,9 +1,9 @@
-import { FlaskConical, ImageIcon } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import { useState } from "react";
 import type { EnlacesRce } from "@core/index";
 
 /**
- * Synapse y cobas desde la tarjeta de la cama (28-nov-2026, Diego: «cobas y Synapse copian el RUT que
+ * Synapse desde la tarjeta de la cama (28-nov-2026, Diego: «cobas y Synapse copian el RUT que
  * alimentamos al RCE»). Igual que en el RCE: copia el RUT y abre la página para pegarlo en el buscador.
  * El RUT llega del RCE y vive solo en memoria; no se muestra en la tarjeta salvo que no se pueda copiar.
  */
@@ -27,7 +27,9 @@ function copiar(texto: string): boolean {
 
 export function AbrirConRut({ rut, enlaces, cama }: { rut: string; enlaces: EnlacesRce | null; cama: string }) {
   const [aviso, setAviso] = useState<string | null>(null);
-  if (!rut || !enlaces || (!enlaces.synapse && !enlaces.lis)) return null;
+  // cobas no va en el celular (Diego, 28-nov-2026): el laboratorio solo responde dentro de la red del
+  // hospital, y el teléfono no está en ella. Synapse sí abre desde el celular.
+  if (!rut || !enlaces || !enlaces.synapse) return null;
   const abrir = (url: string, donde: string): void => {
     const ok = copiar(rut);
     const w = window.open(url, "_blank", "noopener");
@@ -39,11 +41,6 @@ export function AbrirConRut({ rut, enlaces, cama }: { rut: string; enlaces: Enla
       {enlaces.synapse && (
         <button type="button" className="btn" aria-label={`Synapse · ${cama}`} title="Copia el RUT y abre Synapse" onClick={() => abrir(enlaces.synapse, "Synapse")}>
           <ImageIcon size={15} aria-hidden /> Synapse
-        </button>
-      )}
-      {enlaces.lis && (
-        <button type="button" className="btn" aria-label={`cobas · ${cama}`} title="Copia el RUT y abre el laboratorio" onClick={() => abrir(enlaces.lis, "cobas")}>
-          <FlaskConical size={15} aria-hidden /> cobas
         </button>
       )}
       {aviso && <span className="small muted" role="status">{aviso}</span>}

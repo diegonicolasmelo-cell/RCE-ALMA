@@ -139,7 +139,17 @@ export function controlParaRce(c: Control, ep: Episodio, eventos: readonly Event
     KAP_DVA_NIVEL: dva.length ? semaforoDva(c.infusiones) : null,
     KAP_SED_DETALLE: sed.length ? sed.map(bomba).join(" · ").slice(0, 200) : null,
     KAP_FC: c.fc, KAP_PAS: c.pas, KAP_PAD: c.pad, KAP_PAM: d.pam,
-    RESP_SECR_CAR: aspecto || null, RESP_SECR_REOL: c.kineResp.reologia?.toLowerCase() ?? null, RESP_SECR_QTY: c.kineResp.cantidad?.toLowerCase() ?? null
+    RESP_SECR_CAR: aspecto || null, RESP_SECR_REOL: c.kineResp.reologia?.toLowerCase() ?? null, RESP_SECR_QTY: c.kineResp.cantidad?.toLowerCase() ?? null,
+    // 28-nov-2026 (Diego: «que los datos que guardo sean los que realmente viajan»): lo que el celular
+    // anotaba y no llegaba al RCE. Neuromonitoreo, manejo de secreciones, asincronía, IPAP máx. y la nota.
+    KAP_PIC: c.neuro?.pic ?? null, KAP_ETCO2: c.neuro?.etco2 ?? null,
+    KAP_DVE: c.neuro?.dveAbierta === null || c.neuro?.dveAbierta === undefined ? null : (c.neuro.dveAbierta ? "abierta" : "cerrada"),
+    KAP_DVE_ALT: c.neuro?.dveAlturaCmH2O ?? null,
+    KAP_TOS: c.kineResp.tos ? c.kineResp.tos.toLowerCase() : null, KAP_PFT: c.kineResp.flujoPicoTos ?? null,
+    KAP_DEGLUCION: c.kineResp.deglucion ? c.kineResp.deglucion.toLowerCase() : null,
+    KAP_ASINCRONICO: s.soporte === "VM" ? v.asincronico === true : null,
+    VENT_IPAP_MAX: vni ? v.presionMax ?? null : null,
+    KAP_OBS: c.observaciones && c.observaciones.trim() ? c.observaciones.trim().slice(0, 300) : null
   });
   const ev = c.eventoId ? eventos.find((e) => e.id === c.eventoId) : undefined;
   const cod = ev ? eventoRceDe(ev) : null;

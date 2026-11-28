@@ -184,7 +184,7 @@ export function eventoRceDe(e: EventoClinico): string | null {
     // Evento escrito a mano (22-nov-2026): llega al RCE como nota con su texto y su hora.
     case "EVENTO_LIBRE": return "NOTA";
     // Coordinación anula un evento (25-nov-2026): el RCE lo marca anulado en su copia y deja de contarlo.
-    case "ANULACION_EVENTO": return "ANULACION";
+    case "ANULACION_EVENTO": return e.origen === "RCE" ? null : "ANULACION";
     // Corrección de hora (26-nov-2026). La que vino del RCE no se le devuelve.
     case "CORRECCION_EVENTO": return e.origen === "RCE" ? null : "CORRECCION";
     // Lo que anota quien recibe la entrega: es del celular, no va al RCE.

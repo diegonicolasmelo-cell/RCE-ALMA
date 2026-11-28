@@ -604,7 +604,7 @@ export type EventoClinico =
    * eventos», la cama 1 con reintubaciones que no ocurrieron). No se borra nada: el evento queda, y esta
    * marca dice quién lo anuló, cuándo y por qué. Un evento anulado deja de contar en todas partes.
    */
-  | (EventoBase & { readonly tipo: "ANULACION_EVENTO"; readonly anulaId: Uuid; readonly motivo: string })
+  | (EventoBase & { readonly tipo: "ANULACION_EVENTO"; readonly anulaId: Uuid; readonly motivo: string; readonly origen?: "RCE" })
   /**
    * Coordinación corrige la hora de un evento (Diego, 26-nov-2026: «un paciente que se supinó y no se anotó
    * a qué hora»). De solo agregar: el evento original no se toca, esta marca le pone la hora que vale.

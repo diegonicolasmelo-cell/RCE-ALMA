@@ -32,6 +32,15 @@ describe("RCE by Kaptus: traducción al idioma del RCE", () => {
     expect(texto).not.toMatch(/nombre|rut"|Paciente/i);
   });
 
+  it("lo que el celular anotaba y no llegaba al RCE ahora viaja (28-nov-2026)", () => {
+    const ep = unEpisodio({ cama: "UCI-07" });
+    const c = unControl({ viaAerea: "TET", neuro: { etco2: 38, pic: 14, dveAlturaCmH2O: 15, dveAbierta: true },
+      ventilacion: unaVentilacion({ modalidad: "ACVC", asincronico: true }),
+      kineResp: { ...unControl().kineResp, tos: "DEFICIENTE", flujoPicoTos: 120, deglucion: "ESPORADICA" } } as never);
+    expect(controlParaRce(c, ep)!.datos).toMatchObject({ KAP_PIC: 14, KAP_ETCO2: 38, KAP_DVE: "abierta", KAP_DVE_ALT: 15,
+      KAP_TOS: "deficiente", KAP_PFT: 120, KAP_DEGLUCION: "esporadica", KAP_ASINCRONICO: true, KAP_OBS: "Queda acoplado a VMI protectora." });
+  });
+
   it("la sedación viaja con los fármacos del RCE y el escalón más alto (25-nov)", () => {
     const ep = unEpisodio({ cama: "UCI-04" });
     const con = (infusiones: object) => controlParaRce(unControl({ infusiones } as never), ep)!.datos;
